@@ -1,0 +1,1416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0d1117" />
+<title>CWO Admin</title>
+<style>
+  /* 2026-05-22: Admin modernization — GitHub-dark palette + mobile-first layout.
+     Palette cribbed from github.com's dark theme (Primer):
+       --bg            #0d1117  page background
+       --bg-card       #161b22  cards / header / left rail
+       --bg-subtle     #21262d  hover / active surface
+       --border        #30363d  default border
+       --border-strong #484f58  emphasized border
+       --text          #e6edf3  primary text
+       --text-muted    #7d8590  muted / meta text
+       --accent        #2f81f7  primary action / link
+       --success       #3fb950  ok / saved
+       --warn          #d29922  attention (used for selected game)
+       --danger        #f85149  destructive / broken */
+  :root {
+    color-scheme: dark;
+    --bg: #0d1117; --bg-card: #161b22; --bg-subtle: #21262d;
+    --border: #30363d; --border-strong: #484f58;
+    --text: #e6edf3; --text-muted: #7d8590;
+    --accent: #2f81f7; --success: #3fb950; --warn: #d29922; --danger: #f85149;
+  }
+  /* Hard-clip horizontal scroll at the document level. The faction-state
+     table can still scroll horizontally within its own wrapper (.table-wrap);
+     only the OUTER page is locked. This fixes the mobile bug where the wide
+     stats table was forcing the whole layout to pan left-right. */
+  html, body { max-width: 100%; overflow-x: hidden; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+         background: var(--bg); color: var(--text); margin: 0; padding: 0;
+         -webkit-text-size-adjust: 100%; }
+  .col, .col-wrap { max-width: 100%; }
+
+  /* Horizontally scrollable wrapper for wide tables (faction state). The
+     table inside is allowed to overflow; ONLY this container scrolls. */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch;
+                max-width: 100%; border: 1px solid var(--border);
+                border-radius: 6px; background: var(--bg-card); }
+  .table-wrap table { min-width: 100%; border-collapse: collapse;
+                      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                      font-size: 9pt; }
+  .table-wrap th, .table-wrap td { white-space: nowrap; }
+  .table-wrap thead th { position: sticky; top: 0; background: var(--bg-subtle);
+                         border-bottom: 1px solid var(--border); }
+  header { background: var(--bg-card); padding: 14px 20px; border-bottom: 1px solid var(--border);
+           display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 16pt; color: var(--text); font-weight: 600; }
+
+  /* Mobile-first: single column. Desktop override widens to two columns at ≥720px. */
+  .col-wrap { display: grid; grid-template-columns: 1fr; min-height: calc(100vh - 60px); }
+  .col { padding: 14px 18px; overflow-y: auto; }
+  .col.left { background: var(--bg-card); border-right: 1px solid var(--border); }
+  .col.right { background: var(--bg); display: none; }
+  .col-wrap.show-detail .col.left { display: none; }
+  .col-wrap.show-detail .col.right { display: block; }
+  .back-btn { display: inline-block; margin-bottom: 10px; }
+  @media (min-width: 720px) {
+    .col-wrap { grid-template-columns: 320px 1fr; height: calc(100vh - 60px); }
+    .col.left, .col.right { display: block !important; }
+    .col-wrap.show-detail .col.left { display: block; }
+    .back-btn { display: none; }
+  }
+
+  h2 { color: var(--text); font-size: 14pt; margin-top: 0; border-bottom: 1px solid var(--border);
+       padding-bottom: 8px; font-weight: 600; }
+  h3 { color: var(--text); font-size: 11pt; margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  label { display: block; margin-top: 8px; font-size: 9pt; color: var(--text-muted); }
+  input[type=text], input[type=password] {
+    width: 100%; box-sizing: border-box; padding: 7px 10px; background: var(--bg);
+    border: 1px solid var(--border); color: var(--text); font-family: monospace; font-size: 10pt;
+    border-radius: 6px;
+  }
+  input[type=text]:focus, input[type=password]:focus {
+    outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(47,129,247,0.3);
+  }
+  button { padding: 6px 14px; background: var(--bg-subtle); color: var(--text);
+           border: 1px solid var(--border); cursor: pointer; font-size: 10pt; border-radius: 6px;
+           font-weight: 500; }
+  button:hover { background: var(--border); border-color: var(--border-strong); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover { background: #1f6feb; border-color: #1f6feb; }
+  button.danger { background: rgba(248,81,73,0.15); border-color: var(--danger); color: var(--danger); }
+  button.danger:hover { background: var(--danger); color: #fff; }
+  button.small { padding: 3px 10px; font-size: 9pt; }
+
+  .game-row { padding: 10px 12px; margin-bottom: 6px; background: var(--bg-card);
+              border: 1px solid var(--border); border-radius: 6px; cursor: pointer;
+              display: flex; gap: 8px; justify-content: space-between; align-items: center; }
+  .game-row:hover { background: var(--bg-subtle); border-color: var(--border-strong); }
+  .game-row.active { background: var(--bg-subtle); border-color: var(--warn); }
+  .broken-flag { flex: 0 0 auto; padding: 3px 8px; font-size: 9pt; border-radius: 6px;
+                 border: 1px solid var(--border); background: var(--bg); color: var(--text-muted); cursor: pointer; }
+  .broken-flag:hover { background: var(--bg-subtle); color: var(--text); }
+  .broken-flag.on { background: rgba(248,81,73,0.15); border-color: var(--danger); color: var(--danger); }
+  .game-row.broken .game-name { color: var(--danger); text-decoration: line-through; }
+  .game-row.broken { border-color: var(--danger); }
+  .game-row.completed { opacity: 0.55; }
+  .game-row.completed .game-name { color: var(--text-muted); }
+  .completed-badge { display: inline-block; font-size: 8pt; padding: 1px 8px;
+                     background: rgba(63,185,80,0.15); color: var(--success); border: 1px solid var(--success);
+                     border-radius: 999px; vertical-align: middle; }
+  .game-name { font-weight: 600; color: var(--text); }
+  .game-meta { color: var(--text-muted); font-size: 9pt; }
+
+  .notes-box textarea { width: 100%; box-sizing: border-box; min-height: 80px;
+                        padding: 8px 10px; background: var(--bg); border: 1px solid var(--border);
+                        color: var(--text); font-family: inherit; font-size: 10pt;
+                        line-height: 1.5; resize: vertical; border-radius: 6px; }
+  .notes-box textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(47,129,247,0.3); }
+  .notes-box .saved-tag { color: var(--success); font-size: 9pt; margin-left: 8px; }
+  .notes-box .saving-tag { color: var(--warn); font-size: 9pt; margin-left: 8px; }
+
+  .log-entry { padding: 6px 10px; margin-bottom: 3px; background: var(--bg-card);
+               border-left: 3px solid var(--border); border-radius: 0 6px 6px 0;
+               font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 9pt;
+               display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .log-entry .idx { color: var(--text-muted); min-width: 40px; text-align: right; }
+  .log-entry .role { color: var(--accent); min-width: 60px; }
+  .log-entry .val { flex: 1; word-break: break-word; }
+  .log-entry.permanent { border-left-color: var(--danger); background: rgba(248,81,73,0.08); }
+
+  .role-link { display: inline-block; margin-right: 8px; }
+  .role-link a { color: var(--accent); text-decoration: none; }
+  .role-link a:hover { text-decoration: underline; }
+
+  .err { color: var(--danger); padding: 10px 12px; background: rgba(248,81,73,0.1);
+         border: 1px solid var(--danger); border-radius: 6px; margin: 10px 0; font-size: 10pt; }
+  .ok { color: var(--success); padding: 10px 12px; background: rgba(63,185,80,0.1);
+        border: 1px solid var(--success); border-radius: 6px; margin: 10px 0; font-size: 10pt; }
+  .empty { color: var(--text-muted); font-style: italic; padding: 10px; }
+  .toolbar { padding: 10px 12px; background: var(--bg-card); border: 1px solid var(--border);
+             border-radius: 6px; margin-bottom: 12px; display: flex; gap: 10px; align-items: center;
+             flex-wrap: wrap; }
+
+  /* Code blocks in the Build / SimRunner runbook pages. Click anywhere on the
+     block to copy the command to clipboard; a small toast fades in to confirm. */
+  pre.cmd { background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+            padding: 10px 12px; margin: 8px 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 9pt; white-space: pre-wrap; word-break: break-all; color: var(--text);
+            cursor: pointer; position: relative; }
+  pre.cmd:hover { border-color: var(--accent); }
+  pre.cmd::after { content: "copy"; position: absolute; right: 8px; top: 6px;
+                   color: var(--text-muted); font-size: 8pt; font-family: -apple-system, sans-serif; }
+  pre.cmd.copied::after { content: "copied!"; color: var(--success); }
+  .runbook-section { margin: 16px 0 24px; }
+  .runbook-section h3 { margin-bottom: 4px; }
+  .runbook-section p { color: var(--text-muted); margin: 4px 0 8px; font-size: 10pt; line-height: 1.5; }
+
+  /* Section panes — only one of these is visible at a time via showSection(). */
+  .section-pane { display: none; }
+  .section-pane.active { display: block; }
+
+  /* Build switcher cards — big tappable buttons. The currently-selected
+     build gets the .selected class which paints it accent-colored. */
+  button.build-card { flex: 1 1 280px; text-align: left; padding: 18px 20px;
+                      background: var(--bg-card); border: 2px solid var(--border);
+                      border-radius: 10px; cursor: pointer; color: var(--text); }
+  button.build-card:hover { border-color: var(--border-strong); background: var(--bg-subtle); }
+  button.build-card.selected { border-color: var(--accent); background: rgba(47,129,247,0.08); }
+
+  /* Per-faction / option checkboxes in the SimRunner wizard. Tighter than
+     default label spacing so the columns line up cleanly on mobile. */
+  .sim-checkbox { display: inline-flex; align-items: center; gap: 4px;
+                  font-size: 10pt; color: var(--text); cursor: pointer;
+                  padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px;
+                  background: var(--bg-card); user-select: none; }
+  .sim-checkbox:hover { background: var(--bg-subtle); }
+  .sim-checkbox input { margin: 0; cursor: pointer; }
+
+  /* Live tail of the current sim run. Monospace, dark, capped height with
+     a scroll so really long runs don't blow up the page. */
+  .sim-tail { background: #000; color: #b3e6ff; padding: 8px 10px; border-radius: 6px;
+              max-height: 320px; overflow: auto; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+              font-size: 9pt; line-height: 1.4; white-space: pre-wrap; }
+
+  /* Past-runs list rows. */
+  .sim-past-row { display: flex; align-items: center; gap: 10px; padding: 6px 8px;
+                  background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px;
+                  margin-bottom: 4px; }
+  .sim-past-row .name { flex: 1 1 auto; color: var(--text); font-family: ui-monospace, monospace; font-size: 9pt; }
+  .sim-past-row .size { color: var(--text-muted); font-size: 8.5pt; }
+  .sim-past-row button { padding: 3px 10px; font-size: 9pt; }
+
+  /* Hamburger nav (mobile-first) — visible <720px, hidden ≥720px since the
+     desktop view shows the games list inline in the left rail. */
+  .hamburger-btn { display: inline-flex; align-items: center; justify-content: center;
+                   width: 32px; height: 32px; padding: 0; background: transparent;
+                   border: 1px solid var(--border); border-radius: 6px; color: var(--text);
+                   font-size: 14pt; line-height: 1; cursor: pointer; }
+  .hamburger-btn:hover { background: var(--bg-subtle); }
+  .nav-drawer { position: fixed; top: 0; left: 0; bottom: 0; width: 260px;
+                background: var(--bg-card); border-right: 1px solid var(--border);
+                transform: translateX(-100%); transition: transform 0.18s ease-out;
+                z-index: 1000; padding: 18px 0; display: flex; flex-direction: column; gap: 4px; }
+  .nav-drawer.open { transform: translateX(0); }
+  .nav-drawer a { color: var(--text); padding: 10px 18px; text-decoration: none; font-size: 11pt; }
+  .nav-drawer a:hover { background: var(--bg-subtle); }
+  .nav-drawer a.section { color: var(--text-muted); font-size: 9pt; text-transform: uppercase;
+                          letter-spacing: 0.08em; padding-top: 16px; padding-bottom: 4px; cursor: default; }
+  .nav-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999;
+                 display: none; }
+  .nav-overlay.open { display: block; }
+  @media (min-width: 720px) {
+    .hamburger-btn { display: none; }
+    .nav-drawer, .nav-overlay { display: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Mobile hamburger drawer (hidden ≥720px). Build/Games/Bot games/SimRunner
+     placeholders — Games is the only one wired up today; the rest are
+     placeholders pending the SimRunner status page and Build admin tooling. -->
+<div id="nav-overlay" class="nav-overlay" onclick="closeNav()"></div>
+<nav id="nav-drawer" class="nav-drawer" aria-label="Primary">
+  <a class="section">Sections</a>
+  <a href="#" onclick="showSection('games'); closeNav(); return false;">Games</a>
+  <a href="#" onclick="document.getElementById('show-bots-cb') && (document.getElementById('show-bots-cb').checked=true, loadGames()); showSection('games'); closeNav(); return false;">Bot games</a>
+  <a href="#" onclick="showSection('simrunner'); closeNav(); return false;">SimRunner</a>
+  <a href="#" onclick="showSection('build'); closeNav(); return false;">Build</a>
+  <a href="#" onclick="showSection('claude'); closeNav(); return false;">Claude Terminal</a>
+</nav>
+
+<header>
+  <button class="hamburger-btn" onclick="openNav()" aria-label="Open navigation">☰</button>
+  <h1>CWO Admin</h1>
+  <span id="server-indicator" style="color:var(--text-muted);font-size:10pt;"></span>
+</header>
+
+<div id="login-pane" style="padding: 30px;">
+  <h2>Sign in</h2>
+  <label>Server URL</label>
+  <input type="text" id="server-url" value="https://cwo.freeddns.org" />
+  <label>Owner admin token</label>
+  <input type="password" id="owner-token" placeholder="paste from owner-admin-token.txt" />
+  <p><button class="primary" onclick="signIn()">Sign in</button></p>
+  <p id="login-err" class="err" style="display:none;"></p>
+</div>
+
+<div id="main-pane" style="display:none;">
+
+  <!-- Games section (default view) — the existing two-column game-list + detail. -->
+  <div id="section-games" class="section-pane active col-wrap">
+    <div class="col left">
+      <h2>Live Games</h2>
+      <p>
+        <button class="small" onclick="loadGames()">Refresh</button>
+        <label style="margin-left:10px;color:var(--text-muted);font-size:9pt;">
+          <input type="checkbox" id="show-bots-cb" onchange="loadGames()" />
+          Show bot games
+        </label>
+      </p>
+      <div id="games-list"></div>
+    </div>
+
+    <div class="col right">
+      <div id="game-detail">
+        <p class="empty">Pick a game from the left to view its factions and log.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SimRunner section — wizard for kicking off online sims directly from
+       the admin tool via /admin/<t>/sim-run, plus past-runs list and live tail. -->
+  <div id="section-simrunner" class="section-pane" style="padding: 18px;">
+    <h2>SimRunner — current build: <span id="sim-build-label" style="color:var(--accent);">…</span></h2>
+    <p style="color:var(--text-muted);">Pick the bot recipe, hit <b>Run sim</b>. The orchestrator runs on the VM and writes a log under <code>/tmp/online-sim-&lt;build&gt;-&lt;timestamp&gt;.log</code>. Use the Build menu to switch between the Library and MNU jars.</p>
+
+    <h3>1. Force factions (leave all unchecked for random)</h3>
+    <div id="sim-faction-checkboxes" style="display:flex;flex-wrap:wrap;gap:6px 14px;"></div>
+
+    <h3>2. Game settings</h3>
+    <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;">
+      <label style="flex:0 0 auto;">Players<br/><input type="number" id="sim-players" min="2" max="11" value="4" style="width:80px;"/></label>
+      <label style="flex:0 0 auto;">Games<br/><input type="number" id="sim-games" min="1" max="500" value="30" style="width:80px;"/></label>
+    </div>
+
+    <h3>3. Maps (random pick per game across checked)</h3>
+    <div id="sim-map-checkboxes" style="display:flex;flex-wrap:wrap;gap:6px 14px;"></div>
+
+    <h3>4. Options</h3>
+    <p style="font-size:9pt;color:var(--text-muted);margin:0 0 6px;">Toggles</p>
+    <div id="sim-toggle-opts" style="display:flex;flex-wrap:wrap;gap:6px 14px;"></div>
+    <p style="font-size:9pt;color:var(--text-muted);margin:10px 0 6px;">Neutral monsters</p>
+    <div id="sim-nm-opts" style="display:flex;flex-wrap:wrap;gap:6px 14px;"></div>
+    <p style="font-size:9pt;color:var(--text-muted);margin:10px 0 6px;">iGOOs</p>
+    <div id="sim-igoo-opts" style="display:flex;flex-wrap:wrap;gap:6px 14px;"></div>
+
+    <p style="margin-top:16px;">
+      <button class="primary" onclick="runSim()">Run sim</button>
+      <button class="small" onclick="setSimPresetLibrary()">Preset: Library 30g crash test</button>
+      <button class="small" onclick="setSimPresetMnu()">Preset: MNU 30g full options</button>
+    </p>
+
+    <h3 style="margin-top:24px;">Current / latest run</h3>
+    <div id="sim-current-run" style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:10px 12px;">
+      <p class="empty">No run kicked off yet this session.</p>
+    </div>
+
+    <h3 style="margin-top:24px;">Past runs <button class="small" style="margin-left:8px;" onclick="loadSimRuns()">Refresh</button></h3>
+    <div id="sim-past-runs"><p class="empty">Loading…</p></div>
+  </div>
+
+  <!-- Build section — switch the admin's active build (Library vs MNU). Other
+       menus (SimRunner) read this localStorage value and adapt. -->
+  <div id="section-build" class="section-pane" style="padding: 18px;">
+    <h2>Build</h2>
+    <p style="color:var(--text-muted);">Two builds share this admin tool. Pick the active one — SimRunner and other build-dependent menus read this setting.</p>
+
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin:24px 0;">
+      <button id="build-btn-library" class="build-card" onclick="setBuild('library')">
+        <div style="font-size:13pt;font-weight:600;margin-bottom:4px;">Library at Celaeno</div>
+        <div style="font-size:9pt;color:var(--text-muted);">Stable build · served at <code>cwo.freeddns.org</code></div>
+      </button>
+      <button id="build-btn-mnu" class="build-card" onclick="setBuild('mnu')">
+        <div style="font-size:13pt;font-weight:600;margin-bottom:4px;">More Neutral Units (MNU)</div>
+        <div style="font-size:9pt;color:var(--text-muted);">Beta build · served at <code>cwo.freeddns.org/mnu/</code></div>
+      </button>
+    </div>
+
+    <p>Currently active build: <span id="build-current" style="color:var(--accent);font-weight:600;">…</span></p>
+  </div>
+
+  <!-- Claude Terminal — submit textbox + terminal log (TOP, what's been
+       processed: prompts + my output) + prompt queue (BELOW, submitted
+       but not yet picked up). Both polled independently; polling continues
+       even when this section isn't visible (the user wanted to keep
+       context loaded). -->
+  <div id="section-claude" class="section-pane" style="padding: 18px;">
+    <h2>Claude Terminal</h2>
+    <p style="color:var(--text-muted);">Type a prompt and hit Submit. It's queued to <code>/tmp/claude-prompts.log</code> on the VM. Claude drains the queue every tick, appends to <code>/tmp/claude-output.log</code> with prompts + responses interleaved, and the terminal log below polls that for the recent history.</p>
+
+    <div style="display:flex;gap:8px;align-items:stretch;margin-bottom:16px;">
+      <textarea id="claude-prompt-input" rows="3" placeholder="Type a prompt for Claude…"
+                style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px 10px;font-family:inherit;font-size:11pt;resize:vertical;"></textarea>
+      <button class="primary" style="flex:0 0 auto;align-self:stretch;padding:0 18px;" onclick="submitClaudePrompt()">Submit</button>
+    </div>
+    <p id="claude-prompt-status" style="font-size:9pt;color:var(--text-muted);margin-top:0;"></p>
+
+    <h3 style="margin-top:24px;">Terminal log (recent prompts + Claude output) <button class="small" style="margin-left:8px;" onclick="refreshClaudeOutput()">Refresh</button></h3>
+    <pre id="claude-output" class="sim-tail" style="height:50vh;max-height:50vh;">loading…</pre>
+
+    <h3 style="margin-top:24px;">Queue (prompts submitted but not yet picked up) <button class="small" style="margin-left:8px;" onclick="refreshClaudeQueue()">Refresh</button></h3>
+    <pre id="claude-queue" class="sim-tail" style="height:20vh;max-height:20vh;">loading…</pre>
+  </div>
+
+</div>
+
+<script>
+let SERVER = '';
+let TOKEN = '';
+let CURRENT_GAME = null;
+
+// Mobile hamburger drawer — slides in from the left at <720px. The drawer +
+// overlay are mutually exclusive show states; closeNav() also fires when the
+// overlay is tapped (its onclick handler in markup).
+function openNav() {
+  document.getElementById('nav-drawer').classList.add('open');
+  document.getElementById('nav-overlay').classList.add('open');
+}
+function closeNav() {
+  document.getElementById('nav-drawer').classList.remove('open');
+  document.getElementById('nav-overlay').classList.remove('open');
+}
+
+// Section switcher — show one of "games" / "simrunner" / "build" panes inside
+// #main-pane, hide the others. Sections are mutually exclusive so only one is
+// .active at any time.
+function showSection(name) {
+  document.querySelectorAll('#main-pane .section-pane').forEach(pane => {
+    pane.classList.toggle('active', pane.id === 'section-' + name);
+  });
+}
+
+// Click-to-copy on <pre class="cmd"> blocks in the runbook sections. Falls
+// back to a textarea + execCommand on browsers without the async Clipboard API.
+function copyCmd(el) {
+  const text = el.textContent.trim();
+  const done = () => {
+    el.classList.add('copied');
+    setTimeout(() => el.classList.remove('copied'), 1500);
+  };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+  } else {
+    fallbackCopy(text, done);
+  }
+}
+function fallbackCopy(text, done) {
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); done(); } catch (e) {}
+  document.body.removeChild(ta);
+}
+
+// ========== Build switcher ==========
+// Persisted in localStorage("cwo_admin_build"). Default "library". Other
+// menus (SimRunner) read this via getBuild().
+function getBuild() {
+  return localStorage.getItem('cwo_admin_build') || 'library';
+}
+function setBuild(name) {
+  if (name !== 'library' && name !== 'mnu') return;
+  localStorage.setItem('cwo_admin_build', name);
+  refreshBuildIndicator();
+  // Re-render SimRunner header so the active build chip updates.
+  const lbl = document.getElementById('sim-build-label');
+  if (lbl) lbl.textContent = (name === 'library' ? 'Library' : 'MNU');
+}
+function refreshBuildIndicator() {
+  const b = getBuild();
+  const cur = document.getElementById('build-current');
+  if (cur) cur.textContent = (b === 'library' ? 'Library at Celaeno' : 'More Neutral Units (MNU)');
+  const libBtn = document.getElementById('build-btn-library');
+  const mnuBtn = document.getElementById('build-btn-mnu');
+  if (libBtn && mnuBtn) {
+    libBtn.classList.toggle('selected', b === 'library');
+    mnuBtn.classList.toggle('selected', b === 'mnu');
+  }
+}
+
+// ========== SimRunner wizard ==========
+const SIM_FACTIONS = ['GC','CC','BG','YS','SL','WW','OW','AN','TS','FB','DS'];
+const SIM_MAPS = ['Earth33','Earth35','Earth53','Earth55','Library33','Library35','Library53','Library55'];
+const SIM_TOGGLE_OPTS = ['HighPriests','GateDiplomacy','AsyncActions','DemandTsathoggua','NeutralSpellbooks','IceAgeAffectsLethargy','Opener4P10Gates'];
+const SIM_NM_OPTS = ['UseGhast','UseGug','UseShantak','UseStarVampire','UseVoonith','UseDimensionalShamblers','UseGnorri'];
+const SIM_IGOO_OPTS = ['UseByatis','UseAbhoth','UseDaoloth','UseNyogtha','UseTulzscha','UseYgolonac'];
+
+// Build the checkbox UI for each option group. Called once on sign-in.
+function renderSimWizard() {
+  const mkCheck = (id, label, checked = false) =>
+    `<label class="sim-checkbox"><input type="checkbox" id="${id}" ${checked ? 'checked' : ''}/>${label}</label>`;
+  document.getElementById('sim-faction-checkboxes').innerHTML =
+    SIM_FACTIONS.map(f => mkCheck('sim-f-' + f, f)).join('');
+  document.getElementById('sim-map-checkboxes').innerHTML =
+    SIM_MAPS.map(m => mkCheck('sim-m-' + m, m, m === 'Earth35' || m === 'Earth53')).join('');
+  document.getElementById('sim-toggle-opts').innerHTML =
+    SIM_TOGGLE_OPTS.map(o => mkCheck('sim-o-' + o, o)).join('');
+  document.getElementById('sim-nm-opts').innerHTML =
+    SIM_NM_OPTS.map(o => mkCheck('sim-o-' + o, o.replace(/^Use/, ''))).join('');
+  document.getElementById('sim-igoo-opts').innerHTML =
+    SIM_IGOO_OPTS.map(o => mkCheck('sim-o-' + o, o.replace(/^Use/, ''))).join('');
+}
+
+function collectChecked(prefix, list) {
+  return list.filter(x => document.getElementById(prefix + x)?.checked);
+}
+function setChecked(prefix, list, on) {
+  list.forEach(x => { const el = document.getElementById(prefix + x); if (el) el.checked = on; });
+}
+
+// Convenience presets matching the two recent runs.
+function setSimPresetLibrary() {
+  setBuild('library');
+  setChecked('sim-f-', SIM_FACTIONS, false);
+  ['FB','TS','DS'].forEach(f => { const el = document.getElementById('sim-f-' + f); if (el) el.checked = true; });
+  document.getElementById('sim-players').value = 4;
+  document.getElementById('sim-games').value = 30;
+  setChecked('sim-m-', SIM_MAPS, false); ['Earth35','Earth53'].forEach(m => document.getElementById('sim-m-' + m).checked = true);
+  setChecked('sim-o-', SIM_TOGGLE_OPTS.concat(SIM_NM_OPTS).concat(SIM_IGOO_OPTS), false);
+  ['AsyncActions','GateDiplomacy','DemandTsathoggua'].forEach(o => document.getElementById('sim-o-' + o).checked = true);
+}
+function setSimPresetMnu() {
+  setBuild('mnu');
+  setChecked('sim-f-', SIM_FACTIONS, false);
+  document.getElementById('sim-players').value = 4;
+  document.getElementById('sim-games').value = 30;
+  setChecked('sim-m-', SIM_MAPS, false); ['Earth35','Earth53'].forEach(m => document.getElementById('sim-m-' + m).checked = true);
+  setChecked('sim-o-', SIM_TOGGLE_OPTS.concat(SIM_NM_OPTS).concat(SIM_IGOO_OPTS), true);
+}
+
+// POST /admin/<t>/sim-run with the wizard's selections. Server spawns the
+// orchestrator in background and returns "<logName>\tpid=<pid>".
+function runSim() {
+  const build = getBuild();
+  const factions = collectChecked('sim-f-', SIM_FACTIONS);
+  const maps = collectChecked('sim-m-', SIM_MAPS);
+  const opts = collectChecked('sim-o-', SIM_TOGGLE_OPTS.concat(SIM_NM_OPTS).concat(SIM_IGOO_OPTS));
+  const players = parseInt(document.getElementById('sim-players').value, 10);
+  const games = parseInt(document.getElementById('sim-games').value, 10);
+  if (!maps.length) { alert('Pick at least one map.'); return; }
+  const params = new URLSearchParams();
+  params.set('build', build);
+  if (factions.length) params.set('factions', factions.join(','));
+  if (opts.length) params.set('opts', opts.join(','));
+  params.set('maps', maps.join(','));
+  params.set('games', String(games));
+  params.set('players', String(players));
+  const url = `${SERVER}/admin/${TOKEN}/sim-run?${params.toString()}`;
+  const div = document.getElementById('sim-current-run');
+  div.innerHTML = '<p>Starting run…</p>';
+  fetch(url, { method: 'POST' }).then(r => r.text().then(t => ({ok: r.ok, status: r.status, body: t}))).then(res => {
+    if (!res.ok) {
+      div.innerHTML = `<div class="err">Sim spawn failed (HTTP ${res.status}): ${esc(res.body)}</div>`;
+      return;
+    }
+    const [logName, pidPart] = res.body.split('\t');
+    div.innerHTML =
+      `<div class="ok">Started <code>${esc(logName)}</code> (${esc(pidPart || '')}). Tailing every 5s.</div>
+       <div style="margin-top:8px;"><b>Build:</b> ${esc(build)} · <b>Factions:</b> ${esc(factions.join(',') || 'random')} ·
+       <b>Maps:</b> ${esc(maps.join(','))} · <b>Players:</b> ${players} · <b>Games:</b> ${games}</div>
+       <pre class="sim-tail" id="sim-current-tail" style="margin-top:8px;">loading…</pre>`;
+    startTail(logName);
+    loadSimRuns();
+  }).catch(e => {
+    div.innerHTML = `<div class="err">Sim spawn network error: ${esc(e.message || e)}</div>`;
+  });
+}
+
+let SIM_TAIL_TIMER = null;
+function startTail(logName) {
+  stopTail();
+  const pull = () => {
+    fetch(`${SERVER}/admin/${TOKEN}/sim-run-log/${encodeURIComponent(logName)}?lines=80`)
+      .then(r => r.text())
+      .then(t => {
+        const el = document.getElementById('sim-current-tail');
+        if (!el) { stopTail(); return; }
+        el.textContent = t;
+        el.scrollTop = el.scrollHeight;
+        // Stop polling if the run finished (orchestrator's done line shows).
+        if (/=== done\./.test(t)) stopTail();
+      })
+      .catch(() => {});
+  };
+  pull();
+  SIM_TAIL_TIMER = setInterval(pull, 5000);
+}
+function stopTail() {
+  if (SIM_TAIL_TIMER) { clearInterval(SIM_TAIL_TIMER); SIM_TAIL_TIMER = null; }
+}
+
+function loadSimRuns() {
+  fetch(`${SERVER}/admin/${TOKEN}/sim-runs`).then(r => r.text()).then(t => {
+    const div = document.getElementById('sim-past-runs');
+    if (!t.trim()) { div.innerHTML = '<p class="empty">No past runs.</p>'; return; }
+    const rows = t.split('\n').filter(l => l).map(line => {
+      const [name, size, mtime] = line.split('\t');
+      const sizeStr = (parseInt(size, 10) / 1024).toFixed(1) + ' KB';
+      const dt = new Date(parseInt(mtime, 10)).toLocaleString();
+      return `<div class="sim-past-row">
+        <span class="name">${esc(name)}</span>
+        <span class="size">${esc(sizeStr)} · ${esc(dt)}</span>
+        <button class="small" onclick="loadPastRun('${esc(name)}')">View tail</button>
+      </div>`;
+    }).join('');
+    div.innerHTML = rows;
+  });
+}
+function loadPastRun(name) {
+  const div = document.getElementById('sim-current-run');
+  div.innerHTML =
+    `<div><b>Viewing past run:</b> <code>${esc(name)}</code></div>
+     <pre class="sim-tail" id="sim-current-tail" style="margin-top:8px;">loading…</pre>`;
+  stopTail();
+  fetch(`${SERVER}/admin/${TOKEN}/sim-run-log/${encodeURIComponent(name)}?lines=400`)
+    .then(r => r.text())
+    .then(t => {
+      const el = document.getElementById('sim-current-tail');
+      if (el) { el.textContent = t; el.scrollTop = el.scrollHeight; }
+    });
+}
+
+// ========== Claude Terminal ==========
+// Two parallel views:
+//   claude-output  — terminal log (prompts + my response output, interleaved)
+//                    pulls /tmp/claude-output.log via the claude-output-log endpoint
+//   claude-queue   — pending prompts not yet picked up (drained every tick)
+//                    pulls /tmp/claude-prompts.log via the claude-prompts-log endpoint
+// Polling is global (started once at sign-in) so the log stays warm even if
+// you navigate to the Games view and come back.
+let CLAUDE_POLL_TIMER = null;
+
+function submitClaudePrompt() {
+  const ta = document.getElementById('claude-prompt-input');
+  const text = ta.value.trim();
+  const status = document.getElementById('claude-prompt-status');
+  if (!text) { status.textContent = 'Empty prompt — type something first.'; status.style.color = 'var(--danger)'; return; }
+  status.textContent = 'Sending…'; status.style.color = 'var(--text-muted)';
+  fetch(`${SERVER}/admin/${TOKEN}/claude-prompt`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: text,
+  }).then(r => {
+    if (!r.ok) {
+      status.textContent = `Send failed (HTTP ${r.status}).`; status.style.color = 'var(--danger)';
+      return;
+    }
+    status.textContent = 'Queued. Claude picks it up on the next ticker tick.';
+    status.style.color = 'var(--success)';
+    ta.value = '';
+    refreshClaudeQueue();
+  }).catch(e => {
+    status.textContent = `Network error: ${e.message || e}`; status.style.color = 'var(--danger)';
+  });
+}
+
+function refreshClaudeOutput() {
+  fetch(`${SERVER}/admin/${TOKEN}/claude-output-log?lines=500`)
+    .then(r => r.text())
+    .then(t => {
+      const el = document.getElementById('claude-output');
+      if (!el) return;
+      const wasAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 20;
+      el.textContent = t || '(empty)';
+      // Keep auto-scroll only if the user was already at the bottom; if they
+      // scrolled up to read older context, don't yank them to the new tail.
+      if (wasAtBottom) el.scrollTop = el.scrollHeight;
+    })
+    .catch(() => {});
+}
+
+function refreshClaudeQueue() {
+  fetch(`${SERVER}/admin/${TOKEN}/claude-prompts-log?lines=200`)
+    .then(r => r.text())
+    .then(t => {
+      const el = document.getElementById('claude-queue');
+      if (!el) return;
+      const wasAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 20;
+      el.textContent = t || '(queue empty — Claude has caught up)';
+      if (wasAtBottom) el.scrollTop = el.scrollHeight;
+    })
+    .catch(() => {});
+}
+
+function startClaudePolling() {
+  if (CLAUDE_POLL_TIMER) return;
+  refreshClaudeOutput();
+  refreshClaudeQueue();
+  CLAUDE_POLL_TIMER = setInterval(() => {
+    refreshClaudeOutput();
+    refreshClaudeQueue();
+  }, 4000);
+}
+
+const PERMANENT_KEYWORDS = ['rolled', 'Elder Sign', 'Silence Token', 'captured'];
+
+function signIn() {
+  const s = document.getElementById('server-url').value.replace(/\/+$/, '');
+  const t = document.getElementById('owner-token').value.trim();
+  if (!t) {
+    showErr('login-err', 'Owner token required.');
+    return;
+  }
+  SERVER = s; TOKEN = t;
+  fetch(`${SERVER}/admin/${TOKEN}/games`).then(r => {
+    if (r.status === 200) {
+      document.getElementById('login-pane').style.display = 'none';
+      document.getElementById('main-pane').style.display = 'block';
+      // Build switcher + SimRunner wizard need to populate on first show.
+      refreshBuildIndicator();
+      renderSimWizard();
+      setBuild(getBuild()); // updates the sim-build-label
+      loadSimRuns();
+      // Start Claude terminal polling immediately so the log stays warm
+      // whether or not the user navigates to the Claude Terminal section.
+      startClaudePolling();
+      // Make the server URL in the header a clickable link that opens a new
+      // game lobby in a fresh tab. Was previously plain text.
+      const ind = document.getElementById('server-indicator');
+      ind.innerHTML = '';
+      const a = document.createElement('a');
+      a.href = SERVER;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = SERVER;
+      a.style.cssText = 'color:#b8a378;text-decoration:none;';
+      a.onmouseover = () => { a.style.textDecoration = 'underline'; a.style.color = '#d9b97e'; };
+      a.onmouseout = () => { a.style.textDecoration = 'none'; a.style.color = '#b8a378'; };
+      a.title = 'Open a new game lobby in a fresh tab';
+      ind.appendChild(a);
+      return r.text().then(populateGames);
+    } else {
+      showErr('login-err', `Sign-in failed (HTTP ${r.status}). Check the server URL and token.`);
+    }
+  }).catch(e => {
+    showErr('login-err', `Sign-in failed: ${e.message}`);
+  });
+}
+
+function showErr(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg; el.style.display = 'block';
+}
+
+function loadGames() {
+  fetch(`${SERVER}/admin/${TOKEN}/games`).then(r => r.text()).then(populateGames);
+}
+
+function populateGames(text) {
+  const list = document.getElementById('games-list');
+  list.innerHTML = '';
+  if (!text.trim()) {
+    list.innerHTML = '<p class="empty">No live games.</p>';
+    return;
+  }
+  // Parse all rows first so we can sort before rendering.
+  // Sort order, per user spec:
+  //   1. broken (broken=1)            — at top
+  //   2. active (broken=0, completed=0)
+  //   3. completed (completed=1)      — at bottom
+  // Within each group: lastWriteMs ascending (oldest first).
+  const showBots = !!(document.getElementById('show-bots-cb') && document.getElementById('show-bots-cb').checked);
+  const games = text.split('\n').filter(l => l).map(line => {
+    const parts = line.split('\t');
+    return {
+      id: parts[0],
+      name: parts[1],
+      secret: parts[2],
+      lastWriteMs: parseInt(parts[3] || '0', 10),
+      broken: (parts[4] || '0').trim() === '1',
+      completed: (parts[5] || '0').trim() === '1',
+      isBot: (parts[6] || '0').trim() === '1',
+    };
+  }).filter(g => g.id).filter(g => showBots || !g.isBot);
+  function groupKey(g) {
+    if (g.broken) return 0;
+    if (g.completed) return 2;
+    return 1;
+  }
+  games.sort((a, b) => groupKey(a) - groupKey(b) || a.lastWriteMs - b.lastWriteMs);
+  games.forEach(g => {
+    const { id, name, secret, lastWriteMs, broken, completed } = g;
+    const classes = ['game-row'];
+    if (broken) classes.push('broken');
+    if (completed) classes.push('completed');
+    const row = document.createElement('div');
+    row.className = classes.join(' ');
+    row.dataset.gameId = id;
+    row.dataset.gameName = name;
+    row.dataset.masterSecret = secret;
+    row.dataset.lastWriteMs = String(lastWriteMs);
+    row.dataset.broken = broken ? '1' : '0';
+    row.dataset.completed = completed ? '1' : '0';
+    const brokenLabel = broken ? '✖ Broken' : 'Mark broken';
+    const brokenTitle = broken ? 'Click to clear the broken flag' : 'Click to mark this game as broken';
+    // Completed badge replaces the trailing meta text for finished games so
+    // they're visually distinct from active ones (in addition to being
+    // sorted to the bottom).
+    const statusLabel = completed
+      ? `<span class="completed-badge">Completed</span>`
+      : '';
+    row.innerHTML =
+      `<button class="broken-flag ${broken ? 'on' : ''}" title="${brokenTitle}" ` +
+        `onclick="event.stopPropagation(); toggleBrokenFromList('${id}', this)">${brokenLabel}</button>` +
+      `<div style="flex:1;">` +
+        `<span class="game-name">${esc(name)}</span> ${statusLabel}<br/>` +
+        `<span class="game-meta">game id ${id} · ${inactivityLabel(lastWriteMs)}</span>` +
+      `</div>` +
+      `<div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">` +
+        `<button class="small" style="background:#5a2222;border-color:#8a3030;color:#fff;" onclick="event.stopPropagation(); confirmDeleteGame('${id}','${esc(name).replace(/'/g, "\\'")}')">Delete</button>` +
+      `</div>`;
+    row.onclick = () => selectGame(row, id, name, secret);
+    list.appendChild(row);
+  });
+}
+
+// Toggle the broken flag from the left-side list (no game selection required).
+// Round-trips through the server: GET current annotation to preserve notes, then
+// POST the flipped broken flag back. Updates row class + button immediately on
+// success so feedback is instant; if the POST fails, the UI rolls back.
+function toggleBrokenFromList(gameId, btn) {
+  fetch(`${SERVER}/admin/${TOKEN}/annotation/${gameId}`).then(r => r.text()).then(text => {
+    // Body: "0|1\tnotes" — preserve notes verbatim.
+    const tab = text.indexOf('\t');
+    const curBroken = (tab >= 0 ? text.substring(0, tab) : text).trim() === '1';
+    const notes = tab >= 0 ? text.substring(tab + 1) : '';
+    const newBroken = !curBroken;
+    fetch(`${SERVER}/admin/${TOKEN}/annotation/${gameId}`, {
+      method: 'POST',
+      body: (newBroken ? '1' : '0') + '\t' + notes,
+    }).then(r => {
+      if (!r.ok) { alert(`Could not update broken flag (HTTP ${r.status})`); return; }
+      const row = btn.closest('.game-row');
+      if (row) {
+        row.classList.toggle('broken', newBroken);
+        row.dataset.broken = newBroken ? '1' : '0';
+        btn.classList.toggle('on', newBroken);
+        btn.textContent = newBroken ? '✖ Broken' : 'Mark broken';
+        btn.title = newBroken ? 'Click to clear the broken flag' : 'Click to mark this game as broken';
+      }
+      // If the toggled game is the currently-selected one, sync the detail-pane checkbox.
+      if (CURRENT_GAME && CURRENT_GAME.id === gameId) {
+        const cb = document.getElementById('broken-cb');
+        if (cb) cb.checked = newBroken;
+      }
+    });
+  });
+}
+
+// Convert a lastWriteMs epoch into "X days since last action" / "X hours since"
+// / "—" for unknown. Days are rounded down; under 24h shows hours; under 1h shows "<1h".
+function inactivityLabel(lastWriteMs) {
+  if (!lastWriteMs || lastWriteMs <= 0) return 'last action: —';
+  const deltaMs = Date.now() - lastWriteMs;
+  if (deltaMs < 0) return 'last action: just now';
+  const minutes = Math.floor(deltaMs / 60000);
+  if (minutes < 60) return minutes < 1 ? 'last action: <1m ago' : `last action: ${minutes}m ago`;
+  const hours = Math.floor(deltaMs / 3600000);
+  if (hours < 24) return `last action: ${hours}h ago`;
+  const days = Math.floor(deltaMs / 86400000);
+  return `last action: ${days}d ago`;
+}
+
+function confirmDeleteGame(gameId, gameName) {
+  if (!confirm(`Permanently delete game "${gameName}" (id ${gameId})? This removes all logs, roles, and the game itself. Cannot be undone.`)) return;
+  fetch(`${SERVER}/admin/${TOKEN}/delete/${gameId}`, { method: 'POST' }).then(r => {
+    if (r.ok) {
+      // If the deleted game was selected, clear the detail pane.
+      if (CURRENT_GAME && CURRENT_GAME.id === gameId) {
+        CURRENT_GAME = null;
+        document.getElementById('game-detail').innerHTML = '<p class="empty">Select a game to view details.</p>';
+        document.querySelector('.col-wrap').classList.remove('show-detail');
+      }
+      loadGames();
+    }
+    else {
+      alert(`Delete failed: HTTP ${r.status}`);
+    }
+  });
+}
+
+function selectGame(rowElem, gameId, gameName, masterSecret) {
+  document.querySelectorAll('.game-row').forEach(r => r.classList.remove('active'));
+  rowElem.classList.add('active');
+  const lastWriteMs = parseInt(rowElem.dataset.lastWriteMs || '0', 10);
+  CURRENT_GAME = { id: gameId, name: gameName, masterSecret, lastWriteMs };
+  // On mobile, switch to detail pane.
+  document.querySelector('.col-wrap').classList.add('show-detail');
+  refreshDetail();
+}
+
+function backToGames() {
+  document.querySelector('.col-wrap').classList.remove('show-detail');
+}
+
+function refreshDetail() {
+  if (!CURRENT_GAME) return;
+  const { id, name, masterSecret, lastWriteMs } = CURRENT_GAME;
+  document.getElementById('game-detail').innerHTML = `
+    <button class="back-btn small" onclick="backToGames()">← Games</button>
+    <h2>${esc(name)} <span class="game-meta" style="font-size:10pt;">(game id ${id})</span></h2>
+    <div class="toolbar">
+      <button class="small" onclick="refreshDetail()">Refresh</button>
+      <button class="small" style="background:#5a2222;border-color:#8a3030;color:#fff;" onclick="confirmDeleteGame('${id}','${esc(name).replace(/'/g, "\\'")}')">Delete game</button>
+      <label style="display:inline-flex;align-items:center;gap:6px;margin:0 0 0 12px;color:#aaa;font-size:10pt;">
+        <input type="checkbox" id="broken-cb" onchange="toggleBrokenFromDetail()" />
+        Mark game broken
+      </label>
+    </div>
+    <p class="game-meta" style="margin:6px 0 12px 0;">${inactivityLabel(lastWriteMs || 0)}</p>
+    <h3>Factions / Player links</h3>
+    <div id="roles-list"><p class="empty">Loading...</p></div>
+    <h3>Notes <span id="notes-status" class="saved-tag" style="display:none;">saved</span></h3>
+    <p style="color:#888;font-size:9pt;">Free-text admin notes for this game. Saves automatically a moment after you stop typing. Not part of the game state — only visible in this admin console.</p>
+    <div class="notes-box"><textarea id="game-notes" oninput="onNotesInput()" placeholder="Notes about this game..."></textarea></div>
+    <h3>Faction state (derived from log)</h3>
+    <p style="color:#888;font-size:9pt;">Action tallies parsed from the raw action log. Counts are heuristic — for live unit positions and exact power use "Open game (Owner view)" above.</p>
+    <div id="faction-state"><p class="empty">Loading...</p></div>
+    <h3>Stashed actions (for replay / force same outcome)</h3>
+    <p style="color:#888;font-size:9pt;">When you roll back the log, the deleted action strings are stashed here (per game, in localStorage). Click "Re-insert" on any stashed line to write it back into the live log at a chosen index — useful for forcing the original dice / Elder Sign outcome after rolling back past it.</p>
+    <div id="stash-list"></div>
+    <h3>Log (most recent at top)</h3>
+    <p style="color:#888;font-size:9pt;">Lines highlighted in red contain dice rolls, Elder Signs, Silence Tokens, or captures — undoing past them is normally blocked for regular players. As the owner you can roll back past any line.</p>
+    <div id="log-list"><p class="empty">Loading...</p></div>
+  `;
+  fetch(`${SERVER}/admin/${TOKEN}/roles/${id}`).then(r => r.text()).then(populateRoles);
+  fetch(`${SERVER}/admin/${TOKEN}/log/${id}`).then(r => r.text()).then(t => { LAST_LOG_RAW = t; populateLog(t); populateFactionState(t); });
+  fetch(`${SERVER}/admin/${TOKEN}/annotation/${id}`).then(r => r.text()).then(populateAnnotation);
+  renderStash();
+}
+
+// Populate the broken checkbox + notes textarea from the annotation endpoint.
+// Server returns "broken\tnotes" with broken=0|1.
+function populateAnnotation(text) {
+  const tab = text.indexOf('\t');
+  const broken = (tab >= 0 ? text.substring(0, tab) : text).trim() === '1';
+  const notes = tab >= 0 ? text.substring(tab + 1) : '';
+  const cb = document.getElementById('broken-cb');
+  const ta = document.getElementById('game-notes');
+  if (cb) cb.checked = broken;
+  if (ta) ta.value = notes;
+  const status = document.getElementById('notes-status');
+  if (status) status.style.display = 'none';
+}
+
+// Persist the current annotation (broken + notes) for the selected game.
+// Body format must match the server: "broken\tnotes" with broken=0|1.
+function saveAnnotation() {
+  if (!CURRENT_GAME) return Promise.resolve();
+  const cb = document.getElementById('broken-cb');
+  const ta = document.getElementById('game-notes');
+  const broken = cb && cb.checked ? '1' : '0';
+  const notes = ta ? ta.value : '';
+  return fetch(`${SERVER}/admin/${TOKEN}/annotation/${CURRENT_GAME.id}`, {
+    method: 'POST',
+    body: broken + '\t' + notes,
+  });
+}
+
+// Broken-checkbox in the detail pane. Save immediately and reflect the new
+// state in the left-side list row + the row's button so both views stay
+// in sync without a full reload.
+function toggleBrokenFromDetail() {
+  const cb = document.getElementById('broken-cb');
+  if (!cb || !CURRENT_GAME) return;
+  saveAnnotation().then(r => {
+    if (!r.ok) { alert(`Could not save (HTTP ${r.status})`); cb.checked = !cb.checked; return; }
+    const row = document.querySelector(`.game-row[data-game-id="${CURRENT_GAME.id}"]`);
+    if (row) {
+      row.classList.toggle('broken', cb.checked);
+      row.dataset.broken = cb.checked ? '1' : '0';
+      const btn = row.querySelector('.broken-flag');
+      if (btn) {
+        btn.classList.toggle('on', cb.checked);
+        btn.textContent = cb.checked ? '✖ Broken' : 'Mark broken';
+        btn.title = cb.checked ? 'Click to clear the broken flag' : 'Click to mark this game as broken';
+      }
+    }
+  });
+}
+
+// Debounced auto-save on notes input. Saves ~600ms after the last keystroke
+// so we don't post on every character but the user still gets quick feedback.
+// `_notesTimer` is a hidden state on `window` — module scope.
+function onNotesInput() {
+  const status = document.getElementById('notes-status');
+  if (status) {
+    status.style.display = '';
+    status.textContent = 'saving…';
+    status.className = 'saving-tag';
+  }
+  if (window._notesTimer) clearTimeout(window._notesTimer);
+  window._notesTimer = setTimeout(() => {
+    saveAnnotation().then(r => {
+      if (!status) return;
+      if (r.ok) {
+        status.textContent = 'saved';
+        status.className = 'saved-tag';
+        // Fade the indicator after a couple seconds so it doesn't sit in the UI.
+        setTimeout(() => { if (status.textContent === 'saved') status.style.display = 'none'; }, 1500);
+      } else {
+        status.textContent = `save failed (HTTP ${r.status})`;
+        status.className = 'saving-tag';
+      }
+    });
+  }, 600);
+}
+
+// Parse raw action log into per-faction tallies. The log header line (index 2) carries
+// the faction roster, e.g. "GC:Normal/CC:Normal/TS:Human MapLibrary33". For every later
+// entry whose action string matches a known pattern, we increment the relevant counter
+// for the faction(s) involved.
+//
+// This is a HEURISTIC view: it counts action occurrences rather than reconstructing live
+// game state (which would require running the Scala.js engine). For exact power, doom,
+// units on map, etc. open the per-role player URLs in the "Factions / Player links" list.
+function populateFactionState(logText) {
+  const div = document.getElementById('faction-state');
+  if (!div) return;
+  if (!logText.trim()) { div.innerHTML = '<p class="empty">Empty log.</p>'; return; }
+  const lines = logText.split('\n').filter(l => l);
+  if (lines.length < 3) { div.innerHTML = '<p class="empty">Game not started yet.</p>'; return; }
+  // Header is at log index 2 (tab format: idx\trole\tvalue).
+  const header = (lines[2] || '').split('\t').slice(2).join('\t');
+  const factionsRoster = (header.split(' ')[0] || '').split('/');
+  const factions = factionsRoster.map(s => s.split(':')[0]).filter(Boolean);
+  if (factions.length === 0) { div.innerHTML = '<p class="empty">Could not parse faction roster.</p>'; return; }
+
+  // Initialize tally rows.
+  const tallies = {};
+  factions.forEach(f => {
+    tallies[f] = {
+      total: 0,
+      builds: 0,
+      captures: 0,
+      summons: 0,
+      kills: 0,
+      awakens: 0,
+      rituals: 0,
+      spellbooks: 0,
+      battles: 0,
+      moves: 0,
+      lastAction: '',
+    };
+  });
+
+  // Patterns: action class name → counter field. The faction is parsed from the first
+  // capture group of `(FACTION,` within the action string.
+  const patterns = [
+    { re: /^BuildGateAction\(([A-Z]+)/,                       field: 'builds' },
+    { re: /^CaptureGateAction\(([A-Z]+)/,                     field: 'captures' },
+    { re: /^CapturingGateAction\(([A-Z]+)/,                   field: 'captures' },
+    { re: /^Summon[A-Z][A-Za-z]*Action\(([A-Z]+)/,            field: 'summons' },
+    { re: /^Recruit[A-Z][A-Za-z]*Action\(([A-Z]+)/,           field: 'summons' },
+    { re: /^Kill[A-Z][A-Za-z]*Action\(([A-Z]+)/,              field: 'kills' },
+    { re: /^EliminateAction\(([A-Z]+)/,                       field: 'kills' },
+    { re: /^Awaken[A-Z][A-Za-z]*Action\(([A-Z]+)/,            field: 'awakens' },
+    { re: /^AwakenedAction\(([A-Z]+)/,                        field: 'awakens' },
+    { re: /^RitualAction\(([A-Z]+)/,                          field: 'rituals' },
+    { re: /^Ritual[A-Z][A-Za-z]*Action\(([A-Z]+)/,            field: 'rituals' },
+    { re: /^SpellbookAction\(([A-Z]+)/,                       field: 'spellbooks' },
+    { re: /^AttackMainAction\(([A-Z]+)/,                      field: 'battles' },
+    { re: /^AttackAction\(([A-Z]+)/,                          field: 'battles' },
+    { re: /^MoveAction\(([A-Z]+)/,                            field: 'moves' },
+    { re: /^MoveOneAction\(([A-Z]+)/,                         field: 'moves' },
+  ];
+
+  for (const line of lines) {
+    const tabs = line.split('\t');
+    const val = tabs.slice(2).join('\t');
+    // Generic faction tally: first ALL-CAPS token followed by comma/paren = faction code.
+    const factionMatch = val.match(/^[A-Za-z][A-Za-z0-9]*\(([A-Z]{2,4})[,\)]/);
+    if (factionMatch && tallies[factionMatch[1]]) {
+      tallies[factionMatch[1]].total += 1;
+      tallies[factionMatch[1]].lastAction = val.split('(')[0];
+    }
+    for (const p of patterns) {
+      const m = val.match(p.re);
+      if (m && tallies[m[1]]) tallies[m[1]][p.field] += 1;
+    }
+  }
+
+  const fieldOrder = ['total', 'builds', 'captures', 'summons', 'kills', 'awakens', 'rituals', 'spellbooks', 'battles', 'moves'];
+  const labels = {
+    total: 'Total actions', builds: 'Gates built', captures: 'Captures',
+    summons: 'Summons', kills: 'Kills', awakens: 'GOO awakens',
+    rituals: 'Rituals', spellbooks: 'Spellbooks taken', battles: 'Battles', moves: 'Move actions',
+  };
+  const rows = factions.map(f => {
+    const t = tallies[f];
+    const cells = fieldOrder.map(fld => `<td style="text-align:right;padding:2px 8px;">${t[fld]}</td>`).join('');
+    return `<tr><th style="text-align:left;padding:2px 8px;">${esc(f)}</th>${cells}<td style="padding:2px 8px;font-size:8.5pt;color:#aaa;">${esc(t.lastAction || '—')}</td></tr>`;
+  }).join('');
+  const headers = fieldOrder.map(fld => `<th style="text-align:right;padding:2px 8px;font-size:8.5pt;">${labels[fld]}</th>`).join('');
+
+  // High-level options line above the per-faction tally — extracted from the
+  // log's header at idx 2. Format is "F1:Kind1/F2:Kind2/... MapName Opt1 Opt2 ...".
+  // We surface: player count (= number of human-or-bot factions), map name,
+  // and any of the known boolean game flags that are present.
+  const tokens = header.split(' ').filter(Boolean);
+  const mapToken = tokens.find(t => t.startsWith('Map')) || '?';
+  const mapName = mapToken.replace('Map', '');
+  const optTokens = tokens.slice(1).filter(t => !t.startsWith('Map'));
+  const knownOpts = [
+    'Opener4P10Gates', 'DemandTsathoggua', 'GateDiplomacy', 'AsyncActions',
+    'HighPriests', 'NeutralSpellbooks', 'IceAgeAffectsLethargy',
+    'UseGhast', 'UseGug', 'UseShantak', 'UseStarVampire', 'UseVoonith',
+    'UseDimensionalShamblers', 'UseGnorri',
+    'UseByatis', 'UseAbhoth', 'UseDaoloth', 'UseNyogtha', 'UseTulzscha', 'UseYgolonac',
+  ];
+  const flagsOn = optTokens.filter(t => knownOpts.includes(t));
+  const unknownFlags = optTokens.filter(t => !knownOpts.includes(t));
+  const summaryRow = `<div style="margin-bottom:8px;padding:6px 8px;background:#222226;border:1px solid #3a3a40;border-radius:3px;font-size:9pt;">
+    <span style="color:#b8a378;">Player Count:</span> ${factions.length} ·
+    <span style="color:#b8a378;">Map:</span> ${esc(mapName)}
+    ${flagsOn.length ? '· <span style="color:#b8a378;">Flags:</span> ' + flagsOn.map(esc).join(', ') : ''}
+    ${unknownFlags.length ? ' <span style="color:#666;font-size:8.5pt;">(unparsed: ' + unknownFlags.map(esc).join(', ') + ')</span>' : ''}
+  </div>`;
+
+  // Wrap the wide table in .table-wrap so it scrolls horizontally on mobile
+  // without dragging the rest of the page along with it.
+  div.innerHTML = summaryRow + `<div class="table-wrap"><table>
+    <thead><tr><th style="padding:4px 10px;text-align:left;">Faction</th>${headers}<th style="padding:4px 10px;font-size:8.5pt;text-align:left;">Last action</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+function populateRoles(text) {
+  const div = document.getElementById('roles-list');
+  if (!text.trim()) { div.innerHTML = '<p class="empty">No roles.</p>'; return; }
+  const lines = text.split('\n').filter(l => l);
+  // Determine which factions are bots vs. human from the game log header
+  // (LAST_LOG_RAW is set in refreshDetail). The header at idx 2 has format
+  //   GC:Normal/CC:Normal/TS:Human MapLibrary33 [opts...]
+  // Anything other than ":Human" is a bot.
+  const factionType = {};
+  if (LAST_LOG_RAW) {
+    const headerLine = LAST_LOG_RAW.split('\n').filter(l => l)[2] || '';
+    const header = headerLine.split('\t').slice(2).join('\t');
+    const roster = (header.split(' ')[0] || '').split('/');
+    roster.forEach(s => {
+      const [code, kind] = s.split(':');
+      if (code) factionType[code] = (kind || '').toLowerCase();
+    });
+  }
+  div.innerHTML = lines.map(line => {
+    const [name, secret] = line.split('\t');
+    // Per user spec: drop the owner ($) link entirely. Keep spectator (#).
+    if (name === '$') return '';
+    const isSpectator = (name === '#');
+    const label = isSpectator ? 'Spectator (#)' : name;
+    // Bot factions get "(bot)" suffix and NO link (no clickable URL — they
+    // play themselves; no human takes that secret).
+    const kind = !isSpectator && factionType[name];
+    const isBot = kind && kind !== 'human';
+    if (isBot) {
+      return `<div class="role-link" style="color:#888;">${esc(label)} <span style="color:#666;">(bot)</span></div>`;
+    }
+    return `<div class="role-link"><a href="${SERVER}/play/${secret}" target="_blank">${esc(label)}</a></div>`;
+  }).join('');
+}
+
+// Default-filtered log mode: hide engine-glue actions (state transitions, menu
+// continuations, info-only views) so the admin log resembles the in-game
+// player-facing log. The "Debug log" toggle shows everything.
+const ENGINE_GLUE_PATTERNS = [
+  /^MainAction\(/, /^PreMainAction\(/, /^MainGatesAction\(/,
+  /^EndAction\(/, /^EndTurnAction\(/, /^AfterAction\(/,
+  /^NextPlayerAction/, /^StartAction/, /^StartingRegionAction\(/,
+  /^PlayDirectionAction\(/, /^CheckSpellbooksAction\(/,
+  /^ProceedBattlesAction/, /^DoomDoneAction\(/,
+  /^PowerGatherAction\(/, /^EndPhasePromptsAction\(/,
+  /^AdjustGateControlAction\(/, /^DragonAscending/,
+  /^OutOfTurnRefresh\(/, /^GroupAction\(/,
+  /ContinueAction\(/, /ResumeAction\(/, /PromptAction\(/,
+  /^RevealESOutOfTurnAction\(/, /^RevealESMainAction\(/,
+  /^InfoESAction\(/, /^InfoESOutOfTurnAction\(/,
+  /^OutOfTurnReturn/, /^UnknownContinue/,
+];
+function isEngineGlue(val) { return ENGINE_GLUE_PATTERNS.some(p => p.test(val)); }
+
+// Toggle state. Default to filtered (game-log view) per user request.
+let LOG_VIEW_MODE = 'game';   // 'game' | 'debug'
+
+function populateLog(text) {
+  const div = document.getElementById('log-list');
+  if (!text.trim()) { div.innerHTML = '<p class="empty">Empty log.</p>'; return; }
+  const lines = text.split('\n').filter(l => l);
+  // Toolbar above the log: toggle game-log vs debug-log.
+  const toolbar = `<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;font-size:9pt;color:#aaa;">
+    <button class="small" onclick="toggleLogViewMode()">${LOG_VIEW_MODE === 'game' ? 'Show debug log' : 'Show game log'}</button>
+    <span>Currently: ${LOG_VIEW_MODE === 'game' ? 'game log (engine-glue hidden)' : 'full debug log'}</span>
+  </div>`;
+  const filtered = LOG_VIEW_MODE === 'game'
+    ? lines.filter(line => {
+        const val = line.split('\t').slice(2).join('\t');
+        return val && !isEngineGlue(val);
+      })
+    : lines;
+  const body = filtered.reverse().map(line => {
+    const tabs = line.split('\t');
+    const idx = tabs[0]; const role = tabs[1] || ''; const val = tabs.slice(2).join('\t');
+    const isPerm = PERMANENT_KEYWORDS.some(k => val.includes(k));
+    // ES edit button only appears on ElderSignAction lines (where v is the
+    // hidden ES value). Parsed value goes into a textbox the user opens by
+    // clicking "Edit ES". The original ES value is NOT shown unless the
+    // user clicks; the button label stays "Edit ES" with no value preview.
+    const isES = /^ElderSignAction\(/.test(val);
+    const editEsBtn = isES
+      ? `<button class="small" onclick="startEditES(${idx}, this)" title="Edit hidden ES value">Edit ES</button>`
+      : '';
+    return `<div class="log-entry ${isPerm ? 'permanent' : ''}" data-idx="${esc(idx)}">
+      <span class="idx">${esc(idx)}</span>
+      <span class="role">${esc(role)}</span>
+      <span class="val">${esc(val)}</span>
+      ${editEsBtn}
+      <button class="small" onclick="startEdit(${idx}, this)">Edit</button>
+      <button class="small danger" onclick="rollbackTo(${idx})">Roll back to here</button>
+    </div>`;
+  }).join('');
+  div.innerHTML = toolbar + body;
+}
+
+function toggleLogViewMode() {
+  LOG_VIEW_MODE = (LOG_VIEW_MODE === 'game' ? 'debug' : 'game');
+  if (LAST_LOG_RAW) populateLog(LAST_LOG_RAW);
+}
+
+// Parse the ES value from an ElderSignAction string. The format is
+// `ElderSignAction(FACTION, n, value, public, next)` — value is the third
+// comma-separated parameter (positional index 2). Returns null if it can't
+// be parsed. Note: we don't try to handle nested parens beyond stripping
+// the outer ones; ElderSignAction's first three params are simple atoms.
+function parseESValue(actionStr) {
+  const m = actionStr.match(/^ElderSignAction\s*\(([^)]+)\)/);
+  if (!m) return null;
+  const parts = m[1].split(',').map(s => s.trim());
+  if (parts.length < 3) return null;
+  const v = parseInt(parts[2], 10);
+  if (Number.isNaN(v)) return null;
+  return { value: v, parts };
+}
+
+// Inline editor: shows the current ES value in a small textbox to the LEFT
+// of the Edit ES button. The button label flips to Save. A Cancel button
+// is added alongside. On save, the new value is validated to be 1..3 (the
+// legal ES range) before being written back into the action string and
+// POSTed via the existing /admin/edit endpoint. The OLD value is stashed
+// in localStorage so the admin can audit and undo if needed.
+function startEditES(idx, btn) {
+  const row = btn.closest('.log-entry');
+  const valSpan = row.querySelector('.val');
+  const original = valSpan.textContent;
+  const parsed = parseESValue(original);
+  if (!parsed) { alert('Could not parse ES value out of this action line.'); return; }
+  // Build the inline textbox.
+  const wrap = document.createElement('span');
+  wrap.style.cssText = 'display:inline-flex;gap:4px;align-items:center;margin-right:6px;';
+  wrap.innerHTML = `<input type="number" min="1" max="3" step="1" value="${parsed.value}" ` +
+    `class="es-edit-input" style="width:48px;background:#111;border:1px solid #888;color:#e6e6e6;padding:3px;font-family:monospace;font-size:9pt;" />`;
+  btn.parentNode.insertBefore(wrap, btn);
+  const input = wrap.querySelector('input');
+  input.focus(); input.select();
+  btn.textContent = 'Save';
+  btn.onclick = () => saveEditES(idx, original, input.value, row);
+  // Cancel reverts the row to its original display.
+  const cancel = document.createElement('button');
+  cancel.className = 'small'; cancel.textContent = 'Cancel';
+  cancel.onclick = () => { populateLog(LAST_LOG_RAW); };
+  btn.parentNode.insertBefore(cancel, btn.nextSibling);
+}
+
+function saveEditES(idx, originalLine, newValueStr, row) {
+  const v = parseInt(newValueStr, 10);
+  if (Number.isNaN(v) || v < 1 || v > 3) {
+    alert('ES value must be an integer 1, 2, or 3.'); return;
+  }
+  const parsed = parseESValue(originalLine);
+  if (!parsed) { alert('Could not re-parse ES value before save.'); return; }
+  if (parsed.value === v) { populateLog(LAST_LOG_RAW); return; }
+  parsed.parts[2] = String(v);
+  const newLine = `ElderSignAction(${parsed.parts.join(', ')})`;
+  // Save old value to localStorage for audit / undo (and as fallback if validation fails).
+  const audit = JSON.parse(localStorage.getItem('cwo_admin_es_edits') || '[]');
+  const auditEntry = {
+    gameId: CURRENT_GAME && CURRENT_GAME.id,
+    gameName: CURRENT_GAME && CURRENT_GAME.name,
+    index: idx, old: originalLine, new: newLine, ts: Date.now(),
+  };
+  audit.push(auditEntry);
+  localStorage.setItem('cwo_admin_es_edits', JSON.stringify(audit));
+  // POST the new line via the existing edit endpoint, then validate-game via engine replay.
+  // If validation fails, automatically REVERT to the original value so the live game
+  // isn't left in a broken state.
+  const valSpan = row.querySelector('.val');
+  if (valSpan) valSpan.innerHTML = `<span style="color:#d9b97e;">saving + validating…</span>`;
+  fetch(`${SERVER}/admin/${TOKEN}/edit/${CURRENT_GAME.id}/${idx}`, {
+    method: 'POST', body: newLine
+  }).then(r => {
+    if (!r.ok) { alert(`Edit ES failed (HTTP ${r.status}). Old value retained.`); return; }
+    return fetch(`${SERVER}/admin/${TOKEN}/validate-game/${CURRENT_GAME.id}`, { method: 'POST' });
+  }).then(r => {
+    if (!r) return;
+    return r.text().then(txt => ({ ok: r.ok, status: r.status, body: txt }));
+  }).then(res => {
+    if (!res) return;
+    if (res.ok) {
+      // Validation passed — refresh the log view.
+      fetch(`${SERVER}/admin/${TOKEN}/log/${CURRENT_GAME.id}`).then(r => r.text()).then(t => {
+        LAST_LOG_RAW = t; populateLog(t);
+      });
+    } else {
+      // Validation failed — revert by POSTing the original value back, then alert.
+      fetch(`${SERVER}/admin/${TOKEN}/edit/${CURRENT_GAME.id}/${idx}`, {
+        method: 'POST', body: originalLine
+      }).then(() => {
+        alert(`Engine replay rejected the new value. The edit has been REVERTED to the original.\n\nReason: ${res.body}`);
+        fetch(`${SERVER}/admin/${TOKEN}/log/${CURRENT_GAME.id}`).then(r => r.text()).then(t => {
+          LAST_LOG_RAW = t; populateLog(t);
+        });
+      });
+    }
+  }).catch(err => {
+    alert(`Edit ES network error: ${err.message || err}. Old value may or may not be retained — refresh to check.`);
+    fetch(`${SERVER}/admin/${TOKEN}/log/${CURRENT_GAME.id}`).then(r => r.text()).then(t => {
+      LAST_LOG_RAW = t; populateLog(t);
+    });
+  });
+}
+
+function startEdit(idx, btn) {
+  const row = btn.closest('.log-entry');
+  const valSpan = row.querySelector('.val');
+  const orig = valSpan.textContent;
+  valSpan.innerHTML = `<input type="text" class="edit-input" value="${esc(orig)}" style="width:100%;background:#111;border:1px solid #888;color:#e6e6e6;padding:4px;font-family:monospace;font-size:9pt;" />`;
+  const input = valSpan.querySelector('input');
+  input.focus();
+  input.select();
+  btn.textContent = 'Save';
+  btn.onclick = () => saveEdit(idx, input.value, row);
+  // Add a Cancel button alongside.
+  const cancel = document.createElement('button');
+  cancel.className = 'small'; cancel.textContent = 'Cancel';
+  cancel.onclick = () => { populateLog(LAST_LOG_RAW); };
+  btn.parentNode.insertBefore(cancel, btn.nextSibling);
+}
+
+function saveEdit(idx, newValue, row) {
+  if (!CURRENT_GAME) return;
+  // Trim newlines to keep single-line invariant.
+  const safe = newValue.replace(/\r?\n/g, ' ');
+  fetch(`${SERVER}/admin/${TOKEN}/edit/${CURRENT_GAME.id}/${idx}`, {
+    method: 'POST', body: safe
+  }).then(r => {
+    if (r.ok) { fetch(`${SERVER}/admin/${TOKEN}/log/${CURRENT_GAME.id}`).then(r => r.text()).then(populateLog); }
+    else { alert(`Edit failed (HTTP ${r.status}).`); }
+  });
+}
+
+let LAST_LOG_RAW = '';
+// Stash of action strings that were just rolled back. Per game id, keyed in localStorage
+// so it survives reloads of the admin tool. Each entry: { index, role, value }.
+function stashKey(gameId) { return `cwo_admin_stash_${gameId}`; }
+function getStash(gameId) {
+  try { return JSON.parse(localStorage.getItem(stashKey(gameId)) || '[]'); }
+  catch (e) { return []; }
+}
+function setStash(gameId, items) { localStorage.setItem(stashKey(gameId), JSON.stringify(items)); }
+
+function rollbackTo(index) {
+  if (!CURRENT_GAME) return;
+  // Find the rolled-back actions in the cached log so we can stash them.
+  const stashed = (LAST_LOG_RAW || '').split('\n').filter(Boolean).map(l => {
+    const tabs = l.split('\t');
+    return { index: parseInt(tabs[0], 10), role: tabs[1] || '', value: tabs.slice(2).join('\t') };
+  }).filter(e => Number.isFinite(e.index) && e.index >= index);
+  const conf = confirm(
+    `Roll back game "${CURRENT_GAME.name}" to log index ${index}?\n\n` +
+    `${stashed.length} action(s) will be deleted from the live log. ` +
+    `They will also be STASHED locally in the admin tool so you can re-insert ` +
+    `them later (useful for "force same dice outcome" replay).`
+  );
+  if (!conf) return;
+  // Merge into existing stash (most recent rollback at top, dedupe by index+value).
+  const existing = getStash(CURRENT_GAME.id);
+  const seen = new Set(existing.map(e => e.index + '|' + e.value));
+  const merged = stashed.filter(e => !seen.has(e.index + '|' + e.value)).concat(existing);
+  setStash(CURRENT_GAME.id, merged);
+  fetch(`${SERVER}/admin/${TOKEN}/rollback/${CURRENT_GAME.id}/${index}`, { method: 'POST' })
+    .then(r => {
+      if (r.ok) { refreshDetail(); }
+      else { alert(`Rollback failed (HTTP ${r.status}).`); }
+    });
+}
+
+// Write a stashed action back into the live log at a chosen index (defaults to the
+// stashed entry's original index). Uses the admin/write endpoint (writes as role "$").
+function reinsertStashed(stashIdx) {
+  if (!CURRENT_GAME) return;
+  const stash = getStash(CURRENT_GAME.id);
+  const entry = stash[stashIdx];
+  if (!entry) return;
+  const lines = (LAST_LOG_RAW || '').split('\n').filter(Boolean);
+  const nextIdx = lines.length ? Math.max(...lines.map(l => parseInt(l.split('\t')[0], 10) || 0)) + 1 : entry.index;
+  const target = prompt(
+    `Re-insert this action at which log index?\n\n` +
+    `Action: ${entry.value}\n\n` +
+    `Original index was ${entry.index}. Next available index is ${nextIdx}. ` +
+    `Enter the index where this line should land (typically nextIdx to append).`,
+    String(nextIdx)
+  );
+  if (target === null) return;
+  const idxNum = parseInt(target, 10);
+  if (!Number.isFinite(idxNum)) { alert('Invalid index.'); return; }
+  // Server's admin/write expects (index + 3) for log-table offset, but we already work in
+  // raw log-table indices here (same scheme as /admin/log). The admin/write endpoint takes
+  // the raw log-table index — pass idxNum as-is.
+  fetch(`${SERVER}/admin/${TOKEN}/write/${CURRENT_GAME.id}/${idxNum}`, {
+    method: 'POST',
+    body: entry.value,
+  }).then(r => {
+    if (r.ok) {
+      // Drop the re-inserted entry from stash and refresh.
+      const newStash = stash.filter((_, i) => i !== stashIdx);
+      setStash(CURRENT_GAME.id, newStash);
+      refreshDetail();
+    }
+    else if (r.status === 409) { alert(`Re-insert conflict: log index ${idxNum} is already taken.`); }
+    else { alert(`Re-insert failed (HTTP ${r.status}).`); }
+  });
+}
+
+function clearStash() {
+  if (!CURRENT_GAME) return;
+  if (!confirm('Discard all stashed actions for this game?')) return;
+  setStash(CURRENT_GAME.id, []);
+  refreshDetail();
+}
+
+function renderStash() {
+  const div = document.getElementById('stash-list');
+  if (!div) return;
+  if (!CURRENT_GAME) { div.innerHTML = ''; return; }
+  const stash = getStash(CURRENT_GAME.id);
+  if (stash.length === 0) {
+    div.innerHTML = '<p class="empty" style="font-size:9pt;">No stashed actions. Rolled-back actions land here so you can re-insert them ("force same dice outcome") later.</p>';
+    return;
+  }
+  div.innerHTML = `<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+      <strong>${stash.length} stashed action(s)</strong>
+      <button class="small" onclick="clearStash()">Clear all</button>
+    </div>` +
+    stash.map((e, i) => `<div class="log-entry">
+      <span class="idx">${esc(String(e.index))}</span>
+      <span class="role">${esc(e.role)}</span>
+      <span class="val">${esc(e.value)}</span>
+      <button class="small" onclick="reinsertStashed(${i})">Re-insert</button>
+    </div>`).join('');
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, ch => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'
+  }[ch]));
+}
+</script>
+
+</body>
+</html>

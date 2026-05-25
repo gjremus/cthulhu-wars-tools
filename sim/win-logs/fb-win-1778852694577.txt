@@ -1,0 +1,2328 @@
+StartingRegionAction(SL, NorthAmerica)
+StartingRegionAction(WW, ArcticOcean)
+StartingRegionAction(OW, WestAfrica)
+StartingRegionAction(FB, Australia)
+PlayDirectionAction(SL, [SL, WW, OW, FB])
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+SummonAction(SL, Wizard, NorthAmerica)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+MoveAction(WW, WW/Acolyte/4, ArcticOcean, NorthAtlantic, 1)
+MoveDoneAction(WW)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+SummonAction(OW, Abomination, WestAfrica)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+EndTurnAction(OW)
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+FBWritheMainAction(FB)
+FBWritheRollResultAction(FB, 8, [Pain, Pain, Kill, Pain, Miss, Pain, Miss, Pain])
+FBWritheKeepAction(FB, [Pain, Pain, Kill, Pain, Miss, Pain, Miss, Pain])
+FBWritheKillUnitAction(FB, FB/Acolyte/3, 1, 5)
+FBWritheChoosePainUnitAction(FB, FB/Acolyte/4, 5, [])
+FBWritheChoosePainUnitAction(FB, FB/Acolyte/2, 4, [FB/Acolyte/4])
+FBWritheChoosePainUnitAction(FB, FB/Acolyte/6, 3, [FB/Acolyte/4, FB/Acolyte/2])
+FBWritheChoosePainUnitAction(FB, FB/Acolyte/1, 2, [FB/Acolyte/4, FB/Acolyte/2, FB/Acolyte/6])
+FBWritheChoosePainUnitAction(FB, FB/Acolyte/5, 1, [FB/Acolyte/4, FB/Acolyte/2, FB/Acolyte/6, FB/Acolyte/1])
+FBWritheMoveSeparatelyAction(FB, [FB/Acolyte/4, FB/Acolyte/2, FB/Acolyte/6, FB/Acolyte/1, FB/Acolyte/5])
+FBWritheMoveOneJoinAction(FB, FB/Acolyte/4, Australia, [FB/Acolyte/2, FB/Acolyte/6, FB/Acolyte/1, FB/Acolyte/5], "Desiccated")
+FBWritheMoveOneJoinAction(FB, FB/Acolyte/2, Australia, [FB/Acolyte/6, FB/Acolyte/1, FB/Acolyte/5], "Desiccated")
+FBWritheMoveOneJoinAction(FB, FB/Acolyte/6, Australia, [FB/Acolyte/1, FB/Acolyte/5], "Desiccated")
+FBWritheMoveOneJoinAction(FB, FB/Acolyte/1, Australia, [FB/Acolyte/5], "Desiccated")
+FBWritheMoveOneJoinAction(FB, FB/Acolyte/5, Australia, [], "Desiccated")
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+EndTurnAction(FB)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+SummonAction(SL, Wizard, NorthAmerica)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+MoveAction(WW, WW/Acolyte/4, NorthAtlantic, SouthAtlantic, 1)
+MoveDoneAction(WW)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+BeyondOneAction(OW, WestAfrica, Abomination, SouthAtlantic)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+EndTurnAction(OW)
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+FBWritheMainAction(FB)
+FBWritheRollResultAction(FB, 6, [Miss, Kill, Kill, Pain, Kill, Miss])
+FBWritheRerollAction(FB, [Miss, Kill, Kill, Pain, Kill, Miss])
+FBWritheRollResultAction(FB, 6, [Miss, Kill, Pain, Miss, Miss, Miss])
+FBWritheKillUnitAction(FB, FB/Acolyte/5, 1, 1)
+FBWritheChoosePainUnitAction(FB, FB/Desiccated/1, 1, [])
+FBWritheMoveOneToRegionAction(FB, FB/Desiccated/1, SouthAsia, [])
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+EndTurnAction(FB)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+MoveAction(SL, SL/Acolyte/2, NorthAmerica, NorthAtlantic, 1)
+MoveDoneAction(SL)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+MoveAction(WW, WW/Acolyte/4, SouthAtlantic, Antarctica, 1)
+MoveDoneAction(WW)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+BuildGateAction(OW, WestAfrica)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+EndTurnAction(OW)
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+RecruitAction(FB, Acolyte, SouthAsia)
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+EndTurnAction(FB)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+BuildGateAction(SL, NorthAtlantic)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+BuildGateAction(WW, Antarctica)
+SpellbookAction(WW, IceAge, PreMainAction(WW))
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+MoveAction(OW, OW/Acolyte/5, WestAfrica, SouthAtlantic, 1)
+MoveDoneAction(OW)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+EndTurnAction(OW)
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+BuildGateAction(FB, SouthAsia)
+SpellbookAction(OW, MillionFavoredOnes, PreMainAction(FB))
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+EndTurnAction(FB)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+SummonAction(SL, SerpentMan, NorthAtlantic)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+SummonAction(WW, Wendigo, ArcticOcean)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainAction(OW)
+NextPlayerAction(OW)
+PreMainAction(FB)
+MainAction(FB)
+NextPlayerAction(FB)
+PreMainAction(SL)
+MainAction(SL)
+NextPlayerAction(SL)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+HibernateMainAction(WW, 0)
+PreMainAction(WW)
+NextPlayerAction(WW)
+DragonAscendingInstantAction(DragonAscendingUpAction("power gather", EndPhasePromptsAction(OW, [OW, FB, SL, WW])))
+PowerGatherAction(OW)
+PlayDirectionAction(WW, [WW, OW, FB, SL])
+SpellbookAction(WW, Cannibalism, DoomPhaseAction)
+DoomPhaseAction
+DoomNextPlayerAction(WW)
+DoomDoneAction(WW)
+DragonAscendingInstantAction(DragonAscendingDownAction(OW, "doom action", DoomAction(OW)))
+DoomDoneAction(OW)
+DoomDoneAction(FB)
+DeathFromBelowAction(SL, NorthAmerica, SerpentMan)
+DoomAction(SL)
+DoomDoneAction(SL)
+ActionPhaseAction
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+AwakenAction(WW, RhanTegoth, Antarctica, 6)
+SpellbookAction(WW, Herald, PreMainAction(WW))
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+BeyondOneAction(OW, SouthAtlantic, Abomination, EastAfrica)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+EndTurnAction(OW)
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+FBAwakenGhatanothoaAction(FB, 6)
+SpellbookAction(FB, CyclopeanGaze, EndAction(FB))
+EndAction(FB)
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+EndTurnAction(FB)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+Pay3EverybodyLoses1MainAction(SL)
+SpellbookAction(SL, AncientSorcery, PreMainAction(SL))
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+IceAgeAction(WW, ArcticOcean)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+BuildGateAction(OW, SouthAtlantic)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+EndTurnAction(OW)
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+RecruitAction(FB, Acolyte, SouthAsia)
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+EndTurnAction(FB)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+SummonAction(SL, SerpentMan, NorthAmerica)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+MoveAction(WW, WW/RhanTegoth/1, Antarctica, SouthAtlantic, 1)
+MoveDoneAction(WW)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+MoveAction(OW, OW/Acolyte/3, WestAfrica, Arabia, 1)
+MoveDoneAction(OW)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+EndTurnAction(OW)
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+PassAction(FB)
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+EndTurnAction(FB)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+SummonAction(SL, FormlessSpawn, NorthAmerica)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+CaptureAction(WW, SouthAtlantic, OW, None)
+CaptureTargetAction(OW, SouthAtlantic, WW, OW/Acolyte/5, None)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+BuildGateAction(OW, Arabia)
+SpellbookAction(OW, TheyBreakThrough, PreMainAction(OW))
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+EndTurnAction(OW)
+PreMainAction(FB)
+MainAction(FB)
+NextPlayerAction(FB)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+AncientSorceryUnitAction(SL, Hibernate, NorthAtlantic, SerpentMan)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+HibernateMainAction(WW, 1)
+PreMainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+MoveAction(OW, OW/Acolyte/6, WestAfrica, Arabia, 1)
+MoveDoneAction(OW)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+EndTurnAction(OW)
+PreMainAction(FB)
+MainAction(FB)
+NextPlayerAction(FB)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+HibernateMainAction(SL, 1)
+PreMainAction(SL)
+NextPlayerAction(SL)
+DragonAscendingInstantAction(DragonAscendingUpAction("power gather", EndPhasePromptsAction(WW, [WW, OW, FB, SL])))
+PowerGatherAction(WW)
+PlayDirectionAction(WW, [WW, OW, FB, SL])
+DoomPhaseAction
+DoomNextPlayerAction(WW)
+DoomDoneAction(WW)
+DragonAscendingInstantAction(DragonAscendingDownAction(OW, "doom action", DoomAction(OW)))
+DoomDoneAction(OW)
+DoomDoneAction(FB)
+DeathFromBelowAction(SL, NorthAmerica, FormlessSpawn)
+DoomAction(SL)
+AncientSorceryPlaceAction(SL, NorthAtlantic, SerpentMan)
+DoomAction(SL)
+DoomDoneAction(SL)
+ActionPhaseAction
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+AwakenAction(WW, Ithaqua, ArcticOcean, 6)
+SpellbookAction(WW, ArcticWind, PreMainAction(WW))
+SpellbookAction(FB, DevilsMark, PreMainAction(WW))
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+SummonAction(OW, SpawnOW, Arabia)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+EndTurnAction(OW)
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+SummonAction(FB, RevenantOfKnaa, SouthAsia)
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+EndTurnAction(FB)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+AwakenAction(SL, Tsathoggua, NorthAmerica, 8)
+SpellbookAction(SL, Burrow, PreMainAction(SL))
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+IceAgeAction(WW, Antarctica)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+AwakenAction(OW, YogSothoth, Arabia, 6)
+SpellbookAction(OW, DreadCurse, PreMainAction(OW))
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+EndTurnAction(OW)
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+FBWritheMainAction(FB)
+FBWritheRollResultAction(FB, 8, [Pain, Miss, Miss, Miss, Kill, Miss, Miss, Miss])
+FBWritheKeepAction(FB, [Pain, Miss, Miss, Miss, Kill, Miss, Miss, Miss])
+FBWritheKillUnitAction(FB, FB/Acolyte/6, 1, 1)
+FBWritheChoosePainUnitAction(FB, FB/Ghatanothoa/1, 1, [])
+FBWritheMoveOneToRegionAction(FB, FB/Ghatanothoa/1, WestAfrica, [])
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+EndTurnAction(FB)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+LethargyMainAction(SL)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+MoveAction(WW, WW/RhanTegoth/1, SouthAtlantic, EastAfrica, 1)
+MoveDoneAction(WW)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+MoveAction(OW, OW/YogSothoth/1, Arabia, EastAfrica, 1)
+MoveAction(OW, OW/Acolyte/4, WestAfrica, SouthAtlantic, 1)
+MoveDoneAction(OW)
+SpellbookAction(OW, DragonAscending, PreMainAction(OW))
+DragonAscendingCommandsAction(OW, PreMainAction(OW))
+MainGatesAction(OW)
+MainAction(OW)
+EndTurnAction(OW)
+PreMainAction(FB)
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+PreActionPromptsAction(FB, [SL, WW])
+MainGatesAction(FB)
+MainAction(FB)
+SummonAction(FB, RevenantOfKnaa, Australia)
+PreMainAction(FB)
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+PreActionPromptsAction(FB, [SL, WW])
+MainGatesAction(FB)
+MainAction(FB)
+EndTurnAction(FB)
+PreMainAction(SL)
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+PreActionPromptsAction(SL, [WW, FB])
+MainGatesAction(SL)
+MainAction(SL)
+LethargyMainAction(SL)
+PreMainAction(SL)
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+PreActionPromptsAction(SL, [WW, FB])
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+DragonAscendingCancelAction(OW, PreMainAction(WW))
+DragonAscendingCancelAction(OW, PreMainAction(WW))
+PreActionPromptsAction(WW, [FB, SL])
+MainGatesAction(WW)
+MainAction(WW)
+MoveAction(WW, WW/RhanTegoth/1, EastAfrica, SouthAtlantic, 1)
+MoveDoneAction(WW)
+PreMainAction(WW)
+DragonAscendingCancelAction(OW, PreMainAction(WW))
+DragonAscendingCancelAction(OW, PreMainAction(WW))
+DragonAscendingCancelAction(OW, PreMainAction(WW))
+PreActionPromptsAction(WW, [FB, SL])
+MainGatesAction(WW)
+MainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainAction(OW)
+NextPlayerAction(OW)
+PreMainAction(FB)
+PreActionPromptsAction(FB, [SL, WW])
+MainGatesAction(FB)
+MainAction(FB)
+CaptureAction(FB, WestAfrica, OW, None)
+CaptureTargetAction(OW, WestAfrica, FB, OW/Acolyte/2, None)
+PreMainAction(FB)
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+PreActionPromptsAction(FB, [SL, WW])
+MainGatesAction(FB)
+MainAction(FB)
+EndTurnAction(FB)
+PreMainAction(SL)
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+PreActionPromptsAction(SL, [WW, FB])
+MainGatesAction(SL)
+MainAction(SL)
+LethargyMainAction(SL)
+PreMainAction(SL)
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+PreActionPromptsAction(SL, [WW, FB])
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+DragonAscendingCancelAction(OW, PreMainAction(WW))
+DragonAscendingCancelAction(OW, PreMainAction(WW))
+DragonAscendingCancelAction(OW, PreMainAction(WW))
+PreActionPromptsAction(WW, [FB, SL])
+MainGatesAction(WW)
+MainAction(WW)
+CaptureAction(WW, SouthAtlantic, OW, None)
+CaptureTargetAction(OW, SouthAtlantic, WW, OW/Acolyte/4, None)
+PreMainAction(WW)
+DragonAscendingCancelAction(OW, PreMainAction(WW))
+PreActionPromptsAction(WW, [FB, SL])
+MainGatesAction(WW)
+MainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainAction(OW)
+NextPlayerAction(OW)
+PreMainAction(FB)
+PreActionPromptsAction(FB, [SL, WW])
+MainGatesAction(FB)
+MainAction(FB)
+RecruitAction(FB, Acolyte, WestAfrica)
+PreMainAction(FB)
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+PreActionPromptsAction(FB, [SL, WW])
+MainGatesAction(FB)
+MainAction(FB)
+EndTurnAction(FB)
+PreMainAction(SL)
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+PreActionPromptsAction(SL, [WW, FB])
+MainGatesAction(SL)
+MainAction(SL)
+LethargyMainAction(SL)
+PreMainAction(SL)
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+PreActionPromptsAction(SL, [WW, FB])
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+DragonAscendingCancelAction(OW, PreMainAction(WW))
+PreActionPromptsAction(WW, [FB, SL])
+MainGatesAction(WW)
+MainAction(WW)
+HibernateMainAction(WW, 3)
+PreMainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainAction(OW)
+NextPlayerAction(OW)
+PreMainAction(FB)
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+PreActionPromptsAction(FB, [SL, WW])
+MainGatesAction(FB)
+MainAction(FB)
+PassAction(FB)
+PreMainAction(FB)
+PreActionPromptsAction(FB, [SL, WW])
+MainGatesAction(FB)
+MainAction(FB)
+EndTurnAction(FB)
+PreMainAction(SL)
+PreActionPromptsAction(SL, [WW, FB])
+MainGatesAction(SL)
+MainAction(SL)
+MoveAction(SL, SL/Acolyte/3, NorthAmerica, SouthAmerica, 1)
+MoveAction(SL, SL/Acolyte/4, NorthAmerica, NorthPacific, 1)
+MoveDoneAction(SL)
+PreMainAction(SL)
+PreActionPromptsAction(SL, [WW, FB])
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainAction(OW)
+NextPlayerAction(OW)
+PreMainAction(FB)
+MainAction(FB)
+NextPlayerAction(FB)
+PreMainAction(SL)
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+PreActionPromptsAction(SL, [WW, FB])
+MainGatesAction(SL)
+MainAction(SL)
+MoveAction(SL, SL/Acolyte/3, SouthAmerica, SouthAtlantic, 1)
+MoveAction(SL, SL/Acolyte/4, NorthPacific, SouthAmerica, 1)
+MoveDoneAction(SL)
+PreMainAction(SL)
+PreActionPromptsAction(SL, [WW, FB])
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainAction(OW)
+NextPlayerAction(OW)
+PreMainAction(FB)
+MainAction(FB)
+NextPlayerAction(FB)
+PreMainAction(SL)
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+PreActionPromptsAction(SL, [WW, FB])
+MainGatesAction(SL)
+MainAction(SL)
+BuildGateAction(SL, SouthAmerica)
+PreMainAction(SL)
+PreActionPromptsAction(SL, [WW, FB])
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainAction(OW)
+NextPlayerAction(OW)
+PreMainAction(FB)
+MainAction(FB)
+NextPlayerAction(FB)
+PreMainAction(SL)
+PreActionPromptsAction(SL, [WW, FB])
+MainGatesAction(SL)
+MainAction(SL)
+AncientSorceryUnitAction(SL, Hibernate, NorthAtlantic, SerpentMan)
+PreMainAction(SL)
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+PreActionPromptsAction(SL, [WW, FB])
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+DragonAscendingInstantAction(DragonAscendingUpAction("power gather", EndPhasePromptsAction(WW, [WW, OW, FB, SL])))
+DragonAscendingCancelAction(OW, DragonAscendingUpAction("power gather", EndPhasePromptsAction(WW, [WW, OW, FB, SL])))
+PowerGatherAction(WW)
+BeforeFirstPlayerAction([WW, FB, SL])
+PlayDirectionAction(WW, [WW, OW, FB, SL])
+DoomPhaseAction
+DoomNextPlayerAction(WW)
+RitualAction(WW, 5, 1)
+ElderSignAction(WW, 2, 2, false, DoomAction(WW))
+ElderSignAction(WW, 1, 2, false, DoomAction(WW))
+DoomAction(WW)
+DoomDoneAction(WW)
+DragonAscendingInstantAction(DragonAscendingDownAction(OW, "doom action", DoomAction(OW)))
+DoomDoneAction(OW)
+RitualAction(FB, 6, 1)
+ElderSignAction(FB, 1, 1, false, DoomAction(FB))
+DoomAction(FB)
+FBDevilsMarkDoomAction(FB)
+FBDevilsMarkPlaceCraterAction(FB, WestAfrica)
+ElderSignAction(FB, 1, 1, false, DoomAction(FB))
+DoomAction(FB)
+DoomDoneAction(FB)
+DeathFromBelowAction(SL, NorthAmerica, FormlessSpawn)
+DoomAction(SL)
+RitualAction(SL, 7, 1)
+SpellbookAction(SL, CursedSlumber, DoomAction(SL))
+ElderSignAction(SL, 1, 3, false, DoomAction(SL))
+DoomAction(SL)
+AncientSorceryPlaceAction(SL, NorthAtlantic, SerpentMan)
+DoomAction(SL)
+RevealESAction(SL, [$3], false, DoomAction(SL))
+DoomDoneAction(SL)
+ActionPhaseAction
+PreMainAction(WW)
+DragonAscendingCancelAction(OW, PreMainAction(WW))
+PreActionPromptsAction(WW, [FB, SL])
+MainGatesAction(WW)
+MainAction(WW)
+CaptureAction(WW, SouthAtlantic, SL, None)
+CaptureTargetAction(SL, SouthAtlantic, WW, SL/Acolyte/3, None)
+PreMainAction(WW)
+DragonAscendingCancelAction(OW, PreMainAction(WW))
+DragonAscendingCancelAction(OW, PreMainAction(WW))
+DragonAscendingCancelAction(OW, PreMainAction(WW))
+PreActionPromptsAction(WW, [FB, SL])
+MainGatesAction(WW)
+MainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+SummonAction(OW, Mutant, Antarctica)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+EndTurnAction(OW)
+PreMainAction(FB)
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+PreActionPromptsAction(FB, [SL, WW])
+MainGatesAction(FB)
+MainAction(FB)
+FBWritheMainAction(FB)
+FBWritheRollResultAction(FB, 8, [Pain, Miss, Miss, Pain, Pain, Miss, Miss, Pain])
+FBWritheKeepAction(FB, [Pain, Miss, Miss, Pain, Pain, Miss, Miss, Pain])
+FBWritheChoosePainUnitAction(FB, FB/Ghatanothoa/1, 4, [])
+FBWritheChoosePainUnitAction(FB, FB/Acolyte/6, 3, [FB/Ghatanothoa/1])
+FBWritheChoosePainUnitAction(FB, FB/Desiccated/3, 2, [FB/Ghatanothoa/1, FB/Acolyte/6])
+FBWritheChoosePainUnitAction(FB, FB/Desiccated/2, 1, [FB/Ghatanothoa/1, FB/Acolyte/6, FB/Desiccated/3])
+FBWritheMoveAllToRegionAction(FB, SouthAmerica, [FB/Ghatanothoa/1, FB/Acolyte/6, FB/Desiccated/3, FB/Desiccated/2])
+PreMainAction(FB)
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+PreActionPromptsAction(FB, [SL, WW])
+MainGatesAction(FB)
+MainAction(FB)
+EndTurnAction(FB)
+PreMainAction(SL)
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+PreActionPromptsAction(SL, [WW, FB])
+MainGatesAction(SL)
+MainAction(SL)
+CursedSlumberSaveAction(SL, SouthAmerica)
+PreMainAction(SL)
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+PreActionPromptsAction(SL, [WW, FB])
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+DragonAscendingCancelAction(OW, PreMainAction(WW))
+PreActionPromptsAction(WW, [FB, SL])
+MainGatesAction(WW)
+MainAction(WW)
+MoveAction(WW, WW/RhanTegoth/1, SouthAtlantic, NorthAtlantic, 1)
+MoveDoneAction(WW)
+PreMainAction(WW)
+DragonAscendingCancelAction(OW, PreMainAction(WW))
+DragonAscendingCancelAction(OW, PreMainAction(WW))
+DragonAscendingCancelAction(OW, PreMainAction(WW))
+DragonAscendingCancelAction(OW, PreMainAction(WW))
+PreActionPromptsAction(WW, [FB, SL])
+MainGatesAction(WW)
+MainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+AttackAction(OW, Antarctica, WW, None)
+PreBattleDoneAction(OW, DefenderPreBattle)
+PreBattleDoneAction(WW, PreRoll)
+BattleRollAction(OW, [Pain], RollDefenders)
+BattleRollAction(WW, [], ChannelPowerPhase)
+BattleProceedAction(AssignAttackerPains)
+RetreatUnitAction(WW, WW/Acolyte/4, IndianOcean)
+MillionFavoredOnesXAction(OW, Antarctica, OW/Mutant/1, [Abomination])
+BattleDoneAction(OW)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+EndTurnAction(OW)
+PreMainAction(FB)
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+PreActionPromptsAction(FB, [SL, WW])
+MainGatesAction(FB)
+MainAction(FB)
+FBWritheMainAction(FB)
+FBWritheRollResultAction(FB, 6, [Pain, Miss, Pain, Miss, Kill, Pain])
+FBWritheKeepAction(FB, [Pain, Miss, Pain, Miss, Kill, Pain])
+FBWritheKillUnitAction(FB, FB/Acolyte/2, 1, 3)
+FBWritheChoosePainUnitAction(FB, FB/Ghatanothoa/1, 3, [])
+FBWritheChoosePainUnitAction(FB, FB/Acolyte/6, 2, [FB/Ghatanothoa/1])
+FBWritheChoosePainUnitAction(FB, FB/Desiccated/3, 1, [FB/Ghatanothoa/1, FB/Acolyte/6])
+FBWritheMoveAllToRegionAction(FB, Arabia, [FB/Ghatanothoa/1, FB/Acolyte/6, FB/Desiccated/3])
+PreMainAction(FB)
+PreActionPromptsAction(FB, [SL, WW])
+MainGatesAction(FB)
+MainAction(FB)
+EndTurnAction(FB)
+PreMainAction(SL)
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+PreActionPromptsAction(SL, [WW, FB])
+MainGatesAction(SL)
+MainAction(SL)
+MoveAction(SL, SL/Acolyte/2, NorthAtlantic, NorthAmerica, 1)
+MoveAction(SL, SL/FormlessSpawn/1, NorthAmerica, ArcticOcean, 1)
+MoveDoneAction(SL)
+PreMainAction(SL)
+PreActionPromptsAction(SL, [WW, FB])
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+DragonAscendingCancelAction(OW, PreMainAction(WW))
+PreActionPromptsAction(WW, [FB, SL])
+MainGatesAction(WW)
+MainAction(WW)
+AttackAction(WW, ArcticOcean, SL, None)
+PreBattleDoneAction(WW, DefenderPreBattle)
+PreBattleDoneAction(SL, PreRoll)
+BattleRollAction(WW, [Miss, Miss, Pain, Pain, Miss, Pain, Miss, Pain, Miss], RollDefenders)
+BattleRollAction(SL, [Pain, Miss, Kill, Miss], ChannelPowerPhase)
+AssignKillAction(WW, 1, WW, WW/Acolyte/5)
+BattleProceedAction(AssignAttackerPains)
+AssignPainAction(WW, 1, WW, WW/Acolyte/2)
+RetreatUnitAction(WW, WW/Acolyte/2, NorthPacific)
+RetreatUnitAction(SL, SL/FormlessSpawn/1, NorthAmerica)
+PreMainAction(WW)
+DragonAscendingCancelAction(OW, PreMainAction(WW))
+PreActionPromptsAction(WW, [FB, SL])
+MainGatesAction(WW)
+MainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+RecruitAction(OW, Acolyte, Antarctica)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+EndTurnAction(OW)
+PreMainAction(FB)
+PreActionPromptsAction(FB, [SL, WW])
+MainGatesAction(FB)
+MainAction(FB)
+CaptureAction(FB, Arabia, OW, None)
+CaptureTargetAction(OW, Arabia, FB, OW/Acolyte/6, None)
+PreMainAction(FB)
+PreActionPromptsAction(FB, [SL, WW])
+MainGatesAction(FB)
+MainAction(FB)
+EndTurnAction(FB)
+PreMainAction(SL)
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+PreActionPromptsAction(SL, [WW, FB])
+MainGatesAction(SL)
+MainAction(SL)
+LethargyMainAction(SL)
+PreMainAction(SL)
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+PreActionPromptsAction(SL, [WW, FB])
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+DragonAscendingCancelAction(OW, PreMainAction(WW))
+DragonAscendingCancelAction(OW, PreMainAction(WW))
+PreActionPromptsAction(WW, [FB, SL])
+MainGatesAction(WW)
+MainAction(WW)
+MoveAction(WW, WW/Ithaqua/1, ArcticOcean, NorthAtlantic, 1)
+MoveAction(WW, WW/Acolyte/1, ArcticOcean, NorthAtlantic, 1)
+MoveAction(WW, WW/Acolyte/4, IndianOcean, SouthAtlantic, 1)
+MoveDoneAction(WW)
+PreMainAction(WW)
+DragonAscendingCancelAction(OW, PreMainAction(WW))
+PreActionPromptsAction(WW, [FB, SL])
+MainGatesAction(WW)
+MainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+SummonAction(OW, Mutant, SouthAtlantic)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+EndTurnAction(OW)
+PreMainAction(FB)
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+PreActionPromptsAction(FB, [SL, WW])
+MainGatesAction(FB)
+MainAction(FB)
+CaptureAction(FB, Arabia, OW, None)
+CaptureTargetAction(OW, Arabia, FB, OW/Acolyte/3, None)
+PreMainAction(FB)
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+PreActionPromptsAction(FB, [SL, WW])
+MainGatesAction(FB)
+MainAction(FB)
+EndTurnAction(FB)
+PreMainAction(SL)
+PreActionPromptsAction(SL, [WW, FB])
+MainGatesAction(SL)
+MainAction(SL)
+LethargyMainAction(SL)
+PreMainAction(SL)
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+PreActionPromptsAction(SL, [WW, FB])
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+DragonAscendingCancelAction(OW, PreMainAction(WW))
+DragonAscendingCancelAction(OW, PreMainAction(WW))
+PreActionPromptsAction(WW, [FB, SL])
+MainGatesAction(WW)
+MainAction(WW)
+IceAgeAction(WW, SouthAtlantic)
+PreMainAction(WW)
+DragonAscendingCancelAction(OW, PreMainAction(WW))
+DragonAscendingCancelAction(OW, PreMainAction(WW))
+DragonAscendingCancelAction(OW, PreMainAction(WW))
+DragonAscendingCancelAction(OW, PreMainAction(WW))
+PreActionPromptsAction(WW, [FB, SL])
+MainGatesAction(WW)
+MainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainAction(OW)
+NextPlayerAction(OW)
+PreMainAction(FB)
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+PreActionPromptsAction(FB, [SL, WW])
+MainGatesAction(FB)
+MainAction(FB)
+RecruitAction(FB, Acolyte, Arabia)
+PreMainAction(FB)
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+DragonAscendingCancelAction(OW, PreMainAction(FB))
+PreActionPromptsAction(FB, [SL, WW])
+MainGatesAction(FB)
+MainAction(FB)
+EndTurnAction(FB)
+PreMainAction(SL)
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+PreActionPromptsAction(SL, [WW, FB])
+MainGatesAction(SL)
+MainAction(SL)
+LethargyMainAction(SL)
+PreMainAction(SL)
+PreActionPromptsAction(SL, [WW, FB])
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+PreActionPromptsAction(WW, [FB, SL])
+MainGatesAction(WW)
+MainAction(WW)
+HibernateMainAction(WW, 3)
+PreMainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainAction(OW)
+NextPlayerAction(OW)
+PreMainAction(FB)
+PreActionPromptsAction(FB, [SL, WW])
+MainGatesAction(FB)
+MainAction(FB)
+MoveAction(FB, FB/Ghatanothoa/1, Arabia, SouthAsia, 1)
+MoveDoneAction(FB)
+PreMainAction(FB)
+PreActionPromptsAction(FB, [SL, WW])
+MainGatesAction(FB)
+MainAction(FB)
+EndTurnAction(FB)
+PreMainAction(SL)
+PreActionPromptsAction(SL, [WW, FB])
+MainGatesAction(SL)
+MainAction(SL)
+MoveAction(SL, SL/Acolyte/2, NorthAmerica, ArcticOcean, 1)
+MoveAction(SL, SL/Acolyte/5, NorthAmerica, SouthAmerica, 1)
+MoveDoneAction(SL)
+PreMainAction(SL)
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+PreActionPromptsAction(SL, [WW, FB])
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainAction(OW)
+NextPlayerAction(OW)
+PreMainAction(FB)
+MainAction(FB)
+NextPlayerAction(FB)
+PreMainAction(SL)
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+PreActionPromptsAction(SL, [WW, FB])
+MainGatesAction(SL)
+MainAction(SL)
+BuildGateAction(SL, SouthAmerica)
+PreMainAction(SL)
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+PreActionPromptsAction(SL, [WW, FB])
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainAction(OW)
+NextPlayerAction(OW)
+PreMainAction(FB)
+MainAction(FB)
+NextPlayerAction(FB)
+PreMainAction(SL)
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+PreActionPromptsAction(SL, [WW, FB])
+MainGatesAction(SL)
+MainAction(SL)
+AncientSorceryUnitAction(SL, Hibernate, NorthAtlantic, SerpentMan)
+PreMainAction(SL)
+PreActionPromptsAction(SL, [WW, FB])
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainAction(OW)
+NextPlayerAction(OW)
+PreMainAction(FB)
+MainAction(FB)
+NextPlayerAction(FB)
+PreMainAction(SL)
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+DragonAscendingCancelAction(OW, PreMainAction(SL))
+PreActionPromptsAction(SL, [WW, FB])
+MainGatesAction(SL)
+MainAction(SL)
+HibernateMainAction(SL, 1)
+PreMainAction(SL)
+NextPlayerAction(SL)
+DragonAscendingInstantAction(DragonAscendingUpAction("power gather", EndPhasePromptsAction(WW, [WW, OW, FB, SL])))
+DragonAscendingCancelAction(OW, DragonAscendingUpAction("power gather", EndPhasePromptsAction(WW, [WW, OW, FB, SL])))
+PowerGatherAction(WW)
+DragonAscendingAction(OW, None, None, 17, BeforeFirstPlayerAction([WW, OW, FB, SL]))
+FirstPlayerAction(WW, OW)
+PlayDirectionAction(OW, [OW, FB, SL, WW])
+DoomPhaseAction
+DoomNextPlayerAction(OW)
+DragonAscendingInstantAction(DragonAscendingDownAction(OW, "doom action", DoomAction(OW)))
+DoomDoneAction(OW)
+RitualAction(FB, 7, 1)
+ElderSignAction(FB, 1, 1, false, DoomAction(FB))
+DoomAction(FB)
+FBDevilsMarkDoomAction(FB)
+FBDevilsMarkPlaceCraterAction(FB, Australia)
+ElderSignAction(FB, 1, 1, false, DoomAction(FB))
+DoomAction(FB)
+DoomDoneAction(FB)
+DeathFromBelowAction(SL, NorthAmerica, FormlessSpawn)
+DoomAction(SL)
+AncientSorceryPlaceAction(SL, SouthAmerica, SerpentMan)
+DoomAction(SL)
+RitualAction(SL, 8, 1)
+ElderSignAction(SL, 1, 1, false, DoomAction(SL))
+DoomAction(SL)
+DoomDoneAction(SL)
+RitualAction(WW, 5, 1)
+ElderSignAction(WW, 2, 1, false, DoomAction(WW))
+ElderSignAction(WW, 1, 1, false, DoomAction(WW))
+DoomAction(WW)
+DoomDoneAction(WW)
+ActionPhaseAction
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+AttackAction(OW, SouthAtlantic, WW, None)
+PreBattleDoneAction(OW, DefenderPreBattle)
+PreBattleDoneAction(WW, PreRoll)
+BattleRollAction(OW, [Miss], RollDefenders)
+BattleRollAction(WW, [], ChannelPowerPhase)
+BattleDoneAction(OW)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+EndTurnAction(OW)
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+FBWritheMainAction(FB)
+FBWritheRollResultAction(FB, 9, [Pain, Pain, Miss, Miss, Kill, Pain, Kill, Miss, Kill])
+FBWritheKeepAction(FB, [Pain, Pain, Miss, Miss, Kill, Pain, Kill, Miss, Kill])
+FBWritheKillUnitAction(FB, FB/Ghatanothoa/1, 3, 3)
+FBWritheKillUnitAction(FB, FB/Acolyte/1, 2, 3)
+FBWritheKillUnitAction(FB, FB/Acolyte/4, 1, 3)
+FBWritheChoosePainUnitAction(FB, FB/Desiccated/6, 3, [])
+FBWritheChoosePainUnitAction(FB, FB/Acolyte/3, 2, [FB/Desiccated/6])
+FBWritheChoosePainUnitAction(FB, FB/Acolyte/5, 1, [FB/Desiccated/6, FB/Acolyte/3])
+FBWritheMoveAllToRegionAction(FB, Europe, [FB/Desiccated/6, FB/Acolyte/3, FB/Acolyte/5])
+SpellbookAction(FB, Augury, PreMainAction(FB))
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+EndTurnAction(FB)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+LethargyMainAction(SL)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+CaptureAction(WW, ArcticOcean, SL, None)
+CaptureTargetAction(SL, ArcticOcean, WW, SL/Acolyte/2, None)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+AttackAction(OW, SouthAtlantic, WW, None)
+PreBattleDoneAction(OW, DefenderPreBattle)
+PreBattleDoneAction(WW, PreRoll)
+BattleRollAction(OW, [Pain], RollDefenders)
+BattleRollAction(WW, [], ChannelPowerPhase)
+BattleProceedAction(AssignAttackerPains)
+RetreatUnitAction(WW, WW/Acolyte/4, NorthAtlantic)
+BattleDoneAction(OW)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+EndTurnAction(OW)
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+FBAwakenGhatanothoaAction(FB, 2)
+SpellbookAction(FB, Carnage, EndAction(FB))
+EndAction(FB)
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+EndTurnAction(FB)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+LethargyMainAction(SL)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+MoveAction(WW, WW/Ithaqua/1, NorthAtlantic, SouthAtlantic, 1)
+MoveAction(WW, WW/Acolyte/4, NorthAtlantic, SouthAtlantic, 1)
+MoveDoneAction(WW)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+SummonAction(OW, Mutant, Arabia)
+SpellbookAction(OW, DragonDescending, PreMainAction(OW))
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+EndTurnAction(OW)
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+FBInfernalPactChooseAction(FB, Augury)
+FBInfernalPactResumeAction(FB)
+FBInfernalPactChooseAction(FB, Carnage)
+FBInfernalPactResumeAction(FB)
+RecruitAction(FB, Acolyte, SouthAsia)
+SpellbookAction(FB, CallOfTheFaithful, PreMainAction(FB))
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+FBCallOfTheFaithfulAction(FB, Australia)
+EndTurnAction(FB)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+LethargyMainAction(SL)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+MoveAction(WW, WW/RhanTegoth/1, NorthAtlantic, SouthAmerica, 1)
+MoveDoneAction(WW)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+AttackAction(OW, Arabia, FB, None)
+PreBattleDoneAction(OW, DefenderPreBattle)
+PreBattleDoneAction(FB, PreRoll)
+BattleRollAction(OW, [Miss], RollDefenders)
+BattleRollAction(FB, [Pain], ChannelPowerPhase)
+BattleProceedAction(AllPainsAssignedPhase)
+RetreatUnitAction(OW, OW/Mutant/2, NorthAtlantic)
+BattleDoneAction(OW)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+EndTurnAction(OW)
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+FBInfernalPactChooseAction(FB, CallOfTheFaithful)
+FBInfernalPactResumeAction(FB)
+FBWritheMainAction(FB)
+FBWritheRollResultAction(FB, 5, [Pain, Kill, Miss, Kill, Miss])
+FBWritheKeepAction(FB, [Pain, Kill, Miss, Kill, Miss])
+FBWritheKillUnitAction(FB, FB/Ghatanothoa/1, 2, 1)
+FBWritheKillUnitAction(FB, FB/Desiccated/4, 1, 1)
+FBWritheChoosePainUnitAction(FB, FB/Desiccated/5, 1, [])
+FBWritheMoveOneJoinAction(FB, FB/Desiccated/5, SouthAmerica, [], "Desiccated")
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+EndTurnAction(FB)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+MoveAction(SL, SL/Acolyte/5, SouthAmerica, NorthAmerica, 1)
+MoveAction(SL, SL/FormlessSpawn/1, NorthAmerica, ArcticOcean, 1)
+MoveDoneAction(SL)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+RecruitAction(WW, Acolyte, SouthAmerica)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+AttackAction(OW, NorthAtlantic, WW, None)
+PreBattleDoneAction(OW, DefenderPreBattle)
+PreBattleDoneAction(WW, PreRoll)
+BattleRollAction(OW, [Kill], RollDefenders)
+BattleRollAction(WW, [], ChannelPowerPhase)
+BattleProceedAction(AssignAttackerKills)
+BattleDoneAction(OW)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+EndTurnAction(OW)
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+FBAwakenGhatanothoaAction(FB, 2)
+SpellbookAction(FB, TheEyeOpens, EndAction(FB))
+SpellbookAction(WW, Howl, EndAction(FB))
+EndAction(FB)
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+FBInfernalPactChooseAction(FB, CallOfTheFaithful)
+FBInfernalPactResumeAction(FB)
+FBInfernalPactChooseAction(FB, TheEyeOpens)
+FBInfernalPactResumeAction(FB)
+AttackAction(FB, SouthAmerica, WW, None)
+PreBattleDoneAction(FB, DefenderPreBattle)
+PreBattleDoneAction(WW, PreRoll)
+BattleRollAction(FB, [Kill, Pain], RollDefenders)
+BattleRollAction(WW, [Miss, Pain, Miss], ChannelPowerPhase)
+AssignKillAction(WW, 1, WW, WW/Acolyte/5)
+BattleProceedAction(AssignAttackerPains)
+AssignPainAction(FB, 1, FB, FB/Desiccated/2)
+BattleDoneAction(WW)
+RetreatUnitAction(FB, FB/Desiccated/2, SouthPacific)
+RetreatUnitAction(WW, WW/RhanTegoth/1, SouthAtlantic)
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+EndTurnAction(FB)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+AncientSorceryUnitAction(SL, Hibernate, SouthAmerica, SerpentMan)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+SummonAction(WW, Wendigo, SouthAtlantic)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+RecruitAction(OW, Acolyte, NorthAtlantic)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+EndTurnAction(OW)
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+FBInfernalPactChooseAction(FB, Augury)
+FBInfernalPactResumeAction(FB)
+FBInfernalPactChooseAction(FB, Carnage)
+FBInfernalPactResumeAction(FB)
+BuildGateAction(FB, Europe)
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+EndTurnAction(FB)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+LethargyMainAction(SL)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+MoveAction(WW, WW/RhanTegoth/1, SouthAtlantic, NorthAtlantic, 1)
+MoveDoneAction(WW)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+SummonAction(OW, Mutant, Europe)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+EndTurnAction(OW)
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+AttackAction(FB, Europe, OW, None)
+PreBattleDoneAction(FB, DefenderPreBattle)
+PreBattleDoneAction(OW, PreRoll)
+BattleRollAction(FB, [Miss], RollDefenders)
+BattleRollAction(OW, [Kill], ChannelPowerPhase)
+AssignKillAction(FB, 1, FB, FB/Acolyte/5)
+MillionFavoredOnesXAction(OW, Europe, OW/Mutant/3, [Abomination])
+BattleDoneAction(OW)
+BattleDoneAction(WW)
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+EndTurnAction(FB)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+LethargyMainAction(SL)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+CaptureAction(WW, NorthAtlantic, OW, None)
+CaptureTargetAction(OW, NorthAtlantic, WW, OW/Acolyte/3, None)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+DreadCurseAction(OW, 3, NorthAtlantic)
+DreadCurseRollAction(OW, NorthAtlantic, [Pain, Miss, Miss])
+DreadCurseSplitAction(OW, NorthAtlantic, [Pain, Miss, Miss], [WW], [], [WW])
+DreadCurseRetreatAction(OW, NorthAtlantic, [WW], WW, RhanTegoth)
+DreadCurseRetreatToAction(OW, NorthAtlantic, [WW], WW, RhanTegoth, WestAfrica)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+EndTurnAction(OW)
+PreMainAction(FB)
+MainAction(FB)
+NextPlayerAction(FB)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+LethargyMainAction(SL)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+MoveAction(WW, WW/RhanTegoth/1, WestAfrica, Arabia, 1)
+MoveDoneAction(WW)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+DreadCurseAction(OW, 3, Arabia)
+DreadCurseRollAction(OW, Arabia, [Pain, Miss, Miss])
+DreadCurseSplitAction(OW, Arabia, [Pain, Miss, Miss], [WW], [], [WW])
+DreadCurseRetreatAction(OW, Arabia, [WW], WW, RhanTegoth)
+DreadCurseRetreatToAction(OW, Arabia, [WW], WW, RhanTegoth, NorthAsia)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+EndTurnAction(OW)
+PreMainAction(FB)
+MainAction(FB)
+NextPlayerAction(FB)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+LethargyMainAction(SL)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+MoveAction(WW, WW/RhanTegoth/1, NorthAsia, Europe, 1)
+MoveDoneAction(WW)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+DreadCurseAction(OW, 3, Europe)
+DreadCurseRollAction(OW, Europe, [Miss, Miss, Kill])
+DreadCurseSplitAction(OW, Europe, [Miss, Miss, Kill], [WW], [WW], [])
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+EndTurnAction(OW)
+PreMainAction(FB)
+MainAction(FB)
+NextPlayerAction(FB)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+LethargyMainAction(SL)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+SummonAction(WW, Wendigo, SouthAtlantic)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainAction(OW)
+NextPlayerAction(OW)
+PreMainAction(FB)
+MainAction(FB)
+NextPlayerAction(FB)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+LethargyMainAction(SL)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+SummonAction(WW, Wendigo, SouthAtlantic)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainAction(OW)
+NextPlayerAction(OW)
+PreMainAction(FB)
+MainAction(FB)
+NextPlayerAction(FB)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+MoveAction(SL, SL/Acolyte/5, NorthAmerica, NorthAtlantic, 1)
+MoveAction(SL, SL/Acolyte/6, NorthAmerica, SouthAmerica, 1)
+MoveDoneAction(SL)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+MainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainAction(OW)
+NextPlayerAction(OW)
+PreMainAction(FB)
+MainAction(FB)
+NextPlayerAction(FB)
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+Pay3EverybodyGains1MainAction(SL)
+SpellbookAction(SL, CaptureMonster, PreMainAction(SL))
+PreMainAction(SL)
+MainGatesAction(SL)
+MainAction(SL)
+EndTurnAction(SL)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+MoveAction(WW, WW/Ithaqua/1, SouthAtlantic, SouthAmerica, 1)
+MoveDoneAction(WW)
+PreMainAction(WW)
+MainGatesAction(WW)
+MainAction(WW)
+NextPlayerAction(WW)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+CaptureAction(OW, NorthAtlantic, SL, None)
+CaptureTargetAction(SL, NorthAtlantic, OW, SL/Acolyte/5, None)
+PreMainAction(OW)
+MainGatesAction(OW)
+MainAction(OW)
+EndTurnAction(OW)
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+RecruitAction(FB, Acolyte, Europe)
+PreMainAction(FB)
+MainGatesAction(FB)
+MainAction(FB)
+EndTurnAction(FB)
+DragonAscendingInstantAction(DragonAscendingUpAction("power gather", EndPhasePromptsAction(SL, [SL, WW, OW, FB])))
+PowerGatherAction(SL)
+PlayDirectionAction(FB, [FB, OW, WW, SL])
+DoomPhaseAction
+DoomNextPlayerAction(FB)
+RitualAction(FB, 9, 1)
+ElderSignAction(FB, 1, 1, false, DoomAction(FB))
+DoomAction(FB)
+FBDevilsMarkDoomAction(FB)
+FBDevilsMarkDoomAction(FB)
+FBDevilsMarkDoomAction(FB)
+FBDevilsMarkDoomAction(FB)
+FBDevilsMarkDoomAction(FB)
+FBDevilsMarkDoomAction(FB)
+FBDevilsMarkDoomAction(FB)
+FBDevilsMarkDoomAction(FB)
+FBDevilsMarkDoomAction(FB)
+FBDevilsMarkDoomAction(FB)
+FBDevilsMarkDoomAction(FB)
+FBDevilsMarkDoomAction(FB)
+FBDevilsMarkDoomAction(FB)
+FBDevilsMarkDoomAction(FB)
+FBDevilsMarkDoomAction(FB)
+FBDevilsMarkDoomAction(FB)
+FBDevilsMarkDoomAction(FB)
+FBDevilsMarkDoomAction(FB)
+FBDevilsMarkDoomAction(FB)
+FBDevilsMarkDoomAction(FB)
+FBDevilsMarkDoomAction(FB)
+FBDevilsMarkDoomAction(FB)
+FBDevilsMarkDoomAction(FB)
+FBDevilsMarkPlaceCraterAction(FB, Arabia)
+ElderSignAction(FB, 1, 1, false, DoomAction(FB))
+DoomAction(FB)
+DoomDoneAction(FB)
+DragonAscendingInstantAction(DragonAscendingDownAction(OW, "doom action", DoomAction(OW)))
+DragonDescendingDoomAction(OW, 10)
+ElderSignAction(OW, 1, 2, false, DoomAction(OW))
+DoomAction(OW)
+DoomDoneAction(OW)
+RitualAction(WW, 5, 1)
+ElderSignAction(WW, 1, 1, false, DoomAction(WW))
+DoomAction(WW)
+DoomDoneAction(WW)
+RitualAction(SL, 10, 1)
+ElderSignAction(SL, 1, 1, false, DoomAction(SL))
+DoomAction(SL)
+AncientSorceryPlaceAction(SL, SouthAmerica, SerpentMan)
+DoomAction(SL)
+DoomDoneAction(SL)
+ActionPhaseAction
+SpellbookAction(WW, Berserkergang, GameOverPhaseAction)
+ElderSignAction(WW, 1, 2, false, GameOverPhaseAction)
+GameOverPhaseAction
+
+<div class='p'>Cthulhu Wars HRF 1.0 Build lace49</div>
+<div class='p'>Options <span class='halfhigh'>Opener4P10Gates</span> <span class='halfhigh'>DemandTsathoggua</span> <span class='halfhigh'>IceAgeAffectsLethargy</span> <span class='halfhigh'>MapEarth35</span> <span class='halfhigh'>PlayerCount(4)</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> started in <span class='region'>North America</span></div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> started in <span class='sea'>Arctic Ocean</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> started in <span class='region'>West Africa</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> started in <span class='region'>Australia</span></div>
+<div class='p'>Play order <span class='sl inline-block'>Sleeper</span>, <span class='ww inline-block'>Windwalker</span>, <span class='ow inline-block'>Opener of the Way</span>, <span class='fb inline-block'>Firstborn</span></div>
+<div class='p'>=======================================================================================================================</div>
+<div class='p'>Turn 1</div>
+<div class='p'>ACTIONS</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> summoned <span class='sl'>Wizard</span> in <span class='region'>North America</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> moved <span class='ww'>Acolyte</span> from <span class='sea'>Arctic Ocean</span> to <span class='sea'>North Atlantic</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> summoned <span class='ow'>Abomination</span> in <span class='region'>West Africa</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> used <span class='fb'>Writhe</span> rolling 8 dice</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> rolled 1 <span class='kill'>Kill</span> 5 <span class='pain'>Pain</span> 2 Misses</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Writhe</span>: Acolyte replaced with <span class='fb'>Desiccated</span> in <span class='region'>Australia</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Writhe</span>: relocated <span class='fb'>Acolyte</span> from <span class='region'>Australia</span> to <span class='region'>Australia</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Writhe</span>: relocated <span class='fb'>Acolyte</span> from <span class='region'>Australia</span> to <span class='region'>Australia</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Writhe</span>: relocated <span class='fb'>Acolyte</span> from <span class='region'>Australia</span> to <span class='region'>Australia</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Writhe</span>: relocated <span class='fb'>Acolyte</span> from <span class='region'>Australia</span> to <span class='region'>Australia</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Writhe</span>: relocated <span class='fb'>Acolyte</span> from <span class='region'>Australia</span> to <span class='region'>Australia</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> lost control of the gate in <span class='region'>Australia</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> gained control of the gate in <span class='region'>Australia</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> summoned <span class='sl'>Wizard</span> in <span class='region'>North America</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> moved <span class='ww'>Acolyte</span> from <span class='sea'>North Atlantic</span> to <span class='sea'>South Atlantic</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> moved gate with <span class='ow'>Abomination</span> from <span class='region'>West Africa</span> to <span class='sea'>South Atlantic</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> used <span class='fb'>Writhe</span> rolling 6 dice</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> rolled 3 <span class='kill'>Kill</span> 1 <span class='pain'>Pain</span> 2 Misses</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> rerolled ALL dice with <span class='fb'>Writhe</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> rolled 1 <span class='kill'>Kill</span> 1 <span class='pain'>Pain</span> 4 Misses</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Writhe</span>: Acolyte replaced with <span class='fb'>Desiccated</span> in <span class='region'>Australia</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Writhe</span>: relocated <span class='fb'>Desiccated</span> from <span class='region'>Australia</span> to <span class='region'>South Asia</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> moved <span class='sl'>Acolyte</span> from <span class='region'>North America</span> to <span class='sea'>North Atlantic</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> moved <span class='ww'>Acolyte</span> from <span class='sea'>South Atlantic</span> to <span class='region'>Antarctica</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> built a gate in <span class='region'>West Africa</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> recruited <span class='fb'>Acolyte</span> in <span class='region'>South Asia</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> built a gate in <span class='sea'>North Atlantic</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> built a gate in <span class='region'>Antarctica</span></div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> achieved <span class='ww'>Gate exists in Antarctica</span> </div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> received <span class='ww'>Ice Age</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> moved <span class='ow'>Acolyte</span> from <span class='region'>West Africa</span> to <span class='sea'>South Atlantic</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> ran out of power</div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> built a gate in <span class='region'>South Asia</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> achieved <span class='ow'>Eight Gates on the map</span> </div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> ran out of power</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> received <span class='ow'>The Million Favored Ones</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> summoned <span class='sl'>Serpent Man</span> in <span class='sea'>North Atlantic</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> ran out of power</div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> summoned <span class='ww'>Wendigo</span> in <span class='sea'>Arctic Ocean</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> hibernated </div>
+<div class='p'>=======================================================================================================================</div>
+<div class='p'>POWER GATHER</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> got <span class='power'>10 Power</span> (<span class='region'>2 x 2</span> gates + <span class='region'>6</span> cultists)</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> got <span class='power'>9 Power</span> (<span class='region'>2 x 2</span> gates + <span class='region'>5</span> cultists)</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> got <span class='power'>10 Power</span> (<span class='region'>2 x 2</span> gates + <span class='region'>6</span> cultists)</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> got <span class='power'>11 Power</span> (<span class='region'>1</span> hibernate + <span class='region'>2 x 2</span> gates + <span class='region'>6</span> cultists)</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> became the first player</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> achieved <span class='ww'>Become First Player</span> </div>
+<div class='p'>Play order <span class='ww inline-block'>Windwalker</span>, <span class='ow inline-block'>Opener of the Way</span>, <span class='fb inline-block'>Firstborn</span>, <span class='sl inline-block'>Sleeper</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'>DOOM PHASE</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> received <span class='ww'>Cannibalism</span></div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> got <span class='doom'>2 Doom</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> got <span class='doom'>2 Doom</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> got <span class='doom'>2 Doom</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> got <span class='doom'>2 Doom</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='doom'>Ritual of Annihilation</span> track <span class='str'>[5]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>6<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>7<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>7<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>8<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>8<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>9<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>10<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>Instant Death<span class='xxxhighlight'>]</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> placed <span class='sl'>Serpent Man</span> in <span class='region'>North America</span> with <span class='sl'>Death from Below</span></div>
+<div class='p'>=======================================================================================================================</div>
+<div class='p'>Turn 2</div>
+<div class='p'>ACTIONS</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> awakened <span class='ww'>Rhan Tegoth</span> in <span class='region'>Antarctica</span></div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> achieved <span class='ww'>Awaken Rhan Tegoth</span> </div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> received <span class='ww'>Herald of the Outer Gods</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> moved gate with <span class='ow'>Abomination</span> from <span class='sea'>South Atlantic</span> to <span class='region'>East Africa</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> awakened <span class='fb'>Ghatanothoa</span> in <span class='region'>Australia</span> for <span class='power'>6 Power</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> achieved <span class='fb'>Awaken Ghatanothoa</span> </div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> received <span class='fb'>Cyclopean Gaze</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> spent <span class='power'>3 Power</span> and each other faction lost <span class='power'>1 Power</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> achieved <span class='sl'>Everybody loses 1 power</span> </div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> received <span class='sl'>Ancient Sorcery</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> started <span class='ww'>Ice Age</span> in <span class='sea'>Arctic Ocean</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> built a gate in <span class='sea'>South Atlantic</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> recruited <span class='fb'>Acolyte</span> in <span class='region'>South Asia</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> summoned <span class='sl'>Serpent Man</span> in <span class='region'>North America</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> moved <span class='ww'>Rhan Tegoth</span> from <span class='region'>Antarctica</span> to <span class='sea'>South Atlantic</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> moved <span class='ow'>Acolyte</span> from <span class='region'>West Africa</span> to <span class='region'>Arabia</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> passed and forfeited <span class='power'>1 Power</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> summoned <span class='sl'>Formless Spawn</span> in <span class='region'>North America</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> captured <span class='ow'>Acolyte</span> in <span class='sea'>South Atlantic</span> </div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> lost control of the gate in <span class='sea'>South Atlantic</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> built a gate in <span class='region'>Arabia</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> achieved <span class='ow'>Ten Gates on the map</span> </div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> received <span class='ow'>They Break Through</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> sent <span class='sl'>Serpent Man</span> from <span class='sea'>North Atlantic</span> to access <span class='ww'>Hibernate</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> hibernated for extra <span class='power'>1 Power</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> moved <span class='ow'>Acolyte</span> from <span class='region'>West Africa</span> to <span class='region'>Arabia</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> ran out of power</div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> hibernated for extra <span class='power'>1 Power</span></div>
+<div class='p'>=======================================================================================================================</div>
+<div class='p'>POWER GATHER</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> got <span class='power'>14 Power</span> (<span class='region'>2</span> hibernate + <span class='region'>2 x 2</span> gates + <span class='region'>1</span> abandoned + <span class='region'>6</span> cultists + <span class='region'>1</span> captured)</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> got <span class='power'>12 Power</span> (<span class='region'>2 x 3</span> gates + <span class='region'>1</span> abandoned + <span class='region'>5</span> cultists)</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> got <span class='power'>11 Power</span> (<span class='region'>2 x 2</span> gates + <span class='region'>1</span> abandoned + <span class='region'>6</span> cultists)</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> got <span class='power'>13 Power</span> (<span class='region'>2</span> hibernate + <span class='region'>2 x 2</span> gates + <span class='region'>1</span> abandoned + <span class='region'>6</span> cultists)</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> released <span class='ow'>Acolyte</span></div>
+<div class='p'>Play order <span class='ww inline-block'>Windwalker</span>, <span class='ow inline-block'>Opener of the Way</span>, <span class='fb inline-block'>Firstborn</span>, <span class='sl inline-block'>Sleeper</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'>DOOM PHASE</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> got <span class='doom'>2 Doom</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> got <span class='doom'>3 Doom</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> got <span class='doom'>2 Doom</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> got <span class='doom'>2 Doom</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='doom'>Ritual of Annihilation</span> track <span class='str'>[5]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>6<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>7<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>7<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>8<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>8<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>9<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>10<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>Instant Death<span class='xxxhighlight'>]</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> placed <span class='sl'>Formless Spawn</span> in <span class='region'>North America</span> with <span class='sl'>Death from Below</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> placed <span class='sl'>Serpent Man</span> in <span class='sea'>North Atlantic</span> with <span class='sl'>Ancient Sorcery</span> and gained <span class='power'>1 Power</span></div>
+<div class='p'>=======================================================================================================================</div>
+<div class='p'>Turn 3</div>
+<div class='p'>ACTIONS</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> awakened <span class='ww'>Ithaqua</span> in <span class='sea'>Arctic Ocean</span></div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> destroyed gate in <span class='sea'>Arctic Ocean</span></div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> achieved <span class='ww'>Awaken Ithaqua</span> </div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> achieved <span class='fb'>More Gates than First Player</span> </div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> received <span class='ww'>Arctic Wind</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> received <span class='fb'>Devil's Mark</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> summoned <span class='ow'>Spawn of Yog-Sothoth</span> in <span class='region'>Arabia</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> summoned <span class='fb'>Revenant of K'Naa</span> in <span class='region'>South Asia</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> awakened <span class='sl'>Tsathoggua</span> in <span class='region'>North America</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> achieved <span class='sl'>Awaken Tsathoggua</span> </div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> received <span class='sl'>Burrow</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> started <span class='ww'>Ice Age</span> in <span class='region'>Antarctica</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> awakened <span class='ow'>Yog-Sothoth</span> in <span class='region'>Arabia</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> replaced <span class='ow'>Spawn of Yog-Sothoth</span> in <span class='region'>Arabia</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> achieved <span class='ow'>Awaken Yog-Sothoth</span> </div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> received <span class='ow'>Dread Curse of Azathoth</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> used <span class='fb'>Writhe</span> rolling 8 dice</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> rolled 1 <span class='kill'>Kill</span> 1 <span class='pain'>Pain</span> 6 Misses</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Writhe</span>: Acolyte replaced with <span class='fb'>Desiccated</span> in <span class='region'>Australia</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Writhe</span>: relocated <span class='fb'>Ghatanothoa</span> from <span class='region'>Australia</span> to <span class='region'>West Africa</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> was sleeping</div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> moved <span class='ww'>Rhan Tegoth</span> from <span class='sea'>South Atlantic</span> to <span class='region'>East Africa</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> moved <span class='ow'>Yog-Sothoth</span> from <span class='region'>Arabia</span> to <span class='region'>East Africa</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> moved <span class='ow'>Acolyte</span> from <span class='region'>West Africa</span> to <span class='sea'>South Atlantic</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> achieved <span class='ow'>GOO shares Area with another GOO</span> </div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> gained control of the gate in <span class='sea'>South Atlantic</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> ran out of power</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> received <span class='ow'>Dragon Ascending</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> summoned <span class='fb'>Revenant of K'Naa</span> in <span class='region'>Australia</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> was sleeping</div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> moved <span class='ww'>Rhan Tegoth</span> from <span class='region'>East Africa</span> to <span class='sea'>South Atlantic</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> captured <span class='ow'>Acolyte</span> in <span class='region'>West Africa</span> </div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> lost control of the gate in <span class='region'>West Africa</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> was sleeping</div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> captured <span class='ow'>Acolyte</span> in <span class='sea'>South Atlantic</span> </div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> lost control of the gate in <span class='sea'>South Atlantic</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> recruited <span class='fb'>Acolyte</span> in <span class='region'>West Africa</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> gained control of the gate in <span class='region'>West Africa</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> was sleeping</div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> hibernated for extra <span class='power'>3 Power</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> passed and forfeited <span class='power'>1 Power</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> moved <span class='sl'>Acolyte</span> from <span class='region'>North America</span> to <span class='region'>South America</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> moved <span class='sl'>Acolyte</span> from <span class='region'>North America</span> to <span class='sea'>North Pacific</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> recovered <span class='power'>1 Power</span> from <span class='sl'>Burrow</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> moved <span class='sl'>Acolyte</span> from <span class='region'>South America</span> to <span class='sea'>South Atlantic</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> moved <span class='sl'>Acolyte</span> from <span class='sea'>North Pacific</span> to <span class='region'>South America</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> recovered <span class='power'>1 Power</span> from <span class='sl'>Burrow</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> gained control of the gate in <span class='sea'>South Atlantic</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> built a gate in <span class='region'>South America</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> sent <span class='sl'>Serpent Man</span> from <span class='sea'>North Atlantic</span> to access <span class='ww'>Hibernate</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> ran out of power</div>
+<div class='p'>=======================================================================================================================</div>
+<div class='p'>POWER GATHER</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> got <span class='power'>16 Power</span> (<span class='region'>7</span> hibernate + <span class='region'>2 x 1</span> gate + <span class='region'>6</span> cultists + <span class='region'>1</span> captured)</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> got <span class='power'>9 Power</span> (<span class='region'>2 x 3</span> gates + <span class='region'>3</span> cultists)</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> got <span class='power'>13 Power</span> (<span class='region'>2 x 3</span> gates + <span class='region'>6</span> cultists + <span class='region'>1</span> captured)</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> got <span class='power'>14 Power</span> (<span class='region'>2 x 4</span> gates + <span class='region'>6</span> cultists)</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> released <span class='ow'>Acolyte</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> released <span class='ow'>Acolyte</span></div>
+<div class='p'>Play order <span class='ww inline-block'>Windwalker</span>, <span class='ow inline-block'>Opener of the Way</span>, <span class='fb inline-block'>Firstborn</span>, <span class='sl inline-block'>Sleeper</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'>DOOM PHASE</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> got <span class='doom'>1 Doom</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> got <span class='doom'>3 Doom</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> got <span class='doom'>3 Doom</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> got <span class='doom'>4 Doom</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='doom'>Ritual of Annihilation</span> track <span class='str'>[5]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>6<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>7<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>7<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>8<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>8<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>9<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>10<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>Instant Death<span class='xxxhighlight'>]</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> performed the ritual for <span class='power'>5 Power</span> and gained <span class='doom'>1 Doom</span> and <span class='es'>2 Elder Signs</span></div>
+<div class='p'><span class='doom'>Ritual of Annihilation</span> track <span class='xxxhighlight'>[</span>5<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='str'>[6]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>7<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>7<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>8<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>8<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>9<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>10<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>Instant Death<span class='xxxhighlight'>]</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> performed the ritual for <span class='power'>6 Power</span> and gained <span class='doom'>3 Doom</span> and an <span class='es'>Elder Sign</span></div>
+<div class='p'><span class='doom'>Ritual of Annihilation</span> track <span class='xxxhighlight'>[</span>5<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>6<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='str'>[7]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>7<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>8<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>8<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>9<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>10<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>Instant Death<span class='xxxhighlight'>]</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> placed <span class='fb'>Crater</span> in <span class='region'>West Africa</span> with <span class='fb'>Devil's Mark</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> Gate in <span class='region'>West Africa</span> destroyed by <span class='fb'>Crater</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> gained an <span class='es'>Elder Sign</span> from <span class='fb'>Devil's Mark</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> gained <span class='power'>1 Power</span> from <span class='fb'>Devil's Mark</span> (1 Craters, glyph region)</div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> placed <span class='sl'>Formless Spawn</span> in <span class='region'>North America</span> with <span class='sl'>Death from Below</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> performed the ritual for <span class='power'>7 Power</span> and gained <span class='doom'>4 Doom</span> and an <span class='es'>Elder Sign</span></div>
+<div class='p'><span class='doom'>Ritual of Annihilation</span> track <span class='xxxhighlight'>[</span>5<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>6<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>7<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='str'>[7]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>8<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>8<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>9<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>10<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>Instant Death<span class='xxxhighlight'>]</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> achieved <span class='sl'>Perform Ritual of Annihilation</span> </div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> received <span class='sl'>Cursed Slumber</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> placed <span class='sl'>Serpent Man</span> in <span class='sea'>North Atlantic</span> with <span class='sl'>Ancient Sorcery</span> and gained <span class='power'>1 Power</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> revealed [<span class='es'>3</span>] for <span class='doom'>3 Doom</span> </div>
+<div class='p'>=======================================================================================================================</div>
+<div class='p'>Turn 4</div>
+<div class='p'>ACTIONS</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> captured <span class='sl'>Acolyte</span> in <span class='sea'>South Atlantic</span> </div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> lost control of the gate in <span class='sea'>South Atlantic</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> lost <span class='power'>1 Power</span> due to <span class='ww'>Ice Age</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> summoned <span class='ow'>Mutant</span> in <span class='region'>Antarctica</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> used <span class='fb'>Writhe</span> rolling 8 dice</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> rolled 0 <span class='kill'>Kill</span> 4 <span class='pain'>Pain</span> 4 Misses</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Writhe</span>: relocated <span class='fb'>Ghatanothoa</span> from <span class='region'>West Africa</span> to <span class='region'>South America</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Writhe</span>: relocated <span class='fb'>Acolyte</span> from <span class='region'>West Africa</span> to <span class='region'>South America</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Writhe</span>: relocated <span class='fb'>Desiccated</span> from <span class='region'>Australia</span> to <span class='region'>South America</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Writhe</span>: relocated <span class='fb'>Desiccated</span> from <span class='region'>Australia</span> to <span class='region'>South America</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> moved gate from <span class='region'>South America</span> to <span class='sl'>Cursed Slumber</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> moved <span class='ww'>Rhan Tegoth</span> from <span class='sea'>South Atlantic</span> to <span class='sea'>North Atlantic</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> lost <span class='power'>1 Power</span> due to <span class='ww'>Ice Age</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> battled <span class='ww inline-block'>Windwalker</span> in <span class='region'>Antarctica</span> </div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> attacked with <span class='ow'>Mutant</span> <span class='str'>[1]</span></div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> defended with <span class='ww'>Acolyte</span> <span class='str'>[0]</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> rolled <span class='pain'>Pain</span></div>
+<div class='p'><span class='ww'>Acolyte</span> was <span class='pain'>pained</span></div>
+<div class='p'><span class='ww'>Acolyte</span> retreated to <span class='sea'>Indian Ocean</span></div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> lost control of the gate in <span class='region'>Antarctica</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> promoted <span class='ow'>Mutant</span> in <span class='region'>Antarctica</span> to <span class='ow'>Abomination</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> used <span class='fb'>Writhe</span> rolling 6 dice</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> rolled 1 <span class='kill'>Kill</span> 3 <span class='pain'>Pain</span> 2 Misses</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Writhe</span>: Acolyte replaced with <span class='fb'>Desiccated</span> in <span class='region'>Australia</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Writhe</span>: relocated <span class='fb'>Ghatanothoa</span> from <span class='region'>South America</span> to <span class='region'>Arabia</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Writhe</span>: relocated <span class='fb'>Acolyte</span> from <span class='region'>South America</span> to <span class='region'>Arabia</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Writhe</span>: relocated <span class='fb'>Desiccated</span> from <span class='region'>South America</span> to <span class='region'>Arabia</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> moved <span class='sl'>Acolyte</span> from <span class='sea'>North Atlantic</span> to <span class='region'>North America</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> moved <span class='sl'>Formless Spawn</span> from <span class='region'>North America</span> to <span class='sea'>Arctic Ocean</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> recovered <span class='power'>1 Power</span> from <span class='sl'>Burrow</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> lost control of the gate in <span class='sea'>North Atlantic</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> battled <span class='sl inline-block'>Sleeper</span> in <span class='sea'>Arctic Ocean</span> </div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> attacked with <span class='ww'>Ithaqua</span>, <span class='ww'>Wendigo</span>, <span class='ww'>Acolyte</span>, <span class='ww'>Acolyte</span>, <span class='ww'>Acolyte</span>, <span class='ww'>Acolyte</span>, <span class='ww'>Acolyte</span> <span class='str'>[9]</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> defended with <span class='sl'>Formless Spawn</span> <span class='str'>[4]</span></div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> rolled <span class='miss'>Miss</span> <span class='miss'>Miss</span> <span class='pain'>Pain</span> <span class='pain'>Pain</span> <span class='miss'>Miss</span> <span class='pain'>Pain</span> <span class='miss'>Miss</span> <span class='pain'>Pain</span> <span class='miss'>Miss</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> rolled <span class='pain'>Pain</span> <span class='miss'>Miss</span> <span class='kill'>Kill</span> <span class='miss'>Miss</span></div>
+<div class='p'><span class='ww'>Acolyte</span> was <span class='kill'>killed</span></div>
+<div class='p'><span class='ww'>Acolyte</span> was <span class='pain'>pained</span></div>
+<div class='p'><span class='sl'>Formless Spawn</span> was <span class='pain'>pained</span></div>
+<div class='p'><span class='ww'>Acolyte</span> retreated to <span class='sea'>North Pacific</span></div>
+<div class='p'><span class='sl'>Formless Spawn</span> retreated to <span class='region'>North America</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> lost <span class='power'>1 Power</span> due to <span class='ww'>Ice Age</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> recruited <span class='ow'>Acolyte</span> in <span class='region'>Antarctica</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> gained control of the gate in <span class='region'>Antarctica</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> captured <span class='ow'>Acolyte</span> in <span class='region'>Arabia</span> </div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> was sleeping</div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> moved <span class='ww'>Ithaqua</span> from <span class='sea'>Arctic Ocean</span> to <span class='sea'>North Atlantic</span></div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> moved <span class='ww'>Acolyte</span> from <span class='sea'>Arctic Ocean</span> to <span class='sea'>North Atlantic</span></div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> moved <span class='ww'>Acolyte</span> from <span class='sea'>Indian Ocean</span> to <span class='sea'>South Atlantic</span></div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> gained control of the gate in <span class='sea'>North Atlantic</span></div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> gained control of the gate in <span class='sea'>South Atlantic</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> summoned <span class='ow'>Mutant</span> in <span class='sea'>South Atlantic</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> ran out of power</div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> captured <span class='ow'>Acolyte</span> in <span class='region'>Arabia</span> </div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> lost control of the gate in <span class='region'>Arabia</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> gained control of the gate in <span class='region'>Arabia</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> was sleeping</div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> started <span class='ww'>Ice Age</span> in <span class='sea'>South Atlantic</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> recruited <span class='fb'>Acolyte</span> in <span class='region'>Arabia</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> was sleeping</div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> hibernated for extra <span class='power'>3 Power</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> moved <span class='fb'>Ghatanothoa</span> from <span class='region'>Arabia</span> to <span class='region'>South Asia</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> ran out of power</div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> moved <span class='sl'>Acolyte</span> from <span class='region'>North America</span> to <span class='sea'>Arctic Ocean</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> moved <span class='sl'>Acolyte</span> from <span class='region'>North America</span> to <span class='region'>South America</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> recovered <span class='power'>1 Power</span> from <span class='sl'>Burrow</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> built a gate in <span class='region'>South America</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> sent <span class='sl'>Serpent Man</span> from <span class='sea'>North Atlantic</span> to access <span class='ww'>Hibernate</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> hibernated for extra <span class='power'>1 Power</span></div>
+<div class='p'>=======================================================================================================================</div>
+<div class='p'>POWER GATHER</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> got <span class='power'>17 Power</span> (<span class='region'>7</span> hibernate + <span class='region'>2 x 2</span> gates + <span class='region'>5</span> cultists + <span class='region'>1</span> captured)</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> got <span class='power'>8 Power</span> (<span class='region'>2 x 3</span> gates + <span class='region'>2</span> cultists)</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> got <span class='power'>14 Power</span> (<span class='region'>2 x 3</span> gates + <span class='region'>6</span> cultists + <span class='region'>2</span> captured)</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> got <span class='power'>13 Power</span> (<span class='region'>2</span> hibernate + <span class='region'>2 x 3</span> gates + <span class='region'>5</span> cultists)</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> released <span class='sl'>Acolyte</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> released <span class='ow'>Acolyte</span>, <span class='ow'>Acolyte</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> power increased to <span class='power'>9 Power</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> used <span class='ow'>Dragon Ascending</span> and rose to <span class='power'>17 Power</span></div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> chose <span class='ow inline-block'>Opener of the Way</span> as the first player</div>
+<div class='p'>Play order <span class='ow inline-block'>Opener of the Way</span>, <span class='fb inline-block'>Firstborn</span>, <span class='sl inline-block'>Sleeper</span>, <span class='ww inline-block'>Windwalker</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'>DOOM PHASE</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> got <span class='doom'>3 Doom</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> got <span class='doom'>3 Doom</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> got <span class='doom'>3 Doom</span></div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> got <span class='doom'>2 Doom</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='doom'>Ritual of Annihilation</span> track <span class='xxxhighlight'>[</span>5<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>6<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>7<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='str'>[7]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>8<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>8<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>9<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>10<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>Instant Death<span class='xxxhighlight'>]</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> performed the ritual for <span class='power'>7 Power</span> and gained <span class='doom'>3 Doom</span> and an <span class='es'>Elder Sign</span></div>
+<div class='p'><span class='doom'>Ritual of Annihilation</span> track <span class='xxxhighlight'>[</span>5<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>6<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>7<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>7<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='str'>[8]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>8<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>9<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>10<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>Instant Death<span class='xxxhighlight'>]</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> placed <span class='fb'>Crater</span> in <span class='region'>Australia</span> with <span class='fb'>Devil's Mark</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> Gate in <span class='region'>Australia</span> destroyed by <span class='fb'>Crater</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> gained an <span class='es'>Elder Sign</span> from <span class='fb'>Devil's Mark</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> gained <span class='power'>2 Power</span> from <span class='fb'>Devil's Mark</span> (2 Craters, glyph region)</div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> placed <span class='sl'>Formless Spawn</span> in <span class='region'>North America</span> with <span class='sl'>Death from Below</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> placed <span class='sl'>Serpent Man</span> in <span class='region'>South America</span> with <span class='sl'>Ancient Sorcery</span> and gained <span class='power'>1 Power</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> performed the ritual for <span class='power'>8 Power</span> and gained <span class='doom'>3 Doom</span> and an <span class='es'>Elder Sign</span></div>
+<div class='p'><span class='doom'>Ritual of Annihilation</span> track <span class='xxxhighlight'>[</span>5<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>6<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>7<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>7<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>8<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='str'>[8]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>9<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>10<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>Instant Death<span class='xxxhighlight'>]</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> performed the ritual for <span class='power'>5 Power</span> and gained <span class='doom'>2 Doom</span> and <span class='es'>2 Elder Signs</span></div>
+<div class='p'><span class='doom'>Ritual of Annihilation</span> track <span class='xxxhighlight'>[</span>5<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>6<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>7<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>7<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>8<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>8<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='str'>[9]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>10<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>Instant Death<span class='xxxhighlight'>]</span></div>
+<div class='p'>=======================================================================================================================</div>
+<div class='p'>Turn 5</div>
+<div class='p'>ACTIONS</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> lost <span class='power'>1 Power</span> due to <span class='ww'>Ice Age</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> battled <span class='ww inline-block'>Windwalker</span> in <span class='sea'>South Atlantic</span> </div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> attacked with <span class='ow'>Mutant</span> <span class='str'>[1]</span></div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> defended with <span class='ww'>Acolyte</span> <span class='str'>[0]</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> rolled <span class='miss'>Miss</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> used <span class='fb'>Writhe</span> rolling 9 dice</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> rolled 3 <span class='kill'>Kill</span> 3 <span class='pain'>Pain</span> 3 Misses</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Writhe</span>: eliminated <span class='fb'>Ghatanothoa</span> in <span class='region'>South Asia</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Writhe</span>: Acolyte replaced with <span class='fb'>Desiccated</span> in <span class='region'>Australia</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Writhe</span>: Acolyte replaced with <span class='fb'>Desiccated</span> in <span class='region'>Australia</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Writhe</span>: relocated <span class='fb'>Desiccated</span> from <span class='region'>Australia</span> to <span class='region'>Europe</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Writhe</span>: relocated <span class='fb'>Acolyte</span> from <span class='region'>South Asia</span> to <span class='region'>Europe</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Writhe</span>: relocated <span class='fb'>Acolyte</span> from <span class='region'>South Asia</span> to <span class='region'>Europe</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> lost control of the gate in <span class='region'>South Asia</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> achieved <span class='fb'>No Acolytes in Start Area</span> </div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> received <span class='fb'>Augury</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> was sleeping</div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> captured <span class='sl'>Acolyte</span> in <span class='sea'>Arctic Ocean</span> </div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> lost <span class='power'>1 Power</span> due to <span class='ww'>Ice Age</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> battled <span class='ww inline-block'>Windwalker</span> in <span class='sea'>South Atlantic</span> </div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> attacked with <span class='ow'>Mutant</span> <span class='str'>[1]</span></div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> defended with <span class='ww'>Acolyte</span> <span class='str'>[0]</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> rolled <span class='pain'>Pain</span></div>
+<div class='p'><span class='ww'>Acolyte</span> was <span class='pain'>pained</span></div>
+<div class='p'><span class='ww'>Acolyte</span> retreated to <span class='sea'>North Atlantic</span></div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> lost control of the gate in <span class='sea'>South Atlantic</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> awakened <span class='fb'>Ghatanothoa</span> in <span class='region'>Australia</span> for <span class='power'>2 Power</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> achieved <span class='fb'>2nd Ghatanothoa Awakening</span> </div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> received <span class='fb'>Carnage</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> was sleeping</div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> moved <span class='ww'>Ithaqua</span> from <span class='sea'>North Atlantic</span> to <span class='sea'>South Atlantic</span></div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> moved <span class='ww'>Acolyte</span> from <span class='sea'>North Atlantic</span> to <span class='sea'>South Atlantic</span></div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> gained control of the gate in <span class='sea'>South Atlantic</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> summoned <span class='ow'>Mutant</span> in <span class='region'>Arabia</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> achieved <span class='ow'>Units at two enemy Gates</span> </div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> received <span class='ow'>Dragon Descending</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Augury</span> flipped facedown</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Infernal Pact</span>: flipped <span class='fb'>Augury</span> facedown, discount now <span class='power'>1 Power</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Carnage</span> flipped facedown</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Infernal Pact</span>: flipped <span class='fb'>Carnage</span> facedown, discount now <span class='power'>2 Power</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Infernal Pact</span> discounted <span class='power'>1 Power</span> on recruit</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> recruited <span class='fb'>Acolyte</span> in <span class='region'>South Asia</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> achieved <span class='fb'>2 Facedown Spellbooks</span> </div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> gained control of the gate in <span class='region'>South Asia</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> received <span class='fb'>Call of the Faithful</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Call of the Faithful</span>: placed Acolyte in <span class='region'>Australia</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> was sleeping</div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> moved <span class='ww'>Rhan Tegoth</span> from <span class='sea'>North Atlantic</span> to <span class='region'>South America</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> battled <span class='fb inline-block'>Firstborn</span> in <span class='region'>Arabia</span> </div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> attacked with <span class='ow'>Mutant</span> <span class='str'>[1]</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> defended with <span class='fb'>Desiccated</span>, <span class='fb'>Acolyte</span>, <span class='fb'>Acolyte</span> <span class='str'>[1]</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> rolled <span class='miss'>Miss</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> rolled <span class='pain'>Pain</span></div>
+<div class='p'><span class='ow'>Mutant</span> was <span class='pain'>pained</span></div>
+<div class='p'><span class='ow'>Mutant</span> retreated to <span class='sea'>North Atlantic</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Call of the Faithful</span> flipped facedown</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Infernal Pact</span>: flipped <span class='fb'>Call of the Faithful</span> facedown, discount now <span class='power'>1 Power</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Infernal Pact</span> discounted <span class='power'>1 Power</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> used <span class='fb'>Writhe</span> rolling 5 dice</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> rolled 2 <span class='kill'>Kill</span> 1 <span class='pain'>Pain</span> 2 Misses</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Writhe</span>: eliminated <span class='fb'>Ghatanothoa</span> in <span class='region'>Australia</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Writhe</span>: eliminated <span class='fb'>Desiccated</span> in <span class='region'>Australia</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Writhe</span>: relocated <span class='fb'>Desiccated</span> from <span class='region'>Australia</span> to <span class='region'>South America</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> moved <span class='sl'>Acolyte</span> from <span class='region'>South America</span> to <span class='region'>North America</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> moved <span class='sl'>Formless Spawn</span> from <span class='region'>North America</span> to <span class='sea'>Arctic Ocean</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> recovered <span class='power'>1 Power</span> from <span class='sl'>Burrow</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> lost control of the gate in <span class='region'>South America</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> recruited <span class='ww'>Acolyte</span> in <span class='region'>South America</span></div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> gained control of the gate in <span class='region'>South America</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> battled <span class='ww inline-block'>Windwalker</span> in <span class='sea'>North Atlantic</span> </div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> attacked with <span class='ow'>Mutant</span> <span class='str'>[1]</span></div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> defended with <span class='ww'>Acolyte</span> <span class='str'>[0]</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> rolled <span class='kill'>Kill</span></div>
+<div class='p'><span class='ww'>Acolyte</span> was <span class='kill'>killed</span></div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> lost control of the gate in <span class='sea'>North Atlantic</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> awakened <span class='fb'>Ghatanothoa</span> in <span class='region'>Australia</span> for <span class='power'>2 Power</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Augury</span> flipped faceup</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Carnage</span> flipped faceup</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Call of the Faithful</span> flipped faceup</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> achieved <span class='fb'>3rd Ghatanothoa Awakening</span> </div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> received <span class='fb'>The Eye Opens</span></div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> achieved <span class='ww'>Another faction has all spellbooks</span> </div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> received <span class='ww'>Howl</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Call of the Faithful</span> flipped facedown</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Infernal Pact</span>: flipped <span class='fb'>Call of the Faithful</span> facedown, discount now <span class='power'>1 Power</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>The Eye Opens</span> flipped facedown</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Infernal Pact</span>: flipped <span class='fb'>The Eye Opens</span> facedown, discount now <span class='power'>2 Power</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Infernal Pact</span> discounted <span class='power'>1 Power</span> on attack</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> battled <span class='ww inline-block'>Windwalker</span> in <span class='region'>South America</span> </div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> attacked with <span class='fb'>Desiccated</span>, <span class='fb'>Desiccated</span> <span class='str'>[2]</span></div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> defended with <span class='ww'>Rhan Tegoth</span>, <span class='ww'>Acolyte</span> <span class='str'>[3]</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> rolled <span class='kill'>Kill</span> <span class='pain'>Pain</span></div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> rolled <span class='miss'>Miss</span> <span class='pain'>Pain</span> <span class='miss'>Miss</span></div>
+<div class='p'><span class='ww'>Acolyte</span> was <span class='kill'>killed</span></div>
+<div class='p'><span class='fb'>Desiccated</span> was <span class='pain'>pained</span></div>
+<div class='p'><span class='ww'>Rhan Tegoth</span> was <span class='pain'>pained</span></div>
+<div class='p'><span class='fb'>Desiccated</span> retreated to <span class='sea'>South Pacific</span></div>
+<div class='p'><span class='ww'>Rhan Tegoth</span> retreated to <span class='sea'>South Atlantic</span></div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> lost control of the gate in <span class='region'>South America</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> sent <span class='sl'>Serpent Man</span> from <span class='region'>South America</span> to access <span class='ww'>Hibernate</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> summoned <span class='ww'>Wendigo</span> in <span class='sea'>South Atlantic</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> recruited <span class='ow'>Acolyte</span> in <span class='sea'>North Atlantic</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> gained control of the gate in <span class='sea'>North Atlantic</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Augury</span> flipped facedown</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Infernal Pact</span>: flipped <span class='fb'>Augury</span> facedown, discount now <span class='power'>1 Power</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Carnage</span> flipped facedown</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Infernal Pact</span>: flipped <span class='fb'>Carnage</span> facedown, discount now <span class='power'>2 Power</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> <span class='fb'>Infernal Pact</span> discounted <span class='power'>2 Power</span> on build gate</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> built a gate in <span class='region'>Europe</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> was sleeping</div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> moved <span class='ww'>Rhan Tegoth</span> from <span class='sea'>South Atlantic</span> to <span class='sea'>North Atlantic</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> summoned <span class='ow'>Mutant</span> in <span class='region'>Europe</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> battled <span class='ow inline-block'>Opener of the Way</span> in <span class='region'>Europe</span> </div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> attacked with <span class='fb'>Desiccated</span>, <span class='fb'>Acolyte</span>, <span class='fb'>Acolyte</span> <span class='str'>[1]</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> defended with <span class='ow'>Mutant</span> <span class='str'>[1]</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> rolled <span class='miss'>Miss</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> rolled <span class='kill'>Kill</span></div>
+<div class='p'><span class='fb'>Acolyte</span> was <span class='kill'>killed</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> promoted <span class='ow'>Mutant</span> in <span class='region'>Europe</span> to <span class='ow'>Abomination</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> ran out of power</div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> was sleeping</div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> captured <span class='ow'>Acolyte</span> in <span class='sea'>North Atlantic</span> </div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> lost control of the gate in <span class='sea'>North Atlantic</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> sent <span class='ow'>Dread Curse of Azathoth</span> to <span class='sea'>North Atlantic</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> rolled <span class='pain'>Pain</span> <span class='miss'>Miss</span> <span class='miss'>Miss</span></div>
+<div class='p'><span class='ww'>Rhan Tegoth</span> was <span class='pain'>pained</span> to <span class='region'>West Africa</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> was sleeping</div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> moved <span class='ww'>Rhan Tegoth</span> from <span class='region'>West Africa</span> to <span class='region'>Arabia</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> sent <span class='ow'>Dread Curse of Azathoth</span> to <span class='region'>Arabia</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> rolled <span class='pain'>Pain</span> <span class='miss'>Miss</span> <span class='miss'>Miss</span></div>
+<div class='p'><span class='ww'>Rhan Tegoth</span> was <span class='pain'>pained</span> to <span class='region'>North Asia</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> was sleeping</div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> moved <span class='ww'>Rhan Tegoth</span> from <span class='region'>North Asia</span> to <span class='region'>Europe</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> sent <span class='ow'>Dread Curse of Azathoth</span> to <span class='region'>Europe</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> rolled <span class='miss'>Miss</span> <span class='miss'>Miss</span> <span class='kill'>Kill</span></div>
+<div class='p'><span class='ww'>Rhan Tegoth</span> was <span class='kill'>killed</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> ran out of power</div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> was sleeping</div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> summoned <span class='ww'>Wendigo</span> in <span class='sea'>South Atlantic</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> was sleeping</div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> summoned <span class='ww'>Wendigo</span> in <span class='sea'>South Atlantic</span></div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> ran out of power</div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> moved <span class='sl'>Acolyte</span> from <span class='region'>North America</span> to <span class='sea'>North Atlantic</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> moved <span class='sl'>Acolyte</span> from <span class='region'>North America</span> to <span class='region'>South America</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> recovered <span class='power'>1 Power</span> from <span class='sl'>Burrow</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> gained control of the gate in <span class='sea'>North Atlantic</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> gained control of the gate in <span class='region'>South America</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> spent <span class='power'>3 Power</span> and each other faction gained <span class='power'>1 Power</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> achieved <span class='sl'>Everybody gains 1 power</span> </div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> ran out of power</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> received <span class='sl'>Capture Monster</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> moved <span class='ww'>Ithaqua</span> from <span class='sea'>South Atlantic</span> to <span class='region'>South America</span></div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> ran out of power</div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> captured <span class='sl'>Acolyte</span> in <span class='sea'>North Atlantic</span> </div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> lost control of the gate in <span class='sea'>North Atlantic</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> ran out of power</div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> recruited <span class='fb'>Acolyte</span> in <span class='region'>Europe</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> ran out of power</div>
+<div class='p'>=======================================================================================================================</div>
+<div class='p'>POWER GATHER</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> got <span class='power'>10 Power</span> (<span class='region'>2 x 3</span> gates + <span class='region'>1</span> abandoned + <span class='region'>3</span> cultists)</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> got <span class='power'>9 Power</span> (<span class='region'>2 x 1</span> gate + <span class='region'>1</span> abandoned + <span class='region'>4</span> cultists + <span class='region'>2</span> captured)</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> got <span class='power'>10 Power</span> (<span class='region'>2 x 3</span> gates + <span class='region'>1</span> abandoned + <span class='region'>2</span> cultists + <span class='region'>1</span> captured)</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> got <span class='power'>13 Power</span> (<span class='region'>2 x 3</span> gates + <span class='region'>1</span> abandoned + <span class='region'>6</span> cultists)</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> released <span class='sl'>Acolyte</span>, <span class='ow'>Acolyte</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> released <span class='sl'>Acolyte</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> became the first player</div>
+<div class='p'>Play order <span class='fb inline-block'>Firstborn</span>, <span class='ow inline-block'>Opener of the Way</span>, <span class='ww inline-block'>Windwalker</span>, <span class='sl inline-block'>Sleeper</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'>DOOM PHASE</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> got <span class='doom'>3 Doom</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> got <span class='doom'>3 Doom</span></div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> got <span class='doom'>1 Doom</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> got <span class='doom'>3 Doom</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='doom'>Ritual of Annihilation</span> track <span class='xxxhighlight'>[</span>5<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>6<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>7<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>7<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>8<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>8<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='str'>[9]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>10<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>Instant Death<span class='xxxhighlight'>]</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> performed the ritual for <span class='power'>9 Power</span> and gained <span class='doom'>3 Doom</span> and an <span class='es'>Elder Sign</span></div>
+<div class='p'><span class='doom'>Ritual of Annihilation</span> track <span class='xxxhighlight'>[</span>5<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>6<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>7<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>7<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>8<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>8<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>9<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='str'>[10]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>Instant Death<span class='xxxhighlight'>]</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> placed <span class='fb'>Crater</span> in <span class='region'>Arabia</span> with <span class='fb'>Devil's Mark</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> Gate in <span class='region'>Arabia</span> destroyed by <span class='fb'>Crater</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> gained an <span class='es'>Elder Sign</span> from <span class='fb'>Devil's Mark</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> used <span class='ow'>Dragon Descending</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> performed the ritual for <span class='power'>10 Power</span> and gained <span class='doom'>6 Doom</span> and an <span class='es'>Elder Sign</span></div>
+<div class='p'><span class='doom'>Ritual of Annihilation</span> track <span class='xxxhighlight'>[</span>5<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>6<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>7<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>7<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>8<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>8<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>9<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>10<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='str'>[Instant Death]</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> performed the ritual for <span class='power'>5 Power</span> and gained <span class='doom'>1 Doom</span> and an <span class='es'>Elder Sign</span></div>
+<div class='p'><span class='doom'>Ritual of Annihilation</span> track <span class='xxxhighlight'>[</span>5<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>6<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>7<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>7<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>8<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>8<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>9<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>10<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='str'>[Instant Death]</span></div>
+<div class='p'>............................................................................................................................................................................................................................................</div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> performed the ritual for <span class='power'>10 Power</span> and gained <span class='doom'>3 Doom</span> and an <span class='es'>Elder Sign</span></div>
+<div class='p'><span class='doom'>Ritual of Annihilation</span> track <span class='xxxhighlight'>[</span>5<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>6<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>7<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>7<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>8<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>8<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>9<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='xxxhighlight'>[</span>10<span class='xxxhighlight'>]</span><span class='highlight'>-</span><span class='str'>[Instant Death]</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> placed <span class='sl'>Serpent Man</span> in <span class='region'>South America</span> with <span class='sl'>Ancient Sorcery</span> and gained <span class='power'>1 Power</span></div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> achieved <span class='ww'>Anytime Spellbook</span> and gained an <span class='es'>Elder Sign</span></div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> received <span class='ww'>Berserkergang</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> revealed [<span class='es'>1</span>] [<span class='es'>1</span>] [<span class='es'>1</span>] [<span class='es'>1</span>] [<span class='es'>1</span>] [<span class='es'>1</span>] for <span class='doom'>6 Doom</span></div>
+<div class='p'><span class='ow inline-block'>Opener of the Way</span> revealed [<span class='es'>2</span>] for <span class='doom'>2 Doom</span></div>
+<div class='p'><span class='ww inline-block'>Windwalker</span> revealed [<span class='es'>2</span>] [<span class='es'>2</span>] [<span class='es'>1</span>] [<span class='es'>1</span>] [<span class='es'>1</span>] [<span class='es'>2</span>] for <span class='doom'>9 Doom</span></div>
+<div class='p'><span class='sl inline-block'>Sleeper</span> revealed [<span class='es'>1</span>] [<span class='es'>1</span>] for <span class='doom'>2 Doom</span></div>
+<div class='p'><span class='fb inline-block'>Firstborn</span> won</div>

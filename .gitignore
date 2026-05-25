@@ -1,0 +1,11 @@
+target/
+project/target/
+project/project/
+*.class
+.bsp/
+.idea/
+.vscode/
+__pycache__/
+*.pyc
+*.swp
+.DS_Store
