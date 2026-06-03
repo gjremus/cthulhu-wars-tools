@@ -104,7 +104,16 @@ def parse_games_tsv(text):
                     player_count=int(parts[7] or "0") if len(parts) > 7 else 0,
                     bot_count=int(parts[8] or "0") if len(parts) > 8 else 0,
                     has_fix_response=(parts[9] if len(parts) > 9 else "0").strip() == "1",
-                    start_ms=int(parts[10] or "0") if len(parts) > 10 else 0,
+                    # parts[10] is overloaded for back-compat: the post-2026-06-03
+                    # server emits the per-game build name (a string like "library")
+                    # there, while a hypothetical pre-change server would have put
+                    # startMs (a number). Sniff: if numeric, treat as startMs; else
+                    # treat as a build hint we can use to skip the log[0] inference.
+                    # (Patch contributed by BB Claude 2026-06-03 22:18 after the
+                    # original code's int(parts[10] or "0") raised ValueError on
+                    # every row of the new schema and silently skipped all games.)
+                    start_ms=int(parts[10]) if len(parts) > 10 and (parts[10] or "").strip().lstrip("-").isdigit() else 0,
+                    build_hint=((parts[10] or "").strip().lower() if len(parts) > 10 and not (parts[10] or "").strip().lstrip("-").isdigit() else ""),
                 )
             )
         except (ValueError, IndexError):
@@ -180,7 +189,14 @@ def main():
         if not is_errored_heuristic(g, log):
             continue
 
-        build = infer_build(log)
+        # Prefer the server's build column when present (set by the server's
+        # log[0] inference at TSV emit time — see /admin/$TOK/games handler);
+        # fall back to local log[0] parsing when not (legacy or non-matching).
+        hint = g.get("build_hint", "")
+        if hint in {"library", "mnu", "tt", "bb"}:
+            build = hint
+        else:
+            build = infer_build(log)
         if build not in ALLOWED_BUILDS and build != "ambiguous":
             skipped_tt_bb += 1
             continue
