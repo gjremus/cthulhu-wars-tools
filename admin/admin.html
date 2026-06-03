@@ -579,6 +579,13 @@ function setBuild(name) {
   // Top-of-page persistent build indicator (always visible).
   const topLbl = document.getElementById('top-build-label');
   if (topLbl) topLbl.textContent = '[' + BUILD_LABELS[name].short + ']';
+  // 2026-06-03 15:55: re-filter the games list against the new build using
+  // the cached TSV (populated by the last /games fetch). Without this, the
+  // user changes build but the games list still shows the previous build's
+  // games until next refresh.
+  if (typeof LAST_GAMES_TEXT !== 'undefined' && LAST_GAMES_TEXT !== null) {
+    populateGames(LAST_GAMES_TEXT);
+  }
 }
 function refreshBuildIndicator() {
   const b = getBuild();
@@ -972,6 +979,12 @@ function clearAllFilters() {
 
 // Predicate: does this game row pass the current filter set?
 function gamePassesFilters(g, f) {
+  // Build axis. The Build switcher (Library/MNU/TT/BB) is the dominant filter:
+  // games must match the currently-active build, OR be 'unknown' (legacy games
+  // pre version-header). 2026-06-03 15:55: this was previously absent — the
+  // switcher controlled SimRunner jar selection but not the games list.
+  const activeBuild = getBuild();
+  if (g.build && g.build !== 'unknown' && g.build !== activeBuild) return false;
   // Replay axis. Filter passes if either checkbox is off, or if the game's
   // replay-existence (from REPLAY_EXISTS cache) matches the checked option.
   // For unknown (probe pending), let it through so the user isn't blocked.
@@ -1143,7 +1156,10 @@ function populateGames(text) {
   const showBots = !!(document.getElementById('show-bots-cb') && document.getElementById('show-bots-cb').checked);
   const games = text.split('\n').filter(l => l).map(line => {
     const parts = line.split('\t');
-    // 2026-06-02: columns 7-10 are new (playerCount, botCount, hasFixResponse, startMs).
+    // 2026-06-02: columns 7-9 are playerCount, botCount, hasFixResponse.
+    // 2026-06-03 15:55: col 10 = build (library|mnu|tt|bb|unknown) — added so
+    // the Build switcher can actually filter the games list. col 11 reserved
+    // for future startMs once the server stamps it.
     // Old server responses pad with 0 / '' so the indexing stays stable.
     return {
       id: parts[0],
@@ -1156,7 +1172,8 @@ function populateGames(text) {
       playerCount: parseInt(parts[7] || '0', 10),
       botCount: parseInt(parts[8] || '0', 10),
       hasFixResponse: (parts[9] || '0').trim() === '1',
-      startMs: parseInt(parts[10] || '0', 10),
+      build: (parts[10] || 'unknown').trim(),
+      startMs: parseInt(parts[11] || '0', 10),
     };
   }).filter(g => g.id).filter(g => showBots || !g.isBot);
   // 2026-06-01: Auto-error inference. Pure client-side; no server change.

@@ -502,6 +502,22 @@ object CthulhuWarsOnline {
                     // proposal (Phase A/B 2026-06-03). Emitted as col 9
                     // (hasFixResponse) so admin.html can filter accordingly.
                     val hasFixResp = q(fixResponses.map(_.gameId).result).toSet
+                    // Per-game build identity, inferred from log[0] (version header).
+                    // Same heuristic as the /play redirect logic above. Emitted as
+                    // col 10 so the admin's Build switcher can filter the games list
+                    // by build (added 2026-06-03 15:55 after user reported the
+                    // Build switcher wasn't actually filtering — only configured
+                    // SimRunner jar selection).
+                    val gameBuilds = rows.map(_._1).map { id =>
+                        val v = q(logs.filter(_.gameId === id).filter(_.index === 0).map(_.value).result.headOption).getOrElse("")
+                        val low = v.toLowerCase
+                        val b = if      (low.contains("library-at-celaeno")) "library"
+                                else if (low.contains("more-neutral-units")) "mnu"
+                                else if (low.contains("tcho-tcho"))          "tt"
+                                else if (low.contains("bubastis"))           "bb"
+                                else                                          "unknown"
+                        id -> b
+                    }.toMap
                     // Count humans + bots per game by reading the options line (log
                     // idx 2) which contains the roster like "SL:Human/OW:Bot/...".
                     // The admin UI uses this to bucket games into SimRun (all bots),
@@ -519,7 +535,8 @@ object CthulhuWarsOnline {
                         val ib = if (botFlagged.contains(id)) "1" else "0"
                         val (h, bt) = rosterCounts.getOrElse(id, (0, 0))
                         val hfr = if (hasFixResp.contains(id)) "1" else "0"
-                        s"$id\t$name\t$secret\t${lastMs.getOrElse(0L)}\t$b\t$c\t$ib\t$h\t$bt\t$hfr"
+                        val gb = gameBuilds.getOrElse(id, "unknown")
+                        s"$id\t$name\t$secret\t${lastMs.getOrElse(0L)}\t$b\t$c\t$ib\t$h\t$bt\t$hfr\t$gb"
                     }.mkString("\n"))
                 }
             } ~
