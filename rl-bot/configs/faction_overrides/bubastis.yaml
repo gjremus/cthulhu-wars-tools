@@ -1,0 +1,32 @@
+# Bubastis-specific reward overrides from User Vision doc 2026-06-03.
+# BB has no cultists, can't take normal or chaos gates, has a single unique unstealable
+# gate, and uses an Elder God (EG) instead of a GOO. Cats fill the unit roles.
+
+unit_type_mapping:
+  # BB's unit categories map onto the generic scoring slots.
+  earth_cats: cultist        # use defaults.gain_cultist / lose_cultist
+  other_cats: monster        # use defaults.gain_monster / lose_monster
+  bastet:    faction_goo     # use defaults.awaken_faction_goo / lose_faction_goo
+
+sb_scoring:
+  # Same as defaults — no override needed; left explicit for clarity.
+  use_defaults: true
+
+gate_scoring:
+  # BB does not get scored on controlled gates at all.
+  controlled_gate_at_ap_start: 0.0
+  controlled_gate_at_ap_end: 0.0
+
+# Bubastis-specific positional reward, evaluated at end of each AP.
+# Trigger: Bastet is in an area where (count of BB units in area) > (sum of enemy combat in area) / 6
+# Then award the LARGEST applicable reward below (not stacked):
+bastet_predation:
+  enabled: true
+  trigger:
+    metric: bb_units_vs_enemy_combat_ratio
+    threshold: 0.16667        # 1/6, i.e. BB units > enemy_combat / 6
+  rewards:
+    # Each reward is per-area, only the largest applies per area
+    enemy_cultist_present: 2.0
+    enemy_controlled_gate: 2.5
+    enemy_controlled_gate_and_enemy_goo: 3.5

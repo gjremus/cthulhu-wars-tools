@@ -104,6 +104,28 @@
   .completed-badge { display: inline-block; font-size: 8pt; padding: 1px 8px;
                      background: rgba(63,185,80,0.15); color: var(--success); border: 1px solid var(--success);
                      border-radius: 999px; vertical-align: middle; }
+  /* 2026-06-01: Errored-out auto-flag. Distinct from manual "broken" — errored
+     games are inferred client-side (stale > 6h, not completed, lastWriteMs > 0).
+     Styled like broken but with a warn-colored border so the user can tell
+     them apart at a glance. */
+  .game-row.errored { border-color: var(--warn); }
+  .game-row.errored .game-name { color: var(--warn); }
+  .errored-badge { display: inline-block; font-size: 8pt; padding: 1px 8px;
+                   background: rgba(210,153,34,0.15); color: var(--warn); border: 1px solid var(--warn);
+                   border-radius: 999px; vertical-align: middle; }
+  /* 2026-06-01: Replay link pill in game rows + Generate replay button. */
+  .replay-badge { display: inline-block; font-size: 8pt; padding: 1px 8px;
+                  background: rgba(47,129,247,0.12); color: var(--accent); border: 1px solid var(--accent);
+                  border-radius: 999px; vertical-align: middle; text-decoration: none; margin-left: 4px; }
+  .replay-badge:hover { background: rgba(47,129,247,0.25); }
+  .replay-pending { color: var(--text-muted); font-size: 8pt; margin-left: 4px; font-style: italic; }
+  /* 2026-06-01: Filter pill toolbar above the games list. */
+  .filter-pills { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
+  .filter-pill { padding: 4px 10px; font-size: 9pt; border-radius: 999px;
+                 background: var(--bg-card); border: 1px solid var(--border); color: var(--text-muted);
+                 cursor: pointer; user-select: none; }
+  .filter-pill:hover { background: var(--bg-subtle); color: var(--text); }
+  .filter-pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
   .game-name { font-weight: 600; color: var(--text); }
   .game-meta { color: var(--text-muted); font-size: 9pt; }
 
@@ -205,9 +227,14 @@
   .nav-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999;
                  display: none; }
   .nav-overlay.open { display: block; }
+  /* 2026-05-26: desktop view used to hide both the hamburger AND the drawer,
+     which left desktop users with NO way to navigate sections — they were
+     stuck on whichever section showSection() landed on at load. Now keep
+     the hamburger visible at all widths so the drawer is reachable on
+     desktop too. (Drawer overlay still hides itself on click.) */
   @media (min-width: 720px) {
-    .hamburger-btn { display: none; }
-    .nav-drawer, .nav-overlay { display: none !important; }
+    .hamburger-btn { display: inline-flex; }
+    /* drawer + overlay still allowed; they pop on demand via openNav() */
   }
 </style>
 </head>
@@ -224,11 +251,12 @@
   <a href="#" onclick="showSection('simrunner'); closeNav(); return false;">SimRunner</a>
   <a href="#" onclick="showSection('build'); closeNav(); return false;">Build</a>
   <a href="#" onclick="showSection('claude'); closeNav(); return false;">Claude Terminal</a>
+  <a href="#" onclick="showSection('serverstats'); loadServerStats(); closeNav(); return false;">Server Stats</a>
 </nav>
 
 <header>
   <button class="hamburger-btn" onclick="openNav()" aria-label="Open navigation">☰</button>
-  <h1>CWO Admin</h1>
+  <h1>CWO Admin <span id="top-build-label" style="color:var(--accent);font-size:14pt;font-weight:normal;">[…]</span></h1>
   <span id="server-indicator" style="color:var(--text-muted);font-size:10pt;"></span>
 </header>
 
@@ -255,6 +283,55 @@
           Show bot games
         </label>
       </p>
+      <!-- 2026-06-02: Filter pyramid + sort + search toolbar.
+           User spec (2026-06-02 11:03 directive):
+             - Filter pyramid icon expands a true filter set: replays y/n,
+               errored y/n, player count (3/4/5), all bots y/n, any bots y/n.
+             - Sort by name / start date / last action date.
+             - Search by game name.
+           Pyramid is collapsible to keep the rail compact on mobile. -->
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:6px 0 8px;">
+        <button class="small" id="filter-pyramid-btn" onclick="toggleFilterPyramid()" title="Show / hide filters" style="padding:4px 10px;">
+          <span style="font-size:11pt;">&#9650;</span> Filters
+          <span id="filter-active-count" style="color:var(--accent);font-size:9pt;margin-left:4px;"></span>
+        </button>
+        <select id="games-sort" onchange="applyGamesSortSearch()" style="padding:4px 8px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:9pt;">
+          <option value="default">Sort: default (status, then activity)</option>
+          <option value="name">Sort: name (A→Z)</option>
+          <option value="start">Sort: start date (newest first)</option>
+          <option value="last">Sort: last action (newest first)</option>
+        </select>
+        <input type="text" id="games-search" oninput="applyGamesSortSearch()" placeholder="Search game name…" style="flex:1;min-width:120px;padding:4px 8px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:9pt;" />
+      </div>
+      <div id="filter-pyramid" style="display:none;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-bottom:10px;font-size:9pt;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;">
+          <div>
+            <div style="color:var(--text-muted);margin-bottom:4px;">Replays</div>
+            <label class="sim-checkbox" style="margin-right:6px;"><input type="checkbox" id="flt-rep-yes" onchange="applyGamesSortSearch()"/>Has replay</label>
+            <label class="sim-checkbox"><input type="checkbox" id="flt-rep-no" onchange="applyGamesSortSearch()"/>No replay</label>
+          </div>
+          <div>
+            <div style="color:var(--text-muted);margin-bottom:4px;">Errored</div>
+            <label class="sim-checkbox" style="margin-right:6px;"><input type="checkbox" id="flt-err-yes" onchange="applyGamesSortSearch()"/>Errored</label>
+            <label class="sim-checkbox"><input type="checkbox" id="flt-err-no" onchange="applyGamesSortSearch()"/>Not errored</label>
+          </div>
+          <div>
+            <div style="color:var(--text-muted);margin-bottom:4px;">Player count</div>
+            <label class="sim-checkbox" style="margin-right:4px;"><input type="checkbox" id="flt-pc-3" onchange="applyGamesSortSearch()"/>3</label>
+            <label class="sim-checkbox" style="margin-right:4px;"><input type="checkbox" id="flt-pc-4" onchange="applyGamesSortSearch()"/>4</label>
+            <label class="sim-checkbox"><input type="checkbox" id="flt-pc-5" onchange="applyGamesSortSearch()"/>5</label>
+          </div>
+          <div>
+            <div style="color:var(--text-muted);margin-bottom:4px;">Bots</div>
+            <label class="sim-checkbox" style="margin-right:6px;"><input type="checkbox" id="flt-allbots-yes" onchange="applyGamesSortSearch()"/>All bots</label>
+            <label class="sim-checkbox"><input type="checkbox" id="flt-anybots-yes" onchange="applyGamesSortSearch()"/>Any bots</label>
+          </div>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:6px;align-items:center;">
+          <button class="small" onclick="clearAllFilters()">Clear all filters</button>
+          <span style="color:var(--text-muted);font-size:8.5pt;">Checked filters AND together. Within a group (e.g. player count 3 + 4), an OR.</span>
+        </div>
+      </div>
       <div id="games-list"></div>
     </div>
 
@@ -306,20 +383,28 @@
     <div id="sim-past-runs"><p class="empty">Loading…</p></div>
   </div>
 
-  <!-- Build section — switch the admin's active build (Library vs MNU). Other
+  <!-- Build section — switch the admin's active build. Other
        menus (SimRunner) read this localStorage value and adapt. -->
   <div id="section-build" class="section-pane" style="padding: 18px;">
     <h2>Build</h2>
-    <p style="color:var(--text-muted);">Two builds share this admin tool. Pick the active one — SimRunner and other build-dependent menus read this setting.</p>
+    <p style="color:var(--text-muted);">Four builds share this admin tool. Pick the active one — SimRunner and other build-dependent menus read this setting. Use the ↗ link inside each card to open the corresponding game in a new tab.</p>
 
     <div style="display:flex;gap:14px;flex-wrap:wrap;margin:24px 0;">
       <button id="build-btn-library" class="build-card" onclick="setBuild('library')">
         <div style="font-size:13pt;font-weight:600;margin-bottom:4px;">Library at Celaeno</div>
-        <div style="font-size:9pt;color:var(--text-muted);">Stable build · served at <code>cwo.freeddns.org</code></div>
+        <div style="font-size:9pt;color:var(--text-muted);">Stable build · served at <code>cwo.freeddns.org</code> <a href="https://cwo.freeddns.org/" target="_blank" rel="noopener" onclick="event.stopPropagation();">↗</a></div>
       </button>
       <button id="build-btn-mnu" class="build-card" onclick="setBuild('mnu')">
         <div style="font-size:13pt;font-weight:600;margin-bottom:4px;">More Neutral Units (MNU)</div>
-        <div style="font-size:9pt;color:var(--text-muted);">Beta build · served at <code>cwo.freeddns.org/mnu/</code></div>
+        <div style="font-size:9pt;color:var(--text-muted);">Beta build · served at <code>cwo.freeddns.org/mnu/</code> <a href="https://cwo.freeddns.org/mnu/" target="_blank" rel="noopener" onclick="event.stopPropagation();">↗</a></div>
+      </button>
+      <button id="build-btn-tt" class="build-card" onclick="setBuild('tt')">
+        <div style="font-size:13pt;font-weight:600;margin-bottom:4px;">TchoTcho (TT)</div>
+        <div style="font-size:9pt;color:var(--text-muted);">Beta build · served at <code>cwo.freeddns.org/TchoTcho/</code> <a href="https://cwo.freeddns.org/TchoTcho/" target="_blank" rel="noopener" onclick="event.stopPropagation();">↗</a></div>
+      </button>
+      <button id="build-btn-bb" class="build-card" onclick="setBuild('bb')">
+        <div style="font-size:13pt;font-weight:600;margin-bottom:4px;">Bubastis (BB)</div>
+        <div style="font-size:9pt;color:var(--text-muted);">Beta build · served at <code>cwo.freeddns.org/BB/</code> <a href="https://cwo.freeddns.org/BB/" target="_blank" rel="noopener" onclick="event.stopPropagation();">↗</a></div>
       </button>
     </div>
 
@@ -342,11 +427,42 @@
     </div>
     <p id="claude-prompt-status" style="font-size:9pt;color:var(--text-muted);margin-top:0;"></p>
 
-    <h3 style="margin-top:24px;">Terminal log (recent prompts + Claude output) <button class="small" style="margin-left:8px;" onclick="refreshClaudeOutput()">Refresh</button></h3>
+    <h3 style="margin-top:24px;">Terminal log (last 36 hours of prompts + Claude output)
+        <button class="small" style="margin-left:8px;" onclick="refreshClaudeOutput()">Refresh</button>
+        <button class="small" style="margin-left:6px;" onclick="document.getElementById('claude-output').scrollTop = 0">Jump to top</button>
+    </h3>
     <pre id="claude-output" class="sim-tail" style="height:50vh;max-height:50vh;">loading…</pre>
+    <button class="small" style="margin-top:6px;" onclick="(function(el){ el.scrollTop = el.scrollHeight; })(document.getElementById('claude-output'))">Jump to bottom</button>
 
     <h3 style="margin-top:24px;">Queue (prompts submitted but not yet picked up) <button class="small" style="margin-left:8px;" onclick="refreshClaudeQueue()">Refresh</button></h3>
     <pre id="claude-queue" class="sim-tail" style="height:20vh;max-height:20vh;">loading…</pre>
+  </div>
+
+  <!-- Server Stats — host + JVM resource usage. -->
+  <div id="section-serverstats" class="section-pane" style="padding: 18px;">
+    <h2>Server Stats <button class="small" style="margin-left:8px;" onclick="loadServerStats()">Refresh</button></h2>
+    <p style="color:var(--text-muted);font-size:10pt;">Live snapshot from the VM. Memory caps: the Java heap is configured at -Xmx450m (systemd unit); the VM itself has ~952 MiB total RAM.</p>
+    <div id="server-stats-content" style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:14px;">
+      <div>
+        <h3>Host memory</h3>
+        <div id="ss-host-mem" class="sim-tail" style="height:auto;max-height:none;padding:10px;">loading…</div>
+      </div>
+      <div>
+        <h3>JVM heap (cwo)</h3>
+        <div id="ss-jvm" class="sim-tail" style="height:auto;max-height:none;padding:10px;">loading…</div>
+      </div>
+      <div>
+        <h3>CPU / uptime</h3>
+        <div id="ss-cpu" class="sim-tail" style="height:auto;max-height:none;padding:10px;">loading…</div>
+      </div>
+      <div>
+        <h3>Games / database</h3>
+        <div id="ss-games" class="sim-tail" style="height:auto;max-height:none;padding:10px;">loading…</div>
+      </div>
+    </div>
+    <div style="margin-top:18px;padding:12px 14px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;font-size:10pt;color:var(--text-muted);">
+      <b style="color:var(--text);">Memory headroom:</b> the akka-http process is capped at 450 MiB heap. Each persisted game in HSQLDB is ~20 KiB on disk; only ACTIVE games (currently being joined / written to) live in JVM heap. Practical ceiling before OOM is ~1000 concurrent live games or ~10 GiB of write-history (HSQLDB grows linearly). The host has 952 MiB total with no swap — if cwo approaches -Xmx450m and another process spikes, the kernel may OOM-kill. Watch the "available" host-mem number; if it drops below ~150 MiB consistently, bump -Xmx or add swap.
+    </div>
   </div>
 
 </div>
@@ -355,6 +471,48 @@
 let SERVER = '';
 let TOKEN = '';
 let CURRENT_GAME = null;
+
+// 2026-06-02: Deep-link auto-jump. The admin-console submit-to-terminal payload
+// includes URLs like `cwo.freeddns.org/admin.html#game=42`. On page load we
+// parse `#game=<id>` out of location.hash and stash it; once the user signs in
+// and the games list renders (populateGames), tryDeepLinkJump() finds the
+// matching .game-row, scrolls it into view, briefly highlights it, and clicks
+// it to open the detail pane. The pending id is one-shot: cleared on first
+// successful jump OR on the first populateGames where no matching row exists
+// (to avoid replaying the jump on every Refresh). The URL hash is cleared at
+// the same moment so later in-page navigation never re-fires the jump.
+let PENDING_DEEP_LINK_GAME_ID = (function () {
+  try {
+    const m = (location.hash || '').match(/^#game=(\d+)$/);
+    return m ? m[1] : null;
+  } catch (_) { return null; }
+})();
+
+function tryDeepLinkJump() {
+  if (!PENDING_DEEP_LINK_GAME_ID) return;
+  const target = PENDING_DEEP_LINK_GAME_ID;
+  const row = document.querySelector(`.game-row[data-game-id="${target}"]`);
+  if (!row) {
+    // No matching row — could be an invalid id OR the game is hidden by the
+    // current filter set. We don't surface a UI error; we just give up after
+    // this populate, because re-firing on every Refresh would be surprising.
+    console.warn(`Deep-link #game=${target}: no matching row in current games list.`);
+    PENDING_DEEP_LINK_GAME_ID = null;
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (_) {}
+    return;
+  }
+  PENDING_DEEP_LINK_GAME_ID = null;
+  try { history.replaceState(null, '', location.pathname + location.search); } catch (_) {}
+  // Scroll the row into view, flash a highlight, and click it (selectGame
+  // handles the active class + mobile detail-pane switch).
+  try { row.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {}
+  const prevOutline = row.style.outline;
+  const prevShadow = row.style.boxShadow;
+  row.style.outline = '2px solid var(--accent)';
+  row.style.boxShadow = '0 0 0 4px rgba(47,129,247,0.35)';
+  setTimeout(() => { row.style.outline = prevOutline; row.style.boxShadow = prevShadow; }, 1600);
+  row.click();
+}
 
 // Mobile hamburger drawer — slides in from the left at <720px. The drawer +
 // overlay are mutually exclusive show states; closeNav() also fires when the
@@ -405,23 +563,30 @@ function fallbackCopy(text, done) {
 function getBuild() {
   return localStorage.getItem('cwo_admin_build') || 'library';
 }
+const BUILD_LABELS = {
+  library: { short: 'Library', full: 'Library at Celaeno' },
+  mnu:     { short: 'MNU',     full: 'More Neutral Units (MNU)' },
+  tt:      { short: 'TT',      full: 'TchoTcho (TT)' },
+  bb:      { short: 'BB',      full: 'Bubastis (BB)' },
+};
 function setBuild(name) {
-  if (name !== 'library' && name !== 'mnu') return;
+  if (!(name in BUILD_LABELS)) return;
   localStorage.setItem('cwo_admin_build', name);
   refreshBuildIndicator();
   // Re-render SimRunner header so the active build chip updates.
   const lbl = document.getElementById('sim-build-label');
-  if (lbl) lbl.textContent = (name === 'library' ? 'Library' : 'MNU');
+  if (lbl) lbl.textContent = BUILD_LABELS[name].short;
+  // Top-of-page persistent build indicator (always visible).
+  const topLbl = document.getElementById('top-build-label');
+  if (topLbl) topLbl.textContent = '[' + BUILD_LABELS[name].short + ']';
 }
 function refreshBuildIndicator() {
   const b = getBuild();
   const cur = document.getElementById('build-current');
-  if (cur) cur.textContent = (b === 'library' ? 'Library at Celaeno' : 'More Neutral Units (MNU)');
-  const libBtn = document.getElementById('build-btn-library');
-  const mnuBtn = document.getElementById('build-btn-mnu');
-  if (libBtn && mnuBtn) {
-    libBtn.classList.toggle('selected', b === 'library');
-    mnuBtn.classList.toggle('selected', b === 'mnu');
+  if (cur) cur.textContent = (BUILD_LABELS[b] || BUILD_LABELS.library).full;
+  for (const key of Object.keys(BUILD_LABELS)) {
+    const btn = document.getElementById('build-btn-' + key);
+    if (btn) btn.classList.toggle('selected', b === key);
   }
 }
 
@@ -690,10 +855,279 @@ function showErr(id, msg) {
 }
 
 function loadGames() {
+  // 2026-06-01: Clear replay-existence cache so each refresh re-probes /replays/<id>.html.
+  // If the user just queued a build, a refresh after a minute or two should
+  // surface the new replay link automatically.
+  REPLAY_EXISTS = {};
   fetch(`${SERVER}/admin/${TOKEN}/games`).then(r => r.text()).then(populateGames);
 }
 
+// ── Server Stats ─────────────────────────────────────────────────────
+function fmtBytes(n) {
+  n = Number(n);
+  if (!isFinite(n)) return '?';
+  if (n < 1024) return n + ' B';
+  if (n < 1024*1024) return (n/1024).toFixed(0) + ' KiB';
+  if (n < 1024*1024*1024) return (n/(1024*1024)).toFixed(1) + ' MiB';
+  return (n/(1024*1024*1024)).toFixed(2) + ' GiB';
+}
+function loadServerStats() {
+  ['ss-host-mem','ss-jvm','ss-cpu','ss-games'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.textContent = 'loading…';
+  });
+  fetch(`${SERVER}/admin/${TOKEN}/server-stats`).then(r => r.text()).then(text => {
+    const kv = {};
+    text.split('\n').forEach(line => {
+      const i = line.indexOf('=');
+      if (i > 0) kv[line.slice(0, i)] = line.slice(i + 1);
+    });
+    const memTotal = Number(kv.host_mem_total || 0);
+    const memUsed  = Number(kv.host_mem_used  || 0);
+    const memFree  = Number(kv.host_mem_free  || 0);
+    const memAvail = Number(kv.host_mem_avail || 0);
+    const usedPct  = memTotal > 0 ? (memUsed * 100 / memTotal).toFixed(1) : '?';
+    document.getElementById('ss-host-mem').innerHTML =
+      `Total:     ${fmtBytes(memTotal)}<br>` +
+      `Used:      ${fmtBytes(memUsed)}  (${usedPct}%)<br>` +
+      `Free:      ${fmtBytes(memFree)}<br>` +
+      `Available: ${fmtBytes(memAvail)}`;
+
+    const hMax  = Number(kv.jvm_heap_max  || 0);
+    const hUsed = Number(kv.jvm_heap_used || 0);
+    const hFree = Number(kv.jvm_heap_free || 0);
+    const hPct  = hMax > 0 ? (hUsed * 100 / hMax).toFixed(1) : '?';
+    document.getElementById('ss-jvm').innerHTML =
+      `Heap max:  ${fmtBytes(hMax)}<br>` +
+      `Heap used: ${fmtBytes(hUsed)}  (${hPct}%)<br>` +
+      `Heap free: ${fmtBytes(hFree)}`;
+
+    document.getElementById('ss-cpu').innerHTML =
+      `Cores:     ${kv.nproc || '?'}<br>` +
+      `Load avg:  ${kv.load_avg || '?'}<br>` +
+      `Uptime:    ${kv.uptime || '?'}`;
+
+    document.getElementById('ss-games').innerHTML =
+      `Total games:     ${kv.game_count || '?'}<br>` +
+      `Active (7d):     ${kv.active_games_7d || '?'}<br>` +
+      `DB on disk:      ${fmtBytes(kv.db_size_bytes || 0)}`;
+  }).catch(e => {
+    ['ss-host-mem','ss-jvm','ss-cpu','ss-games'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.textContent = 'error: ' + e;
+    });
+  });
+}
+
+// 2026-06-02: Replaced single-pill GAMES_FILTER with multi-axis filter pyramid.
+// Each filter is an independent checkbox; checked filters AND together (a game
+// must satisfy every checked group), groups OR within (e.g. player-count 3 OR 4).
+// Kept GAMES_FILTER (now unused at runtime) only as a fossil for backwards-compat
+// in any console snippets / old localStorage; nothing else reads it.
+let GAMES_FILTER = 'all';
+// Filter state read on demand from the checkbox elements in #filter-pyramid.
+// readFilters() returns a plain object for use in the row-visibility predicate.
+function readFilters() {
+  const g = id => !!(document.getElementById(id) && document.getElementById(id).checked);
+  return {
+    repYes:    g('flt-rep-yes'),
+    repNo:     g('flt-rep-no'),
+    errYes:    g('flt-err-yes'),
+    errNo:     g('flt-err-no'),
+    pc3:       g('flt-pc-3'),
+    pc4:       g('flt-pc-4'),
+    pc5:       g('flt-pc-5'),
+    allBots:   g('flt-allbots-yes'),
+    anyBots:   g('flt-anybots-yes'),
+    search:    (document.getElementById('games-search')?.value || '').trim().toLowerCase(),
+    sort:      document.getElementById('games-sort')?.value || 'default',
+  };
+}
+
+// Count of currently-active filter checkboxes (for the toolbar chip).
+function activeFilterCount() {
+  const f = readFilters();
+  let n = 0;
+  if (f.repYes) n++; if (f.repNo) n++;
+  if (f.errYes) n++; if (f.errNo) n++;
+  if (f.pc3) n++; if (f.pc4) n++; if (f.pc5) n++;
+  if (f.allBots) n++; if (f.anyBots) n++;
+  if (f.search) n++;
+  return n;
+}
+
+// Show / hide the filter pyramid panel. The toolbar icon shows the active count.
+function toggleFilterPyramid() {
+  const p = document.getElementById('filter-pyramid');
+  if (!p) return;
+  p.style.display = (p.style.display === 'none' ? 'block' : 'none');
+}
+
+function clearAllFilters() {
+  ['flt-rep-yes','flt-rep-no','flt-err-yes','flt-err-no',
+   'flt-pc-3','flt-pc-4','flt-pc-5','flt-allbots-yes','flt-anybots-yes']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.checked = false; });
+  const s = document.getElementById('games-search'); if (s) s.value = '';
+  const so = document.getElementById('games-sort'); if (so) so.value = 'default';
+  applyGamesSortSearch();
+}
+
+// Predicate: does this game row pass the current filter set?
+function gamePassesFilters(g, f) {
+  // Replay axis. Filter passes if either checkbox is off, or if the game's
+  // replay-existence (from REPLAY_EXISTS cache) matches the checked option.
+  // For unknown (probe pending), let it through so the user isn't blocked.
+  const hasReplay = REPLAY_EXISTS[g.id];
+  if (f.repYes && hasReplay !== true) return false;
+  if (f.repNo  && hasReplay === true) return false;
+  // Errored axis.
+  if (f.errYes && !g.errored) return false;
+  if (f.errNo  &&  g.errored) return false;
+  // Player count axis. If any of {3,4,5} checked, game must match one of them.
+  const pcChecked = f.pc3 || f.pc4 || f.pc5;
+  if (pcChecked) {
+    const ok = (f.pc3 && g.playerCount === 3) || (f.pc4 && g.playerCount === 4) || (f.pc5 && g.playerCount === 5);
+    if (!ok) return false;
+  }
+  // Bot axes.
+  // "all bots": every faction is a bot → botCount === playerCount AND playerCount>0
+  if (f.allBots && !(g.playerCount > 0 && g.botCount === g.playerCount)) return false;
+  // "any bots": at least one bot among factions.
+  if (f.anyBots && !(g.botCount > 0)) return false;
+  // Name search.
+  if (f.search && !String(g.name).toLowerCase().includes(f.search)) return false;
+  return true;
+}
+
+// Apply current sort + search + filter to the cached games list and re-render.
+// Called from every filter-pyramid checkbox onchange and from the sort dropdown.
+function applyGamesSortSearch() {
+  // Update the active-filter count chip.
+  const chip = document.getElementById('filter-active-count');
+  if (chip) {
+    const n = activeFilterCount();
+    chip.textContent = n > 0 ? `(${n})` : '';
+  }
+  if (LAST_GAMES_TEXT !== null) populateGames(LAST_GAMES_TEXT);
+}
+// Cache of game id → replay-existence (true/false). Filled lazily by HEAD probes;
+// reset on every loadGames() call so we re-check after replay-generation runs.
+let REPLAY_EXISTS = {};
+// 2026-06-01: Auto-error threshold. A non-completed game whose last log write
+// is older than this is inferred to have errored out (the engine crashed or
+// the game stalled). Bots tend to either finish in minutes or hard-crash; if
+// nothing has been written for 6 hours and the game isn't marked Completed,
+// it's almost certainly dead. We keep this generous to avoid false positives
+// on slow async games.
+const AUTO_ERROR_STALE_MS = 6 * 60 * 60 * 1000;
+
+// Heuristic: a game is "errored" when it isn't completed, has been written to
+// at least once (lastWriteMs > 0), and has gone stale beyond AUTO_ERROR_STALE_MS.
+// A manually-broken game ALSO counts as errored for the filter so the user can
+// pull up everything that needs attention from one filter pill.
+function isErrored(g) {
+  if (g.broken) return true;
+  if (g.completed) return false;
+  if (!g.lastWriteMs || g.lastWriteMs <= 0) return false;
+  return (Date.now() - g.lastWriteMs) > AUTO_ERROR_STALE_MS;
+}
+
+function setGamesFilter(name) {
+  GAMES_FILTER = name;
+  document.querySelectorAll('#games-filter-pills .filter-pill').forEach(p => {
+    p.classList.toggle('active', p.dataset.filter === name);
+  });
+  // Re-render with the cached games list (no refetch).
+  if (LAST_GAMES_TEXT !== null) populateGames(LAST_GAMES_TEXT);
+}
+
+// Cache the most recent raw games-list payload so filter pill clicks can
+// re-render without re-fetching. Set every populateGames() call.
+let LAST_GAMES_TEXT = null;
+
+// HEAD probe for a replay HTML at /replays/<gameid>.html. Updates REPLAY_EXISTS
+// and re-renders the row's replay UI when the answer comes back. Async/lazy.
+function probeReplay(gameId, rowElem) {
+  if (REPLAY_EXISTS[gameId] !== undefined) {
+    paintReplayCell(gameId, rowElem);
+    return;
+  }
+  // GET with Range:bytes=0-0 — akka-http's getFromDirectory honors Range so this
+  // costs ~1 byte over the wire AND akka-http doesn't auto-route HEAD requests
+  // (returns 405), so HEAD is not an option here.
+  fetch(`${SERVER}/replays/${gameId}.html`, { headers: { 'Range': 'bytes=0-0' } })
+    .then(r => { REPLAY_EXISTS[gameId] = (r.status === 200 || r.status === 206); paintReplayCell(gameId, rowElem); })
+    .catch(() => { REPLAY_EXISTS[gameId] = false; paintReplayCell(gameId, rowElem); });
+}
+
+// Render the replay cell (link vs Generate button vs "queued") into the row.
+function paintReplayCell(gameId, rowElem) {
+  if (!rowElem) rowElem = document.querySelector(`.game-row[data-game-id="${gameId}"]`);
+  if (!rowElem) return;
+  const cell = rowElem.querySelector('.replay-cell');
+  if (!cell) return;
+  const queued = REPLAY_QUEUED.has(String(gameId));
+  if (REPLAY_EXISTS[gameId]) {
+    cell.innerHTML = `<a class="replay-badge" href="${SERVER}/replays/${gameId}.html" target="_blank" onclick="event.stopPropagation();">▶ Replay</a>` +
+      `<button class="small" style="margin-top:4px;" onclick="event.stopPropagation(); requestReplay('${gameId}', this)">Regenerate</button>`;
+  } else if (queued) {
+    cell.innerHTML = `<span class="replay-pending">replay queued…</span>`;
+  } else {
+    cell.innerHTML = `<button class="small" onclick="event.stopPropagation(); requestReplay('${gameId}', this)">Generate replay</button>`;
+  }
+  // 2026-06-02: If a replay-axis filter is engaged in the new filter pyramid,
+  // recompute row visibility now that we know whether this game has a replay.
+  // (Other axes don't depend on async probes, so they're already settled by
+  // the initial gamePassesFilters() pass in populateGames.)
+  const f = readFilters();
+  if (f.repYes || f.repNo) {
+    const hasReplay = !!REPLAY_EXISTS[gameId];
+    let pass = true;
+    if (f.repYes && !hasReplay) pass = false;
+    if (f.repNo  &&  hasReplay) pass = false;
+    rowElem.style.display = pass ? '' : 'none';
+  }
+}
+
+// Set of game ids the user has just queued a replay for, so we show "queued…"
+// until the next page refresh resolves the actual HTML existence. Kept in
+// localStorage so a hard-refresh doesn't lose the in-flight state.
+const REPLAY_QUEUED = (() => {
+  try {
+    const raw = localStorage.getItem('cwo_admin_replay_queued') || '[]';
+    return new Set(JSON.parse(raw));
+  } catch (e) { return new Set(); }
+})();
+function persistReplayQueued() {
+  localStorage.setItem('cwo_admin_replay_queued', JSON.stringify(Array.from(REPLAY_QUEUED)));
+}
+
+// Submit a replay-build request via the existing claude-prompts queue. The
+// ticker picks this up and runs build-replay.py, which writes the HTML to the
+// server-accessible /opt/cwo/solo/replays/ dir. Async — the user can wait or
+// come back later; populateGames() re-probes existence on every refresh.
+function requestReplay(gameId, btn) {
+  const promptText = `ADMIN-GENERATE-REPLAY game_id=${gameId} — run /Users/gremus/My\\ Drive/Personal/Games/Cthulhu\\ Wars/Replay/build-replay.py for this game and scp the resulting HTML to oracle-cw-server:/opt/cwo/solo/replays/${gameId}.html so the admin console can link to it at /replays/${gameId}.html.`;
+  if (btn) { btn.disabled = true; btn.textContent = 'queuing…'; }
+  fetch(`${SERVER}/admin/${TOKEN}/claude-prompt`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: promptText,
+  }).then(r => {
+    if (!r.ok) {
+      alert(`Replay queue failed (HTTP ${r.status}).`);
+      if (btn) { btn.disabled = false; btn.textContent = 'Generate replay'; }
+      return;
+    }
+    REPLAY_QUEUED.add(String(gameId));
+    persistReplayQueued();
+    paintReplayCell(gameId, null);
+  }).catch(e => {
+    alert(`Replay queue network error: ${e.message || e}`);
+    if (btn) { btn.disabled = false; btn.textContent = 'Generate replay'; }
+  });
+}
+
 function populateGames(text) {
+  LAST_GAMES_TEXT = text;
   const list = document.getElementById('games-list');
   list.innerHTML = '';
   if (!text.trim()) {
@@ -709,6 +1143,8 @@ function populateGames(text) {
   const showBots = !!(document.getElementById('show-bots-cb') && document.getElementById('show-bots-cb').checked);
   const games = text.split('\n').filter(l => l).map(line => {
     const parts = line.split('\t');
+    // 2026-06-02: columns 7-10 are new (playerCount, botCount, hasFixResponse, startMs).
+    // Old server responses pad with 0 / '' so the indexing stays stable.
     return {
       id: parts[0],
       name: parts[1],
@@ -717,18 +1153,49 @@ function populateGames(text) {
       broken: (parts[4] || '0').trim() === '1',
       completed: (parts[5] || '0').trim() === '1',
       isBot: (parts[6] || '0').trim() === '1',
+      playerCount: parseInt(parts[7] || '0', 10),
+      botCount: parseInt(parts[8] || '0', 10),
+      hasFixResponse: (parts[9] || '0').trim() === '1',
+      startMs: parseInt(parts[10] || '0', 10),
     };
   }).filter(g => g.id).filter(g => showBots || !g.isBot);
+  // 2026-06-01: Auto-error inference. Pure client-side; no server change.
+  games.forEach(g => { g.errored = isErrored(g); });
   function groupKey(g) {
-    if (g.broken) return 0;
+    if (g.broken || g.errored) return 0;
     if (g.completed) return 2;
     return 1;
   }
-  games.sort((a, b) => groupKey(a) - groupKey(b) || a.lastWriteMs - b.lastWriteMs);
-  games.forEach(g => {
-    const { id, name, secret, lastWriteMs, broken, completed } = g;
+  // 2026-06-02: New sort dropdown. 'default' = legacy 3-bucket sort (status,
+  // then last activity). 'name' / 'start' / 'last' override that with simple
+  // single-key sorts. Start date is approximated via id (HSQLDB autoinc → id
+  // monotonically increases with creation), since the server doesn't track
+  // createdMs separately yet (Meta only carries lastWriteMs).
+  const f = readFilters();
+  if (f.sort === 'name') {
+    games.sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  } else if (f.sort === 'start') {
+    games.sort((a, b) => (parseInt(b.id, 10) || 0) - (parseInt(a.id, 10) || 0));
+  } else if (f.sort === 'last') {
+    games.sort((a, b) => (b.lastWriteMs || 0) - (a.lastWriteMs || 0));
+  } else {
+    games.sort((a, b) => groupKey(a) - groupKey(b) || a.lastWriteMs - b.lastWriteMs);
+  }
+  // 2026-06-02: Apply filter-pyramid predicates (replay/errored/playerCount/bots/search).
+  // gamePassesFilters is async-tolerant for the replay axis: if REPLAY_EXISTS for
+  // this game id is undefined (HEAD probe pending), the predicate lets the row
+  // through. paintReplayCell re-evaluates and hides the row when the answer
+  // arrives. This matches the previous single-pill behaviour.
+  const visible = games.filter(g => gamePassesFilters(g, f));
+  if (!visible.length) {
+    list.innerHTML = '<p class="empty">No games match the current filter.</p>';
+    return;
+  }
+  visible.forEach(g => {
+    const { id, name, secret, lastWriteMs, broken, completed, errored } = g;
     const classes = ['game-row'];
     if (broken) classes.push('broken');
+    else if (errored) classes.push('errored');
     if (completed) classes.push('completed');
     const row = document.createElement('div');
     row.className = classes.join(' ');
@@ -738,13 +1205,20 @@ function populateGames(text) {
     row.dataset.lastWriteMs = String(lastWriteMs);
     row.dataset.broken = broken ? '1' : '0';
     row.dataset.completed = completed ? '1' : '0';
+    row.dataset.errored = errored ? '1' : '0';
     const brokenLabel = broken ? '✖ Broken' : 'Mark broken';
     const brokenTitle = broken ? 'Click to clear the broken flag' : 'Click to mark this game as broken';
-    // Completed badge replaces the trailing meta text for finished games so
-    // they're visually distinct from active ones (in addition to being
-    // sorted to the bottom).
-    const statusLabel = completed
-      ? `<span class="completed-badge">Completed</span>`
+    // Status badge — completed > errored > nothing. Manual broken is already
+    // surfaced by the row border + broken-flag button, so no separate badge.
+    let statusLabel = '';
+    if (completed) statusLabel = `<span class="completed-badge">Completed</span>`;
+    else if (errored && !broken) statusLabel = `<span class="errored-badge" title="No activity for >6h on a non-completed game — likely crashed">⚠ Errored</span>`;
+    // Generate-replay button appears for completed OR errored/broken games
+    // (i.e. anything that's not actively in progress). For active games it'd
+    // be premature since the log isn't final.
+    const replayEligible = completed || broken || errored;
+    const replayCell = replayEligible
+      ? `<div class="replay-cell" style="font-size:9pt;">probing…</div>`
       : '';
     row.innerHTML =
       `<button class="broken-flag ${broken ? 'on' : ''}" title="${brokenTitle}" ` +
@@ -754,11 +1228,23 @@ function populateGames(text) {
         `<span class="game-meta">game id ${id} · ${inactivityLabel(lastWriteMs)}</span>` +
       `</div>` +
       `<div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">` +
+        replayCell +
         `<button class="small" style="background:#5a2222;border-color:#8a3030;color:#fff;" onclick="event.stopPropagation(); confirmDeleteGame('${id}','${esc(name).replace(/'/g, "\\'")}')">Delete</button>` +
       `</div>`;
     row.onclick = () => selectGame(row, id, name, secret);
     list.appendChild(row);
+    if (replayEligible) probeReplay(id, row);
+    // 2026-06-02: For replay-axis filters in the pyramid, hide rows that aren't
+    // eligible at all (active games can't have a replay yet by definition).
+    // Same gate as before, just keyed on the new filter checkboxes.
+    const filt = readFilters();
+    if ((filt.repYes || filt.repNo) && !replayEligible) {
+      row.style.display = 'none';
+    }
   });
+  // 2026-06-02: After rows are in the DOM, honor any pending #game=N deep
+  // link from location.hash. No-op when there is no pending id.
+  tryDeepLinkJump();
 }
 
 // Toggle the broken flag from the left-side list (no game selection required).
@@ -857,6 +1343,41 @@ function refreshDetail() {
     <p class="game-meta" style="margin:6px 0 12px 0;">${inactivityLabel(lastWriteMs || 0)}</p>
     <h3>Factions / Player links</h3>
     <div id="roles-list"><p class="empty">Loading...</p></div>
+
+    <!-- 2026-06-02: Submit-to-terminal + Fix response box. Per user spec
+         (2026-06-02 11:03 directive):
+           - "Error description" textarea + "Submit to terminal" button.
+             Posts a structured prompt (game URL + description + admin link)
+             to the same /tmp/claude-prompts.log queue Claude drains every tick.
+           - "Fix response" field below, populated from /admin/fix-response.
+             Scrollable; has a Clear button. Claude POSTs to /admin/fix-response
+             after triaging the game (its reply lands here).
+    -->
+    <h3>Submit broken game to Claude</h3>
+    <p style="color:#888;font-size:9pt;">Type an error description (optional), then Submit. Claude picks it up on the next ticker tick and posts a fix response below.</p>
+    <div class="notes-box">
+      <textarea id="error-description" rows="3" placeholder="Error description (optional)…"></textarea>
+    </div>
+    <p style="margin:6px 0;">
+      <button class="primary" onclick="submitGameToTerminal()">Submit to terminal</button>
+      <span id="submit-terminal-status" style="font-size:9pt;color:var(--text-muted);margin-left:8px;"></span>
+    </p>
+
+    <h3>Fix response
+      <button class="small" style="margin-left:8px;" onclick="refreshFixResponse()">Refresh</button>
+      <button class="small" style="margin-left:4px;" onclick="clearFixResponse()">Clear</button>
+    </h3>
+    <p style="color:#888;font-size:9pt;">Claude's reply / explanation lands here. Either from a Submit-to-terminal request OR from Claude's proactive broken-game diagnosis polling (Phase A, 2026-06-03). When a proactive proposal is here, use Proceed / Discuss / Dismiss below to direct Claude's next action.</p>
+    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:8px 10px;">
+      <pre id="fix-response" class="sim-tail" style="height:24vh;max-height:30vh;">loading…</pre>
+    </div>
+    <p style="margin:8px 0;">
+      <button class="primary" onclick="sendFixAction('proceed')" title="Claude implements the proposed fix end-to-end, with full doc fold-in (TT Parallel Fixes Guide entry, neutral units guide update, rollback log entry).">Proceed</button>
+      <button class="primary" style="margin-left:6px;" onclick="sendFixAction('discuss')" title="Sends proposal to library tasks docx as an Open bullet so we can discuss before any code lands.">Discuss</button>
+      <button class="small" style="margin-left:6px;" onclick="sendFixAction('dismiss')" title="Marks this game's proposal as dismissed; Claude won't re-analyze it.">Dismiss</button>
+      <span id="fix-action-status" style="font-size:9pt;color:var(--text-muted);margin-left:8px;"></span>
+    </p>
+
     <h3>Notes <span id="notes-status" class="saved-tag" style="display:none;">saved</span></h3>
     <p style="color:#888;font-size:9pt;">Free-text admin notes for this game. Saves automatically a moment after you stop typing. Not part of the game state — only visible in this admin console.</p>
     <div class="notes-box"><textarea id="game-notes" oninput="onNotesInput()" placeholder="Notes about this game..."></textarea></div>
@@ -872,8 +1393,105 @@ function refreshDetail() {
   `;
   fetch(`${SERVER}/admin/${TOKEN}/roles/${id}`).then(r => r.text()).then(populateRoles);
   fetch(`${SERVER}/admin/${TOKEN}/log/${id}`).then(r => r.text()).then(t => { LAST_LOG_RAW = t; populateLog(t); populateFactionState(t); });
+  // 2026-06-02: also pull the per-game fix response into the new scrollable field.
+  refreshFixResponse();
   fetch(`${SERVER}/admin/${TOKEN}/annotation/${id}`).then(r => r.text()).then(populateAnnotation);
   renderStash();
+}
+
+// ========== 2026-06-02: Submit broken game to terminal + Fix response ==========
+// Wires the new "Submit to terminal" button and the per-game fix-response field.
+// Payload format (verbatim user spec):
+//
+//   Error in this game: <game URL>
+//   Error description (if any): <text>
+//   Fix. Console errors and game log both can be found at <admin link>
+//
+// The admin link points at the admin console with the game pre-selected via
+// the URL hash, so Claude (or the user later) can jump straight to the game's
+// log and JVM-error tail. The whole thing is appended to the existing
+// /tmp/claude-prompts.log queue so the ticker picks it up on the next tick.
+function submitGameToTerminal() {
+  if (!CURRENT_GAME) return;
+  const desc = (document.getElementById('error-description')?.value || '').trim();
+  const status = document.getElementById('submit-terminal-status');
+  const build = getBuild();
+  const gameUrl = `${SERVER}/play/${CURRENT_GAME.masterSecret}`;
+  const adminUrl = `${SERVER}/admin.html#game=${CURRENT_GAME.id}`;
+  // build= tag lets the right Claude instance pick up the prompt:
+  //   library/mnu → this Mac's Claude (gremus@local)
+  //   tt/bb       → other Mac's Claude
+  const body =
+    `ADMIN-CONSOLE-ERROR build=${build} game_id=${CURRENT_GAME.id}\n` +
+    `Error in this game: ${gameUrl}\n` +
+    `Error description (if any): ${desc}\n` +
+    `Fix. Console errors and game log both can be found at ${adminUrl}\n`;
+  if (status) { status.textContent = 'Sending…'; status.style.color = 'var(--text-muted)'; }
+  fetch(`${SERVER}/admin/${TOKEN}/claude-prompt`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body,
+  }).then(r => {
+    if (!r.ok) {
+      if (status) { status.textContent = `Submit failed (HTTP ${r.status}).`; status.style.color = 'var(--danger)'; }
+      return;
+    }
+    if (status) { status.textContent = 'Queued. Claude picks it up on the next tick.'; status.style.color = 'var(--success)'; }
+    // Refresh the queue panel in the Claude Terminal section if it's loaded.
+    if (typeof refreshClaudeQueue === 'function') refreshClaudeQueue();
+  }).catch(e => {
+    if (status) { status.textContent = `Network error: ${e.message || e}`; status.style.color = 'var(--danger)'; }
+  });
+}
+
+function refreshFixResponse() {
+  if (!CURRENT_GAME) return;
+  const el = document.getElementById('fix-response');
+  if (!el) return;
+  fetch(`${SERVER}/admin/${TOKEN}/fix-response/${CURRENT_GAME.id}`)
+    .then(r => r.text())
+    .then(t => { el.textContent = t || '(no fix response yet)'; })
+    .catch(e => { el.textContent = `error: ${e.message || e}`; });
+}
+
+function clearFixResponse() {
+  if (!CURRENT_GAME) return;
+  if (!confirm('Clear the fix response for this game? The text will be wiped from the server-side store.')) return;
+  fetch(`${SERVER}/admin/${TOKEN}/fix-response/${CURRENT_GAME.id}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: '',
+  }).then(r => {
+    if (!r.ok) { alert(`Clear failed (HTTP ${r.status}).`); return; }
+    refreshFixResponse();
+  });
+}
+
+// Proceed / Discuss / Dismiss on a proactive fix proposal. POSTs to
+// /admin/$TOK/fix-action/$ID with action=proceed|discuss|dismiss; Claude reads
+// the action on the next tick drain and either implements the fix (with doc
+// fold-in), opens a discussion bullet in the library tasks docx, or marks the
+// proposal dismissed.
+function sendFixAction(action) {
+  if (!CURRENT_GAME) return;
+  const allowed = ['proceed', 'discuss', 'dismiss'];
+  if (!allowed.includes(action)) return;
+  const status = document.getElementById('fix-action-status');
+  if (status) { status.textContent = `Sending ${action}…`; status.style.color = 'var(--text-muted)'; }
+  fetch(`${SERVER}/admin/${TOKEN}/fix-action/${CURRENT_GAME.id}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: action,
+  }).then(r => {
+    if (!r.ok) {
+      if (status) { status.textContent = `${action} failed (HTTP ${r.status}).`; status.style.color = 'var(--danger)'; }
+      return;
+    }
+    if (status) { status.textContent = `Queued ${action}. Claude picks it up next tick.`; status.style.color = 'var(--success)'; }
+    refreshFixResponse();
+  }).catch(e => {
+    if (status) { status.textContent = `Network error: ${e.message || e}`; status.style.color = 'var(--danger)'; }
+  });
 }
 
 // Populate the broken checkbox + notes textarea from the annotation endpoint.

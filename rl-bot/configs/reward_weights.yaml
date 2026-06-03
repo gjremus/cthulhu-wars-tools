@@ -1,0 +1,65 @@
+# Default reward weights for RL training, verbatim from User Vision doc 2026-06-03.
+# Per-faction overrides live in faction_overrides/<faction>.yaml.
+# All weights documented in My Drive/.../admin/Reinforced Learning Bot/RL Bot — User Vision & Requests.docx.
+
+defaults:
+  # Terminal rewards
+  win: 40
+  # NOTE: lose is implicit (no reward, plus per-step penalties accumulate)
+
+  # Per-step shaping rewards
+  per_doom: 1.0
+  per_es: 1.66
+  per_power_at_ap_start: 0.4
+  controlled_gate_at_ap_start: 0.8
+  controlled_gate_at_ap_end: 1.0
+
+  # SB rewards
+  per_sb_unlocked: 3.0
+  all_six_sbs_bonus: 5.0
+
+  # Faction GOO
+  awaken_faction_goo: 2.0
+  # Lose faction GOO: (current power cost) / -4. Computed at runtime.
+  lose_faction_goo_divisor: -4
+
+  # Unit rewards (kind-level defaults; per-unit overrides allowed in faction config)
+  gain_cultist: 0.2
+  gain_monster: 0.2
+  gain_terror: 0.2
+  lose_cultist: -0.2
+  lose_monster: -0.2
+  lose_terror: -0.2
+
+  # iGOO + neutral rewards
+  awaken_igoo: 0.8
+  take_neutral_monster_loyalty_card: 2.0
+  take_neutral_terror_loyalty_card: 2.8
+  # Lose iGOO: (current power cost) / -4. Computed at runtime.
+  lose_igoo_divisor: -4
+  lose_neutral_monster: -0.2
+  lose_neutral_terror: -0.2
+
+  # Ritual scoring — calculated, not fixed.
+  # Formula (placeholder, revisit during FB dry run):
+  #   score = projected_doom_gain + es_gain - 0.4 * power_spent + 0.4 * next_ap_starting_power
+  ritual_formula:
+    coef_projected_doom_gain: 1.0
+    coef_es_gain: 1.0
+    coef_power_spent: -0.4
+    coef_next_ap_starting_power: 0.4
+
+# Per-unit-type overrides go here (optional). Default to defaults.gain_<kind> / lose_<kind>.
+# Example:
+#   per_unit:
+#     SothothHound:
+#       gain: 0.5
+#       lose: -0.5
+per_unit: {}
+
+# Per-SB overrides go here (optional). Default to defaults.per_sb_unlocked (3.0).
+# Example:
+#   per_sb:
+#     Writhe:
+#       weight: 5.0
+per_sb: {}

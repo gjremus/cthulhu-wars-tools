@@ -1,0 +1,18 @@
+# Per-faction training-done bars from User Vision doc 2026-06-03.
+# Rule: in a field of N factions, win rate within 5% of (1/N).
+#   3p: 33.3% ± 5% (28.3% – 38.3%)
+#   4p: 25.0% ± 5% (20% – 30%)
+#   5p: 20.0% ± 5% (15% – 25%)
+# Evaluated against current production bot field.
+
+defaults:
+  bar_3p: { target: 0.333, tolerance: 0.05 }
+  bar_4p: { target: 0.250, tolerance: 0.05 }
+  bar_5p: { target: 0.200, tolerance: 0.05 }
+  eval_games_per_field: 200   # play 200 games per player count to assess
+
+# Per-faction overrides go here.
+# Example:
+#   FB:
+#     bar_3p: { target: 0.40, tolerance: 0.05 }  # stretch target for FB since it has Writhe
+per_faction: {}

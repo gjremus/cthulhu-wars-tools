@@ -119,6 +119,32 @@ object CthulhuWarsOnline {
 
         val botGames = TableQuery[BotGames]
 
+        // FixResponse: holds Claude's diagnosis + proposed fix for a broken
+        // game, plus the user's directive (proceed/discuss/dismiss/null) on
+        // that proposal. Phase A/B of the proactive broken-game pipeline
+        // (2026-06-03). One row per game; the row exists once Claude posts a
+        // proposal and stays until the user clears it.
+        //
+        // responseText = Claude's diagnosis + proposed fix (free text, structured
+        //                with [STATUS:...] markers).
+        // userAction   = "proceed" | "discuss" | "dismiss" | "" (empty means
+        //                Claude posted a proposal, user hasn't decided yet).
+        // updatedMs    = last server-side touch (set on every POST).
+        //
+        // Column names avoid HSQLDB reserved words ("response" and "action"
+        // are both reserved per HSQLDB; using ...Text and userAction instead).
+        case class FixResponse(gameId : Int, responseText : String, userAction : String, updatedMs : Long)
+
+        class FixResponses(tag : Tag) extends Table[FixResponse](tag, "FixResponse") {
+            def gameId = column[Int]("gameId", O.PrimaryKey)
+            def responseText = column[String]("responseText")
+            def userAction = column[String]("userAction")
+            def updatedMs = column[Long]("updatedMs")
+            def * = (gameId, responseText, userAction, updatedMs).mapTo[FixResponse]
+        }
+
+        val fixResponses = TableQuery[FixResponses]
+
         val db = Database.forURL("jdbc:hsqldb:file:" + database, driver="org.hsqldb.jdbcDriver")
 
         object q {
@@ -155,6 +181,16 @@ object CthulhuWarsOnline {
         }
         catch {
             case e : Exception => println("AdminAnnotation table init: " + e.getMessage)
+        }
+
+        // Same pattern for FixResponse — Phase A/B of proactive broken-game
+        // pipeline. Idempotent boot-time create.
+        try {
+            import slick.jdbc.HsqldbProfile.api.actionBasedSQLInterpolation
+            q(sqlu"""CREATE TABLE IF NOT EXISTS "FixResponse" ("gameId" INTEGER PRIMARY KEY, "responseText" LONGVARCHAR NOT NULL, "userAction" VARCHAR(16) NOT NULL, "updatedMs" BIGINT NOT NULL)""")
+        }
+        catch {
+            case e : Exception => println("FixResponse table init: " + e.getMessage)
         }
 
         // BotGame registry — same idempotent CREATE IF NOT EXISTS pattern.
@@ -462,6 +498,10 @@ object CthulhuWarsOnline {
                         id -> (n > 0)
                     }.toMap
                     val botFlagged = q(botGames.map(_.gameId).result).toSet
+                    // FixResponse rows: games where Claude has posted a proactive
+                    // proposal (Phase A/B 2026-06-03). Emitted as col 9
+                    // (hasFixResponse) so admin.html can filter accordingly.
+                    val hasFixResp = q(fixResponses.map(_.gameId).result).toSet
                     // Count humans + bots per game by reading the options line (log
                     // idx 2) which contains the roster like "SL:Human/OW:Bot/...".
                     // The admin UI uses this to bucket games into SimRun (all bots),
@@ -478,7 +518,8 @@ object CthulhuWarsOnline {
                         val c = if (completed.getOrElse(id, false)) "1" else "0"
                         val ib = if (botFlagged.contains(id)) "1" else "0"
                         val (h, bt) = rosterCounts.getOrElse(id, (0, 0))
-                        s"$id\t$name\t$secret\t${lastMs.getOrElse(0L)}\t$b\t$c\t$ib\t$h\t$bt"
+                        val hfr = if (hasFixResp.contains(id)) "1" else "0"
+                        s"$id\t$name\t$secret\t${lastMs.getOrElse(0L)}\t$b\t$c\t$ib\t$h\t$bt\t$hfr"
                     }.mkString("\n"))
                 }
             } ~
@@ -520,6 +561,80 @@ object CthulhuWarsOnline {
                             complete(StatusCodes.Accepted)
                         }
                     }
+                }
+            } ~
+            // ===========================================================
+            // FixResponse endpoints — Phase A/B proactive broken-game pipeline.
+            // GET /admin/<t>/fix-response/<id>   → returns response text
+            // POST /admin/<t>/fix-response/<id>  → set response text (empty body clears row; resets action to "")
+            // POST /admin/<t>/fix-action/<id>    → record user button click (body = proceed|discuss|dismiss)
+            // GET /admin/<t>/fix-actions-pending → list game IDs with action set
+            // ===========================================================
+            (get & path("admin" / Segment / "fix-response" / IntNumber)) { (token, gameId) =>
+                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
+                else {
+                    val row = q(fixResponses.filter(_.gameId === gameId).result.headOption)
+                    txt(row.map(_.responseText).getOrElse(""))
+                }
+            } ~
+            (post & path("admin" / Segment / "fix-response" / IntNumber)) { (token, gameId) =>
+                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
+                else {
+                    decodeRequest {
+                        entity(as[String]) { body =>
+                            val now = System.currentTimeMillis()
+                            if (body.isEmpty) {
+                                // Empty body → user clicked Clear; remove the row entirely.
+                                q(fixResponses.filter(_.gameId === gameId).delete)
+                            } else {
+                                // Upsert: delete + insert (Slick doesn't have a built-in
+                                // upsert on HSQLDB; this pattern matches AdminAnnotation).
+                                // Reset userAction to "" since a new proposal supersedes any
+                                // prior user decision.
+                                q(
+                                    fixResponses.filter(_.gameId === gameId).delete,
+                                    fixResponses += FixResponse(gameId, body, "", now)
+                                )
+                            }
+                            complete(StatusCodes.Accepted)
+                        }
+                    }
+                }
+            } ~
+            (post & path("admin" / Segment / "fix-action" / IntNumber)) { (token, gameId) =>
+                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
+                else {
+                    decodeRequest {
+                        entity(as[String]) { body =>
+                            val act = body.trim.toLowerCase
+                            val allowed = Set("proceed", "discuss", "dismiss")
+                            if (!allowed.contains(act)) {
+                                complete(StatusCodes.BadRequest -> s"action must be one of ${allowed.mkString(",")}; got '$act'")
+                            } else {
+                                val existing = q(fixResponses.filter(_.gameId === gameId).result.headOption)
+                                existing match {
+                                    case Some(row) =>
+                                        val now = System.currentTimeMillis()
+                                        q(
+                                            fixResponses.filter(_.gameId === gameId).delete,
+                                            fixResponses += row.copy(userAction = act, updatedMs = now)
+                                        )
+                                        complete(StatusCodes.Accepted)
+                                    case None =>
+                                        // Can't act on a proposal that doesn't exist.
+                                        complete(StatusCodes.NotFound -> "no fix-response for this game; nothing to action")
+                                }
+                            }
+                        }
+                    }
+                }
+            } ~
+            (get & path("admin" / Segment / "fix-actions-pending")) { token =>
+                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
+                else {
+                    // TSV: gameId, userAction, updatedMs. Only rows where userAction is set.
+                    val rows = q(fixResponses.filter(_.userAction =!= "").result)
+                    txt(rows.map(r => s"${r.gameId}\t${r.userAction}\t${r.updatedMs}").mkString("\n"))
                 }
             } ~
             (get & path("admin" / Segment / "roles" / IntNumber)) { (token, gameId) =>
@@ -757,6 +872,8 @@ object CthulhuWarsOnline {
                     val jar = buildSel match {
                         case "library" => "/opt/cwo/server/online-sim.jar"
                         case "mnu"     => "/opt/cwo/server/online-sim-mnu.jar"
+                        case "tt"      => "/opt/cwo/server/online-sim-tt.jar"
+                        case "bb"      => "/opt/cwo/server/online-sim-bb.jar"
                         case _         => ""
                     }
                     val factions = factionsStr.getOrElse("").split(",").map(_.trim).filter(_.nonEmpty).toList
@@ -765,7 +882,7 @@ object CthulhuWarsOnline {
                     val games = gamesOpt.getOrElse(30).max(1).min(2000)
                     val players = playersOpt.getOrElse(4).max(2).min(11)
 
-                    if (jar.isEmpty) complete(StatusCodes.BadRequest -> s"bad build (must be 'library' or 'mnu'); got $buildSel")
+                    if (jar.isEmpty) complete(StatusCodes.BadRequest -> s"bad build (must be 'library', 'mnu', 'tt', or 'bb'); got $buildSel")
                     else if (factions.exists(!factionCodes.contains(_))) complete(StatusCodes.BadRequest -> ("bad faction code: " + factions.filterNot(factionCodes).mkString(",")))
                     else if (opts.exists(!optCodes.contains(_))) complete(StatusCodes.BadRequest -> ("bad opt: " + opts.filterNot(optCodes).mkString(",")))
                     else if (maps.exists(!mapCodes.contains(_))) complete(StatusCodes.BadRequest -> ("bad map: " + maps.filterNot(mapCodes).mkString(",")))
