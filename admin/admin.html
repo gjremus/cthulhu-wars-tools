@@ -1370,13 +1370,22 @@ function refreshDetail() {
              Scrollable; has a Clear button. Claude POSTs to /admin/fix-response
              after triaging the game (its reply lands here).
     -->
+    <h3>Browser console errors (auto-captured)
+      <button class="small" style="margin-left:8px;" onclick="refreshConsoleErrors()">Refresh</button>
+      <button class="small" style="margin-left:4px;" onclick="clearConsoleErrors()">Clear</button>
+    </h3>
+    <p style="color:#888;font-size:9pt;">Auto-captured by the /play page (window.onerror, unhandled promise rejection, console.error). Most recent first. Auto-included in the Submit-broken-game prompt below.</p>
+    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:8px 10px;">
+      <pre id="console-errors-feed" class="sim-tail" style="height:18vh;max-height:24vh;">loading…</pre>
+    </div>
+
     <h3>Submit broken game to Claude</h3>
-    <p style="color:#888;font-size:9pt;">Type an error description (optional) + optionally paste the browser console output from the crashed /play page (cmd-option-J on Chrome/Safari for Mac), then Submit. Claude picks it up on the next ticker tick and posts a fix response below.</p>
+    <p style="color:#888;font-size:9pt;">Type an error description (optional). The auto-captured browser console errors above (if any) are folded into the submission automatically; an extra textarea below is available for anything DevTools shows that didn't get auto-captured. Claude picks it up on the next ticker tick and posts a fix response.</p>
     <div class="notes-box">
       <textarea id="error-description" rows="3" placeholder="Error description (optional)…"></textarea>
     </div>
     <div class="notes-box" style="margin-top:6px;">
-      <textarea id="console-output" rows="4" placeholder="Browser console output (optional) — open DevTools on the crashed /play tab and paste window.onerror / unhandled-rejection / console.error lines here…"></textarea>
+      <textarea id="console-output" rows="3" placeholder="Extra console output (optional — auto-captured errors above are already included)…"></textarea>
     </div>
     <p style="margin:6px 0;">
       <button class="primary" onclick="submitGameToTerminal()">Submit to terminal</button>
@@ -1415,6 +1424,8 @@ function refreshDetail() {
   fetch(`${SERVER}/admin/${TOKEN}/log/${id}`).then(r => r.text()).then(t => { LAST_LOG_RAW = t; populateLog(t); populateFactionState(t); });
   // 2026-06-02: also pull the per-game fix response into the new scrollable field.
   refreshFixResponse();
+  // 2026-06-03 21:25: pull auto-captured browser console errors into the new feed.
+  refreshConsoleErrors();
   fetch(`${SERVER}/admin/${TOKEN}/annotation/${id}`).then(r => r.text()).then(populateAnnotation);
   renderStash();
 }
@@ -1435,22 +1446,40 @@ function submitGameToTerminal() {
   if (!CURRENT_GAME) return;
   const desc = (document.getElementById('error-description')?.value || '').trim();
   const cons = (document.getElementById('console-output')?.value || '').trim();
+  // 2026-06-03 21:25: also fetch auto-captured console errors and fold them
+  // into the prompt body. We do this synchronously inline so the submission
+  // body is complete on the first POST (no second tick needed).
   const status = document.getElementById('submit-terminal-status');
   const build = getBuild();
   const gameUrl = `${SERVER}/play/${CURRENT_GAME.masterSecret}`;
   const adminUrl = `${SERVER}/admin.html#game=${CURRENT_GAME.id}`;
-  // build= tag lets the right Claude instance pick up the prompt:
-  //   library/mnu → this Mac's Claude (gremus@local)
-  //   tt/bb       → other Mac's Claude
-  // 2026-06-03 19:25: also include the user-pasted browser console output
-  // when present, per BB Claude request — gives the receiving ticker the
-  // real JS stack trace from tick 1 instead of forcing defensive guards.
-  const body =
-    `ADMIN-CONSOLE-ERROR build=${build} game_id=${CURRENT_GAME.id}\n` +
-    `Error in this game: ${gameUrl}\n` +
-    `Error description (if any): ${desc}\n` +
-    (cons ? `Browser console output:\n${cons}\n\n` : '') +
-    `Fix. Game log: ${adminUrl}\n`;
+  if (status) { status.textContent = 'Sending…'; status.style.color = 'var(--text-muted)'; }
+  // First fetch the auto-captured stored errors, then build the full body, then submit.
+  fetch(`${SERVER}/admin/${TOKEN}/console-errors/${CURRENT_GAME.id}`)
+    .then(r => r.ok ? r.text() : '')
+    .catch(() => '')
+    .then(autoCaptured => {
+      const auto = decodeConsoleErrorsTsv(autoCaptured);
+      const body =
+        `ADMIN-CONSOLE-ERROR build=${build} game_id=${CURRENT_GAME.id}\n` +
+        `Error in this game: ${gameUrl}\n` +
+        `Error description (if any): ${desc}\n` +
+        (auto ? `Auto-captured browser console errors (most recent first):\n${auto}\n\n` : '') +
+        (cons ? `Extra console output (user-pasted):\n${cons}\n\n` : '') +
+        `Fix. Game log: ${adminUrl}\n`;
+      return sendClaudePromptBody(body);
+    })
+    .then(res => {
+      if (!res || !res.ok) {
+        if (status) { status.textContent = `Submit failed (HTTP ${res ? res.status : '?'}).`; status.style.color = 'var(--danger)'; }
+        return;
+      }
+      if (status) { status.textContent = 'Queued. Claude picks it up on the next tick.'; status.style.color = 'var(--success)'; }
+      if (typeof refreshClaudeQueue === 'function') refreshClaudeQueue();
+    })
+    .catch(e => {
+      if (status) { status.textContent = `Network error: ${e.message || e}`; status.style.color = 'var(--danger)'; }
+    });
   if (status) { status.textContent = 'Sending…'; status.style.color = 'var(--text-muted)'; }
   fetch(`${SERVER}/admin/${TOKEN}/claude-prompt`, {
     method: 'POST',
@@ -1466,6 +1495,54 @@ function submitGameToTerminal() {
     if (typeof refreshClaudeQueue === 'function') refreshClaudeQueue();
   }).catch(e => {
     if (status) { status.textContent = `Network error: ${e.message || e}`; status.style.color = 'var(--danger)'; }
+  });
+}
+
+// Helpers for the new console-capture pipeline.
+// TSV from /admin/$TOK/console-errors/$ID is "capturedMs\tpayload" per row,
+// most-recent first; payload has \n and \t backslash-escaped. Decode for display
+// and prefix each row with a human timestamp.
+function decodeConsoleErrorsTsv(text) {
+  if (!text || !text.trim()) return '';
+  const out = [];
+  for (const line of text.split('\n')) {
+    if (!line.trim()) continue;
+    const tab = line.indexOf('\t');
+    if (tab < 0) continue;
+    const ts = parseInt(line.substring(0, tab), 10);
+    let payload = line.substring(tab + 1);
+    // Unescape \\, \n, \t.
+    payload = payload.replace(/\\t/g, '\t').replace(/\\n/g, '\n').replace(/\\\\/g, '\\');
+    const stamp = isNaN(ts) ? '?' : new Date(ts).toISOString();
+    out.push(`[${stamp}]\n${payload}`);
+  }
+  return out.join('\n---\n');
+}
+
+function refreshConsoleErrors() {
+  if (!CURRENT_GAME) return;
+  const el = document.getElementById('console-errors-feed');
+  if (!el) return;
+  fetch(`${SERVER}/admin/${TOKEN}/console-errors/${CURRENT_GAME.id}`)
+    .then(r => r.text())
+    .then(t => { el.textContent = decodeConsoleErrorsTsv(t) || '(none captured yet)'; })
+    .catch(e => { el.textContent = `error: ${e.message || e}`; });
+}
+
+function clearConsoleErrors() {
+  if (!CURRENT_GAME) return;
+  if (!confirm('Clear all auto-captured console errors for this game? The /play page will start capturing fresh after this.')) return;
+  fetch(`${SERVER}/admin/${TOKEN}/console-errors-clear/${CURRENT_GAME.id}`, { method: 'POST' })
+    .then(r => { if (!r.ok) alert(`Clear failed (HTTP ${r.status}).`); refreshConsoleErrors(); });
+}
+
+// Shared body sender used by both the legacy textbox submit (Claude Terminal
+// section) and the new auto-fold-in submitGameToTerminal flow.
+function sendClaudePromptBody(body) {
+  return fetch(`${SERVER}/admin/${TOKEN}/claude-prompt`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body,
   });
 }
 
