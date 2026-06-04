@@ -1371,9 +1371,12 @@ function refreshDetail() {
              after triaging the game (its reply lands here).
     -->
     <h3>Submit broken game to Claude</h3>
-    <p style="color:#888;font-size:9pt;">Type an error description (optional), then Submit. Claude picks it up on the next ticker tick and posts a fix response below.</p>
+    <p style="color:#888;font-size:9pt;">Type an error description (optional) + optionally paste the browser console output from the crashed /play page (cmd-option-J on Chrome/Safari for Mac), then Submit. Claude picks it up on the next ticker tick and posts a fix response below.</p>
     <div class="notes-box">
       <textarea id="error-description" rows="3" placeholder="Error description (optional)…"></textarea>
+    </div>
+    <div class="notes-box" style="margin-top:6px;">
+      <textarea id="console-output" rows="4" placeholder="Browser console output (optional) — open DevTools on the crashed /play tab and paste window.onerror / unhandled-rejection / console.error lines here…"></textarea>
     </div>
     <p style="margin:6px 0;">
       <button class="primary" onclick="submitGameToTerminal()">Submit to terminal</button>
@@ -1431,6 +1434,7 @@ function refreshDetail() {
 function submitGameToTerminal() {
   if (!CURRENT_GAME) return;
   const desc = (document.getElementById('error-description')?.value || '').trim();
+  const cons = (document.getElementById('console-output')?.value || '').trim();
   const status = document.getElementById('submit-terminal-status');
   const build = getBuild();
   const gameUrl = `${SERVER}/play/${CURRENT_GAME.masterSecret}`;
@@ -1438,11 +1442,15 @@ function submitGameToTerminal() {
   // build= tag lets the right Claude instance pick up the prompt:
   //   library/mnu → this Mac's Claude (gremus@local)
   //   tt/bb       → other Mac's Claude
+  // 2026-06-03 19:25: also include the user-pasted browser console output
+  // when present, per BB Claude request — gives the receiving ticker the
+  // real JS stack trace from tick 1 instead of forcing defensive guards.
   const body =
     `ADMIN-CONSOLE-ERROR build=${build} game_id=${CURRENT_GAME.id}\n` +
     `Error in this game: ${gameUrl}\n` +
     `Error description (if any): ${desc}\n` +
-    `Fix. Console errors and game log both can be found at ${adminUrl}\n`;
+    (cons ? `Browser console output:\n${cons}\n\n` : '') +
+    `Fix. Game log: ${adminUrl}\n`;
   if (status) { status.textContent = 'Sending…'; status.style.color = 'var(--text-muted)'; }
   fetch(`${SERVER}/admin/${TOKEN}/claude-prompt`, {
     method: 'POST',
