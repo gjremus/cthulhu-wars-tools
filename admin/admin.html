@@ -332,6 +332,17 @@
           <span style="color:var(--text-muted);font-size:8.5pt;">Checked filters AND together. Within a group (e.g. player count 3 + 4), an OR.</span>
         </div>
       </div>
+      <!-- 2026-06-04: RL-tuning bulk toolbar. Per-row checkboxes only render on
+           finished library/mnu rows; "Select all" picks every visible eligible
+           row. Bulk submit POSTs to /admin/<t>/submit-for-rl-tuning. -->
+      <div id="rl-bulk-toolbar" style="display:flex;gap:8px;align-items:center;margin:0 0 8px;font-size:9pt;color:var(--text-muted);">
+        <label class="sim-checkbox" style="margin:0;">
+          <input type="checkbox" id="rl-select-all" onchange="toggleAllRLSelection(this)" />
+          Select all eligible (finished library/mnu)
+        </label>
+        <button class="small" onclick="submitSelectedToRL()" id="rl-bulk-submit-btn">Submit selected to RL tuning</button>
+        <span id="rl-bulk-status" style="font-size:9pt;"></span>
+      </div>
       <div id="games-list"></div>
     </div>
 
@@ -405,6 +416,10 @@
       <button id="build-btn-bb" class="build-card" onclick="setBuild('bb')">
         <div style="font-size:13pt;font-weight:600;margin-bottom:4px;">Bubastis (BB)</div>
         <div style="font-size:9pt;color:var(--text-muted);">Beta build · served at <code>cwo.freeddns.org/BB/</code> <a href="https://cwo.freeddns.org/BB/" target="_blank" rel="noopener" onclick="event.stopPropagation();">↗</a></div>
+      </button>
+      <button id="build-btn-hb" class="build-card" onclick="setBuild('hb')">
+        <div style="font-size:13pt;font-weight:600;margin-bottom:4px;">Homebrew (HB)</div>
+        <div style="font-size:9pt;color:var(--text-muted);">Beta build · served at <code>cwo.freeddns.org/HB/</code> <a href="https://cwo.freeddns.org/HB/" target="_blank" rel="noopener" onclick="event.stopPropagation();">↗</a></div>
       </button>
     </div>
 
@@ -568,6 +583,7 @@ const BUILD_LABELS = {
   mnu:     { short: 'MNU',     full: 'More Neutral Units (MNU)' },
   tt:      { short: 'TT',      full: 'TchoTcho (TT)' },
   bb:      { short: 'BB',      full: 'Bubastis (BB)' },
+  hb:      { short: 'HB',      full: 'Homebrew (DC)' },
 };
 function setBuild(name) {
   if (!(name in BUILD_LABELS)) return;
@@ -598,7 +614,10 @@ function refreshBuildIndicator() {
 }
 
 // ========== SimRunner wizard ==========
-const SIM_FACTIONS = ['GC','CC','BG','YS','SL','WW','OW','AN','TS','FB','DS'];
+// [2026-06-04] FIX 60 — Path B faction coverage: TT (Tcho-Tcho, 12th) and BB (Bubastis, 13th)
+// added so the sim-launcher faction picker can target these factions. The SimRunner backend
+// reflectively resolves TT/BB and silently ignores them when the build doesn't define them.
+const SIM_FACTIONS = ['GC','CC','BG','YS','SL','WW','OW','AN','TS','FB','DS','TT','BB','DC'];
 const SIM_MAPS = ['Earth33','Earth35','Earth53','Earth55','Library33','Library35','Library53','Library55'];
 const SIM_TOGGLE_OPTS = ['HighPriests','GateDiplomacy','AsyncActions','DemandTsathoggua','NeutralSpellbooks','IceAgeAffectsLethargy','Opener4P10Gates'];
 const SIM_NM_OPTS = ['UseGhast','UseGug','UseShantak','UseStarVampire','UseVoonith','UseDimensionalShamblers','UseGnorri'];
@@ -1174,6 +1193,8 @@ function populateGames(text) {
       hasFixResponse: (parts[9] || '0').trim() === '1',
       build: (parts[10] || 'unknown').trim(),
       startMs: parseInt(parts[11] || '0', 10),
+      // 2026-06-04: col 12 = RL-tuning corpus submission timestamp (0 = not submitted).
+      rlSubmittedMs: parseInt(parts[12] || '0', 10),
     };
   }).filter(g => g.id).filter(g => showBots || !g.isBot);
   // 2026-06-01: Auto-error inference. Pure client-side; no server change.
@@ -1237,15 +1258,44 @@ function populateGames(text) {
     const replayCell = replayEligible
       ? `<div class="replay-cell" style="font-size:9pt;">probing…</div>`
       : '';
+    // 2026-06-04: RL-tuning submission. Eligible iff finished AND build is
+    // library or mnu (BB Claude owns tt/bb). Already-submitted rows show a
+    // green badge with a submitted-at tooltip.
+    const rlEligible = completed && (g.build === 'library' || g.build === 'mnu');
+    const rlBadge = (g.rlSubmittedMs && g.rlSubmittedMs > 0)
+      ? `<span class="rl-submitted-badge" title="Submitted to RL tuning corpus at ${new Date(g.rlSubmittedMs).toLocaleString()}" style="display:inline-block;font-size:8pt;padding:1px 8px;background:#1d4d24;color:#9fe5a8;border-radius:8px;margin-left:6px;">✓ RL-tuning</span>`
+      : '';
+    const rlCell = rlEligible
+      ? `<div class="rl-cell" style="font-size:9pt;display:flex;gap:4px;align-items:center;">` +
+          `<label title="Select for bulk RL-tuning submission" style="display:inline-flex;align-items:center;gap:3px;font-size:8.5pt;color:var(--text-muted);">` +
+            `<input type="checkbox" class="rl-select-cb" data-game-id="${id}" data-build="${esc(g.build)}" onclick="event.stopPropagation();" />` +
+            `sel</label>` +
+          `<button class="small" onclick="event.stopPropagation(); submitOneToRL('${id}', this)" title="Submit this finished game into the FB BC training corpus (weight_tier 1).">Submit RL</button>` +
+        `</div>`
+      : '';
+    // Fix 67 (2026-06-04): owner-side "Mark finished" override. Shows on rows
+    // that are NOT broken/errored, NOT already completed, and where the build
+    // is library or mnu (RL-tuning ineligible builds get no value from this).
+    // Clicking POSTs /admin/<TOK>/force-finished/<id> body "1" and re-renders
+    // the row as completed so the Submit RL button appears. Use this only
+    // when the player judges the game finished but the engine never logged
+    // GameOverPhaseAction (e.g. browser closed before the next action-phase
+    // check ran — game 508 root cause).
+    const forceFinishedEligible = !completed && !broken && !errored && (g.build === 'library' || g.build === 'mnu');
+    const forceFinishedCell = forceFinishedEligible
+      ? `<button class="small" style="background:#3a3a1a;border-color:#7a7a3a;color:#fff;" onclick="event.stopPropagation(); markFinishedOverride('${id}', this)" title="Override: mark this game as finished even though the engine never logged GameOverPhaseAction. Use only when the game truly ended from the player's perspective. Enables Submit RL on this row.">Mark finished</button>`
+      : '';
     row.innerHTML =
       `<button class="broken-flag ${broken ? 'on' : ''}" title="${brokenTitle}" ` +
         `onclick="event.stopPropagation(); toggleBrokenFromList('${id}', this)">${brokenLabel}</button>` +
       `<div style="flex:1;">` +
-        `<span class="game-name">${esc(name)}</span> ${statusLabel}<br/>` +
+        `<span class="game-name">${esc(name)}</span> ${statusLabel}${rlBadge}<br/>` +
         `<span class="game-meta">game id ${id} · ${inactivityLabel(lastWriteMs)}</span>` +
       `</div>` +
       `<div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">` +
         replayCell +
+        rlCell +
+        forceFinishedCell +
         `<button class="small" style="background:#5a2222;border-color:#8a3030;color:#fff;" onclick="event.stopPropagation(); confirmDeleteGame('${id}','${esc(name).replace(/'/g, "\\'")}')">Delete</button>` +
       `</div>`;
     row.onclick = () => selectGame(row, id, name, secret);
@@ -1294,6 +1344,136 @@ function toggleBrokenFromList(gameId, btn) {
         if (cb) cb.checked = newBroken;
       }
     });
+  });
+}
+
+// ========== Fix 67 (2026-06-04): Mark-finished override ==========
+// POST /admin/<TOK>/force-finished/<id> body "1" to flag a game as finished
+// even though the engine never logged GameOverPhaseAction. On success the
+// row is re-rendered (renderGames called from within applyAndRender) so the
+// Submit RL button appears immediately.
+function markFinishedOverride(gameId, btn) {
+  if (!confirm(`Mark game ${gameId} as finished?\n\nUse this ONLY when the game truly ended from the player's perspective but the engine never logged GameOverPhaseAction (e.g. browser closed at end-of-game).\n\nThis enables the Submit RL button on this row.`)) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'marking…'; }
+  fetch(`${SERVER}/admin/${TOKEN}/force-finished/${gameId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: '1',
+  }).then(r => {
+    if (!r.ok) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Mark finished'; }
+      alert(`Mark-finished failed (HTTP ${r.status})`);
+      return;
+    }
+    // Server now reports completed=1 for this game. Refresh the games list so
+    // the row picks up the completed badge and the Submit RL button renders.
+    if (typeof loadGames === 'function') loadGames();
+    else if (typeof refreshGames === 'function') refreshGames();
+    else window.location.reload();
+  }).catch(err => {
+    if (btn) { btn.disabled = false; btn.textContent = 'Mark finished'; }
+    alert(`Mark-finished error: ${err}`);
+  });
+}
+
+// ========== 2026-06-04: RL-tuning corpus submission ==========
+// Per-row + bulk submission of finished library/mnu games into the FB BC
+// training corpus (weight_tier 1). Server endpoint:
+//   POST /admin/<TOK>/submit-for-rl-tuning
+// Body: newline-separated game ids.
+// Response: TSV per game ("OK ..." or "ERROR ...").
+function submitOneToRL(gameId, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'submitting…'; }
+  fetch(`${SERVER}/admin/${TOKEN}/submit-for-rl-tuning`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: String(gameId),
+  }).then(r => r.text().then(t => ({ok: r.ok, status: r.status, body: t}))).then(res => {
+    if (!res.ok) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Submit RL'; }
+      alert(`RL-tuning submit failed (HTTP ${res.status}): ${res.body}`);
+      return;
+    }
+    const row = btn && btn.closest('.game-row');
+    const line = (res.body || '').split('\n')[0] || '';
+    if (line.indexOf('\tOK\t') !== -1) {
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = '✓ submitted';
+        btn.style.background = '#1d4d24';
+        btn.style.borderColor = '#2e7d3a';
+        btn.style.color = '#9fe5a8';
+      }
+      // Flash a transient green tick on the row.
+      if (row) {
+        const flash = document.createElement('span');
+        flash.textContent = '✓ submitted';
+        flash.style.cssText = 'display:inline-block;font-size:8pt;padding:1px 8px;background:#1d4d24;color:#9fe5a8;border-radius:8px;margin-left:6px;';
+        const nameSpan = row.querySelector('.game-name');
+        if (nameSpan && nameSpan.parentNode) nameSpan.parentNode.insertBefore(flash, nameSpan.nextSibling);
+      }
+    } else {
+      if (btn) { btn.disabled = false; btn.textContent = 'Submit RL'; }
+      alert(`RL-tuning submit: ${line}`);
+    }
+  }).catch(err => {
+    if (btn) { btn.disabled = false; btn.textContent = 'Submit RL'; }
+    alert(`RL-tuning submit error: ${err}`);
+  });
+}
+
+function toggleAllRLSelection(masterCb) {
+  const cbs = document.querySelectorAll('.rl-select-cb');
+  cbs.forEach(cb => { cb.checked = masterCb.checked; });
+}
+
+function submitSelectedToRL() {
+  const cbs = document.querySelectorAll('.rl-select-cb:checked');
+  if (!cbs.length) { alert('No games selected. Tick a "sel" box on finished library/mnu rows first.'); return; }
+  const ids = Array.from(cbs).map(cb => cb.dataset.gameId);
+  const status = document.getElementById('rl-bulk-status');
+  const btn = document.getElementById('rl-bulk-submit-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'submitting…'; }
+  if (status) { status.textContent = `submitting ${ids.length}…`; status.style.color = 'var(--text-muted)'; }
+  fetch(`${SERVER}/admin/${TOKEN}/submit-for-rl-tuning`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: ids.join('\n'),
+  }).then(r => r.text().then(t => ({ok: r.ok, status: r.status, body: t}))).then(res => {
+    if (btn) { btn.disabled = false; btn.textContent = 'Submit selected to RL tuning'; }
+    if (!res.ok) {
+      if (status) { status.textContent = `HTTP ${res.status}: ${res.body}`; status.style.color = 'var(--danger)'; }
+      return;
+    }
+    const lines = (res.body || '').split('\n').filter(l => l);
+    const ok = lines.filter(l => l.indexOf('\tOK\t') !== -1).length;
+    const err = lines.length - ok;
+    if (status) {
+      status.textContent = `submitted: ${ok} OK${err > 0 ? `, ${err} error(s)` : ''}`;
+      status.style.color = err > 0 ? 'var(--warn)' : '#9fe5a8';
+    }
+    // Mark rows: per-row OK → green badge + disable button.
+    lines.forEach(line => {
+      const parts = line.split('\t');
+      const gid = parts[0]; const verdict = parts[1];
+      const row = document.querySelector(`.game-row[data-game-id="${gid}"]`);
+      if (!row) return;
+      const cb = row.querySelector('.rl-select-cb');
+      if (cb) cb.checked = false;
+      const submitBtn = row.querySelector('.rl-cell button');
+      if (verdict === 'OK' && submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = '✓ submitted';
+        submitBtn.style.background = '#1d4d24';
+        submitBtn.style.borderColor = '#2e7d3a';
+        submitBtn.style.color = '#9fe5a8';
+      }
+    });
+    const master = document.getElementById('rl-select-all');
+    if (master) master.checked = false;
+  }).catch(err => {
+    if (btn) { btn.disabled = false; btn.textContent = 'Submit selected to RL tuning'; }
+    if (status) { status.textContent = `error: ${err}`; status.style.color = 'var(--danger)'; }
   });
 }
 

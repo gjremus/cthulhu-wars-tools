@@ -166,6 +166,46 @@ object CthulhuWarsOnline {
 
         val fixResponses = TableQuery[FixResponses]
 
+        // RLTuningSubmission: per-game marker that the user has submitted this
+        // finished game to the FB BC training corpus (weight_tier 1). One row
+        // per game; subsequent submissions update submittedMs. The dev-side
+        // ticker polls this table, runs build-replay.py + dump-game-state.py
+        // locally, and writes the corpus entry under
+        // cthulhu-wars-tools/rl-bot/corpus/user-online-wins/<gameId>/.
+        // Column names avoid HSQLDB reserved words ("timestamp", "source",
+        // "action" are reserved per HSQLDB; using submittedMs / sourceTag /
+        // faction / winner / build instead).
+        case class RLSubmission(gameId : Int, submittedMs : Long, sourceTag : String, faction : String, winner : String, build : String)
+
+        class RLSubmissions(tag : Tag) extends Table[RLSubmission](tag, "RLTuningSubmission") {
+            def gameId = column[Int]("gameId", O.PrimaryKey)
+            def submittedMs = column[Long]("submittedMs")
+            def sourceTag = column[String]("sourceTag")
+            def faction = column[String]("faction")
+            def winner = column[String]("winner")
+            def build = column[String]("build")
+            def * = (gameId, submittedMs, sourceTag, faction, winner, build).mapTo[RLSubmission]
+        }
+
+        val rlSubmissions = TableQuery[RLSubmissions]
+
+        // ForcedFinishedGame: per-game owner override that marks a game as
+        // "finished" for admin / RL-tuning purposes even when the engine never
+        // logged a GameOverPhaseAction. Added 2026-06-04 (Fix 67) after game
+        // 508 reached an end-of-game state from the player's perspective but
+        // the engine never ran the GameOverPhase check (player closed the
+        // browser before the next action phase). One row per forced game; the
+        // row is dropped if the user toggles the flag off.
+        case class ForcedFinishedGame(gameId : Int, markedMs : Long)
+
+        class ForcedFinishedGames(tag : Tag) extends Table[ForcedFinishedGame](tag, "ForcedFinishedGame") {
+            def gameId = column[Int]("gameId", O.PrimaryKey)
+            def markedMs = column[Long]("markedMs")
+            def * = (gameId, markedMs).mapTo[ForcedFinishedGame]
+        }
+
+        val forcedFinished = TableQuery[ForcedFinishedGames]
+
         val db = Database.forURL("jdbc:hsqldb:file:" + database, driver="org.hsqldb.jdbcDriver")
 
         object q {
@@ -231,6 +271,29 @@ object CthulhuWarsOnline {
         }
         catch {
             case e : Exception => println("BotGame table init: " + e.getMessage)
+        }
+
+        // RLTuningSubmission — per-game marker that the user has submitted
+        // this game into the FB BC training corpus. Idempotent boot-time create.
+        // Reserved-word avoidance: submittedMs / sourceTag (not timestamp / source).
+        try {
+            import slick.jdbc.HsqldbProfile.api.actionBasedSQLInterpolation
+            q(sqlu"""CREATE TABLE IF NOT EXISTS "RLTuningSubmission" ("gameId" INTEGER PRIMARY KEY, "submittedMs" BIGINT NOT NULL, "sourceTag" VARCHAR(64) NOT NULL, "faction" VARCHAR(16) NOT NULL, "winner" VARCHAR(16) NOT NULL, "build" VARCHAR(16) NOT NULL)""")
+        }
+        catch {
+            case e : Exception => println("RLTuningSubmission table init: " + e.getMessage)
+        }
+
+        // ForcedFinishedGame — owner-side override marker for games where the
+        // engine never reached GameOverPhaseAction but the user judges the
+        // game complete. Idempotent boot-time create so existing DBs pick it
+        // up without a drop/create cycle. Added 2026-06-04 (Fix 67).
+        try {
+            import slick.jdbc.HsqldbProfile.api.actionBasedSQLInterpolation
+            q(sqlu"""CREATE TABLE IF NOT EXISTS "ForcedFinishedGame" ("gameId" INTEGER PRIMARY KEY, "markedMs" BIGINT NOT NULL)""")
+        }
+        catch {
+            case e : Exception => println("ForcedFinishedGame table init: " + e.getMessage)
         }
 
         if (!mode.contains("run")) {
@@ -508,6 +571,98 @@ object CthulhuWarsOnline {
                     pathEnd { getFromFile("../mnu/index.html") }
                 }
             } ~
+            // Serve the Homebrew build under /HB/ (Defilers Court faction added).
+            // Mirrors the /mnu/ block above with ../HB/ asset paths.
+            pathPrefix("HB") {
+                (post & path("create")) {
+                    parameter("bot".as[Boolean].?(false)) { botFlag =>
+                        decodeRequest {
+                            entity(as[String]) { body =>
+                                val ss = body.split("\n").toList.map(_.ascii)
+                                val rls = List("$", "#") ++ ss(0).split(" ").toList
+                                val name = ss(2)
+                                val lgs = ss.drop(1)
+                                val srs = rls.map(r => r -> secret).toMap
+                                q((gamesId += Game(name)).flatMap(id => seq(
+                                    roles ++= rls.map(r => Role(id, r, srs(r))),
+                                    logs ++= lgs.zipWithIndex.map { case (l, n) => Log(id, n, "", l) }
+                                )))
+                                val newGameId = q(roles.filter(_.secret === srs("$")).map(_.gameId).result.head)
+                                touchMeta(newGameId)
+                                if (botFlag)
+                                    try { q(botGames += BotGame(newGameId)) }
+                                    catch { case _ : Throwable => () }
+                                txt(srs("$"))
+                            }
+                        }
+                    }
+                } ~
+                (get & path("roles" / Segment)) { role =>
+                    val list = q(roles.filter(_.secret === role).filter(_.name === "$").map(_.gameId).result.head.flatMap { id =>
+                        roles.filter(_.gameId === id).result
+                    })
+                    txt(list.map(r => r.name + " " + r.secret).mkString("\n"))
+                } ~
+                (get & path("role" / Segment)) { role =>
+                    val name = q(roles.filter(_.secret === role).map(_.name).result.head)
+                    txt(name)
+                } ~
+                (get & path("read" / Segment / IntNumber)) { (role, from) =>
+                    val log = q(roles.filter(_.secret === role).map(_.gameId).result.head.flatMap { id =>
+                            logs.filter(_.gameId === id).filter(_.index >= from).map(_.value).result
+                    })
+                    txt(log.mkString("\n"))
+                } ~
+                (post & path("write" / Segment / IntNumber)) { (role, index) =>
+                    decodeRequest {
+                        entity(as[String]) { body =>
+                            val ss = body.split("\n").toList.map(_.ascii)
+                            try {
+                                q(roles.filter(_.secret === role).filter(_.name =!= "#").map(r => (r.name, r.gameId)).result.head.flatMap { case (name, id) =>
+                                    logs ++= 0.until(ss.size).map(n => Log(id, index + n, name, ss(n)))
+                                })
+                                try { touchMeta(q(roles.filter(_.secret === role).filter(_.name =!= "#").map(_.gameId).result.head)) }
+                                catch { case _ : Throwable => () }
+                                complete(StatusCodes.Accepted)
+                            }
+                            catch {
+                                case e : java.sql.SQLIntegrityConstraintViolationException => complete(StatusCodes.Conflict)
+                            }
+                        }
+                    }
+                } ~
+                (post & path("rollback-v2" / Segment / IntNumber)) { (role, index) =>
+                    q(roles.filter(_.secret === role).map(_.gameId).result.head.flatMap { id =>
+                        logs.filter(_.gameId === id).filter(_.index >= index).delete
+                    })
+                    try { touchMeta(q(roles.filter(_.secret === role).map(_.gameId).result.head)) }
+                    catch { case _ : Throwable => () }
+                    complete(StatusCodes.Accepted)
+                } ~
+                pathPrefix("play") {
+                    pathPrefix("webp")   { getFromDirectory("../HB/webp") } ~
+                    pathPrefix("fonts")  { getFromDirectory("../HB/fonts") } ~
+                    pathPrefix("target") { getFromDirectory("../HB/target") } ~
+                    pathPrefix(Segment) { _ =>
+                        pathPrefix("webp")   { getFromDirectory("../HB/webp") } ~
+                        pathPrefix("fonts")  { getFromDirectory("../HB/fonts") } ~
+                        pathPrefix("target") { getFromDirectory("../HB/target") } ~
+                        pathEnd { getFromFile("../HB/index.html") }
+                    } ~
+                    pathEnd { getFromFile("../HB/index.html") }
+                } ~
+                pathPrefix("webp")   { getFromDirectory("../HB/webp") } ~
+                pathPrefix("fonts")  { getFromDirectory("../HB/fonts") } ~
+                pathPrefix("target") { getFromDirectory("../HB/target") } ~
+                pathEnd { getFromFile("../HB/index.html") } ~
+                path("") { getFromFile("../HB/index.html") } ~
+                pathPrefix(Segment) { _ =>
+                    pathPrefix("webp")   { getFromDirectory("../HB/webp") } ~
+                    pathPrefix("fonts")  { getFromDirectory("../HB/fonts") } ~
+                    pathPrefix("target") { getFromDirectory("../HB/target") } ~
+                    pathEnd { getFromFile("../HB/index.html") }
+                }
+            } ~
             (get & path("admin" / Segment / "games")) { token =>
                 if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
                 else {
@@ -524,9 +679,16 @@ object CthulhuWarsOnline {
                     // "GameOverPhaseAction" means the engine reached the end-of-game phase.
                     // One query per game keeps the per-row computation simple; for the
                     // current game counts (< 200) this is fast.
+                    //
+                    // Fix 67 (2026-06-04): also count a game as completed if its id is
+                    // in the ForcedFinishedGame table — the owner-side override flag
+                    // for cases where the engine never logged a GameOverPhaseAction
+                    // (e.g. user closed the browser at end-of-game before the next
+                    // action-phase check ran, as in game 508).
+                    val forcedFinishedSet = q(forcedFinished.map(_.gameId).result).toSet
                     val completed = rows.map(_._1).map { id =>
                         val n = q(logs.filter(_.gameId === id).filter(_.value.like("%GameOverPhaseAction%")).length.result)
-                        id -> (n > 0)
+                        id -> (n > 0 || forcedFinishedSet.contains(id))
                     }.toMap
                     val botFlagged = q(botGames.map(_.gameId).result).toSet
                     // FixResponse rows: games where Claude has posted a proactive
@@ -549,6 +711,11 @@ object CthulhuWarsOnline {
                                 else                                          "unknown"
                         id -> b
                     }.toMap
+                    // Per-game RL-corpus submission marker (Phase 2 RL tuning,
+                    // 2026-06-04). submittedMs is 0 when no submission row exists.
+                    // Emitted as col 12 so the admin UI can render a "submitted"
+                    // badge + show a timestamp tooltip.
+                    val rlSubmittedMs : Map[Int, Long] = q(rlSubmissions.map(r => r.gameId -> r.submittedMs).result).toMap
                     // Count humans + bots per game by reading the options line (log
                     // idx 2) which contains the roster like "SL:Human/OW:Bot/...".
                     // The admin UI uses this to bucket games into SimRun (all bots),
@@ -567,7 +734,11 @@ object CthulhuWarsOnline {
                         val (h, bt) = rosterCounts.getOrElse(id, (0, 0))
                         val hfr = if (hasFixResp.contains(id)) "1" else "0"
                         val gb = gameBuilds.getOrElse(id, "unknown")
-                        s"$id\t$name\t$secret\t${lastMs.getOrElse(0L)}\t$b\t$c\t$ib\t$h\t$bt\t$hfr\t$gb"
+                        val rlMs = rlSubmittedMs.getOrElse(id, 0L)
+                        // col 11 reserved for startMs (admin.html reads it but
+                        // server doesn't track createdMs yet → emit 0). col 12 =
+                        // rlSubmittedMs. Older parsers tolerate the extra field.
+                        s"$id\t$name\t$secret\t${lastMs.getOrElse(0L)}\t$b\t$c\t$ib\t$h\t$bt\t$hfr\t$gb\t0\t$rlMs"
                     }.mkString("\n"))
                 }
             } ~
@@ -612,12 +783,183 @@ object CthulhuWarsOnline {
                 }
             } ~
             // ===========================================================
+            // Fix 67 (2026-06-04): owner-side override for games where the
+            // engine never logged GameOverPhaseAction but the user judges the
+            // game complete (e.g. user closed the browser at end-of-game
+            // before the next action-phase check ran — game 508 case).
+            //
+            // POST /admin/<TOK>/force-finished/<gameId>
+            //   Body: "1" → upsert ForcedFinishedGame row.
+            //   Body: "0" → delete ForcedFinishedGame row.
+            // Response: 202 Accepted. The next /admin/<TOK>/games call will
+            // report completed=1 for any game with a ForcedFinishedGame row.
+            // ===========================================================
+            (post & path("admin" / Segment / "force-finished" / IntNumber)) { (token, gameId) =>
+                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
+                else {
+                    decodeRequest {
+                        entity(as[String]) { body =>
+                            val on = body.trim == "1"
+                            if (on) {
+                                val now = System.currentTimeMillis()
+                                q(
+                                    forcedFinished.filter(_.gameId === gameId).delete,
+                                    forcedFinished += ForcedFinishedGame(gameId, now)
+                                )
+                            } else {
+                                q(forcedFinished.filter(_.gameId === gameId).delete)
+                            }
+                            complete(StatusCodes.Accepted)
+                        }
+                    }
+                }
+            } ~
+            // ===========================================================
             // FixResponse endpoints — Phase A/B proactive broken-game pipeline.
             // GET /admin/<t>/fix-response/<id>   → returns response text
             // POST /admin/<t>/fix-response/<id>  → set response text (empty body clears row; resets action to "")
             // POST /admin/<t>/fix-action/<id>    → record user button click (body = proceed|discuss|dismiss)
             // GET /admin/<t>/fix-actions-pending → list game IDs with action set
             // ===========================================================
+            // ── RL inference endpoint (Phase 3.5, 2026-06-04). ─────────────────
+            // POST /play/rl-decision/<masterSecret>
+            // Body JSON: { "faction":"FB",
+            //              "state_vec_b64":"<base64(float32[1024])>",
+            //              "legal_actions":["<Serialize.write(a0)>", ...] }
+            // Response JSON: { "action_idx":<int>, "action":"<string>",
+            //                  "latency_ms":<int>, "model_path":"<string>" }
+            //
+            // Status codes:
+            //   503 — RL_BOT_ENABLED is false (feature off; safe to deploy).
+            //   404 — no ONNX file at the resolved path.
+            //   400 — bad JSON, bad base64, bad state_vec length, empty legal_actions.
+            //   500 — runtime / model error.
+            //   200 — success.
+            //
+            // Auth: the <masterSecret> path segment must resolve to an existing
+            // role row, mirroring /play/console-error/<secret>. We don't gate
+            // on master vs role — any participant of a game can ask for a bot
+            // move (same authority surface as posting a console error).
+            (post & path("play" / "rl-decision" / Segment)) { secret =>
+                decodeRequest {
+                    entity(as[String]) { body =>
+                        if (!RLPolicyEngine.enabled) {
+                            complete(StatusCodes.ServiceUnavailable -> "RL bot disabled (RL_BOT_ENABLED=false)")
+                        } else if (!RLPolicyEngine.modelExists) {
+                            complete(StatusCodes.NotFound -> s"no ONNX model at ${RLPolicyEngine.modelPath}")
+                        } else {
+                            // Cheap secret check — same shape as console-error.
+                            val gameIdOpt = q(roles.filter(_.secret === secret).map(_.gameId).result.headOption)
+                            if (gameIdOpt.isEmpty) {
+                                complete(StatusCodes.NotFound -> "no game for that secret")
+                            } else {
+                                try {
+                                    // Hand-rolled JSON extract — avoids adding a JSON
+                                    // lib to the akka-http jar. Body shape is well-known.
+                                    def field(name : String) : Option[String] = {
+                                        // Match `"name"\s*:\s*"<value>"` for string fields.
+                                        val rx = ("\"" + name + "\"\\s*:\\s*\"([^\"]*)\"").r
+                                        rx.findFirstMatchIn(body).map(_.group(1))
+                                    }
+                                    def listField(name : String) : Option[List[String]] = {
+                                        // Match `"name"\s*:\s*[ ... ]` capturing the body.
+                                        val rx = ("\"" + name + "\"\\s*:\\s*\\[([^\\]]*)\\]").r
+                                        rx.findFirstMatchIn(body).map { m =>
+                                            val inner = m.group(1)
+                                            // Split on top-level commas separating quoted strings.
+                                            val items = scala.collection.mutable.ListBuffer[String]()
+                                            var i = 0
+                                            val n = inner.length
+                                            while (i < n) {
+                                                // Skip whitespace + comma
+                                                while (i < n && (inner.charAt(i).isWhitespace || inner.charAt(i) == ',')) i += 1
+                                                if (i < n && inner.charAt(i) == '"') {
+                                                    val sb = new StringBuilder
+                                                    i += 1
+                                                    while (i < n && inner.charAt(i) != '"') {
+                                                        if (inner.charAt(i) == '\\' && i + 1 < n) {
+                                                            // Pass through escaped character.
+                                                            sb.append(inner.charAt(i))
+                                                            sb.append(inner.charAt(i + 1))
+                                                            i += 2
+                                                        } else {
+                                                            sb.append(inner.charAt(i))
+                                                            i += 1
+                                                        }
+                                                    }
+                                                    if (i < n) i += 1 // closing quote
+                                                    items.append(sb.toString)
+                                                } else {
+                                                    i += 1
+                                                }
+                                            }
+                                            items.toList
+                                        }
+                                    }
+
+                                    val faction = field("faction").getOrElse("FB")
+                                    val b64 = field("state_vec_b64").getOrElse("")
+                                    val legal = listField("legal_actions").getOrElse(Nil)
+                                    val greedy = field("greedy").map(_.equalsIgnoreCase("true")).getOrElse(true)
+
+                                    if (b64.isEmpty)
+                                        complete(StatusCodes.BadRequest -> "missing state_vec_b64")
+                                    else if (legal.isEmpty)
+                                        complete(StatusCodes.BadRequest -> "missing or empty legal_actions")
+                                    else {
+                                        val raw =
+                                            try java.util.Base64.getDecoder.decode(b64)
+                                            catch { case _ : Throwable => Array.emptyByteArray }
+
+                                        if (raw.length != 4096) {
+                                            complete(StatusCodes.BadRequest ->
+                                                s"state_vec_b64 must decode to exactly 4096 bytes (1024 floats); got ${raw.length}")
+                                        } else {
+                                            // Little-endian float32 — matches Python numpy and JS
+                                            // DataView.setFloat32(..., true).
+                                            val state = new Array[Float](1024)
+                                            val bb = java.nio.ByteBuffer.wrap(raw).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+                                            var i = 0
+                                            while (i < 1024) { state(i) = bb.getFloat(); i += 1 }
+
+                                            // Faction → index mapping, must match RLStateEncoder.FactionCodes.
+                                            val factionCodes = List(
+                                                "GC","CC","BG","YS","SL","WW","OW","AN","TS","FB","DS","TT","BB"
+                                            )
+                                            val factionIdx = factionCodes.indexOf(faction)
+                                            if (factionIdx < 0) {
+                                                complete(StatusCodes.BadRequest -> s"unknown faction: $faction")
+                                            } else {
+                                                // Lazy init on first request (cached after).
+                                                if (!RLPolicyEngine.isAvailable) {
+                                                    val err = RLPolicyEngine.lastInitError.getOrElse("init failed (unknown)")
+                                                    complete(StatusCodes.InternalServerError -> s"RL engine init failed: $err")
+                                                } else {
+                                                    val nLegal = legal.length min 64
+                                                    val d = RLPolicyEngine.selectAction(state, factionIdx, nLegal, greedy)
+                                                    val chosen = legal(d.actionIdx)
+                                                    // JSON-escape the chosen action string (it's already a Serialize.write
+                                                    // form which may contain quotes).
+                                                    val escaped = chosen
+                                                        .replace("\\", "\\\\")
+                                                        .replace("\"", "\\\"")
+                                                        .replace("\n", "\\n")
+                                                    val mp = RLPolicyEngine.modelPath.replace("\\", "\\\\").replace("\"", "\\\"")
+                                                    val json = s"""{"action_idx":${d.actionIdx},"action":"$escaped","latency_ms":${d.latencyMs},"model_path":"$mp"}"""
+                                                    complete(HttpEntity(ContentTypes.`application/json`, json))
+                                                }
+                                            }
+                                        }
+                                    }
+                                } catch {
+                                    case t : Throwable =>
+                                        complete(StatusCodes.InternalServerError -> s"RL inference error: ${t.getClass.getSimpleName}: ${t.getMessage}")
+                                }
+                            }
+                        }
+                    }
+                }
+            } ~
             // Public collector endpoint hit by the /play page's console-capture
             // script. Resolves <secret> → gameId via roles, appends a row to
             // ConsoleError. Truncates per-game to the most recent N rows so an
@@ -796,6 +1138,109 @@ object CthulhuWarsOnline {
                     // TSV: gameId, userAction, updatedMs. Only rows where userAction is set.
                     val rows = q(fixResponses.filter(_.userAction =!= "").result)
                     txt(rows.map(r => s"${r.gameId}\t${r.userAction}\t${r.updatedMs}").mkString("\n"))
+                }
+            } ~
+            // RL tuning submission endpoint (Phase 2, 2026-06-04).
+            // POST /admin/<TOK>/submit-for-rl-tuning
+            // Body: newline-separated game ids (one per line, integer). Plain
+            // text matches the other admin endpoints; no JSON dependency needed.
+            // Response: TSV, one row per game id, in input order:
+            //   <gameId>\tOK\t<faction>\t<winner>\t<build>\t<submittedMs>
+            //   <gameId>\tERROR\t<reason>
+            // For each accepted game we also queue a Claude prompt so the dev-
+            // side ticker runs build-replay.py + dump-game-state.py and writes
+            // the per-game corpus entry under
+            // cthulhu-wars-tools/rl-bot/corpus/user-online-wins/<gameId>/.
+            (post & path("admin" / Segment / "submit-for-rl-tuning")) { token =>
+                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
+                else decodeRequest {
+                    entity(as[String]) { body =>
+                        val ids = body.split("\n").map(_.trim).filter(_.nonEmpty).flatMap { s =>
+                            try Some(s.toInt) catch { case _ : Throwable => None }
+                        }.toList
+                        if (ids.isEmpty) complete(StatusCodes.BadRequest -> "no valid game ids in body")
+                        else {
+                            val out = new StringBuilder
+                            ids.foreach { gid =>
+                                // 1. Game exists?
+                                val nameOpt = q(games.filter(_.id === gid).map(_.name).result.headOption)
+                                if (nameOpt.isEmpty) {
+                                    out.append(s"$gid\tERROR\tno such game\n")
+                                } else {
+                                    // 2. Build from log[0].
+                                    val v0 = q(logs.filter(_.gameId === gid).filter(_.index === 0).map(_.value).result.headOption).getOrElse("")
+                                    val low0 = v0.toLowerCase
+                                    val gb = if      (low0.contains("library-at-celaeno")) "library"
+                                             else if (low0.contains("more-neutral-units")) "mnu"
+                                             else if (low0.contains("tcho-tcho"))          "tt"
+                                             else if (low0.contains("bubastis"))           "bb"
+                                             else                                            "unknown"
+                                    if (gb != "library" && gb != "mnu") {
+                                        out.append(s"$gid\tERROR\tbuild $gb not eligible (only library/mnu)\n")
+                                    } else {
+                                        // 3. Finished? Same heuristic as the
+                                        //    games-list endpoint: any log row
+                                        //    containing GameOverPhaseAction OR
+                                        //    a ForcedFinishedGame row (Fix 67,
+                                        //    2026-06-04 — owner-side override
+                                        //    for engine-not-reached endings).
+                                        val finishedFromLog = q(logs.filter(_.gameId === gid).filter(_.value.like("%GameOverPhaseAction%")).length.result) > 0
+                                        val finishedFromOverride = q(forcedFinished.filter(_.gameId === gid).length.result) > 0
+                                        val finished = finishedFromLog || finishedFromOverride
+                                        if (!finished) {
+                                            out.append(s"$gid\tERROR\tgame not finished\n")
+                                        } else {
+                                            // 4. Faction (the "user" faction —
+                                            //    first :Human in roster line at log idx 2).
+                                            val rosterLine = q(logs.filter(_.gameId === gid).filter(_.index === 2).map(_.value).result.headOption).getOrElse("")
+                                            val roster = rosterLine.takeWhile(_ != ' ').split('/')
+                                            val userFaction = roster.find(_.endsWith(":Human")).map(_.takeWhile(_ != ':')).getOrElse("?")
+                                            // 5. Winner — derive from the
+                                            //    GameOverPhaseAction line. The
+                                            //    full game-log replay is what's
+                                            //    authoritative; here we just tag
+                                            //    "user" if the GameOverPhase line
+                                            //    references the user faction's
+                                            //    code, else leave blank for the
+                                            //    downstream pipeline to compute.
+                                            val gameOverLine = q(logs.filter(_.gameId === gid).filter(_.value.like("%GameOverPhaseAction%")).result.headOption).map(_.value).getOrElse("")
+                                            val winnerTag = if (userFaction != "?" && gameOverLine.contains(userFaction)) userFaction else ""
+                                            // 6. Upsert RLTuningSubmission row.
+                                            val now = System.currentTimeMillis()
+                                            q(
+                                                rlSubmissions.filter(_.gameId === gid).delete,
+                                                rlSubmissions += RLSubmission(gid, now, "user-online", userFaction, winnerTag, gb)
+                                            )
+                                            // 7. Queue a Claude prompt so the
+                                            //    dev-side ticker drains it and
+                                            //    materialises the corpus entry.
+                                            try {
+                                                val stamp = java.time.LocalDateTime.now.format(
+                                                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                                                val line = s"[$stamp] RL-TUNING-SUBMIT game_id=$gid build=$gb faction=$userFaction — write meta.json + game_log.html + game_state_final.xml under cthulhu-wars-tools/rl-bot/corpus/user-online-wins/$gid/ for FB BC training (weight_tier 1).\n"
+                                                val f = new java.io.File("/tmp/claude-prompts.log")
+                                                val w = new java.io.FileWriter(f, true)
+                                                try w.write(line) finally w.close()
+                                            } catch { case _ : Throwable => () }
+                                            out.append(s"$gid\tOK\t$userFaction\t$winnerTag\t$gb\t$now\n")
+                                        }
+                                    }
+                                }
+                            }
+                            txt(out.toString.stripSuffix("\n"))
+                        }
+                    }
+                }
+            } ~
+            // GET /admin/<TOK>/rl-tuning-submissions — list all submissions.
+            // Returns TSV: gameId, submittedMs, sourceTag, faction, winner, build.
+            // Used by the dev-side ticker to poll for new submissions to
+            // materialise into the corpus directory.
+            (get & path("admin" / Segment / "rl-tuning-submissions")) { token =>
+                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
+                else {
+                    val rows = q(rlSubmissions.sortBy(_.submittedMs.desc).result)
+                    txt(rows.map(r => s"${r.gameId}\t${r.submittedMs}\t${r.sourceTag}\t${r.faction}\t${r.winner}\t${r.build}").mkString("\n"))
                 }
             } ~
             (get & path("admin" / Segment / "roles" / IntNumber)) { (token, gameId) =>
@@ -1020,13 +1465,30 @@ object CthulhuWarsOnline {
                     "build".?, "factions".?, "opts".?, "maps".?,
                     "games".as[Int].?, "players".as[Int].?
                 ) { (build, factionsStr, optsStr, mapsStr, gamesOpt, playersOpt) =>
-                    val factionCodes = Set("GC","CC","BG","YS","SL","WW","OW","AN","TS","FB","DS")
+                    // [2026-06-04] FIX 60 — Path B faction coverage: TT/BB added so the admin
+                    // sim-run handler accepts them as valid faction codes when the requested
+                    // build is "tt" or "bb". Validation is purely string-level here; the
+                    // SimRunner backend will silently skip TT/BB if the build doesn't define them.
+                    val factionCodes = Set("GC","CC","BG","YS","SL","WW","OW","AN","TS","FB","DS","TT","BB")
                     val optCodes = Set(
                         "HighPriests","NeutralSpellbooks","IceAgeAffectsLethargy","Opener4P10Gates",
                         "DemandTsathoggua","GateDiplomacy","AsyncActions",
                         "UseGhast","UseGug","UseShantak","UseStarVampire","UseVoonith",
                         "UseDimensionalShamblers","UseGnorri",
-                        "UseByatis","UseAbhoth","UseDaoloth","UseNyogtha","UseTulzscha","UseYgolonac"
+                        "UseByatis","UseAbhoth","UseDaoloth","UseNyogtha","UseTulzscha","UseYgolonac",
+                        // [2026-06-04] FIX 60 — MNU+/TT/BB GameOptions
+                        "NeutralTerrors","OpenerCheapMutants","OpenerYogCurseDie",
+                        "SleeperEasierSBR","SleeperEnergyNexusPreBattle",
+                        "DSAlternateSpellbooks","BBAlternateSpellbooks",
+                        // MNU neutrals (14 new)
+                        "UseMoonbeast","UseAlbinoPenguins","UseElderThing","UseLengSpider",
+                        "UseSatyr","UseInsectsFromShaggai","UseServitor",
+                        "UseDhole","UseGreatRaceOfYith","UseQuachilUttaus","UseShadowPharaoh",
+                        "UseHoundOfTindalos","UseBrownJenkin","UseElderShoggoth",
+                        // MNU iGOOs (10 new)
+                        "UseAzathothIGOO","UseCthugha","UseMotherHydra","UseYig",
+                        "UseFatherDagon","UseGhatanotoaIGOO","UseBloatedWoman",
+                        "UseAtlachNacha","UseBokrug","UseGlaakiIGOO"
                     )
                     val mapCodes = Set("Earth33","Earth35","Earth53","Earth55","Library33","Library35","Library53","Library55")
                     val buildSel = build.getOrElse("library").toLowerCase
@@ -1035,6 +1497,7 @@ object CthulhuWarsOnline {
                         case "mnu"     => "/opt/cwo/server/online-sim-mnu.jar"
                         case "tt"      => "/opt/cwo/server/online-sim-tt.jar"
                         case "bb"      => "/opt/cwo/server/online-sim-bb.jar"
+                        case "hb"      => "/opt/cwo/server/online-sim-hb.jar"
                         case _         => ""
                     }
                     val factions = factionsStr.getOrElse("").split(",").map(_.trim).filter(_.nonEmpty).toList
@@ -1043,7 +1506,7 @@ object CthulhuWarsOnline {
                     val games = gamesOpt.getOrElse(30).max(1).min(2000)
                     val players = playersOpt.getOrElse(4).max(2).min(11)
 
-                    if (jar.isEmpty) complete(StatusCodes.BadRequest -> s"bad build (must be 'library', 'mnu', 'tt', or 'bb'); got $buildSel")
+                    if (jar.isEmpty) complete(StatusCodes.BadRequest -> s"bad build (must be 'library', 'mnu', 'tt', 'bb', or 'hb'); got $buildSel")
                     else if (factions.exists(!factionCodes.contains(_))) complete(StatusCodes.BadRequest -> ("bad faction code: " + factions.filterNot(factionCodes).mkString(",")))
                     else if (opts.exists(!optCodes.contains(_))) complete(StatusCodes.BadRequest -> ("bad opt: " + opts.filterNot(optCodes).mkString(",")))
                     else if (maps.exists(!mapCodes.contains(_))) complete(StatusCodes.BadRequest -> ("bad map: " + maps.filterNot(mapCodes).mkString(",")))
