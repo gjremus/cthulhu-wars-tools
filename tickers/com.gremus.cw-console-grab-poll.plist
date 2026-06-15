@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+LaunchAgent: console-grab POLL ticker. Fires every 2 minutes.
+Reads the shared admin queue and runs tools/console-grab.py for each NEW
+"CONSOLE-CHECK game=<id> build=<build>" line. Cheap (no AI session) — see
+run-console-grab-poll.sh.
+
+Install (parent does this AFTER review):
+  cp ~/claude-projects/cthulhu-wars-tools/tickers/com.gremus.cw-console-grab-poll.plist ~/Library/LaunchAgents/
+  launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.gremus.cw-console-grab-poll.plist
+Uninstall:
+  launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.gremus.cw-console-grab-poll.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.gremus.cw-console-grab-poll</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>/Users/gremus/Claude-Projects/cthulhu-wars-tools/tickers/run-console-grab-poll.sh</string>
+    </array>
+
+    <key>StartInterval</key>
+    <integer>120</integer>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/cw-console-grab-poll.stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/cw-console-grab-poll.stderr.log</string>
+
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>
