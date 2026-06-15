@@ -34,9 +34,16 @@ HIST="/tmp/cw-console-grab-poll.history"
 LOG="/tmp/cw-console-grab-poll.$(date '+%Y%m%d').log"
 SEEN="/tmp/cw-console-grab.seen"   # high-water timestamp "YYYY-MM-DD HH:MM:SS"
 
+# Token read with off-Drive cache fallback (Drive intermittently dehydrates it).
+TOK_CACHE="/Users/gremus/.cw-admin-token"
 TOK=$(tr -d '[:space:]' < "$TOKEN_FILE" 2>/dev/null)
+if [[ -n "$TOK" ]]; then
+  print -r -- "$TOK" > "$TOK_CACHE" 2>/dev/null
+else
+  TOK=$(tr -d '[:space:]' < "$TOK_CACHE" 2>/dev/null)
+fi
 if [[ -z "$TOK" ]]; then
-  echo "[$(date '+%F %T')] ABORT  no admin token" >> "$HIST"; exit 1
+  echo "[$(date '+%F %T')] ABORT  no admin token (Drive dehydrated AND no cache)" >> "$HIST"; exit 1
 fi
 
 # Pull the queue with ?all=true so server-side acks (used by the AI ticker)

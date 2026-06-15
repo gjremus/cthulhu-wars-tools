@@ -53,9 +53,30 @@ ERROR_KEYWORDS = ["unknown class", "uncaught", "error", "exception",
                   "failed to load", "404"]
 
 
+TOKEN_CACHE = "/Users/gremus/.cw-admin-token"
+
 def read_token():
-    with open(TOKEN_FILE) as f:
-        return f.read().strip()
+    # Google Drive intermittently dehydrates the token file (empty read). Prefer
+    # the Drive copy when it's readable (and refresh the off-Drive cache); fall
+    # back to the cache when Drive has evicted it so this never blanks out.
+    tok = ""
+    try:
+        with open(TOKEN_FILE) as f:
+            tok = f.read().strip()
+    except OSError:
+        tok = ""
+    if tok:
+        try:
+            with open(TOKEN_CACHE, "w") as c:
+                c.write(tok + "\n")
+        except OSError:
+            pass
+        return tok
+    try:
+        with open(TOKEN_CACHE) as c:
+            return c.read().strip()
+    except OSError:
+        return ""
 
 
 def admin_url(token, path):
