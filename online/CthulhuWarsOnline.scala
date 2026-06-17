@@ -34,7 +34,7 @@ object CthulhuWarsOnline {
             new String(Files.readAllBytes(Paths.get(path)), UTF_8)
         }
 
-        def full = readFile("../solo/index.html").replace("###SERVER-URL###", url)
+        def full = readFile("../library/index.html").replace("###SERVER-URL###", url)
 
         implicit class Ascii(val s : String) {
             def ascii = s.filter(c => c >= 32 && c < 128)
@@ -201,27 +201,27 @@ object CthulhuWarsOnline {
                 htm(full)
             } ~
             pathPrefix("hrf") {
-                getFromDirectory("../solo")
+                getFromDirectory("../library")
             } ~
             // FB Round 8: serve solo assets at the same relative paths the
             // index.html uses (webp/, fonts/, target/) so the unbuilt solo/index.html
             // works in online mode without needing assets baked into a single HTML.
             pathPrefix("webp") {
-                getFromDirectory("../solo/webp")
+                getFromDirectory("../library/webp")
             } ~
             pathPrefix("fonts") {
-                getFromDirectory("../solo/fonts")
+                getFromDirectory("../library/fonts")
             } ~
             pathPrefix("target") {
-                getFromDirectory("../solo/target")
+                getFromDirectory("../library/target")
             } ~
             pathPrefix("play") {
                 // Assets resolved relative to /play/<id> end up at /play/<asset>/...,
                 // not /play/<id>/<asset>/... — because <id> is treated as a filename
                 // by the browser's relative URL resolution. Handle both layouts.
-                pathPrefix("webp")   { getFromDirectory("../solo/webp") } ~
-                pathPrefix("fonts")  { getFromDirectory("../solo/fonts") } ~
-                pathPrefix("target") { getFromDirectory("../solo/target") } ~
+                pathPrefix("webp")   { getFromDirectory("../library/webp") } ~
+                pathPrefix("fonts")  { getFromDirectory("../library/fonts") } ~
+                pathPrefix("target") { getFromDirectory("../library/target") } ~
                 // [2026-05-24] Cross-variant redirect: if the game was created
                 // by the MNU build, its first log line is
                 // "Cthulhu Wars HRF more-neutral-units-v2". Serve that variant's
@@ -230,9 +230,9 @@ object CthulhuWarsOnline {
                 // Library doesn't know MNU units → without this, the user gets
                 // Library's main.js and crashes on the first MNU action.
                 pathPrefix(Segment) { role =>
-                    pathPrefix("webp")   { getFromDirectory("../solo/webp") } ~
-                    pathPrefix("fonts")  { getFromDirectory("../solo/fonts") } ~
-                    pathPrefix("target") { getFromDirectory("../solo/target") } ~
+                    pathPrefix("webp")   { getFromDirectory("../library/webp") } ~
+                    pathPrefix("fonts")  { getFromDirectory("../library/fonts") } ~
+                    pathPrefix("target") { getFromDirectory("../library/target") } ~
                     pathEnd {
                         val ver = try {
                             q(roles.filter(_.secret === role).map(_.gameId).result.head.flatMap { id =>
@@ -241,6 +241,12 @@ object CthulhuWarsOnline {
                         } catch { case _ : Throwable => None }
                         if (ver.exists(_.contains("more-neutral-units")))
                             redirect("/mnu/play/" + role, StatusCodes.TemporaryRedirect)
+                        else if (ver.exists(_.contains("bubastis")))
+                            redirect("/BB/play/" + role, StatusCodes.TemporaryRedirect)
+                        else if (ver.exists(_.contains("tcho-tcho")))
+                            redirect("/TchoTcho/play/" + role, StatusCodes.TemporaryRedirect)
+                        else if (ver.exists(v => v.contains("Homebrew") || v.contains("homebrew")))
+                            redirect("/HB/play/" + role, StatusCodes.TemporaryRedirect)
                         else
                             htm(full)
                     }
@@ -294,40 +300,55 @@ object CthulhuWarsOnline {
                         val ss = body.split("\n").toList.map(_.ascii)
 
                         try {
-                            // Original atomic shape — single composed DBIO with pinned session
-                            // (the prior multi-query refactor + touchMeta broke /write atomicity
-                            // for online games and is the suspected cause of the Thousand Forms
-                            // online-only regression). Meta last-write tracking still happens on
-                            // /create and admin-side endpoints; for /write we now just append the
-                            // log rows and let touchMeta run after, OUTSIDE the atomic block, so
-                            // any meta failure does not abort the log write.
-                            q(roles.filter(_.secret === role).filter(_.name =!= "#").map(r => (r.name, r.gameId)).result.head.flatMap { case (name, id) =>
-                                logs ++= 0.until(ss.size).map(n => Log(id, index + n, name, ss(n)))
-                            })
-                            try { touchMeta(q(roles.filter(_.secret === role).filter(_.name =!= "#").map(_.gameId).result.head)) }
+                            val (name, id) = q(roles.filter(_.secret === role).filter(_.name =!= "#").map(r => (r.name, r.gameId)).result.head)
+                            // Reject writes that would create a gap in the index sequence.
+                            // After rollback truncates to index N, only index N is valid next.
+                            val maxIdx = q(logs.filter(_.gameId === id).map(_.index).max.result).getOrElse(-1)
+                            if (index != maxIdx + 1)
+                                throw new IllegalStateException("index gap")
+                            q(logs ++= 0.until(ss.size).map(n => Log(id, index + n, name, ss(n))))
+                            try { touchMeta(id) }
                             catch { case _ : Throwable => () }
                             complete(StatusCodes.Accepted)
                         }
                         catch {
                             case e : java.sql.SQLIntegrityConstraintViolationException => complete(StatusCodes.Conflict)
+                            case e : IllegalStateException if e.getMessage == "index gap" => complete(StatusCodes.Conflict)
                         }
                     }
                 }
             } ~
             (post & path("rollback-v2" / Segment / IntNumber)) { (role, index) =>
-                // Atomic: composed action, then optional meta touch (best-effort).
-                q(roles.filter(_.secret === role).map(_.gameId).result.head.flatMap { id =>
-                    logs.filter(_.gameId === id).filter(_.index >= index).delete
-                })
-                try { touchMeta(q(roles.filter(_.secret === role).map(_.gameId).result.head)) }
+                val id = q(roles.filter(_.secret === role).map(_.gameId).result.head)
+                q(logs.filter(_.gameId === id).filter(_.index >= index).delete)
+                try { touchMeta(id) }
                 catch { case _ : Throwable => () }
                 complete(StatusCodes.Accepted)
+            } ~
+            // [2026-06-11] Client-side crash reporting. Authenticated by game role secret
+            // (same as /write). Sets broken=1 and stores the error in the annotation notes.
+            // Only fires on fatal game-loop crashes, not transient JS errors.
+            (post & path("error" / Segment)) { (role) =>
+                decodeRequest {
+                    entity(as[String]) { body =>
+                        try {
+                            val id = q(roles.filter(_.secret === role).map(_.gameId).result.head)
+                            q(
+                                adminAnnotations.filter(_.gameId === id).delete,
+                                adminAnnotations += AdminAnnotation(id, true, body.take(4000))
+                            )
+                            complete(StatusCodes.Accepted)
+                        } catch {
+                            case _ : Throwable => complete(StatusCodes.NotFound)
+                        }
+                    }
+                }
             } ~
             // ── ADMIN ENDPOINTS (owner-only) ──
             // Gated by ownerToken matching the 5th argv. If ownerToken is empty (not
             // configured), every admin endpoint returns 404 so it's invisible.
             // Serve the admin UI as a static file at /admin.html. Reads from
-            // ../solo/admin.html on the VM (which we upload separately).
+            // ../library/admin.html on the VM (which we upload separately).
             // [2026-05-23] No-cache headers so the admin UI is never served
             // from the browser's stale cache.
             (get & path("admin.html")) {
@@ -336,7 +357,7 @@ object CthulhuWarsOnline {
                     RawHeader("Pragma", "no-cache"),
                     RawHeader("Expires", "0"),
                 ) {
-                    getFromFile("../solo/admin.html")
+                    getFromFile("../library/admin.html")
                 }
             } ~
             // Serve the MNU beta build under /mnu/. Assets in ../mnu/ on the VM.
@@ -391,26 +412,44 @@ object CthulhuWarsOnline {
                         entity(as[String]) { body =>
                             val ss = body.split("\n").toList.map(_.ascii)
                             try {
-                                q(roles.filter(_.secret === role).filter(_.name =!= "#").map(r => (r.name, r.gameId)).result.head.flatMap { case (name, id) =>
-                                    logs ++= 0.until(ss.size).map(n => Log(id, index + n, name, ss(n)))
-                                })
-                                try { touchMeta(q(roles.filter(_.secret === role).filter(_.name =!= "#").map(_.gameId).result.head)) }
+                                val (name, id) = q(roles.filter(_.secret === role).filter(_.name =!= "#").map(r => (r.name, r.gameId)).result.head)
+                                val maxIdx = q(logs.filter(_.gameId === id).map(_.index).max.result).getOrElse(-1)
+                                if (index != maxIdx + 1)
+                                    throw new IllegalStateException("index gap")
+                                q(logs ++= 0.until(ss.size).map(n => Log(id, index + n, name, ss(n))))
+                                try { touchMeta(id) }
                                 catch { case _ : Throwable => () }
                                 complete(StatusCodes.Accepted)
                             }
                             catch {
                                 case e : java.sql.SQLIntegrityConstraintViolationException => complete(StatusCodes.Conflict)
+                                case e : IllegalStateException if e.getMessage == "index gap" => complete(StatusCodes.Conflict)
                             }
                         }
                     }
                 } ~
                 (post & path("rollback-v2" / Segment / IntNumber)) { (role, index) =>
-                    q(roles.filter(_.secret === role).map(_.gameId).result.head.flatMap { id =>
-                        logs.filter(_.gameId === id).filter(_.index >= index).delete
-                    })
-                    try { touchMeta(q(roles.filter(_.secret === role).map(_.gameId).result.head)) }
+                    val id = q(roles.filter(_.secret === role).map(_.gameId).result.head)
+                    q(logs.filter(_.gameId === id).filter(_.index >= index).delete)
+                    try { touchMeta(id) }
                     catch { case _ : Throwable => () }
                     complete(StatusCodes.Accepted)
+                } ~
+                (post & path("error" / Segment)) { (role) =>
+                    decodeRequest {
+                        entity(as[String]) { body =>
+                            try {
+                                val id = q(roles.filter(_.secret === role).map(_.gameId).result.head)
+                                q(
+                                    adminAnnotations.filter(_.gameId === id).delete,
+                                    adminAnnotations += AdminAnnotation(id, true, body.take(4000))
+                                )
+                                complete(StatusCodes.Accepted)
+                            } catch {
+                                case _ : Throwable => complete(StatusCodes.NotFound)
+                            }
+                        }
+                    }
                 } ~
                 // /mnu/play/<role-secret> — game-join URL. Serve MNU's index.html so
                 // the SPA can pick up the role from window.location and start the
@@ -439,6 +478,115 @@ object CthulhuWarsOnline {
                     pathPrefix("fonts")  { getFromDirectory("../mnu/fonts") } ~
                     pathPrefix("target") { getFromDirectory("../mnu/target") } ~
                     pathEnd { getFromFile("../mnu/index.html") }
+                }
+            } ~
+            // [2026-06-11] Serve the Homebrew build under /HB/. Same pattern as /mnu/.
+            pathPrefix("HB") {
+                (post & path("create")) {
+                    parameter("bot".as[Boolean].?(false)) { botFlag =>
+                        decodeRequest {
+                            entity(as[String]) { body =>
+                                val ss = body.split("\n").toList.map(_.ascii)
+                                val rls = List("$", "#") ++ ss(0).split(" ").toList
+                                val name = ss(2)
+                                val lgs = ss.drop(1)
+                                val srs = rls.map(r => r -> secret).toMap
+                                q((gamesId += Game(name)).flatMap(id => seq(
+                                    roles ++= rls.map(r => Role(id, r, srs(r))),
+                                    logs ++= lgs.zipWithIndex.map { case (l, n) => Log(id, n, "", l) }
+                                )))
+                                val newGameId = q(roles.filter(_.secret === srs("$")).map(_.gameId).result.head)
+                                touchMeta(newGameId)
+                                if (botFlag)
+                                    try { q(botGames += BotGame(newGameId)) }
+                                    catch { case _ : Throwable => () }
+                                txt(srs("$"))
+                            }
+                        }
+                    }
+                } ~
+                (get & path("roles" / Segment)) { role =>
+                    val list = q(roles.filter(_.secret === role).filter(_.name === "$").map(_.gameId).result.head.flatMap { id =>
+                        roles.filter(_.gameId === id).result
+                    })
+                    txt(list.map(r => r.name + " " + r.secret).mkString("\n"))
+                } ~
+                (get & path("role" / Segment)) { role =>
+                    val name = q(roles.filter(_.secret === role).map(_.name).result.head)
+                    txt(name)
+                } ~
+                (get & path("read" / Segment / IntNumber)) { (role, from) =>
+                    val log = q(roles.filter(_.secret === role).map(_.gameId).result.head.flatMap { id =>
+                            logs.filter(_.gameId === id).filter(_.index >= from).map(_.value).result
+                    })
+                    txt(log.mkString("\n"))
+                } ~
+                (post & path("write" / Segment / IntNumber)) { (role, index) =>
+                    decodeRequest {
+                        entity(as[String]) { body =>
+                            val ss = body.split("\n").toList.map(_.ascii)
+                            try {
+                                val (name, id) = q(roles.filter(_.secret === role).filter(_.name =!= "#").map(r => (r.name, r.gameId)).result.head)
+                                val maxIdx = q(logs.filter(_.gameId === id).map(_.index).max.result).getOrElse(-1)
+                                if (index != maxIdx + 1)
+                                    throw new IllegalStateException("index gap")
+                                q(logs ++= 0.until(ss.size).map(n => Log(id, index + n, name, ss(n))))
+                                try { touchMeta(id) }
+                                catch { case _ : Throwable => () }
+                                complete(StatusCodes.Accepted)
+                            }
+                            catch {
+                                case e : java.sql.SQLIntegrityConstraintViolationException => complete(StatusCodes.Conflict)
+                                case e : IllegalStateException if e.getMessage == "index gap" => complete(StatusCodes.Conflict)
+                            }
+                        }
+                    }
+                } ~
+                (post & path("rollback-v2" / Segment / IntNumber)) { (role, index) =>
+                    val id = q(roles.filter(_.secret === role).map(_.gameId).result.head)
+                    q(logs.filter(_.gameId === id).filter(_.index >= index).delete)
+                    try { touchMeta(id) }
+                    catch { case _ : Throwable => () }
+                    complete(StatusCodes.Accepted)
+                } ~
+                (post & path("error" / Segment)) { (role) =>
+                    decodeRequest {
+                        entity(as[String]) { body =>
+                            try {
+                                val id = q(roles.filter(_.secret === role).map(_.gameId).result.head)
+                                q(
+                                    adminAnnotations.filter(_.gameId === id).delete,
+                                    adminAnnotations += AdminAnnotation(id, true, body.take(4000))
+                                )
+                                complete(StatusCodes.Accepted)
+                            } catch {
+                                case _ : Throwable => complete(StatusCodes.NotFound)
+                            }
+                        }
+                    }
+                } ~
+                pathPrefix("play") {
+                    pathPrefix("webp")   { getFromDirectory("../HB/webp") } ~
+                    pathPrefix("fonts")  { getFromDirectory("../HB/fonts") } ~
+                    pathPrefix("target") { getFromDirectory("../HB/target") } ~
+                    pathPrefix(Segment) { _ =>
+                        pathPrefix("webp")   { getFromDirectory("../HB/webp") } ~
+                        pathPrefix("fonts")  { getFromDirectory("../HB/fonts") } ~
+                        pathPrefix("target") { getFromDirectory("../HB/target") } ~
+                        pathEnd { getFromFile("../HB/index.html") }
+                    } ~
+                    pathEnd { getFromFile("../HB/index.html") }
+                } ~
+                pathPrefix("webp")   { getFromDirectory("../HB/webp") } ~
+                pathPrefix("fonts")  { getFromDirectory("../HB/fonts") } ~
+                pathPrefix("target") { getFromDirectory("../HB/target") } ~
+                pathEnd { getFromFile("../HB/index.html") } ~
+                path("") { getFromFile("../HB/index.html") } ~
+                pathPrefix(Segment) { _ =>
+                    pathPrefix("webp")   { getFromDirectory("../HB/webp") } ~
+                    pathPrefix("fonts")  { getFromDirectory("../HB/fonts") } ~
+                    pathPrefix("target") { getFromDirectory("../HB/target") } ~
+                    pathEnd { getFromFile("../HB/index.html") }
                 }
             } ~
             (get & path("admin" / Segment / "games")) { token =>
@@ -549,9 +697,16 @@ object CthulhuWarsOnline {
                 else {
                     decodeRequest {
                         entity(as[String]) { body =>
-                            val ss = body.split("\n").toList.map(_.ascii)
+                            // Body format: "role\tvalue" per line (role preserved from stash).
+                            // Fallback: if no tab present, role defaults to "$".
+                            // Parse tab BEFORE .ascii (which strips non-printable chars including tab).
+                            val entries = body.split("\n").toList.map { line =>
+                                val tab = line.indexOf('\t')
+                                if (tab >= 0) (line.substring(0, tab).ascii, line.substring(tab + 1).ascii)
+                                else ("$", line.ascii)
+                            }
                             try {
-                                q(logs ++= 0.until(ss.size).map(n => Log(gameId, index + n, "$", ss(n))))
+                                q(logs ++= entries.zipWithIndex.map { case ((role, value), n) => Log(gameId, index + n, role, value) })
                                 touchMeta(gameId)
                                 complete(StatusCodes.Accepted)
                             }
@@ -586,8 +741,16 @@ object CthulhuWarsOnline {
                 else {
                     decodeRequest {
                         entity(as[String]) { body =>
-                            val newValue = body.split("\n").headOption.map(_.ascii).getOrElse("")
-                            q(logs.filter(_.gameId === gameId).filter(_.index === index).map(_.value).update(newValue))
+                            // Body format: "role\tvalue" (updates both) or just "value" (updates value only, role unchanged)
+                            val tab = body.indexOf('\t')
+                            if (tab >= 0) {
+                                val role = body.substring(0, tab).ascii
+                                val newValue = body.substring(tab + 1).split("\n").headOption.map(_.ascii).getOrElse("")
+                                q(logs.filter(_.gameId === gameId).filter(_.index === index).map(r => (r.role, r.value)).update((role, newValue)))
+                            } else {
+                                val newValue = body.split("\n").headOption.map(_.ascii).getOrElse("")
+                                q(logs.filter(_.gameId === gameId).filter(_.index === index).map(_.value).update(newValue))
+                            }
                             touchMeta(gameId)
                             complete(StatusCodes.Accepted)
                         }
