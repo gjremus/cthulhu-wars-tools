@@ -300,19 +300,29 @@ def grab_one(token, game_id, build, dry_run=False):
     return out
 
 
-# admin build path prefix -> admin build tag used by --sweep. The games list
-# endpoint does NOT return a build column directly, so we infer the build from
-# the master secret's working play path by probing; but that's expensive. Simpler:
-# admin.html derives build from a version header in the log, which we don't have
-# here. For the sweep we fall back to trying the game on each known build path
-# until one loads as a game (not the lobby). To keep the sweep cheap and robust,
-# we instead read the build the same way the queued CONSOLE-CHECK line carries it
-# is unavailable, so we default to probing /play, /mnu/play, /HB/play in order.
-SWEEP_BUILD_CANDIDATES = ["", "mnu", "HB"]
+# The games list endpoint (admin "games") is tab-delimited; column index 10 is
+# the game's build tag (library|mnu|tt|bb|HB|unknown), the same column the admin
+# UI reads as parts[10] (admin.html ~line 1220). The --sweep path uses this real
+# per-game build so each game is loaded at its correct play URL. Older server
+# responses may omit the column (blank) -> we fall back to "library".
+SWEEP_BUILD_DEFAULT = "library"
+
+
+def normalize_build(raw):
+    """Map a games-endpoint build column value to an admin build tag the grab
+    path understands. Blank / 'unknown' / 'library' all collapse to the library
+    (root) build, matching the prior hardcoded fallback behavior."""
+    b = (raw or "").strip()
+    if not b or b.lower() in ("unknown", "library"):
+        return SWEEP_BUILD_DEFAULT
+    return b
 
 
 def active_games(token):
-    """Return list of (id, name) for active games: not bot-created, not completed."""
+    """Return list of (id, name, build) for active games: not bot, not completed.
+
+    build is parsed from column index 10 of the tab-delimited games endpoint
+    (same column admin.html reads as parts[10]), normalized via normalize_build."""
     status, body = http_get(admin_url(token, "games"))
     if status != 200:
         raise RuntimeError(f"GET games returned HTTP {status}")
@@ -325,23 +335,11 @@ def active_games(token):
         name = parts[1] if len(parts) > 1 else ""
         completed = (parts[5] if len(parts) > 5 else "0").strip() == "1"
         is_bot = (parts[6] if len(parts) > 6 else "0").strip() == "1"
+        build = normalize_build(parts[10] if len(parts) > 10 else "")
         if is_bot or completed:
             continue
-        out.append((gid, name))
+        out.append((gid, name, build))
     return out
-
-
-def detect_build(token, game_id):
-    """Best-effort: find a build path on which this game's spectator secret loads
-    a real game rather than the lobby. Returns an admin build tag.
-
-    We avoid spinning up Chromium per candidate (slow); instead we HTTP-probe the
-    play URL: all builds return 200 for /play/<secret> regardless, so HTTP alone
-    can't disambiguate. We therefore default to 'library' (root) which is the most
-    common, and let the captured body/error reveal a mismatch. The per-game
-    CONSOLE-CHECK button passes the real build, so detect_build is only the
-    --sweep fallback."""
-    return "library"
 
 
 def main():
@@ -364,8 +362,7 @@ def main():
         games = active_games(token)
         print(f"[sweep] {len(games)} active games")
         n_ok = n_fail = 0
-        for gid, name in games:
-            build = detect_build(token, gid)
+        for gid, name, build in games:
             r = grab_one(token, gid, build, dry_run=args.dry_run)
             if r["ok"]:
                 n_ok += 1

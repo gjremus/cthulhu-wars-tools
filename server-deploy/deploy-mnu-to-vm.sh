@@ -24,7 +24,7 @@ export JAVA_HOME="/Users/gremus/.local/jdk/zulu21.50.19-ca-jdk21.0.11-macosx_aar
 export PATH="$JAVA_HOME/bin:$PATH"
 
 MNU_ROOT="/Users/gremus/Claude-Projects/cw-mnu-wt"
-SSH_KEY="/Users/gremus/Library/CloudStorage/GoogleDrive-gremus@salesforce.com/My Drive/Personal/Games/Cthulhu Wars/Library at Celaeno/Server Deployment/oracle_cw_ed25519"
+SSH_KEY="/Users/gremus/Library/CloudStorage/GoogleDrive-gremus@salesforce.com/My Drive/Personal/Games/Cthulhu Wars/Maps/Library at Celaeno/Server Deployment/oracle_cw_ed25519"
 HOST="oracle-cw-server@35.255.125.91"
 REMOTE_ROOT="/opt/cwo/mnu"
 
@@ -63,7 +63,7 @@ TMP_INDEX="$(mktemp -t mnu-index.XXXXXX).html"
 cp "$MNU_ROOT/solo/index.html" "$TMP_INDEX"
 sed -i '' \
     -e 's|###SERVER-URL###|https://cwo.freeddns.org/mnu/|g' \
-    -e 's|./target/scala-2.13/cthulhu-wars-solo-hrf-opt/main.js|./target/scala-2.13/cthulhu-wars-solo-hrf-opt/main.js|g' \
+    -e 's|\./target/scala-2.13/cthulhu-wars-solo-hrf-opt/main.js|/mnu/target/scala-2.13/cthulhu-wars-solo-hrf-opt/main.js|g' \
     -e "s|main\\.js?v=[A-Za-z0-9-]*|main.js?v=$CACHE_TAG|g" \
     "$TMP_INDEX"
 
