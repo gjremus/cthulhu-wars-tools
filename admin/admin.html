@@ -97,6 +97,10 @@
                  border: 1px solid var(--border); background: var(--bg); color: var(--text-muted); cursor: pointer; }
   .broken-flag:hover { background: var(--bg-subtle); color: var(--text); }
   .broken-flag.on { background: rgba(248,81,73,0.15); border-color: var(--danger); color: var(--danger); }
+  .live-flag { flex: 0 0 auto; padding: 3px 8px; font-size: 9pt; border-radius: 6px;
+               border: 1px solid var(--border); background: var(--bg); color: var(--text-muted); cursor: pointer; }
+  .live-flag:hover { background: var(--bg-subtle); color: var(--text); }
+  .live-flag.on { background: rgba(63,185,80,0.15); border-color: var(--success); color: var(--success); }
   .game-row.broken .game-name { color: var(--danger); text-decoration: line-through; }
   .game-row.broken { border-color: var(--danger); }
   .game-row.completed { opacity: 0.55; }
@@ -247,7 +251,6 @@
 <nav id="nav-drawer" class="nav-drawer" aria-label="Primary">
   <a class="section">Sections</a>
   <a href="#" onclick="showSection('games'); closeNav(); return false;">Games</a>
-  <a href="#" onclick="document.getElementById('show-bots-cb') && (document.getElementById('show-bots-cb').checked=true, loadGames()); showSection('games'); closeNav(); return false;">Bot games</a>
   <a href="#" onclick="showSection('simrunner'); closeNav(); return false;">SimRunner</a>
   <a href="#" onclick="showSection('build'); closeNav(); return false;">Build</a>
   <a href="#" onclick="showSection('claude'); closeNav(); return false;">Claude Terminal</a>
@@ -323,8 +326,12 @@
           </div>
           <div>
             <div style="color:var(--text-muted);margin-bottom:4px;">Bots</div>
+            <label class="sim-checkbox" style="margin-right:6px;"><input type="checkbox" id="flt-allhumans-yes" onchange="applyGamesSortSearch()"/>All humans</label>
             <label class="sim-checkbox" style="margin-right:6px;"><input type="checkbox" id="flt-allbots-yes" onchange="applyGamesSortSearch()"/>All bots</label>
             <label class="sim-checkbox"><input type="checkbox" id="flt-anybots-yes" onchange="applyGamesSortSearch()"/>Any bots</label>
+          </div>
+          <div style="margin-top:6px;">
+            <label class="sim-checkbox"><input type="checkbox" id="flt-live-yes" onchange="applyGamesSortSearch()"/>Live (monitored)</label>
           </div>
         </div>
         <div style="margin-top:8px;display:flex;gap:6px;align-items:center;">
@@ -343,6 +350,7 @@
         <button class="small" onclick="submitSelectedToRL()" id="rl-bulk-submit-btn">Submit selected to RL tuning</button>
         <span id="rl-bulk-status" style="font-size:9pt;"></span>
       </div>
+      <div id="games-count" style="font-size:9pt;color:var(--text-muted);margin:0 0 6px;"></div>
       <div id="games-list"></div>
     </div>
 
@@ -961,8 +969,10 @@ function readFilters() {
     pc3:       g('flt-pc-3'),
     pc4:       g('flt-pc-4'),
     pc5:       g('flt-pc-5'),
+    allHumans: g('flt-allhumans-yes'),
     allBots:   g('flt-allbots-yes'),
     anyBots:   g('flt-anybots-yes'),
+    liveOnly:  g('flt-live-yes'),
     search:    (document.getElementById('games-search')?.value || '').trim().toLowerCase(),
     sort:      document.getElementById('games-sort')?.value || 'default',
   };
@@ -975,7 +985,8 @@ function activeFilterCount() {
   if (f.repYes) n++; if (f.repNo) n++;
   if (f.errYes) n++; if (f.errNo) n++;
   if (f.pc3) n++; if (f.pc4) n++; if (f.pc5) n++;
-  if (f.allBots) n++; if (f.anyBots) n++;
+  if (f.allHumans) n++; if (f.allBots) n++; if (f.anyBots) n++;
+  if (f.liveOnly) n++;
   if (f.search) n++;
   return n;
 }
@@ -989,7 +1000,7 @@ function toggleFilterPyramid() {
 
 function clearAllFilters() {
   ['flt-rep-yes','flt-rep-no','flt-err-yes','flt-err-no',
-   'flt-pc-3','flt-pc-4','flt-pc-5','flt-allbots-yes','flt-anybots-yes']
+   'flt-pc-3','flt-pc-4','flt-pc-5','flt-allhumans-yes','flt-allbots-yes','flt-anybots-yes','flt-live-yes']
     .forEach(id => { const el = document.getElementById(id); if (el) el.checked = false; });
   const s = document.getElementById('games-search'); if (s) s.value = '';
   const so = document.getElementById('games-sort'); if (so) so.value = 'default';
@@ -1019,11 +1030,17 @@ function gamePassesFilters(g, f) {
     const ok = (f.pc3 && g.playerCount === 3) || (f.pc4 && g.playerCount === 4) || (f.pc5 && g.playerCount === 5);
     if (!ok) return false;
   }
-  // Bot axes.
-  // "all bots": every faction is a bot → botCount === playerCount AND playerCount>0
-  if (f.allBots && !(g.playerCount > 0 && g.botCount === g.playerCount)) return false;
+  // Bot axes. Server sends isBot (boolean: at least one bot present) and botCount.
+  // botCount is currently always 0 from the server, so fall back to isBot flag.
+  const hasBots = g.botCount > 0 || g.isBot;
+  // "all humans": no bots in this game.
+  if (f.allHumans && hasBots) return false;
+  // "all bots": every faction is a bot (requires real botCount from server).
+  if (f.allBots && !(g.botCount > 0 && g.botCount === g.playerCount)) return false;
   // "any bots": at least one bot among factions.
-  if (f.anyBots && !(g.botCount > 0)) return false;
+  if (f.anyBots && !hasBots) return false;
+  // Live-game filter.
+  if (f.liveOnly && !g.isLive) return false;
   // Name search.
   if (f.search && !String(g.name).toLowerCase().includes(f.search)) return false;
   return true;
@@ -1190,6 +1207,8 @@ function populateGames(text) {
   list.innerHTML = '';
   if (!text.trim()) {
     list.innerHTML = '<p class="empty">No live games.</p>';
+    const countEl = document.getElementById('games-count');
+    if (countEl) countEl.textContent = '0 games';
     return;
   }
   // Parse all rows first so we can sort before rendering.
@@ -1216,8 +1235,8 @@ function populateGames(text) {
       isBot: (parts[6] || '0').trim() === '1',
       playerCount: parseInt(parts[7] || '0', 10),
       botCount: parseInt(parts[8] || '0', 10),
-      hasFixResponse: (parts[9] || '0').trim() === '1',
-      build: (parts[10] || 'unknown').trim(),
+      isLive: (parts[9] || '0').trim() === '1',
+      build: (['library','mnu','tt','bb','hb'].includes((parts[10]||'').trim()) ? parts[10].trim() : 'unknown'),
       startMs: parseInt(parts[11] || '0', 10),
       // 2026-06-04: col 12 = RL-tuning corpus submission timestamp (0 = not submitted).
       rlSubmittedMs: parseInt(parts[12] || '0', 10),
@@ -1251,6 +1270,12 @@ function populateGames(text) {
   // through. paintReplayCell re-evaluates and hides the row when the answer
   // arrives. This matches the previous single-pill behaviour.
   const visible = games.filter(g => gamePassesFilters(g, f));
+  const countEl = document.getElementById('games-count');
+  if (countEl) {
+    const total = games.length;
+    const shown = visible.length;
+    countEl.textContent = shown === total ? `${total} games` : `${shown} of ${total} games`;
+  }
   if (!visible.length) {
     list.innerHTML = '<p class="empty">No games match the current filter.</p>';
     return;
@@ -1272,6 +1297,9 @@ function populateGames(text) {
     row.dataset.errored = errored ? '1' : '0';
     const brokenLabel = broken ? '✖ Broken' : 'Mark broken';
     const brokenTitle = broken ? 'Click to clear the broken flag' : 'Click to mark this game as broken';
+    const isLive = g.isLive;
+    const liveLabel = isLive ? '● Live' : 'Mark live';
+    const liveTitle = isLive ? 'This game is monitored every 15 min. Click to stop monitoring.' : 'Flag for automatic 15-min health checks';
     // Status badge — completed > errored > nothing. Manual broken is already
     // surfaced by the row border + broken-flag button, so no separate badge.
     let statusLabel = '';
@@ -1314,6 +1342,8 @@ function populateGames(text) {
     row.innerHTML =
       `<button class="broken-flag ${broken ? 'on' : ''}" title="${brokenTitle}" ` +
         `onclick="event.stopPropagation(); toggleBrokenFromList('${id}', this)">${brokenLabel}</button>` +
+      `<button class="live-flag ${isLive ? 'on' : ''}" title="${liveTitle}" ` +
+        `onclick="event.stopPropagation(); toggleLiveFromList('${id}', this)">${liveLabel}</button>` +
       `<div style="flex:1;">` +
         `<span class="game-name">${esc(name)}</span> ${statusLabel}${rlBadge}<br/>` +
         `<span class="game-meta">game id ${id} · ${inactivityLabel(lastWriteMs)}</span>` +
@@ -1375,6 +1405,21 @@ function toggleBrokenFromList(gameId, btn) {
         if (cb) cb.checked = newBroken;
       }
     });
+  });
+}
+
+// Toggle the "live game" flag — marks a game for periodic 15-min health checks.
+function toggleLiveFromList(gameId, btn) {
+  const isCurrentlyLive = btn.classList.contains('on');
+  const endpoint = isCurrentlyLive ? 'unmark-live' : 'mark-live';
+  fetch(`${SERVER}/admin/${TOKEN}/${endpoint}/${gameId}`, { method: 'POST' }).then(r => {
+    if (!r.ok) { alert(`Could not toggle live flag (HTTP ${r.status})`); return; }
+    const newLive = !isCurrentlyLive;
+    btn.classList.toggle('on', newLive);
+    btn.textContent = newLive ? '● Live' : 'Mark live';
+    btn.title = newLive
+      ? 'This game is monitored every 15 min. Click to stop monitoring.'
+      : 'Flag for automatic 15-min health checks';
   });
 }
 
@@ -2057,6 +2102,146 @@ const ENGINE_GLUE_PATTERNS = [
 ];
 function isEngineGlue(val) { return ENGINE_GLUE_PATTERNS.some(p => p.test(val)); }
 
+// Pretty-print a unit reference like "FB/Acolyte/2" → "Acolyte" or "OW/Mutant/1" → "Mutant"
+function prettyUnit(ref) {
+  if (!ref) return ref;
+  const slash = ref.indexOf('/');
+  if (slash < 0) return ref.replace(/([A-Z])/g, ' $1').trim();
+  const parts = ref.split('/');
+  return parts[1] ? parts[1].replace(/([A-Z])/g, ' $1').trim() : ref;
+}
+
+// Human-readable action descriptions shown alongside the raw action string.
+// Covers all major player-visible actions to match what appears in the game's log panel.
+function humanizeAction(val) {
+  let m;
+  // --- CORE ACTIONS ---
+  if ((m = val.match(/^AttackAction\((\w+),\s*(\w+),\s*(\w+)/))) return `${m[1]} attacks ${m[3]} in ${m[2]}`;
+  if ((m = val.match(/^BattleRollAction\((\w+),\s*\[([^\]]*)\],\s*(\w+)/))) return `${m[1]} rolled [${m[2]}]`;
+  if ((m = val.match(/^BattleProceedAction\((\w+)\)/))) return `Battle → ${m[1].replace(/([A-Z])/g, ' $1').trim()}`;
+  if ((m = val.match(/^BattleDoneAction\((\w+)\)/))) return `Battle ended (${m[1]}'s attack)`;
+  if ((m = val.match(/^SummonAction\((\w+),\s*(\w+),\s*(\w+)\)/))) return `${m[1]} summoned ${m[2].replace(/([A-Z])/g, ' $1').trim()} in ${m[3]}`;
+  if ((m = val.match(/^MoveAction\((\w+),\s*([^,]+),\s*(\w+),\s*(\w+)/))) return `${m[1]} moved ${prettyUnit(m[2])} from ${m[3]} to ${m[4]}`;
+  if ((m = val.match(/^MoveDoneAction\((\w+)\)/))) return `${m[1]} finished moving`;
+  if ((m = val.match(/^AwakenAction\((\w+),\s*(\w+),\s*(\w+),\s*(\d+)\)/))) return `${m[1]} awakened ${m[2].replace(/([A-Z])/g, ' $1').trim()} in ${m[3]} for ${m[4]} power`;
+  if ((m = val.match(/^FBAwakenGhatanothoaAction\((\w+),\s*(\d+)\)/))) return `${m[1]} awakened Ghatanothoa for ${m[2]} power`;
+  if ((m = val.match(/^SpellbookAction\((\w+),\s*(\w+)/))) return `${m[1]} received spellbook: ${m[2].replace(/([A-Z])/g, ' $1').trim()}`;
+  if ((m = val.match(/^CaptureAction\((\w+),\s*([^,]+),\s*(\w+)\)/))) return `${m[1]} captured ${prettyUnit(m[2])} in ${m[3]}`;
+  if ((m = val.match(/^RitualAction\((\w+)/))) return `${m[1]} performed the Ritual of Annihilation`;
+  if ((m = val.match(/^ElderSignAction\((\w+)/))) return `${m[1]} drew an Elder Sign`;
+  if ((m = val.match(/^RevealESAction\((\w+)/))) return `${m[1]} revealed Elder Signs`;
+  if ((m = val.match(/^BuildGateAction\((\w+),\s*(\w+)\)/))) return `${m[1]} built a gate in ${m[2]}`;
+  if ((m = val.match(/^BuildAction\((\w+),\s*(\w+)\)/))) return `${m[1]} built a gate in ${m[2]}`;
+  if ((m = val.match(/^RecruitAction\((\w+),\s*(\w+),\s*(\w+)\)/))) return `${m[1]} recruited ${m[2].replace(/([A-Z])/g, ' $1').trim()} in ${m[3]}`;
+  if ((m = val.match(/^PassAction\((\w+)\)/))) return `${m[1]} passed and forfeited remaining power`;
+  if ((m = val.match(/^EndTurnAction\((\w+)\)/))) return `${m[1]} ended turn`;
+
+  // --- BATTLE ASSIGNMENT / RETREAT ---
+  if ((m = val.match(/^AssignKillAction\((\w+),\s*[^,]*,\s*[^,]*,\s*([^)]+)\)/))) return `${prettyUnit(m[2])} killed`;
+  if ((m = val.match(/^AssignPainAction\((\w+),\s*[^,]*,\s*[^,]*,\s*([^)]+)\)/))) return `${prettyUnit(m[2])} pained`;
+  if ((m = val.match(/^RetreatUnitAction\((\w+),\s*([^,]+),\s*(\w+)\)/))) return `${prettyUnit(m[2])} retreated to ${m[3]}`;
+  if ((m = val.match(/^RetreatAllAction\((\w+),\s*(\w+),\s*(\w+)\)/))) return `${m[2]}'s pained units retreated to ${m[3]}`;
+  if ((m = val.match(/^EliminateNoWayAction\((\w+),\s*([^)]+)\)/))) return `${prettyUnit(m[2])} eliminated (no retreat)`;
+  if ((m = val.match(/^PainAction\((\w+),\s*([^,]+),\s*(\w+),\s*(\w+)\)/))) return `${prettyUnit(m[2])} pained from ${m[3]} to ${m[4]}`;
+  if ((m = val.match(/^KillAction\((\w+),\s*([^,]+),\s*(\w+)\)/))) return `${prettyUnit(m[2])} killed in ${m[3]}`;
+
+  // --- GATE CONTROL ---
+  if ((m = val.match(/^GateControlAction\((\w+),\s*(\w+)\)/))) return `${m[1]} took control of gate in ${m[2]}`;
+
+  // --- PHASE / TURN MARKERS ---
+  if ((m = val.match(/^PreMainAction\((\w+)\)/))) return `── ${m[1]}'s turn ──`;
+  if ((m = val.match(/^GatherPowerAction\((\w+),\s*(\d+)\)/))) return `${m[1]} gathered ${m[2]} power`;
+  if ((m = val.match(/^DoomAction\((\w+),\s*(\d+)/))) return `${m[1]} scored ${m[2]} doom`;
+  if ((m = val.match(/^DoomPhaseAction\(/))) return `── Doom Phase ──`;
+  if ((m = val.match(/^ActionPhaseAction\(/))) return `── Action Phase ──`;
+  if ((m = val.match(/^PowerGatherAction\(/))) return `── Gather Power Phase ──`;
+  if ((m = val.match(/^NextPlayerAction\((\w+)\)/))) return `${m[1]} became first player`;
+  if ((m = val.match(/^PlayDirectionAction\((\w+),\s*\[([^\]]*)\]\)/))) return `Play order: ${m[2]}`;
+  if ((m = val.match(/^StartingRegionAction\((\w+),\s*(\w+)\)/))) return `${m[1]} started in ${m[2]}`;
+
+  // --- FACTION-SPECIFIC: TCHO-TCHO (TT) ---
+  if ((m = val.match(/^TTChooseTribeAction\((\w+),\s*(\w+)\)/))) return `${m[1]} chose tribe: ${m[2].replace(/([A-Z])/g, ' $1').trim()}`;
+  if ((m = val.match(/^TTAwakenUbboSathlaChooseHPAction\((\w+),\s*(\w+),\s*(\d+)\)/))) return `${m[1]} awakened Ubbo-Sathla in ${m[2]} (sacrificed ${m[3]} High Priests)`;
+  if ((m = val.match(/^TTHierophantsChooseGateAction\((\w+),\s*(\w+)\)/))) return `${m[1]} placed Hierophant gate in ${m[2]}`;
+  if ((m = val.match(/^TTHellsBanquetApplyAction\((\w+)/))) return `${m[1]} used Hell's Banquet`;
+
+  // --- FACTION-SPECIFIC: TIDAL SURGE (TS) ---
+  if ((m = val.match(/^TSDeathMarchAction\((\w+),\s*([^,]+),\s*(\w+)\)/))) return `${m[1]} death-marched ${prettyUnit(m[2])} to ${m[3]}`;
+  if ((m = val.match(/^TSUseTomeAction\((\w+)/))) return `${m[1]} used a Tome`;
+  if ((m = val.match(/^TSPlaceTomeUnitAction\((\w+),\s*([^,]+),\s*(\w+)\)/))) return `${m[1]} placed Tome unit ${prettyUnit(m[2])} in ${m[3]}`;
+  if ((m = val.match(/^TSShepherdGatherAction\((\w+)/))) return `${m[1]} used Shepherd to gather`;
+  if ((m = val.match(/^TSElevenRevelationsAction\((\w+)/))) return `${m[1]} used Eleven Revelations`;
+  if ((m = val.match(/^TSAwakenGlaakiPayAction\((\w+)/))) return `${m[1]} awakened Gla'aki`;
+
+  // --- FACTION-SPECIFIC: FIRSTBORN (FB) ---
+  if ((m = val.match(/^FBWritheMainAction\((\w+)\)/))) return `${m[1]} used Writhe`;
+  if ((m = val.match(/^FBWritheRollResultAction\((\w+),\s*(\d+),\s*\[([^\]]*)\]/))) return `${m[1]} Writhe rolled ${m[2]} dice: [${m[3]}]`;
+  if ((m = val.match(/^FBWritheRerollAction\((\w+)/))) return `${m[1]} rerolled Writhe`;
+  if ((m = val.match(/^FBWritheKillUnitAction\((\w+),\s*([^,]+)/))) return `${m[1]} Writhe killed ${prettyUnit(m[2])}`;
+  if ((m = val.match(/^FBWritheChoosePainUnitAction\((\w+),\s*([^,]+)/))) return `${m[1]} Writhe pained ${prettyUnit(m[2])}`;
+  if ((m = val.match(/^FBWritheMoveOneToRegionAction\((\w+),\s*([^,]+),\s*(\w+)/))) return `${m[1]} Writhe moved ${prettyUnit(m[2])} to ${m[3]}`;
+  if ((m = val.match(/^FBWritheMoveSeparatelyAction\((\w+)/))) return `${m[1]} chose to move Writhe units separately`;
+  if ((m = val.match(/^FBWritheKeepAction\((\w+)/))) return `${m[1]} kept Writhe results`;
+  if ((m = val.match(/^FBCallOfTheFaithfulAction\((\w+)/))) return `${m[1]} used Call of the Faithful`;
+  if ((m = val.match(/^FBInfernalPactChooseAction\((\w+),\s*(\w+)\)/))) return `${m[1]} chose ${m[2]} for Infernal Pact`;
+  if ((m = val.match(/^FBDevilsMarkDoomAction\((\w+)/))) return `${m[1]} gained doom from Devil's Mark`;
+  if ((m = val.match(/^FBDevilsMarkPlaceCraterAction\((\w+),\s*(\w+)\)/))) return `${m[1]} placed Crater in ${m[2]}`;
+
+  // --- NEUTRAL UNITS / IGOOs ---
+  if ((m = val.match(/^NeutralMonstersAction\((\w+),\s*(\w+),\s*(\w+)\)/))) return `${m[1]} recruited neutral ${m[2].replace(/([A-Z])/g, ' $1').trim()} in ${m[3]}`;
+  if ((m = val.match(/^LoyaltyCardSummonAction\((\w+),\s*([^,]+),\s*(\w+)\)/))) return `${m[1]} summoned ${prettyUnit(m[2])} in ${m[3]} (Loyalty)`;
+  if ((m = val.match(/^DragonAscendingInstantAction\((\w+)/))) return `${m[1]} used Dragon Ascending`;
+  if ((m = val.match(/^BeyondOneAction\((\w+),\s*([^,]+),\s*(\w+)\)/))) return `${m[1]} sent ${prettyUnit(m[2])} Beyond One to ${m[3]}`;
+  if ((m = val.match(/^MillionFavoredOnesXAction\((\w+)/))) return `${m[1]} used Million Favored Ones`;
+  if ((m = val.match(/^CaptureTargetAction\((\w+),\s*([^)]+)\)/))) return `${m[1]} targeted ${prettyUnit(m[2])} for capture`;
+
+  // --- PRIME CAUSE ---
+  if ((m = val.match(/^PrimeCauseChooseUnitAction\((\w+),\s*([^)]+)\)/))) return `${m[1]} targeted ${prettyUnit(m[2])} with Prime Cause`;
+  if ((m = val.match(/^PrimeCauseChooseReplacementAction\((\w+),\s*([^,]+),\s*(\w+)\)/))) return `${m[1]} replaced ${prettyUnit(m[2])} with ${m[3].replace(/([A-Z])/g, ' $1').trim()}`;
+  if ((m = val.match(/^PrimeCauseSkipAction\((\w+)\)/))) return `${m[1]} skipped Prime Cause`;
+  if ((m = val.match(/^PrimeCauseCancelReplacementAction\((\w+)\)/))) return `${m[1]} cancelled Prime Cause replacement`;
+
+  // --- AZATHOTH ---
+  if ((m = val.match(/^AzathothAwakenCommitAction\((\w+),\s*(\d+),\s*(\w+)\)/))) return `${m[1]} awakens Azathoth at ${m[3]}` + (m[2] !== '0' ? ` (roll: ${m[2]})` : '');
+  if ((m = val.match(/^AzathothAwakenCostAction\((\w+),\s*(\d+),\s*(\d+),\s*(\w+)\)/))) return `${m[1]} rolled ${m[2]}, awakened Azathoth for ${m[3]} power at ${m[4]}`;
+  if ((m = val.match(/^AzathothEnemyChooseAction\((\w+),\s*(\d+),\s*(\w+)\)/))) return `${m[3]} secretly chose ${m[2]} for Azathoth die`;
+
+  // --- NUCLEAR CHAOS ---
+  if ((m = val.match(/^NuclearChaosMainAction\((\w+)\)/))) return `${m[1]} used Nuclear Chaos`;
+  if ((m = val.match(/^NuclearChaosAdjustAction\((\w+),\s*Map\(([^)]+)\),\s*(\d+)\)/))) return `${m[1]} adjusted Nuclear Chaos (round ${m[3]})`;
+
+  // --- PRE-BATTLE ABILITIES ---
+  if ((m = val.match(/^PreBattleDoneAction\((\w+),\s*(\w+)\)/))) return `${m[1]} → ${m[2].replace(/([A-Z])/g, ' $1').trim()}`;
+  if ((m = val.match(/^DevourAction\((\w+),\s*([^)]+)\)/))) return `${m[1]} devoured ${prettyUnit(m[2])}`;
+  if ((m = val.match(/^AbsorbeeAction\((\w+),\s*([^,]+)/))) return `${m[1]} absorbed ${prettyUnit(m[2])}`;
+  if ((m = val.match(/^AbductAction\((\w+),\s*([^,]+)/))) return `${m[1]} abducted ${prettyUnit(m[2])}`;
+  if ((m = val.match(/^InvisibilityAction\((\w+),\s*([^,]+)/))) return `${m[1]} made ${prettyUnit(m[2])} invisible`;
+  if ((m = val.match(/^SeekAndDestroyAction\((\w+),\s*(\w+),\s*(\w+)\)/))) return `${m[1]} used Seek and Destroy: ${m[2].replace(/([A-Z])/g, ' $1').trim()} in ${m[3]}`;
+  if ((m = val.match(/^HowlAction\((\w+),\s*([^,]+),\s*(\w+)\)/))) return `${m[1]} Howled ${prettyUnit(m[2])} to ${m[3]}`;
+  if ((m = val.match(/^HarbingerPowerAction\((\w+),\s*([^,]+),\s*(\d+)\)/))) return `${m[1]} Harbinger drained ${m[3]} power from ${prettyUnit(m[2])}`;
+  if ((m = val.match(/^HarbingerESAction\((\w+),\s*([^,]+)/))) return `${m[1]} Harbinger stole Elder Sign from ${prettyUnit(m[2])}`;
+  if ((m = val.match(/^DemandSacrificeKillsArePainsAction\((\w+)\)/))) return `${m[1]}: Demand Sacrifice — kills become pains`;
+  if ((m = val.match(/^DemandSacrificeProvideESAction\((\w+)\)/))) return `${m[1]} provided Elder Sign to avoid sacrifice`;
+
+  // --- COMMANDS / PLANS (informational) ---
+  if ((m = val.match(/^CommandsAddAction\((\w+),\s*([^)]+)\)/))) return `${m[1]} gained ability: ${m[2].replace(/([A-Z])/g, ' $1').trim()}`;
+  if ((m = val.match(/^CommandsRemoveAction\((\w+),\s*([^)]+)\)/))) return `${m[1]} lost ability: ${m[2].replace(/([A-Z])/g, ' $1').trim()}`;
+
+  // --- BUBASTIS (BB) ---
+  if ((m = val.match(/^BBSatiateAction\((\w+)/))) return `${m[1]} used Satiate`;
+  if ((m = val.match(/^BBBastetSummonAction\((\w+),\s*(\w+)\)/))) return `${m[1]} summoned Bastet in ${m[2]}`;
+
+  // --- CATCH-ALL for other faction-prefixed actions ---
+  if ((m = val.match(/^(\w{2})(\w+)Action\((\w+)/))) {
+    const prefix = m[1], name = m[2], faction = m[3];
+    if (['FB','TS','TT','OW','GC','CC','BG','YS','WW','AN','SL','BB','DC'].includes(prefix)) {
+      return `${faction} — ${prefix} ${name.replace(/([A-Z])/g, ' $1').trim()}`;
+    }
+  }
+
+  return null;
+}
+
 // Toggle state. Default to filtered (game-log view) per user request.
 let LOG_VIEW_MODE = 'game';   // 'game' | 'debug'
 
@@ -2066,8 +2251,8 @@ function populateLog(text) {
   const lines = text.split('\n').filter(l => l);
   // Toolbar above the log: toggle game-log vs debug-log.
   const toolbar = `<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;font-size:9pt;color:#aaa;">
-    <button class="small" onclick="toggleLogViewMode()">${LOG_VIEW_MODE === 'game' ? 'Show debug log' : 'Show game log'}</button>
-    <span>Currently: ${LOG_VIEW_MODE === 'game' ? 'game log (engine-glue hidden)' : 'full debug log'}</span>
+    <button class="small" onclick="toggleLogViewMode()">${LOG_VIEW_MODE === 'game' ? 'Show debug log' : 'Show player log'}</button>
+    <span>Currently: ${LOG_VIEW_MODE === 'game' ? 'player log view (shows what players see, engine-glue hidden)' : 'full debug log (all raw actions)'}</span>
   </div>`;
   const filtered = LOG_VIEW_MODE === 'game'
     ? lines.filter(line => {
@@ -2079,18 +2264,24 @@ function populateLog(text) {
     const tabs = line.split('\t');
     const idx = tabs[0]; const role = tabs[1] || ''; const val = tabs.slice(2).join('\t');
     const isPerm = PERMANENT_KEYWORDS.some(k => val.includes(k));
-    // ES edit button only appears on ElderSignAction lines (where v is the
-    // hidden ES value). Parsed value goes into a textbox the user opens by
-    // clicking "Edit ES". The original ES value is NOT shown unless the
-    // user clicks; the button label stays "Edit ES" with no value preview.
     const isES = /^ElderSignAction\(/.test(val);
     const editEsBtn = isES
       ? `<button class="small" onclick="startEditES(${idx}, this)" title="Edit hidden ES value">Edit ES</button>`
       : '';
+    const humanText = humanizeAction(val);
+    // In game-log mode: show player-visible text prominently, raw action dimmed below.
+    // In debug mode: show raw action with player text as small annotation.
+    let valHtml;
+    if (LOG_VIEW_MODE === 'game' && humanText) {
+      valHtml = `<span class="val"><span class="player-log" style="color:#e6e6e6;font-size:9.5pt;">${esc(humanText)}</span><br><span style="color:#666;font-size:8pt;font-style:italic;">${esc(val)}</span></span>`;
+    } else {
+      const humanSpan = humanText ? `<span class="human" style="color:var(--success);font-size:8.5pt;margin-left:8px;opacity:0.85;">${esc(humanText)}</span>` : '';
+      valHtml = `<span class="val">${esc(val)}${humanSpan}</span>`;
+    }
     return `<div class="log-entry ${isPerm ? 'permanent' : ''}" data-idx="${esc(idx)}">
       <span class="idx">${esc(idx)}</span>
       <span class="role">${esc(role)}</span>
-      <span class="val">${esc(val)}</span>
+      ${valHtml}
       ${editEsBtn}
       <button class="small" onclick="startEdit(${idx}, this)">Edit</button>
       <button class="small danger" onclick="rollbackTo(${idx})">Roll back to here</button>
