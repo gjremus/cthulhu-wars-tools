@@ -119,6 +119,17 @@ object CthulhuWarsOnline {
 
         val botGames = TableQuery[BotGames]
 
+        // Live-game registry. Presence of a gameId in this table means the game
+        // is flagged for periodic 15-min health monitoring by the admin ticker.
+        case class LiveGame(gameId : Int)
+
+        class LiveGames(tag : Tag) extends Table[LiveGame](tag, "LiveGame") {
+            def gameId = column[Int]("gameId", O.PrimaryKey)
+            def * = (gameId).mapTo[LiveGame]
+        }
+
+        val liveGames = TableQuery[LiveGames]
+
         // FixResponse: holds Claude's diagnosis + proposed fix for a broken
         // game, plus the user's directive (proceed/discuss/dismiss/null) on
         // that proposal. Phase A/B of the proactive broken-game pipeline
@@ -200,6 +211,15 @@ object CthulhuWarsOnline {
         }
         catch {
             case e : Exception => println("BotGame table init: " + e.getMessage)
+        }
+
+        // LiveGame registry — games flagged for periodic health monitoring.
+        try {
+            import slick.jdbc.HsqldbProfile.api.actionBasedSQLInterpolation
+            q(sqlu"""CREATE TABLE IF NOT EXISTS "LiveGame" ("gameId" INTEGER PRIMARY KEY)""")
+        }
+        catch {
+            case e : Exception => println("LiveGame table init: " + e.getMessage)
         }
 
         if (!mode.contains("run")) {
@@ -309,7 +329,7 @@ object CthulhuWarsOnline {
                 }
             } ~
             (get & path("roles" / Segment)) { role =>
-                val list = q(roles.filter(_.secret === role).filter(_.name === "$").map(_.gameId).result.head.flatMap { id =>
+                val list = q(roles.filter(_.secret === role).map(_.gameId).result.head.flatMap { id =>
                     roles.filter(_.gameId === id).result
                 })
                 txt(list.map(r => r.name + " " + r.secret).mkString("\n"))
@@ -498,8 +518,9 @@ object CthulhuWarsOnline {
                         id -> (n > 0)
                     }.toMap
                     val botFlagged = q(botGames.map(_.gameId).result).toSet
+                    val liveFlagged = q(liveGames.map(_.gameId).result).toSet
                     // FixResponse rows: games where Claude has posted a proactive
-                    // proposal (Phase A/B 2026-06-03). Emitted as col 9
+                    // proposal (Phase A/B 2026-06-03). Emitted as col 10
                     // (hasFixResponse) so admin.html can filter accordingly.
                     val hasFixResp = q(fixResponses.map(_.gameId).result).toSet
                     // Count humans + bots per game by reading the options line (log
@@ -510,7 +531,7 @@ object CthulhuWarsOnline {
                         val v = q(logs.filter(_.gameId === id).filter(_.index === 2).map(_.value).result.headOption).getOrElse("")
                         val roster = v.takeWhile(_ != ' ').split('/')
                         val humans = roster.count(_.endsWith(":Human"))
-                        val bots = roster.count(_.endsWith(":Bot"))
+                        val bots = roster.count(p => p.endsWith(":Bot") || p.endsWith(":Normal"))
                         id -> (humans, bots)
                     }.toMap
                     txt(rows.map { case (id, name, secret, lastMs, broken) =>
@@ -518,8 +539,9 @@ object CthulhuWarsOnline {
                         val c = if (completed.getOrElse(id, false)) "1" else "0"
                         val ib = if (botFlagged.contains(id)) "1" else "0"
                         val (h, bt) = rosterCounts.getOrElse(id, (0, 0))
+                        val il = if (liveFlagged.contains(id)) "1" else "0"
                         val hfr = if (hasFixResp.contains(id)) "1" else "0"
-                        s"$id\t$name\t$secret\t${lastMs.getOrElse(0L)}\t$b\t$c\t$ib\t$h\t$bt\t$hfr"
+                        s"$id\t$name\t$secret\t${lastMs.getOrElse(0L)}\t$b\t$c\t$ib\t$h\t$bt\t$il\t$hfr"
                     }.mkString("\n"))
                 }
             } ~
@@ -531,6 +553,20 @@ object CthulhuWarsOnline {
                 if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
                 else {
                     q(botGames.filter(_.gameId === gameId).delete, botGames += BotGame(gameId))
+                    complete(StatusCodes.Accepted)
+                }
+            } ~
+            (post & path("admin" / Segment / "mark-live" / IntNumber)) { (token, gameId) =>
+                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
+                else {
+                    q(liveGames.filter(_.gameId === gameId).delete, liveGames += LiveGame(gameId))
+                    complete(StatusCodes.Accepted)
+                }
+            } ~
+            (post & path("admin" / Segment / "unmark-live" / IntNumber)) { (token, gameId) =>
+                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
+                else {
+                    q(liveGames.filter(_.gameId === gameId).delete)
                     complete(StatusCodes.Accepted)
                 }
             } ~

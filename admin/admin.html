@@ -97,6 +97,10 @@
                  border: 1px solid var(--border); background: var(--bg); color: var(--text-muted); cursor: pointer; }
   .broken-flag:hover { background: var(--bg-subtle); color: var(--text); }
   .broken-flag.on { background: rgba(248,81,73,0.15); border-color: var(--danger); color: var(--danger); }
+  .live-flag { flex: 0 0 auto; padding: 3px 8px; font-size: 9pt; border-radius: 6px;
+               border: 1px solid var(--border); background: var(--bg); color: var(--text-muted); cursor: pointer; }
+  .live-flag:hover { background: var(--bg-subtle); color: var(--text); }
+  .live-flag.on { background: rgba(63,185,80,0.15); border-color: var(--success); color: var(--success); }
   .game-row.broken .game-name { color: var(--danger); text-decoration: line-through; }
   .game-row.broken { border-color: var(--danger); }
   .game-row.completed { opacity: 0.55; }
@@ -154,6 +158,27 @@
          border: 1px solid var(--danger); border-radius: 6px; margin: 10px 0; font-size: 10pt; }
   .ok { color: var(--success); padding: 10px 12px; background: rgba(63,185,80,0.1);
         border: 1px solid var(--success); border-radius: 6px; margin: 10px 0; font-size: 10pt; }
+  /* Login progress bar — appears after 2s of waiting */
+  #login-progress-wrap { display: none; margin: 14px 0 6px; }
+  #login-progress-wrap .bar-track {
+    height: 4px; border-radius: 2px; background: var(--bg-subtle);
+    overflow: hidden; position: relative;
+  }
+  #login-progress-wrap .bar-fill {
+    position: absolute; inset: 0; width: 30%;
+    background: var(--accent); border-radius: 2px;
+    animation: login-slide 1.4s ease-in-out infinite;
+  }
+  @keyframes login-slide {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(400%); }
+  }
+  #login-progress-wrap .bar-label {
+    font-size: 9pt; color: var(--text-muted); margin-top: 5px;
+  }
+  #login-timing { display: none; font-size: 9pt; color: var(--text-muted);
+                  margin-top: 8px; padding: 6px 10px; background: var(--bg-subtle);
+                  border-radius: 6px; border: 1px solid var(--border); }
   .empty { color: var(--text-muted); font-style: italic; padding: 10px; }
   .toolbar { padding: 10px 12px; background: var(--bg-card); border: 1px solid var(--border);
              border-radius: 6px; margin-bottom: 12px; display: flex; gap: 10px; align-items: center;
@@ -247,7 +272,6 @@
 <nav id="nav-drawer" class="nav-drawer" aria-label="Primary">
   <a class="section">Sections</a>
   <a href="#" onclick="showSection('games'); closeNav(); return false;">Games</a>
-  <a href="#" onclick="document.getElementById('show-bots-cb') && (document.getElementById('show-bots-cb').checked=true, loadGames()); showSection('games'); closeNav(); return false;">Bot games</a>
   <a href="#" onclick="showSection('simrunner'); closeNav(); return false;">SimRunner</a>
   <a href="#" onclick="showSection('build'); closeNav(); return false;">Build</a>
   <a href="#" onclick="showSection('claude'); closeNav(); return false;">Claude Terminal</a>
@@ -268,6 +292,11 @@
   <input type="password" id="owner-token" placeholder="paste from owner-admin-token.txt" />
   <p><button class="primary" onclick="signIn()">Sign in</button></p>
   <p id="login-err" class="err" style="display:none;"></p>
+  <div id="login-progress-wrap">
+    <div class="bar-track"><div class="bar-fill"></div></div>
+    <div class="bar-label">Connecting to server and loading games...</div>
+  </div>
+  <div id="login-timing"></div>
 </div>
 
 <div id="main-pane" style="display:none;">
@@ -323,8 +352,12 @@
           </div>
           <div>
             <div style="color:var(--text-muted);margin-bottom:4px;">Bots</div>
+            <label class="sim-checkbox" style="margin-right:6px;"><input type="checkbox" id="flt-allhumans-yes" onchange="applyGamesSortSearch()"/>All humans</label>
             <label class="sim-checkbox" style="margin-right:6px;"><input type="checkbox" id="flt-allbots-yes" onchange="applyGamesSortSearch()"/>All bots</label>
             <label class="sim-checkbox"><input type="checkbox" id="flt-anybots-yes" onchange="applyGamesSortSearch()"/>Any bots</label>
+          </div>
+          <div style="margin-top:6px;">
+            <label class="sim-checkbox"><input type="checkbox" id="flt-live-yes" onchange="applyGamesSortSearch()"/>Live (monitored)</label>
           </div>
         </div>
         <div style="margin-top:8px;display:flex;gap:6px;align-items:center;">
@@ -332,6 +365,18 @@
           <span style="color:var(--text-muted);font-size:8.5pt;">Checked filters AND together. Within a group (e.g. player count 3 + 4), an OR.</span>
         </div>
       </div>
+      <!-- 2026-06-04: RL-tuning bulk toolbar. Per-row checkboxes only render on
+           finished library/mnu rows; "Select all" picks every visible eligible
+           row. Bulk submit POSTs to /admin/<t>/submit-for-rl-tuning. -->
+      <div id="rl-bulk-toolbar" style="display:flex;gap:8px;align-items:center;margin:0 0 8px;font-size:9pt;color:var(--text-muted);">
+        <label class="sim-checkbox" style="margin:0;">
+          <input type="checkbox" id="rl-select-all" onchange="toggleAllRLSelection(this)" />
+          Select all eligible (finished library/mnu)
+        </label>
+        <button class="small" onclick="submitSelectedToRL()" id="rl-bulk-submit-btn">Submit selected to RL tuning</button>
+        <span id="rl-bulk-status" style="font-size:9pt;"></span>
+      </div>
+      <div id="games-count" style="font-size:9pt;color:var(--text-muted);margin:0 0 6px;"></div>
       <div id="games-list"></div>
     </div>
 
@@ -405,6 +450,10 @@
       <button id="build-btn-bb" class="build-card" onclick="setBuild('bb')">
         <div style="font-size:13pt;font-weight:600;margin-bottom:4px;">Bubastis (BB)</div>
         <div style="font-size:9pt;color:var(--text-muted);">Beta build · served at <code>cwo.freeddns.org/BB/</code> <a href="https://cwo.freeddns.org/BB/" target="_blank" rel="noopener" onclick="event.stopPropagation();">↗</a></div>
+      </button>
+      <button id="build-btn-hb" class="build-card" onclick="setBuild('hb')">
+        <div style="font-size:13pt;font-weight:600;margin-bottom:4px;">Homebrew (HB)</div>
+        <div style="font-size:9pt;color:var(--text-muted);">Served at <code>cwo.freeddns.org/HB/</code> <a href="https://cwo.freeddns.org/HB/" target="_blank" rel="noopener" onclick="event.stopPropagation();">↗</a></div>
       </button>
     </div>
 
@@ -568,6 +617,7 @@ const BUILD_LABELS = {
   mnu:     { short: 'MNU',     full: 'More Neutral Units (MNU)' },
   tt:      { short: 'TT',      full: 'TchoTcho (TT)' },
   bb:      { short: 'BB',      full: 'Bubastis (BB)' },
+  hb:      { short: 'HB',      full: 'Homebrew (HB)' },
 };
 function setBuild(name) {
   if (!(name in BUILD_LABELS)) return;
@@ -579,6 +629,13 @@ function setBuild(name) {
   // Top-of-page persistent build indicator (always visible).
   const topLbl = document.getElementById('top-build-label');
   if (topLbl) topLbl.textContent = '[' + BUILD_LABELS[name].short + ']';
+  // 2026-06-03 15:55: re-filter the games list against the new build using
+  // the cached TSV (populated by the last /games fetch). Without this, the
+  // user changes build but the games list still shows the previous build's
+  // games until next refresh.
+  if (typeof LAST_GAMES_TEXT !== 'undefined' && LAST_GAMES_TEXT !== null) {
+    populateGames(LAST_GAMES_TEXT);
+  }
 }
 function refreshBuildIndicator() {
   const b = getBuild();
@@ -591,7 +648,10 @@ function refreshBuildIndicator() {
 }
 
 // ========== SimRunner wizard ==========
-const SIM_FACTIONS = ['GC','CC','BG','YS','SL','WW','OW','AN','TS','FB','DS'];
+// [2026-06-04] FIX 60 — Path B faction coverage: TT (Tcho-Tcho, 12th) and BB (Bubastis, 13th)
+// added so the sim-launcher faction picker can target these factions. The SimRunner backend
+// reflectively resolves TT/BB and silently ignores them when the build doesn't define them.
+const SIM_FACTIONS = ['GC','CC','BG','YS','SL','WW','OW','AN','TS','FB','DS','TT','BB'];
 const SIM_MAPS = ['Earth33','Earth35','Earth53','Earth55','Library33','Library35','Library53','Library55'];
 const SIM_TOGGLE_OPTS = ['HighPriests','GateDiplomacy','AsyncActions','DemandTsathoggua','NeutralSpellbooks','IceAgeAffectsLethargy','Opener4P10Gates'];
 const SIM_NM_OPTS = ['UseGhast','UseGug','UseShantak','UseStarVampire','UseVoonith','UseDimensionalShamblers','UseGnorri'];
@@ -814,8 +874,41 @@ function signIn() {
     return;
   }
   SERVER = s; TOKEN = t;
+
+  // Hide any previous error, reset progress UI
+  document.getElementById('login-err').style.display = 'none';
+  const progressWrap = document.getElementById('login-progress-wrap');
+  const timingEl = document.getElementById('login-timing');
+  progressWrap.style.display = 'none';
+  timingEl.style.display = 'none';
+
+  // Show progress bar after 2 seconds if still loading
+  const t0 = performance.now();
+  const progressTimer = setTimeout(() => {
+    progressWrap.style.display = 'block';
+  }, 2000);
+
   fetch(`${SERVER}/admin/${TOKEN}/games`).then(r => {
+    clearTimeout(progressTimer);
+    progressWrap.style.display = 'none';
+    const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
+
     if (r.status === 200) {
+      // Record login time in localStorage
+      const logEntry = { ts: new Date().toISOString(), secs: parseFloat(elapsed) };
+      try {
+        const log = JSON.parse(localStorage.getItem('cwo-login-times') || '[]');
+        log.push(logEntry);
+        // Keep last 50 entries
+        if (log.length > 50) log.splice(0, log.length - 50);
+        localStorage.setItem('cwo-login-times', JSON.stringify(log));
+      } catch(e) { /* localStorage unavailable */ }
+
+      // Show timing briefly
+      timingEl.textContent = `Login took ${elapsed}s`;
+      timingEl.style.display = 'block';
+      setTimeout(() => { timingEl.style.display = 'none'; }, 5000);
+
       document.getElementById('login-pane').style.display = 'none';
       document.getElementById('main-pane').style.display = 'block';
       // Build switcher + SimRunner wizard need to populate on first show.
@@ -845,6 +938,8 @@ function signIn() {
       showErr('login-err', `Sign-in failed (HTTP ${r.status}). Check the server URL and token.`);
     }
   }).catch(e => {
+    clearTimeout(progressTimer);
+    progressWrap.style.display = 'none';
     showErr('login-err', `Sign-in failed: ${e.message}`);
   });
 }
@@ -935,8 +1030,10 @@ function readFilters() {
     pc3:       g('flt-pc-3'),
     pc4:       g('flt-pc-4'),
     pc5:       g('flt-pc-5'),
+    allHumans: g('flt-allhumans-yes'),
     allBots:   g('flt-allbots-yes'),
     anyBots:   g('flt-anybots-yes'),
+    liveOnly:  g('flt-live-yes'),
     search:    (document.getElementById('games-search')?.value || '').trim().toLowerCase(),
     sort:      document.getElementById('games-sort')?.value || 'default',
   };
@@ -949,7 +1046,8 @@ function activeFilterCount() {
   if (f.repYes) n++; if (f.repNo) n++;
   if (f.errYes) n++; if (f.errNo) n++;
   if (f.pc3) n++; if (f.pc4) n++; if (f.pc5) n++;
-  if (f.allBots) n++; if (f.anyBots) n++;
+  if (f.allHumans) n++; if (f.allBots) n++; if (f.anyBots) n++;
+  if (f.liveOnly) n++;
   if (f.search) n++;
   return n;
 }
@@ -963,15 +1061,39 @@ function toggleFilterPyramid() {
 
 function clearAllFilters() {
   ['flt-rep-yes','flt-rep-no','flt-err-yes','flt-err-no',
-   'flt-pc-3','flt-pc-4','flt-pc-5','flt-allbots-yes','flt-anybots-yes']
+   'flt-pc-3','flt-pc-4','flt-pc-5','flt-allhumans-yes','flt-allbots-yes','flt-anybots-yes','flt-live-yes']
     .forEach(id => { const el = document.getElementById(id); if (el) el.checked = false; });
   const s = document.getElementById('games-search'); if (s) s.value = '';
   const so = document.getElementById('games-sort'); if (so) so.value = 'default';
   applyGamesSortSearch();
 }
 
+function updateFilterCounts(games) {
+  const allHuman = games.filter(g => g.humanCount > 0 && g.botCount === 0 && !g.isBot).length;
+  const allBots = games.filter(g => g.isBot || (g.playerCount > 0 && g.botCount === g.playerCount)).length;
+  const anyBots = games.filter(g => g.isBot || g.botCount > 0).length;
+  const setCount = (id, n) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const lbl = el.closest('label');
+    if (!lbl) return;
+    let sp = lbl.querySelector('.flt-count');
+    if (!sp) { sp = document.createElement('span'); sp.className = 'flt-count'; sp.style.cssText = 'color:var(--text-muted);font-size:8pt;margin-left:3px;'; lbl.appendChild(sp); }
+    sp.textContent = `(${n})`;
+  };
+  setCount('flt-allhumans-yes', allHuman);
+  setCount('flt-allbots-yes', allBots);
+  setCount('flt-anybots-yes', anyBots);
+}
+
 // Predicate: does this game row pass the current filter set?
 function gamePassesFilters(g, f) {
+  // Build axis. The Build switcher (Library/MNU/TT/BB) is the dominant filter:
+  // games must match the currently-active build, OR be 'unknown' (legacy games
+  // pre version-header). 2026-06-03 15:55: this was previously absent — the
+  // switcher controlled SimRunner jar selection but not the games list.
+  const activeBuild = getBuild();
+  if (g.build && g.build !== 'unknown' && g.build !== activeBuild) return false;
   // Replay axis. Filter passes if either checkbox is off, or if the game's
   // replay-existence (from REPLAY_EXISTS cache) matches the checked option.
   // For unknown (probe pending), let it through so the user isn't blocked.
@@ -987,11 +1109,19 @@ function gamePassesFilters(g, f) {
     const ok = (f.pc3 && g.playerCount === 3) || (f.pc4 && g.playerCount === 4) || (f.pc5 && g.playerCount === 5);
     if (!ok) return false;
   }
-  // Bot axes.
-  // "all bots": every faction is a bot → botCount === playerCount AND playerCount>0
-  if (f.allBots && !(g.playerCount > 0 && g.botCount === g.playerCount)) return false;
+  // Bot axes. Use isBot flag (BotGames table) as authoritative override:
+  // SimRunner labels all factions ":Human" in the roster, so roster-based
+  // humanCount/botCount is unreliable for bot-created games.
+  const effectivelyAllBots = g.isBot || (g.playerCount > 0 && g.botCount === g.playerCount);
+  const effectivelyAnyBots = g.isBot || g.botCount > 0;
+  // "all humans": zero bots AND not a bot-flagged game.
+  if (f.allHumans && !(g.humanCount > 0 && g.botCount === 0 && !g.isBot)) return false;
+  // "all bots": every faction is a bot.
+  if (f.allBots && !effectivelyAllBots) return false;
   // "any bots": at least one bot among factions.
-  if (f.anyBots && !(g.botCount > 0)) return false;
+  if (f.anyBots && !effectivelyAnyBots) return false;
+  // Live-game filter.
+  if (f.liveOnly && !g.isLive) return false;
   // Name search.
   if (f.search && !String(g.name).toLowerCase().includes(f.search)) return false;
   return true;
@@ -1126,12 +1256,40 @@ function requestReplay(gameId, btn) {
   });
 }
 
+// 2026-06-14: Queue a console-check for one game. Mirrors requestReplay: it
+// POSTs a single tagged line to the shared admin queue (no server change). A
+// local launchd ticker (console-grab poll) watches the queue, loads the game
+// in headless Chromium via tools/console-grab.py, and writes the captured
+// console errors back into the game's annotation Notes (prefixed "CONSOLE @ …"),
+// which the Notes box on row-select already displays.
+function requestConsoleGrab(gameId, build, btn) {
+  const line = `CONSOLE-CHECK game=${gameId} build=${build}`;
+  if (btn) { btn.disabled = true; btn.textContent = 'queuing…'; }
+  fetch(`${SERVER}/admin/${TOKEN}/claude-prompt`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: line,
+  }).then(r => {
+    if (!r.ok) {
+      alert(`Console-check queue failed (HTTP ${r.status}).`);
+      if (btn) { btn.disabled = false; btn.textContent = 'Grab console'; }
+      return;
+    }
+    if (btn) { btn.textContent = 'checking…'; btn.title = 'Console-check queued. The result appears in this game’s Notes once the ticker runs (within ~2 min).'; }
+  }).catch(e => {
+    alert(`Console-check network error: ${e.message || e}`);
+    if (btn) { btn.disabled = false; btn.textContent = 'Grab console'; }
+  });
+}
+
 function populateGames(text) {
   LAST_GAMES_TEXT = text;
   const list = document.getElementById('games-list');
   list.innerHTML = '';
   if (!text.trim()) {
     list.innerHTML = '<p class="empty">No live games.</p>';
+    const countEl = document.getElementById('games-count');
+    if (countEl) countEl.textContent = '0 games';
     return;
   }
   // Parse all rows first so we can sort before rendering.
@@ -1143,7 +1301,10 @@ function populateGames(text) {
   const showBots = !!(document.getElementById('show-bots-cb') && document.getElementById('show-bots-cb').checked);
   const games = text.split('\n').filter(l => l).map(line => {
     const parts = line.split('\t');
-    // 2026-06-02: columns 7-10 are new (playerCount, botCount, hasFixResponse, startMs).
+    // 2026-06-02: columns 7-9 are playerCount, botCount, hasFixResponse.
+    // 2026-06-03 15:55: col 10 = build (library|mnu|tt|bb|unknown) — added so
+    // the Build switcher can actually filter the games list. col 11 reserved
+    // for future startMs once the server stamps it.
     // Old server responses pad with 0 / '' so the indexing stays stable.
     return {
       id: parts[0],
@@ -1153,12 +1314,16 @@ function populateGames(text) {
       broken: (parts[4] || '0').trim() === '1',
       completed: (parts[5] || '0').trim() === '1',
       isBot: (parts[6] || '0').trim() === '1',
-      playerCount: parseInt(parts[7] || '0', 10),
+      humanCount: parseInt(parts[7] || '0', 10),
       botCount: parseInt(parts[8] || '0', 10),
-      hasFixResponse: (parts[9] || '0').trim() === '1',
-      startMs: parseInt(parts[10] || '0', 10),
+      isLive: (parts[9] || '0').trim() === '1',
+      build: (['library','mnu','tt','bb','hb'].includes((parts[10]||'').trim()) ? parts[10].trim() : 'unknown'),
+      startMs: parseInt(parts[11] || '0', 10),
+      // 2026-06-04: col 12 = RL-tuning corpus submission timestamp (0 = not submitted).
+      rlSubmittedMs: parseInt(parts[12] || '0', 10),
     };
   }).filter(g => g.id).filter(g => showBots || !g.isBot);
+  games.forEach(g => { g.playerCount = g.humanCount + g.botCount; });
   // 2026-06-01: Auto-error inference. Pure client-side; no server change.
   games.forEach(g => { g.errored = isErrored(g); });
   function groupKey(g) {
@@ -1187,6 +1352,13 @@ function populateGames(text) {
   // through. paintReplayCell re-evaluates and hides the row when the answer
   // arrives. This matches the previous single-pill behaviour.
   const visible = games.filter(g => gamePassesFilters(g, f));
+  const countEl = document.getElementById('games-count');
+  if (countEl) {
+    const total = games.length;
+    const shown = visible.length;
+    countEl.textContent = shown === total ? `${total} games` : `${shown} of ${total} games`;
+  }
+  updateFilterCounts(games);
   if (!visible.length) {
     list.innerHTML = '<p class="empty">No games match the current filter.</p>';
     return;
@@ -1208,6 +1380,9 @@ function populateGames(text) {
     row.dataset.errored = errored ? '1' : '0';
     const brokenLabel = broken ? '✖ Broken' : 'Mark broken';
     const brokenTitle = broken ? 'Click to clear the broken flag' : 'Click to mark this game as broken';
+    const isLive = g.isLive;
+    const liveLabel = isLive ? '● Live' : 'Mark live';
+    const liveTitle = isLive ? 'This game is monitored every 15 min. Click to stop monitoring.' : 'Flag for automatic 15-min health checks';
     // Status badge — completed > errored > nothing. Manual broken is already
     // surfaced by the row border + broken-flag button, so no separate badge.
     let statusLabel = '';
@@ -1220,15 +1395,51 @@ function populateGames(text) {
     const replayCell = replayEligible
       ? `<div class="replay-cell" style="font-size:9pt;">probing…</div>`
       : '';
+    // 2026-06-04: RL-tuning submission. Eligible iff finished AND build is
+    // library or mnu (BB Claude owns tt/bb). Already-submitted rows show a
+    // green badge with a submitted-at tooltip.
+    const rlEligible = completed && (g.build === 'library' || g.build === 'mnu');
+    const rlBadge = (g.rlSubmittedMs && g.rlSubmittedMs > 0)
+      ? `<span class="rl-submitted-badge" title="Submitted to RL tuning corpus at ${new Date(g.rlSubmittedMs).toLocaleString()}" style="display:inline-block;font-size:8pt;padding:1px 8px;background:#1d4d24;color:#9fe5a8;border-radius:8px;margin-left:6px;">✓ RL-tuning</span>`
+      : '';
+    const rlCell = rlEligible
+      ? `<div class="rl-cell" style="font-size:9pt;display:flex;gap:4px;align-items:center;">` +
+          `<label title="Select for bulk RL-tuning submission" style="display:inline-flex;align-items:center;gap:3px;font-size:8.5pt;color:var(--text-muted);">` +
+            `<input type="checkbox" class="rl-select-cb" data-game-id="${id}" data-build="${esc(g.build)}" onclick="event.stopPropagation();" />` +
+            `sel</label>` +
+          `<button class="small" onclick="event.stopPropagation(); submitOneToRL('${id}', this)" title="Submit this finished game into the FB BC training corpus (weight_tier 1).">Submit RL</button>` +
+        `</div>`
+      : '';
+    // Fix 67 (2026-06-04): owner-side "Mark finished" override. Shows on rows
+    // that are NOT broken/errored, NOT already completed, and where the build
+    // is library or mnu (RL-tuning ineligible builds get no value from this).
+    // Clicking POSTs /admin/<TOK>/force-finished/<id> body "1" and re-renders
+    // the row as completed so the Submit RL button appears. Use this only
+    // when the player judges the game finished but the engine never logged
+    // GameOverPhaseAction (e.g. browser closed before the next action-phase
+    // check ran — game 508 root cause).
+    const forceFinishedEligible = !completed && !broken && !errored && (g.build === 'library' || g.build === 'mnu');
+    const forceFinishedCell = forceFinishedEligible
+      ? `<button class="small" style="background:#3a3a1a;border-color:#7a7a3a;color:#fff;" onclick="event.stopPropagation(); markFinishedOverride('${id}', this)" title="Override: mark this game as finished even though the engine never logged GameOverPhaseAction. Use only when the game truly ended from the player's perspective. Enables Submit RL on this row.">Mark finished</button>`
+      : '';
     row.innerHTML =
       `<button class="broken-flag ${broken ? 'on' : ''}" title="${brokenTitle}" ` +
         `onclick="event.stopPropagation(); toggleBrokenFromList('${id}', this)">${brokenLabel}</button>` +
+      `<button class="live-flag ${isLive ? 'on' : ''}" title="${liveTitle}" ` +
+        `onclick="event.stopPropagation(); toggleLiveFromList('${id}', this)">${liveLabel}</button>` +
       `<div style="flex:1;">` +
-        `<span class="game-name">${esc(name)}</span> ${statusLabel}<br/>` +
-        `<span class="game-meta">game id ${id} · ${inactivityLabel(lastWriteMs)}</span>` +
+        `<span class="game-name">${esc(name)}</span> ${statusLabel}${rlBadge}<br/>` +
+        `<span class="game-meta">game id ${id} · ${g.humanCount}H${g.botCount > 0 ? ' '+g.botCount+'B' : ''} · ${inactivityLabel(lastWriteMs)}</span>` +
       `</div>` +
       `<div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">` +
         replayCell +
+        rlCell +
+        forceFinishedCell +
+        // 2026-06-14: "Grab console" — queues a CONSOLE-CHECK line to the admin
+        // queue. The local console-grab ticker loads this game in a headless
+        // browser, captures console errors/pageerrors, and writes a "CONSOLE @ …"
+        // note into the game's annotation (visible in the Notes box on row select).
+        `<button class="small console-grab-btn" title="Load this game in a headless browser and capture console errors into its Notes." onclick="event.stopPropagation(); requestConsoleGrab('${id}', '${esc(g.build)}', this)">Grab console</button>` +
         `<button class="small" style="background:#5a2222;border-color:#8a3030;color:#fff;" onclick="event.stopPropagation(); confirmDeleteGame('${id}','${esc(name).replace(/'/g, "\\'")}')">Delete</button>` +
       `</div>`;
     row.onclick = () => selectGame(row, id, name, secret);
@@ -1277,6 +1488,151 @@ function toggleBrokenFromList(gameId, btn) {
         if (cb) cb.checked = newBroken;
       }
     });
+  });
+}
+
+// Toggle the "live game" flag — marks a game for periodic 15-min health checks.
+function toggleLiveFromList(gameId, btn) {
+  const isCurrentlyLive = btn.classList.contains('on');
+  const endpoint = isCurrentlyLive ? 'unmark-live' : 'mark-live';
+  fetch(`${SERVER}/admin/${TOKEN}/${endpoint}/${gameId}`, { method: 'POST' }).then(r => {
+    if (!r.ok) { alert(`Could not toggle live flag (HTTP ${r.status})`); return; }
+    const newLive = !isCurrentlyLive;
+    btn.classList.toggle('on', newLive);
+    btn.textContent = newLive ? '● Live' : 'Mark live';
+    btn.title = newLive
+      ? 'This game is monitored every 15 min. Click to stop monitoring.'
+      : 'Flag for automatic 15-min health checks';
+  });
+}
+
+// ========== Fix 67 (2026-06-04): Mark-finished override ==========
+// POST /admin/<TOK>/force-finished/<id> body "1" to flag a game as finished
+// even though the engine never logged GameOverPhaseAction. On success the
+// row is re-rendered (renderGames called from within applyAndRender) so the
+// Submit RL button appears immediately.
+function markFinishedOverride(gameId, btn) {
+  if (!confirm(`Mark game ${gameId} as finished?\n\nUse this ONLY when the game truly ended from the player's perspective but the engine never logged GameOverPhaseAction (e.g. browser closed at end-of-game).\n\nThis enables the Submit RL button on this row.`)) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'marking…'; }
+  fetch(`${SERVER}/admin/${TOKEN}/force-finished/${gameId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: '1',
+  }).then(r => {
+    if (!r.ok) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Mark finished'; }
+      alert(`Mark-finished failed (HTTP ${r.status})`);
+      return;
+    }
+    // Server now reports completed=1 for this game. Refresh the games list so
+    // the row picks up the completed badge and the Submit RL button renders.
+    if (typeof loadGames === 'function') loadGames();
+    else if (typeof refreshGames === 'function') refreshGames();
+    else window.location.reload();
+  }).catch(err => {
+    if (btn) { btn.disabled = false; btn.textContent = 'Mark finished'; }
+    alert(`Mark-finished error: ${err}`);
+  });
+}
+
+// ========== 2026-06-04: RL-tuning corpus submission ==========
+// Per-row + bulk submission of finished library/mnu games into the FB BC
+// training corpus (weight_tier 1). Server endpoint:
+//   POST /admin/<TOK>/submit-for-rl-tuning
+// Body: newline-separated game ids.
+// Response: TSV per game ("OK ..." or "ERROR ...").
+function submitOneToRL(gameId, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'submitting…'; }
+  fetch(`${SERVER}/admin/${TOKEN}/submit-for-rl-tuning`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: String(gameId),
+  }).then(r => r.text().then(t => ({ok: r.ok, status: r.status, body: t}))).then(res => {
+    if (!res.ok) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Submit RL'; }
+      alert(`RL-tuning submit failed (HTTP ${res.status}): ${res.body}`);
+      return;
+    }
+    const row = btn && btn.closest('.game-row');
+    const line = (res.body || '').split('\n')[0] || '';
+    if (line.indexOf('\tOK\t') !== -1) {
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = '✓ submitted';
+        btn.style.background = '#1d4d24';
+        btn.style.borderColor = '#2e7d3a';
+        btn.style.color = '#9fe5a8';
+      }
+      // Flash a transient green tick on the row.
+      if (row) {
+        const flash = document.createElement('span');
+        flash.textContent = '✓ submitted';
+        flash.style.cssText = 'display:inline-block;font-size:8pt;padding:1px 8px;background:#1d4d24;color:#9fe5a8;border-radius:8px;margin-left:6px;';
+        const nameSpan = row.querySelector('.game-name');
+        if (nameSpan && nameSpan.parentNode) nameSpan.parentNode.insertBefore(flash, nameSpan.nextSibling);
+      }
+    } else {
+      if (btn) { btn.disabled = false; btn.textContent = 'Submit RL'; }
+      alert(`RL-tuning submit: ${line}`);
+    }
+  }).catch(err => {
+    if (btn) { btn.disabled = false; btn.textContent = 'Submit RL'; }
+    alert(`RL-tuning submit error: ${err}`);
+  });
+}
+
+function toggleAllRLSelection(masterCb) {
+  const cbs = document.querySelectorAll('.rl-select-cb');
+  cbs.forEach(cb => { cb.checked = masterCb.checked; });
+}
+
+function submitSelectedToRL() {
+  const cbs = document.querySelectorAll('.rl-select-cb:checked');
+  if (!cbs.length) { alert('No games selected. Tick a "sel" box on finished library/mnu rows first.'); return; }
+  const ids = Array.from(cbs).map(cb => cb.dataset.gameId);
+  const status = document.getElementById('rl-bulk-status');
+  const btn = document.getElementById('rl-bulk-submit-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'submitting…'; }
+  if (status) { status.textContent = `submitting ${ids.length}…`; status.style.color = 'var(--text-muted)'; }
+  fetch(`${SERVER}/admin/${TOKEN}/submit-for-rl-tuning`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: ids.join('\n'),
+  }).then(r => r.text().then(t => ({ok: r.ok, status: r.status, body: t}))).then(res => {
+    if (btn) { btn.disabled = false; btn.textContent = 'Submit selected to RL tuning'; }
+    if (!res.ok) {
+      if (status) { status.textContent = `HTTP ${res.status}: ${res.body}`; status.style.color = 'var(--danger)'; }
+      return;
+    }
+    const lines = (res.body || '').split('\n').filter(l => l);
+    const ok = lines.filter(l => l.indexOf('\tOK\t') !== -1).length;
+    const err = lines.length - ok;
+    if (status) {
+      status.textContent = `submitted: ${ok} OK${err > 0 ? `, ${err} error(s)` : ''}`;
+      status.style.color = err > 0 ? 'var(--warn)' : '#9fe5a8';
+    }
+    // Mark rows: per-row OK → green badge + disable button.
+    lines.forEach(line => {
+      const parts = line.split('\t');
+      const gid = parts[0]; const verdict = parts[1];
+      const row = document.querySelector(`.game-row[data-game-id="${gid}"]`);
+      if (!row) return;
+      const cb = row.querySelector('.rl-select-cb');
+      if (cb) cb.checked = false;
+      const submitBtn = row.querySelector('.rl-cell button');
+      if (verdict === 'OK' && submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = '✓ submitted';
+        submitBtn.style.background = '#1d4d24';
+        submitBtn.style.borderColor = '#2e7d3a';
+        submitBtn.style.color = '#9fe5a8';
+      }
+    });
+    const master = document.getElementById('rl-select-all');
+    if (master) master.checked = false;
+  }).catch(err => {
+    if (btn) { btn.disabled = false; btn.textContent = 'Submit selected to RL tuning'; }
+    if (status) { status.textContent = `error: ${err}`; status.style.color = 'var(--danger)'; }
   });
 }
 
@@ -1353,10 +1709,22 @@ function refreshDetail() {
              Scrollable; has a Clear button. Claude POSTs to /admin/fix-response
              after triaging the game (its reply lands here).
     -->
+    <h3>Browser console errors (auto-captured)
+      <button class="small" style="margin-left:8px;" onclick="refreshConsoleErrors()">Refresh</button>
+      <button class="small" style="margin-left:4px;" onclick="clearConsoleErrors()">Clear</button>
+    </h3>
+    <p style="color:#888;font-size:9pt;">Auto-captured by the /play page (window.onerror, unhandled promise rejection, console.error). Most recent first. Auto-included in the Submit-broken-game prompt below.</p>
+    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:8px 10px;">
+      <pre id="console-errors-feed" class="sim-tail" style="height:18vh;max-height:24vh;">loading…</pre>
+    </div>
+
     <h3>Submit broken game to Claude</h3>
-    <p style="color:#888;font-size:9pt;">Type an error description (optional), then Submit. Claude picks it up on the next ticker tick and posts a fix response below.</p>
+    <p style="color:#888;font-size:9pt;">Type an error description (optional). The auto-captured browser console errors above (if any) are folded into the submission automatically; an extra textarea below is available for anything DevTools shows that didn't get auto-captured. Claude picks it up on the next ticker tick and posts a fix response.</p>
     <div class="notes-box">
       <textarea id="error-description" rows="3" placeholder="Error description (optional)…"></textarea>
+    </div>
+    <div class="notes-box" style="margin-top:6px;">
+      <textarea id="console-output" rows="3" placeholder="Extra console output (optional — auto-captured errors above are already included)…"></textarea>
     </div>
     <p style="margin:6px 0;">
       <button class="primary" onclick="submitGameToTerminal()">Submit to terminal</button>
@@ -1395,6 +1763,8 @@ function refreshDetail() {
   fetch(`${SERVER}/admin/${TOKEN}/log/${id}`).then(r => r.text()).then(t => { LAST_LOG_RAW = t; populateLog(t); populateFactionState(t); });
   // 2026-06-02: also pull the per-game fix response into the new scrollable field.
   refreshFixResponse();
+  // 2026-06-03 21:25: pull auto-captured browser console errors into the new feed.
+  refreshConsoleErrors();
   fetch(`${SERVER}/admin/${TOKEN}/annotation/${id}`).then(r => r.text()).then(populateAnnotation);
   renderStash();
 }
@@ -1414,18 +1784,41 @@ function refreshDetail() {
 function submitGameToTerminal() {
   if (!CURRENT_GAME) return;
   const desc = (document.getElementById('error-description')?.value || '').trim();
+  const cons = (document.getElementById('console-output')?.value || '').trim();
+  // 2026-06-03 21:25: also fetch auto-captured console errors and fold them
+  // into the prompt body. We do this synchronously inline so the submission
+  // body is complete on the first POST (no second tick needed).
   const status = document.getElementById('submit-terminal-status');
   const build = getBuild();
   const gameUrl = `${SERVER}/play/${CURRENT_GAME.masterSecret}`;
   const adminUrl = `${SERVER}/admin.html#game=${CURRENT_GAME.id}`;
-  // build= tag lets the right Claude instance pick up the prompt:
-  //   library/mnu → this Mac's Claude (gremus@local)
-  //   tt/bb       → other Mac's Claude
-  const body =
-    `ADMIN-CONSOLE-ERROR build=${build} game_id=${CURRENT_GAME.id}\n` +
-    `Error in this game: ${gameUrl}\n` +
-    `Error description (if any): ${desc}\n` +
-    `Fix. Console errors and game log both can be found at ${adminUrl}\n`;
+  if (status) { status.textContent = 'Sending…'; status.style.color = 'var(--text-muted)'; }
+  // First fetch the auto-captured stored errors, then build the full body, then submit.
+  fetch(`${SERVER}/admin/${TOKEN}/console-errors/${CURRENT_GAME.id}`)
+    .then(r => r.ok ? r.text() : '')
+    .catch(() => '')
+    .then(autoCaptured => {
+      const auto = decodeConsoleErrorsTsv(autoCaptured);
+      const body =
+        `ADMIN-CONSOLE-ERROR build=${build} game_id=${CURRENT_GAME.id}\n` +
+        `Error in this game: ${gameUrl}\n` +
+        `Error description (if any): ${desc}\n` +
+        (auto ? `Auto-captured browser console errors (most recent first):\n${auto}\n\n` : '') +
+        (cons ? `Extra console output (user-pasted):\n${cons}\n\n` : '') +
+        `Fix. Game log: ${adminUrl}\n`;
+      return sendClaudePromptBody(body);
+    })
+    .then(res => {
+      if (!res || !res.ok) {
+        if (status) { status.textContent = `Submit failed (HTTP ${res ? res.status : '?'}).`; status.style.color = 'var(--danger)'; }
+        return;
+      }
+      if (status) { status.textContent = 'Queued. Claude picks it up on the next tick.'; status.style.color = 'var(--success)'; }
+      if (typeof refreshClaudeQueue === 'function') refreshClaudeQueue();
+    })
+    .catch(e => {
+      if (status) { status.textContent = `Network error: ${e.message || e}`; status.style.color = 'var(--danger)'; }
+    });
   if (status) { status.textContent = 'Sending…'; status.style.color = 'var(--text-muted)'; }
   fetch(`${SERVER}/admin/${TOKEN}/claude-prompt`, {
     method: 'POST',
@@ -1441,6 +1834,54 @@ function submitGameToTerminal() {
     if (typeof refreshClaudeQueue === 'function') refreshClaudeQueue();
   }).catch(e => {
     if (status) { status.textContent = `Network error: ${e.message || e}`; status.style.color = 'var(--danger)'; }
+  });
+}
+
+// Helpers for the new console-capture pipeline.
+// TSV from /admin/$TOK/console-errors/$ID is "capturedMs\tpayload" per row,
+// most-recent first; payload has \n and \t backslash-escaped. Decode for display
+// and prefix each row with a human timestamp.
+function decodeConsoleErrorsTsv(text) {
+  if (!text || !text.trim()) return '';
+  const out = [];
+  for (const line of text.split('\n')) {
+    if (!line.trim()) continue;
+    const tab = line.indexOf('\t');
+    if (tab < 0) continue;
+    const ts = parseInt(line.substring(0, tab), 10);
+    let payload = line.substring(tab + 1);
+    // Unescape \\, \n, \t.
+    payload = payload.replace(/\\t/g, '\t').replace(/\\n/g, '\n').replace(/\\\\/g, '\\');
+    const stamp = isNaN(ts) ? '?' : new Date(ts).toISOString();
+    out.push(`[${stamp}]\n${payload}`);
+  }
+  return out.join('\n---\n');
+}
+
+function refreshConsoleErrors() {
+  if (!CURRENT_GAME) return;
+  const el = document.getElementById('console-errors-feed');
+  if (!el) return;
+  fetch(`${SERVER}/admin/${TOKEN}/console-errors/${CURRENT_GAME.id}`)
+    .then(r => r.text())
+    .then(t => { el.textContent = decodeConsoleErrorsTsv(t) || '(none captured yet)'; })
+    .catch(e => { el.textContent = `error: ${e.message || e}`; });
+}
+
+function clearConsoleErrors() {
+  if (!CURRENT_GAME) return;
+  if (!confirm('Clear all auto-captured console errors for this game? The /play page will start capturing fresh after this.')) return;
+  fetch(`${SERVER}/admin/${TOKEN}/console-errors-clear/${CURRENT_GAME.id}`, { method: 'POST' })
+    .then(r => { if (!r.ok) alert(`Clear failed (HTTP ${r.status}).`); refreshConsoleErrors(); });
+}
+
+// Shared body sender used by both the legacy textbox submit (Claude Terminal
+// section) and the new auto-fold-in submitGameToTerminal flow.
+function sendClaudePromptBody(body) {
+  return fetch(`${SERVER}/admin/${TOKEN}/claude-prompt`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body,
   });
 }
 
@@ -1744,6 +2185,146 @@ const ENGINE_GLUE_PATTERNS = [
 ];
 function isEngineGlue(val) { return ENGINE_GLUE_PATTERNS.some(p => p.test(val)); }
 
+// Pretty-print a unit reference like "FB/Acolyte/2" → "Acolyte" or "OW/Mutant/1" → "Mutant"
+function prettyUnit(ref) {
+  if (!ref) return ref;
+  const slash = ref.indexOf('/');
+  if (slash < 0) return ref.replace(/([A-Z])/g, ' $1').trim();
+  const parts = ref.split('/');
+  return parts[1] ? parts[1].replace(/([A-Z])/g, ' $1').trim() : ref;
+}
+
+// Human-readable action descriptions shown alongside the raw action string.
+// Covers all major player-visible actions to match what appears in the game's log panel.
+function humanizeAction(val) {
+  let m;
+  // --- CORE ACTIONS ---
+  if ((m = val.match(/^AttackAction\((\w+),\s*(\w+),\s*(\w+)/))) return `${m[1]} attacks ${m[3]} in ${m[2]}`;
+  if ((m = val.match(/^BattleRollAction\((\w+),\s*\[([^\]]*)\],\s*(\w+)/))) return `${m[1]} rolled [${m[2]}]`;
+  if ((m = val.match(/^BattleProceedAction\((\w+)\)/))) return `Battle → ${m[1].replace(/([A-Z])/g, ' $1').trim()}`;
+  if ((m = val.match(/^BattleDoneAction\((\w+)\)/))) return `Battle ended (${m[1]}'s attack)`;
+  if ((m = val.match(/^SummonAction\((\w+),\s*(\w+),\s*(\w+)\)/))) return `${m[1]} summoned ${m[2].replace(/([A-Z])/g, ' $1').trim()} in ${m[3]}`;
+  if ((m = val.match(/^MoveAction\((\w+),\s*([^,]+),\s*(\w+),\s*(\w+)/))) return `${m[1]} moved ${prettyUnit(m[2])} from ${m[3]} to ${m[4]}`;
+  if ((m = val.match(/^MoveDoneAction\((\w+)\)/))) return `${m[1]} finished moving`;
+  if ((m = val.match(/^AwakenAction\((\w+),\s*(\w+),\s*(\w+),\s*(\d+)\)/))) return `${m[1]} awakened ${m[2].replace(/([A-Z])/g, ' $1').trim()} in ${m[3]} for ${m[4]} power`;
+  if ((m = val.match(/^FBAwakenGhatanothoaAction\((\w+),\s*(\d+)\)/))) return `${m[1]} awakened Ghatanothoa for ${m[2]} power`;
+  if ((m = val.match(/^SpellbookAction\((\w+),\s*(\w+)/))) return `${m[1]} received spellbook: ${m[2].replace(/([A-Z])/g, ' $1').trim()}`;
+  if ((m = val.match(/^CaptureAction\((\w+),\s*([^,]+),\s*(\w+)\)/))) return `${m[1]} captured ${prettyUnit(m[2])} in ${m[3]}`;
+  if ((m = val.match(/^RitualAction\((\w+)/))) return `${m[1]} performed the Ritual of Annihilation`;
+  if ((m = val.match(/^ElderSignAction\((\w+)/))) return `${m[1]} drew an Elder Sign`;
+  if ((m = val.match(/^RevealESAction\((\w+)/))) return `${m[1]} revealed Elder Signs`;
+  if ((m = val.match(/^BuildGateAction\((\w+),\s*(\w+)\)/))) return `${m[1]} built a gate in ${m[2]}`;
+  if ((m = val.match(/^BuildAction\((\w+),\s*(\w+)\)/))) return `${m[1]} built a gate in ${m[2]}`;
+  if ((m = val.match(/^RecruitAction\((\w+),\s*(\w+),\s*(\w+)\)/))) return `${m[1]} recruited ${m[2].replace(/([A-Z])/g, ' $1').trim()} in ${m[3]}`;
+  if ((m = val.match(/^PassAction\((\w+)\)/))) return `${m[1]} passed and forfeited remaining power`;
+  if ((m = val.match(/^EndTurnAction\((\w+)\)/))) return `${m[1]} ended turn`;
+
+  // --- BATTLE ASSIGNMENT / RETREAT ---
+  if ((m = val.match(/^AssignKillAction\((\w+),\s*[^,]*,\s*[^,]*,\s*([^)]+)\)/))) return `${prettyUnit(m[2])} killed`;
+  if ((m = val.match(/^AssignPainAction\((\w+),\s*[^,]*,\s*[^,]*,\s*([^)]+)\)/))) return `${prettyUnit(m[2])} pained`;
+  if ((m = val.match(/^RetreatUnitAction\((\w+),\s*([^,]+),\s*(\w+)\)/))) return `${prettyUnit(m[2])} retreated to ${m[3]}`;
+  if ((m = val.match(/^RetreatAllAction\((\w+),\s*(\w+),\s*(\w+)\)/))) return `${m[2]}'s pained units retreated to ${m[3]}`;
+  if ((m = val.match(/^EliminateNoWayAction\((\w+),\s*([^)]+)\)/))) return `${prettyUnit(m[2])} eliminated (no retreat)`;
+  if ((m = val.match(/^PainAction\((\w+),\s*([^,]+),\s*(\w+),\s*(\w+)\)/))) return `${prettyUnit(m[2])} pained from ${m[3]} to ${m[4]}`;
+  if ((m = val.match(/^KillAction\((\w+),\s*([^,]+),\s*(\w+)\)/))) return `${prettyUnit(m[2])} killed in ${m[3]}`;
+
+  // --- GATE CONTROL ---
+  if ((m = val.match(/^GateControlAction\((\w+),\s*(\w+)\)/))) return `${m[1]} took control of gate in ${m[2]}`;
+
+  // --- PHASE / TURN MARKERS ---
+  if ((m = val.match(/^PreMainAction\((\w+)\)/))) return `── ${m[1]}'s turn ──`;
+  if ((m = val.match(/^GatherPowerAction\((\w+),\s*(\d+)\)/))) return `${m[1]} gathered ${m[2]} power`;
+  if ((m = val.match(/^DoomAction\((\w+),\s*(\d+)/))) return `${m[1]} scored ${m[2]} doom`;
+  if ((m = val.match(/^DoomPhaseAction\(/))) return `── Doom Phase ──`;
+  if ((m = val.match(/^ActionPhaseAction\(/))) return `── Action Phase ──`;
+  if ((m = val.match(/^PowerGatherAction\(/))) return `── Gather Power Phase ──`;
+  if ((m = val.match(/^NextPlayerAction\((\w+)\)/))) return `${m[1]} became first player`;
+  if ((m = val.match(/^PlayDirectionAction\((\w+),\s*\[([^\]]*)\]\)/))) return `Play order: ${m[2]}`;
+  if ((m = val.match(/^StartingRegionAction\((\w+),\s*(\w+)\)/))) return `${m[1]} started in ${m[2]}`;
+
+  // --- FACTION-SPECIFIC: TCHO-TCHO (TT) ---
+  if ((m = val.match(/^TTChooseTribeAction\((\w+),\s*(\w+)\)/))) return `${m[1]} chose tribe: ${m[2].replace(/([A-Z])/g, ' $1').trim()}`;
+  if ((m = val.match(/^TTAwakenUbboSathlaChooseHPAction\((\w+),\s*(\w+),\s*(\d+)\)/))) return `${m[1]} awakened Ubbo-Sathla in ${m[2]} (sacrificed ${m[3]} High Priests)`;
+  if ((m = val.match(/^TTHierophantsChooseGateAction\((\w+),\s*(\w+)\)/))) return `${m[1]} placed Hierophant gate in ${m[2]}`;
+  if ((m = val.match(/^TTHellsBanquetApplyAction\((\w+)/))) return `${m[1]} used Hell's Banquet`;
+
+  // --- FACTION-SPECIFIC: TIDAL SURGE (TS) ---
+  if ((m = val.match(/^TSDeathMarchAction\((\w+),\s*([^,]+),\s*(\w+)\)/))) return `${m[1]} death-marched ${prettyUnit(m[2])} to ${m[3]}`;
+  if ((m = val.match(/^TSUseTomeAction\((\w+)/))) return `${m[1]} used a Tome`;
+  if ((m = val.match(/^TSPlaceTomeUnitAction\((\w+),\s*([^,]+),\s*(\w+)\)/))) return `${m[1]} placed Tome unit ${prettyUnit(m[2])} in ${m[3]}`;
+  if ((m = val.match(/^TSShepherdGatherAction\((\w+)/))) return `${m[1]} used Shepherd to gather`;
+  if ((m = val.match(/^TSElevenRevelationsAction\((\w+)/))) return `${m[1]} used Eleven Revelations`;
+  if ((m = val.match(/^TSAwakenGlaakiPayAction\((\w+)/))) return `${m[1]} awakened Gla'aki`;
+
+  // --- FACTION-SPECIFIC: FIRSTBORN (FB) ---
+  if ((m = val.match(/^FBWritheMainAction\((\w+)\)/))) return `${m[1]} used Writhe`;
+  if ((m = val.match(/^FBWritheRollResultAction\((\w+),\s*(\d+),\s*\[([^\]]*)\]/))) return `${m[1]} Writhe rolled ${m[2]} dice: [${m[3]}]`;
+  if ((m = val.match(/^FBWritheRerollAction\((\w+)/))) return `${m[1]} rerolled Writhe`;
+  if ((m = val.match(/^FBWritheKillUnitAction\((\w+),\s*([^,]+)/))) return `${m[1]} Writhe killed ${prettyUnit(m[2])}`;
+  if ((m = val.match(/^FBWritheChoosePainUnitAction\((\w+),\s*([^,]+)/))) return `${m[1]} Writhe pained ${prettyUnit(m[2])}`;
+  if ((m = val.match(/^FBWritheMoveOneToRegionAction\((\w+),\s*([^,]+),\s*(\w+)/))) return `${m[1]} Writhe moved ${prettyUnit(m[2])} to ${m[3]}`;
+  if ((m = val.match(/^FBWritheMoveSeparatelyAction\((\w+)/))) return `${m[1]} chose to move Writhe units separately`;
+  if ((m = val.match(/^FBWritheKeepAction\((\w+)/))) return `${m[1]} kept Writhe results`;
+  if ((m = val.match(/^FBCallOfTheFaithfulAction\((\w+)/))) return `${m[1]} used Call of the Faithful`;
+  if ((m = val.match(/^FBInfernalPactChooseAction\((\w+),\s*(\w+)\)/))) return `${m[1]} chose ${m[2]} for Infernal Pact`;
+  if ((m = val.match(/^FBDevilsMarkDoomAction\((\w+)/))) return `${m[1]} gained doom from Devil's Mark`;
+  if ((m = val.match(/^FBDevilsMarkPlaceCraterAction\((\w+),\s*(\w+)\)/))) return `${m[1]} placed Crater in ${m[2]}`;
+
+  // --- NEUTRAL UNITS / IGOOs ---
+  if ((m = val.match(/^NeutralMonstersAction\((\w+),\s*(\w+),\s*(\w+)\)/))) return `${m[1]} recruited neutral ${m[2].replace(/([A-Z])/g, ' $1').trim()} in ${m[3]}`;
+  if ((m = val.match(/^LoyaltyCardSummonAction\((\w+),\s*([^,]+),\s*(\w+)\)/))) return `${m[1]} summoned ${prettyUnit(m[2])} in ${m[3]} (Loyalty)`;
+  if ((m = val.match(/^DragonAscendingInstantAction\((\w+)/))) return `${m[1]} used Dragon Ascending`;
+  if ((m = val.match(/^BeyondOneAction\((\w+),\s*([^,]+),\s*(\w+)\)/))) return `${m[1]} sent ${prettyUnit(m[2])} Beyond One to ${m[3]}`;
+  if ((m = val.match(/^MillionFavoredOnesXAction\((\w+)/))) return `${m[1]} used Million Favored Ones`;
+  if ((m = val.match(/^CaptureTargetAction\((\w+),\s*([^)]+)\)/))) return `${m[1]} targeted ${prettyUnit(m[2])} for capture`;
+
+  // --- PRIME CAUSE ---
+  if ((m = val.match(/^PrimeCauseChooseUnitAction\((\w+),\s*([^)]+)\)/))) return `${m[1]} targeted ${prettyUnit(m[2])} with Prime Cause`;
+  if ((m = val.match(/^PrimeCauseChooseReplacementAction\((\w+),\s*([^,]+),\s*(\w+)\)/))) return `${m[1]} replaced ${prettyUnit(m[2])} with ${m[3].replace(/([A-Z])/g, ' $1').trim()}`;
+  if ((m = val.match(/^PrimeCauseSkipAction\((\w+)\)/))) return `${m[1]} skipped Prime Cause`;
+  if ((m = val.match(/^PrimeCauseCancelReplacementAction\((\w+)\)/))) return `${m[1]} cancelled Prime Cause replacement`;
+
+  // --- AZATHOTH ---
+  if ((m = val.match(/^AzathothAwakenCommitAction\((\w+),\s*(\d+),\s*(\w+)\)/))) return `${m[1]} awakens Azathoth at ${m[3]}` + (m[2] !== '0' ? ` (roll: ${m[2]})` : '');
+  if ((m = val.match(/^AzathothAwakenCostAction\((\w+),\s*(\d+),\s*(\d+),\s*(\w+)\)/))) return `${m[1]} rolled ${m[2]}, awakened Azathoth for ${m[3]} power at ${m[4]}`;
+  if ((m = val.match(/^AzathothEnemyChooseAction\((\w+),\s*(\d+),\s*(\w+)\)/))) return `${m[3]} secretly chose ${m[2]} for Azathoth die`;
+
+  // --- NUCLEAR CHAOS ---
+  if ((m = val.match(/^NuclearChaosMainAction\((\w+)\)/))) return `${m[1]} used Nuclear Chaos`;
+  if ((m = val.match(/^NuclearChaosAdjustAction\((\w+),\s*Map\(([^)]+)\),\s*(\d+)\)/))) return `${m[1]} adjusted Nuclear Chaos (round ${m[3]})`;
+
+  // --- PRE-BATTLE ABILITIES ---
+  if ((m = val.match(/^PreBattleDoneAction\((\w+),\s*(\w+)\)/))) return `${m[1]} → ${m[2].replace(/([A-Z])/g, ' $1').trim()}`;
+  if ((m = val.match(/^DevourAction\((\w+),\s*([^)]+)\)/))) return `${m[1]} devoured ${prettyUnit(m[2])}`;
+  if ((m = val.match(/^AbsorbeeAction\((\w+),\s*([^,]+)/))) return `${m[1]} absorbed ${prettyUnit(m[2])}`;
+  if ((m = val.match(/^AbductAction\((\w+),\s*([^,]+)/))) return `${m[1]} abducted ${prettyUnit(m[2])}`;
+  if ((m = val.match(/^InvisibilityAction\((\w+),\s*([^,]+)/))) return `${m[1]} made ${prettyUnit(m[2])} invisible`;
+  if ((m = val.match(/^SeekAndDestroyAction\((\w+),\s*(\w+),\s*(\w+)\)/))) return `${m[1]} used Seek and Destroy: ${m[2].replace(/([A-Z])/g, ' $1').trim()} in ${m[3]}`;
+  if ((m = val.match(/^HowlAction\((\w+),\s*([^,]+),\s*(\w+)\)/))) return `${m[1]} Howled ${prettyUnit(m[2])} to ${m[3]}`;
+  if ((m = val.match(/^HarbingerPowerAction\((\w+),\s*([^,]+),\s*(\d+)\)/))) return `${m[1]} Harbinger drained ${m[3]} power from ${prettyUnit(m[2])}`;
+  if ((m = val.match(/^HarbingerESAction\((\w+),\s*([^,]+)/))) return `${m[1]} Harbinger stole Elder Sign from ${prettyUnit(m[2])}`;
+  if ((m = val.match(/^DemandSacrificeKillsArePainsAction\((\w+)\)/))) return `${m[1]}: Demand Sacrifice — kills become pains`;
+  if ((m = val.match(/^DemandSacrificeProvideESAction\((\w+)\)/))) return `${m[1]} provided Elder Sign to avoid sacrifice`;
+
+  // --- COMMANDS / PLANS (informational) ---
+  if ((m = val.match(/^CommandsAddAction\((\w+),\s*([^)]+)\)/))) return `${m[1]} gained ability: ${m[2].replace(/([A-Z])/g, ' $1').trim()}`;
+  if ((m = val.match(/^CommandsRemoveAction\((\w+),\s*([^)]+)\)/))) return `${m[1]} lost ability: ${m[2].replace(/([A-Z])/g, ' $1').trim()}`;
+
+  // --- BUBASTIS (BB) ---
+  if ((m = val.match(/^BBSatiateAction\((\w+)/))) return `${m[1]} used Satiate`;
+  if ((m = val.match(/^BBBastetSummonAction\((\w+),\s*(\w+)\)/))) return `${m[1]} summoned Bastet in ${m[2]}`;
+
+  // --- CATCH-ALL for other faction-prefixed actions ---
+  if ((m = val.match(/^(\w{2})(\w+)Action\((\w+)/))) {
+    const prefix = m[1], name = m[2], faction = m[3];
+    if (['FB','TS','TT','OW','GC','CC','BG','YS','WW','AN','SL','BB','DC'].includes(prefix)) {
+      return `${faction} — ${prefix} ${name.replace(/([A-Z])/g, ' $1').trim()}`;
+    }
+  }
+
+  return null;
+}
+
 // Toggle state. Default to filtered (game-log view) per user request.
 let LOG_VIEW_MODE = 'game';   // 'game' | 'debug'
 
@@ -1753,8 +2334,8 @@ function populateLog(text) {
   const lines = text.split('\n').filter(l => l);
   // Toolbar above the log: toggle game-log vs debug-log.
   const toolbar = `<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;font-size:9pt;color:#aaa;">
-    <button class="small" onclick="toggleLogViewMode()">${LOG_VIEW_MODE === 'game' ? 'Show debug log' : 'Show game log'}</button>
-    <span>Currently: ${LOG_VIEW_MODE === 'game' ? 'game log (engine-glue hidden)' : 'full debug log'}</span>
+    <button class="small" onclick="toggleLogViewMode()">${LOG_VIEW_MODE === 'game' ? 'Show debug log' : 'Show player log'}</button>
+    <span>Currently: ${LOG_VIEW_MODE === 'game' ? 'player log view (shows what players see, engine-glue hidden)' : 'full debug log (all raw actions)'}</span>
   </div>`;
   const filtered = LOG_VIEW_MODE === 'game'
     ? lines.filter(line => {
@@ -1766,18 +2347,24 @@ function populateLog(text) {
     const tabs = line.split('\t');
     const idx = tabs[0]; const role = tabs[1] || ''; const val = tabs.slice(2).join('\t');
     const isPerm = PERMANENT_KEYWORDS.some(k => val.includes(k));
-    // ES edit button only appears on ElderSignAction lines (where v is the
-    // hidden ES value). Parsed value goes into a textbox the user opens by
-    // clicking "Edit ES". The original ES value is NOT shown unless the
-    // user clicks; the button label stays "Edit ES" with no value preview.
     const isES = /^ElderSignAction\(/.test(val);
     const editEsBtn = isES
       ? `<button class="small" onclick="startEditES(${idx}, this)" title="Edit hidden ES value">Edit ES</button>`
       : '';
+    const humanText = humanizeAction(val);
+    // In game-log mode: show player-visible text prominently, raw action dimmed below.
+    // In debug mode: show raw action with player text as small annotation.
+    let valHtml;
+    if (LOG_VIEW_MODE === 'game' && humanText) {
+      valHtml = `<span class="val"><span class="player-log" style="color:#e6e6e6;font-size:9.5pt;">${esc(humanText)}</span><br><span style="color:#666;font-size:8pt;font-style:italic;">${esc(val)}</span></span>`;
+    } else {
+      const humanSpan = humanText ? `<span class="human" style="color:var(--success);font-size:8.5pt;margin-left:8px;opacity:0.85;">${esc(humanText)}</span>` : '';
+      valHtml = `<span class="val">${esc(val)}${humanSpan}</span>`;
+    }
     return `<div class="log-entry ${isPerm ? 'permanent' : ''}" data-idx="${esc(idx)}">
       <span class="idx">${esc(idx)}</span>
       <span class="role">${esc(role)}</span>
-      <span class="val">${esc(val)}</span>
+      ${valHtml}
       ${editEsBtn}
       <button class="small" onclick="startEdit(${idx}, this)">Edit</button>
       <button class="small danger" onclick="rollbackTo(${idx})">Roll back to here</button>
@@ -1969,23 +2556,19 @@ function reinsertStashed(stashIdx) {
   const nextIdx = lines.length ? Math.max(...lines.map(l => parseInt(l.split('\t')[0], 10) || 0)) + 1 : entry.index;
   const target = prompt(
     `Re-insert this action at which log index?\n\n` +
-    `Action: ${entry.value}\n\n` +
-    `Original index was ${entry.index}. Next available index is ${nextIdx}. ` +
-    `Enter the index where this line should land (typically nextIdx to append).`,
+    `[${entry.index}] ${entry.role}: ${entry.value}\n\n` +
+    `Original index was ${entry.index}. Next available index is ${nextIdx}.\n` +
+    `(Tip: use "Re-insert all" to put back everything in order after deleting the bad action.)`,
     String(nextIdx)
   );
   if (target === null) return;
   const idxNum = parseInt(target, 10);
   if (!Number.isFinite(idxNum)) { alert('Invalid index.'); return; }
-  // Server's admin/write expects (index + 3) for log-table offset, but we already work in
-  // raw log-table indices here (same scheme as /admin/log). The admin/write endpoint takes
-  // the raw log-table index — pass idxNum as-is.
   fetch(`${SERVER}/admin/${TOKEN}/write/${CURRENT_GAME.id}/${idxNum}`, {
     method: 'POST',
-    body: entry.value,
+    body: (entry.role || '$') + '\t' + entry.value,
   }).then(r => {
     if (r.ok) {
-      // Drop the re-inserted entry from stash and refresh.
       const newStash = stash.filter((_, i) => i !== stashIdx);
       setStash(CURRENT_GAME.id, newStash);
       refreshDetail();
@@ -2011,16 +2594,114 @@ function renderStash() {
     div.innerHTML = '<p class="empty" style="font-size:9pt;">No stashed actions. Rolled-back actions land here so you can re-insert them ("force same dice outcome") later.</p>';
     return;
   }
+  const groups = groupStashEntries(stash);
   div.innerHTML = `<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
-      <strong>${stash.length} stashed action(s)</strong>
+      <strong>${stash.length} stashed action(s) in ${groups.length} turn(s)</strong>
+      <button class="small" onclick="reinsertAll()">Re-insert all</button>
       <button class="small" onclick="clearStash()">Clear all</button>
     </div>` +
-    stash.map((e, i) => `<div class="log-entry">
-      <span class="idx">${esc(String(e.index))}</span>
-      <span class="role">${esc(e.role)}</span>
-      <span class="val">${esc(e.value)}</span>
-      <button class="small" onclick="reinsertStashed(${i})">Re-insert</button>
-    </div>`).join('');
+    groups.map((group, gi) => {
+      const label = groupLabel(group);
+      const playerActions = group.filter(e => !isEngineGlue(e.value));
+      const isExpanded = LOG_VIEW_MODE === 'debug';
+      const summary = playerActions.length > 0
+        ? playerActions.map(e => esc(e.value.substring(0, 70))).join('<br/>')
+        : esc(group[0].value.substring(0, 70));
+      const detailRows = isExpanded
+        ? group.map(e => `<div class="log-entry" style="margin-left:20px;opacity:${isEngineGlue(e.value) ? '0.5' : '1'};">
+            <span class="idx">${esc(String(e.index))}</span>
+            <span class="role">${esc(e.role)}</span>
+            <span class="val">${esc(e.value)}</span>
+          </div>`).join('')
+        : '';
+      return `<div style="border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:6px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="idx" style="min-width:50px;">${esc(String(group[0].index))}–${esc(String(group[group.length-1].index))}</span>
+          <span style="flex:1;">${summary}</span>
+          <span style="color:var(--text-muted);font-size:9pt;">${group.length} action${group.length>1?'s':''}</span>
+          <button class="small danger" onclick="deleteStashGroup(${gi})">Delete turn</button>
+        </div>
+        ${detailRows}
+      </div>`;
+    }).join('');
+}
+
+function reinsertAll() {
+  if (!CURRENT_GAME) return;
+  const stash = getStash(CURRENT_GAME.id);
+  if (!stash.length) return;
+  const sorted = stash.slice().sort((a, b) => a.index - b.index);
+  // Find the next available index from the LIVE log (not the stash's original indices)
+  const lines = (LAST_LOG_RAW || '').split('\n').filter(Boolean);
+  const maxLiveIdx = lines.length ? Math.max(...lines.map(l => parseInt(l.split('\t')[0], 10) || 0)) : -1;
+  const startIdx = maxLiveIdx + 1;
+  if (!confirm(`Re-insert all ${sorted.length} stashed actions?\n\nWill write sequentially starting at index ${startIdx}.\n\nFirst action: ${sorted[0].value.substring(0, 60)}\nLast action: ${sorted[sorted.length-1].value.substring(0, 60)}`)) return;
+  // Chain sequential POSTs, writing at consecutive indices from startIdx
+  let chain = Promise.resolve();
+  sorted.forEach((entry, i) => {
+    chain = chain.then(() =>
+      fetch(`${SERVER}/admin/${TOKEN}/write/${CURRENT_GAME.id}/${startIdx + i}`, {
+        method: 'POST', body: (entry.role || '$') + '\t' + entry.value
+      }).then(r => {
+        if (!r.ok) throw new Error(`Failed at index ${startIdx + i}: HTTP ${r.status}`);
+      })
+    );
+  });
+  chain.then(() => {
+    setStash(CURRENT_GAME.id, []);
+    refreshDetail();
+  }).catch(e => {
+    alert(`Re-insert all stopped: ${e.message}\nSome actions may have been written. Check the log and stash.`);
+    refreshDetail();
+  });
+}
+
+// Group stash entries into "turn segments" split at PreMainAction boundaries.
+// Each group = one player decision + all its setup glue and aftermath.
+// The Delete button removes the entire group (you can't break a turn in half).
+function groupStashEntries(stash) {
+  const sorted = stash.slice().sort((a, b) => a.index - b.index);
+  const groups = [];
+  let current = [];
+  for (const entry of sorted) {
+    // PreMainAction starts a new group (unless the current group is empty)
+    if (/^PreMainAction\(/.test(entry.value) && current.length > 0) {
+      groups.push(current);
+      current = [];
+    }
+    current.push(entry);
+  }
+  if (current.length > 0) groups.push(current);
+  return groups;
+}
+
+// Find the player-choice action in a group (the non-glue entry, or the most
+// important action if there are multiple non-glue entries like battle rolls).
+function groupLabel(group) {
+  const playerActions = group.filter(e => !isEngineGlue(e.value));
+  if (playerActions.length > 0) return playerActions[0];
+  return group[0];
+}
+
+function deleteStashGroup(groupIdx) {
+  if (!CURRENT_GAME) return;
+  const stash = getStash(CURRENT_GAME.id);
+  const groups = groupStashEntries(stash);
+  const group = groups[groupIdx];
+  if (!group) return;
+  const label = groupLabel(group);
+  const playerActions = group.filter(e => !isEngineGlue(e.value));
+  if (!confirm(
+    `Delete this turn segment (${group.length} actions)?\n\n` +
+    `Player action: ${label.value.substring(0, 70)}\n` +
+    (playerActions.length > 1 ? `(+ ${playerActions.length - 1} more player actions in this segment)\n` : '') +
+    `Indices ${group[0].index}–${group[group.length-1].index}\n\n` +
+    `"Re-insert all" will then put back only the remaining turns.`
+  )) return;
+  const toRemove = new Set(group.map(e => e.index + '|' + e.value));
+  const newStash = stash.filter(e => !toRemove.has(e.index + '|' + e.value));
+  setStash(CURRENT_GAME.id, newStash);
+  renderStash();
 }
 
 function esc(s) {
@@ -2028,6 +2709,30 @@ function esc(s) {
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'
   }[ch]));
 }
+
+// [2026-06-11] Auto-poll games list every 15 minutes + surface crash reports.
+(function() {
+  loadGames();
+  setInterval(function() {
+    loadGames();
+    fetch(`${SERVER}/admin/${TOKEN}/games`).then(r => r.text()).then(text => {
+      text.split('\n').filter(l => l).forEach(line => {
+        const parts = line.split('\t');
+        const id = parts[0], broken = (parts[4] || '0').trim() === '1';
+        if (broken) {
+          fetch(`${SERVER}/admin/${TOKEN}/annotation/${id}`).then(r => r.text()).then(ann => {
+            if (ann && ann.indexOf('\t') > 0) {
+              const notes = ann.substring(ann.indexOf('\t') + 1);
+              if (notes.trim() && notes.indexOf('CRASH') >= 0) {
+                console.log(`[auto-poll] Game ${id} crash: ${notes.substring(0, 200)}`);
+              }
+            }
+          });
+        }
+      });
+    });
+  }, 15 * 60 * 1000);
+})();
 </script>
 
 </body>
