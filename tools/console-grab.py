@@ -55,6 +55,37 @@ ERROR_KEYWORDS = ["unknown class", "uncaught", "error", "exception",
 
 TOKEN_CACHE = "/Users/gremus/.cw-admin-token"
 
+# Version header markers — the first line of a game's log contains the build
+# name embedded in a version string. Map marker substrings (lowercased) to the
+# canonical build tag used by play URLs.
+VERSION_HEADER_MARKERS = {
+    "library-at-celaeno": "library",
+    "more-neutral-units": "mnu",
+    "tcho-tcho": "tt",
+    "bubastis": "bb",
+    "homebrew": "hb",
+}
+
+def infer_build_from_log(token, game_id):
+    """Fetch the first line of the game's log and infer the build from its
+    version header. Returns the canonical build tag or SWEEP_BUILD_DEFAULT if
+    detection fails."""
+    try:
+        status, body = http_get(admin_url(token, f"log/{game_id}"), timeout=15)
+        if status != 200 or not body:
+            return SWEEP_BUILD_DEFAULT
+    except Exception:  # noqa: BLE001
+        return SWEEP_BUILD_DEFAULT
+    first_line = body.split("\n", 1)[0] if "\n" in body else body
+    first_lower = first_line.lower()
+    matches = [build for marker, build in VERSION_HEADER_MARKERS.items()
+               if marker in first_lower]
+    if len(matches) == 1:
+        return matches[0]
+    # Ambiguous or no match — fall back to library.
+    return SWEEP_BUILD_DEFAULT
+
+
 def read_token():
     # Google Drive intermittently dehydrates the token file (empty read). Prefer
     # the Drive copy when it's readable (and refresh the off-Drive cache); fall
@@ -300,11 +331,11 @@ def grab_one(token, game_id, build, dry_run=False):
     return out
 
 
-# The games list endpoint (admin "games") is tab-delimited; column index 10 is
-# the game's build tag (library|mnu|tt|bb|HB|unknown), the same column the admin
-# UI reads as parts[10] (admin.html ~line 1220). The --sweep path uses this real
-# per-game build so each game is loaded at its correct play URL. Older server
-# responses may omit the column (blank) -> we fall back to "library".
+# The games endpoint has 10 columns (indices 0-9):
+#   id, name, secret, lastWriteMs, broken, completed, isBot, playerCount,
+#   botCount, isLive
+# There is NO build column; the build must be inferred from the game log's
+# version header line. The --sweep path fetches each game's log[0] to detect.
 SWEEP_BUILD_DEFAULT = "library"
 
 
@@ -319,14 +350,15 @@ def normalize_build(raw):
 
 
 def active_games(token):
-    """Return list of (id, name, build) for active games: not bot, not completed.
+    """Return list of (id, name, build, isLive) for active games: not bot, not
+    completed.
 
-    build is parsed from column index 10 of the tab-delimited games endpoint
-    (same column admin.html reads as parts[10]), normalized via normalize_build."""
+    build is inferred by fetching the first line of each game's log and matching
+    against VERSION_HEADER_MARKERS. isLive is read from column index 9."""
     status, body = http_get(admin_url(token, "games"))
     if status != 200:
         raise RuntimeError(f"GET games returned HTTP {status}")
-    out = []
+    candidates = []
     for line in body.splitlines():
         if not line.strip():
             continue
@@ -335,10 +367,18 @@ def active_games(token):
         name = parts[1] if len(parts) > 1 else ""
         completed = (parts[5] if len(parts) > 5 else "0").strip() == "1"
         is_bot = (parts[6] if len(parts) > 6 else "0").strip() == "1"
-        build = normalize_build(parts[10] if len(parts) > 10 else "")
+        is_live = (parts[9] if len(parts) > 9 else "0").strip() == "1"
         if is_bot or completed:
             continue
-        out.append((gid, name, build))
+        candidates.append((gid, name, is_live))
+
+    # Fetch build from each game's log header (throttled to avoid overload).
+    out = []
+    for i, (gid, name, is_live) in enumerate(candidates):
+        build = infer_build_from_log(token, gid)
+        out.append((gid, name, build, is_live))
+        if i < len(candidates) - 1:
+            time.sleep(0.3)
     return out
 
 
@@ -349,6 +389,8 @@ def main():
                     help="build tag: mnu|hb|library|solo|tt|bb (single-game mode)")
     ap.add_argument("--sweep", action="store_true",
                     help="run for ALL active (non-bot, not-completed) games")
+    ap.add_argument("--live-only", action="store_true",
+                    help="(sweep mode) only check games flagged as Live (isLive=1)")
     ap.add_argument("--dry-run", action="store_true",
                     help="capture + print but do NOT write the annotation")
     args = ap.parse_args()
@@ -360,9 +402,13 @@ def main():
 
     if args.sweep:
         games = active_games(token)
-        print(f"[sweep] {len(games)} active games")
+        if args.live_only:
+            games = [(gid, name, build, live)
+                     for gid, name, build, live in games if live]
+        print(f"[sweep] {len(games)} active games"
+              f"{' (live-only)' if args.live_only else ''}")
         n_ok = n_fail = 0
-        for gid, name, build in games:
+        for gid, name, build, is_live in games:
             r = grab_one(token, gid, build, dry_run=args.dry_run)
             if r["ok"]:
                 n_ok += 1
