@@ -65,6 +65,7 @@ VERSION_HEADER_MARKERS = {
     "more-neutral-units": "mnu",
     "tcho-tcho": "tt",
     "bubastis": "bb",
+    "homebrew": "hb",
 }
 
 
