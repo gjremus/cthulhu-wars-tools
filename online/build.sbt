@@ -34,6 +34,10 @@ libraryDependencies += "org.hsqldb" % "hsqldb" % "2.7.4"
 
 libraryDependencies += "org.slf4j" % "slf4j-simple" % "2.0.16"
 
+// Phase 3.5 RL Bot: server-side ONNX inference for /play/rl-decision/<secret>.
+// Pinned to match the trainer-side onnxruntime + the sim/build.sbt version.
+libraryDependencies += "com.microsoft.onnxruntime" % "onnxruntime" % "1.17.1"
+
 run / fork := true
 
 Global / cancelable := true
