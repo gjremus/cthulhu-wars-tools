@@ -17,11 +17,16 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../scripts/deploy-lock.sh"
+deploy_lock_acquire "bb" "deploy-bb" || exit 1
+trap deploy_lock_release EXIT
+
 SOURCE="/Users/gremus/Claude-Projects/cthulhu-wars-Bubastis/solo"
 SSH_KEY="$HOME/.ssh/oracle_cw_ed25519"
 SSH_OPTS="-o StrictHostKeyChecking=no"
 HOST="oracle-cw-server@35.255.125.91"
-REMOTE_ROOT="/opt/cwo/BB"
+REMOTE_ROOT="/opt/cwo/bb"
 SERVER_URL="https://cwo.freeddns.org/BB/"
 VERIFY_URL="https://cwo.freeddns.org/BB/"
 
@@ -40,6 +45,9 @@ if [ ! -f "$SSH_KEY" ]; then
     echo "ERROR: ssh key not found at: $SSH_KEY"
     exit 1
 fi
+
+echo "==> [git push] pushing source to remote..."
+(cd "$SOURCE" && git push 2>&1 | tail -3)
 
 MAIN_JS="$SOURCE/target/scala-2.13/cthulhu-wars-solo-hrf-opt/main.js"
 if $DO_BUILD || [ ! -f "$MAIN_JS" ]; then

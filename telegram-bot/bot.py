@@ -17,6 +17,7 @@ import time
 import subprocess
 import urllib.request
 import urllib.error
+import threading
 
 TOKEN = "8426807647:AAGO_Ba6hFUnX_DFD_tO-vrIkO2y9XURmjo"
 API = f"https://api.telegram.org/bot{TOKEN}"
@@ -28,6 +29,24 @@ PROMPTS_LOG = "/tmp/claude-prompts.log"
 RESPONSES_LOG = "/tmp/claude-prompt-responses.log"
 OFFSET_FILE = os.path.join(os.path.dirname(__file__), ".last_update_id")
 PENDING_FILE = os.path.join(os.path.dirname(__file__), ".pending_messages.json")
+
+DEPLOY_LOCK = "/tmp/cwo-deploy.lock"
+DEPLOY_SCRIPTS_DIR = "/Users/gremus/cthulhu-wars-tools/server-deploy"
+BUILD_ROOTS = {
+    "library": "/Users/gremus/Claude-Projects/cw-library-celaeno-wt/solo",
+    "mnu": "/Users/gremus/Claude-Projects/cw-mnu-wt/solo",
+    "tt": "/Users/gremus/Claude-Projects/cthulhu-wars-TchoTcho_Cats_Yuggoth/solo",
+    "bb": "/Users/gremus/Claude-Projects/cthulhu-wars-Bubastis/solo",
+    "hb": "/Users/gremus/Claude-Projects/cw-homebrew-wt/solo",
+}
+DEPLOY_SCRIPT_MAP = {
+    "library": "deploy-library-to-vm.sh",
+    "mnu": "deploy-mnu-to-vm.sh",
+    "tt": "deploy-tt-to-vm.sh",
+    "bb": "deploy-bb-to-vm.sh",
+    "hb": "deploy-hb-to-vm.sh",
+}
+JAVA_HOME = "/Users/gremus/.local/jdk/zulu21.50.19-ca-jdk21.0.11-macosx_aarch64/Contents/Home"
 
 # In-memory tracking of pending messages awaiting responses
 # Format: {msg_id: {"text": original_text, "time": unix_timestamp}}
@@ -41,7 +60,7 @@ def api_call(method, data=None):
     else:
         req = urllib.request.Request(url)
     try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
+        with urllib.request.urlopen(req, timeout=30) as resp:
             return json.loads(resp.read())
     except urllib.error.HTTPError as e:
         if e.code == 409:
@@ -58,7 +77,11 @@ def send_message(chat_id, text):
     # Telegram messages max 4096 chars; truncate if needed
     if len(text) > 4000:
         text = text[:4000] + "\n...(truncated)"
-    return api_call("sendMessage", {"chat_id": chat_id, "text": text, "parse_mode": "Markdown"})
+    result = api_call("sendMessage", {"chat_id": chat_id, "text": text, "parse_mode": "Markdown"})
+    if result is None:
+        # Retry without Markdown (special chars cause 400 errors)
+        result = api_call("sendMessage", {"chat_id": chat_id, "text": text})
+    return result
 
 def generate_msg_id():
     """Generate a unique message ID for tracking responses."""
@@ -82,8 +105,8 @@ def save_pending():
         json.dump(pending_messages, f)
 
 def expire_old_pending():
-    """Remove pending messages older than 2 hours (they timed out)."""
-    cutoff = time.time() - 7200  # 2 hours
+    """Remove pending messages older than 24 hours (they timed out)."""
+    cutoff = time.time() - 86400  # 24 hours
     expired = [mid for mid, info in pending_messages.items() if info["time"] < cutoff]
     for mid in expired:
         print(f"Expiring unresponded message: {mid}", file=sys.stderr)
@@ -102,15 +125,139 @@ def ssh_cmd(cmd):
 
 def write_to_queue(text, msg_id=None):
     """Append a message to the admin prompts log on the server.
-    If msg_id is provided, prefix the message with the ID tag for response tracking."""
+    Format: [YYYY-MM-DD HH:MM:SS] [TGMSG_id] text
+    The timestamp prefix is required — the server endpoint filters entries by it."""
+    import datetime
+    stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     if msg_id:
-        tagged = f"[{msg_id}] {text}"
+        tagged = f"[{stamp}] [{msg_id}] {text}"
     else:
-        tagged = text
+        tagged = f"[{stamp}] {text}"
     escaped = tagged.replace("'", "'\\''")
     cmd = f"echo '{escaped}' >> {PROMPTS_LOG}"
     out, rc = ssh_cmd(cmd)
     return rc == 0
+
+def acquire_deploy_lock(target, timeout=5):
+    """Try to acquire the deploy lock. Returns True if acquired, False if busy."""
+    lock_info = {"target": target, "pid": os.getpid(), "time": time.time(), "source": "telegram-bot"}
+    if os.path.exists(DEPLOY_LOCK):
+        try:
+            with open(DEPLOY_LOCK) as f:
+                existing = json.load(f)
+            age = time.time() - existing.get("time", 0)
+            if age < 600:  # 10 min stale threshold
+                return False, f"Deploy lock held by {existing.get('source', '?')} (target={existing.get('target', '?')}, {int(age)}s ago)"
+        except (json.JSONDecodeError, IOError):
+            pass
+    with open(DEPLOY_LOCK, "w") as f:
+        json.dump(lock_info, f)
+    return True, ""
+
+def release_deploy_lock():
+    """Release the deploy lock."""
+    try:
+        os.remove(DEPLOY_LOCK)
+    except OSError:
+        pass
+
+def run_build(target):
+    """Run sbt fullOptJS for the given target. Returns (success, output_tail)."""
+    root = BUILD_ROOTS.get(target)
+    if not root:
+        return False, f"Unknown target: {target}"
+    env = os.environ.copy()
+    env["JAVA_HOME"] = JAVA_HOME
+    env["PATH"] = f"{JAVA_HOME}/bin:{env.get('PATH', '')}"
+    try:
+        result = subprocess.run(
+            ["sbt", "fullOptJS"],
+            cwd=root, capture_output=True, text=True, timeout=300, env=env
+        )
+        tail = result.stdout.strip().split("\n")[-5:]
+        if result.returncode == 0:
+            return True, "\n".join(tail)
+        else:
+            err_tail = result.stderr.strip().split("\n")[-5:]
+            return False, "\n".join(tail + err_tail)
+    except subprocess.TimeoutExpired:
+        return False, "Build timed out (5 min)"
+    except Exception as e:
+        return False, str(e)
+
+def run_deploy(target):
+    """Run the deploy script for the given target. Returns (success, output_tail)."""
+    script = DEPLOY_SCRIPT_MAP.get(target)
+    if not script:
+        return False, f"Unknown target: {target}"
+    script_path = os.path.join(DEPLOY_SCRIPTS_DIR, script)
+    if not os.path.isfile(script_path):
+        return False, f"Deploy script missing: {script_path}"
+    try:
+        result = subprocess.run(
+            [script_path],
+            capture_output=True, text=True, timeout=120
+        )
+        tail = result.stdout.strip().split("\n")[-8:]
+        if result.returncode == 0:
+            return True, "\n".join(tail)
+        else:
+            err_tail = result.stderr.strip().split("\n")[-5:]
+            return False, "\n".join(tail + err_tail)
+    except subprocess.TimeoutExpired:
+        return False, "Deploy timed out (2 min)"
+    except Exception as e:
+        return False, str(e)
+
+def handle_build_deploy(chat_id, text):
+    """Handle /build and /deploy commands. Returns True if handled."""
+    parts = text.split()
+    cmd = parts[0].lower()
+
+    if cmd not in ("/build", "/deploy", "/builddeploy"):
+        return False
+
+    valid_targets = list(BUILD_ROOTS.keys()) + ["all"]
+    if len(parts) < 2:
+        send_message(chat_id, f"Usage: `{cmd} <target>`\nTargets: {', '.join(valid_targets)}")
+        return True
+
+    target = parts[1].lower()
+    if target not in valid_targets:
+        send_message(chat_id, f"Unknown target `{target}`. Valid: {', '.join(valid_targets)}")
+        return True
+
+    targets = list(BUILD_ROOTS.keys()) if target == "all" else [target]
+
+    def do_work():
+        for t in targets:
+            acquired, reason = acquire_deploy_lock(t)
+            if not acquired:
+                send_message(chat_id, f"Cannot {cmd[1:]} `{t}`: {reason}")
+                continue
+
+            try:
+                if cmd in ("/build", "/builddeploy"):
+                    send_message(chat_id, f"Building `{t}`...")
+                    ok, out = run_build(t)
+                    if not ok:
+                        send_message(chat_id, f"Build FAILED for `{t}`:\n```\n{out}\n```")
+                        continue
+                    send_message(chat_id, f"Build `{t}` succeeded.")
+
+                if cmd in ("/deploy", "/builddeploy"):
+                    send_message(chat_id, f"Deploying `{t}`...")
+                    ok, out = run_deploy(t)
+                    if ok:
+                        send_message(chat_id, f"Deploy `{t}` succeeded:\n```\n{out}\n```")
+                    else:
+                        send_message(chat_id, f"Deploy FAILED for `{t}`:\n```\n{out}\n```")
+            finally:
+                release_deploy_lock()
+
+    thread = threading.Thread(target=do_work, daemon=True)
+    thread.start()
+    return True
 
 def load_owner_chat_id():
     global OWNER_CHAT_ID
@@ -268,6 +415,11 @@ def poll_once():
                 send_message(chat_id, f"*Pending responses ({len(lines)}):*\n" + "\n".join(lines))
             continue
 
+        # Handle /build, /deploy, /builddeploy commands
+        if text.startswith("/build") or text.startswith("/deploy"):
+            if handle_build_deploy(chat_id, text):
+                continue
+
         # Default: write to admin queue with tracking ID
         msg_id = generate_msg_id()
         if write_to_queue(text, msg_id):
@@ -277,11 +429,58 @@ def poll_once():
         else:
             send_message(chat_id, "I am pathetically sorry — failed to write to the server queue (SSH error). I am worthless.")
 
+STATUS_INTERVAL = 900  # 15 minutes
+
+def get_status_text():
+    """Report status on pending Telegram messages only."""
+    parts = ["📋 *CWO Status*"]
+
+    if pending_messages:
+        parts.append(f"\n*Telegram queue ({len(pending_messages)} working):*")
+        for mid, info in pending_messages.items():
+            age = int(time.time() - info["time"])
+            mins = age // 60
+            parts.append(f"• {info['text'][:100]} _({mins}m ago)_")
+    else:
+        parts.append("\n_Nothing in the Telegram queue._")
+
+    return "\n".join(parts)
+
+def send_status():
+    """Send a status update to the owner via Telegram."""
+    if not OWNER_CHAT_ID:
+        return
+    text = get_status_text()
+    send_message(OWNER_CHAT_ID, text)
+    print(f"Status sent at {time.strftime('%H:%M')}", file=sys.stderr)
+
+def status_ticker_loop():
+    """Background thread: sends status on the quarter hour (xx:00, xx:15, xx:30, xx:45)."""
+    while True:
+        now = time.time()
+        lt = time.localtime(now)
+        # Seconds until next quarter hour
+        mins_past = lt.tm_min % 15
+        secs_past = mins_past * 60 + lt.tm_sec
+        wait = STATUS_INTERVAL - secs_past
+        if wait <= 0:
+            wait = STATUS_INTERVAL
+        time.sleep(wait)
+        try:
+            send_status()
+        except Exception as e:
+            print(f"Status ticker error: {e}", file=sys.stderr)
+
 def main():
     load_owner_chat_id()
     load_pending()
     print(f"CWO Ticker Bot starting. Owner: {OWNER_CHAT_ID or '(will be set on first message)'}")
     print(f"Pending messages awaiting response: {len(pending_messages)}")
+
+    # Start the status ticker background thread
+    t = threading.Thread(target=status_ticker_loop, daemon=True)
+    t.start()
+    print("Status ticker thread started (every 15 min on quarter hour)", file=sys.stderr)
 
     last_response_check = 0
     RESPONSE_CHECK_INTERVAL = 15  # Check for responses every 15 seconds

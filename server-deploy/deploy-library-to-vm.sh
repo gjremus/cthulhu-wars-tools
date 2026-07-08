@@ -17,6 +17,11 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../scripts/deploy-lock.sh"
+deploy_lock_acquire "library" "deploy-library" || exit 1
+trap deploy_lock_release EXIT
+
 SOURCE="/Users/gremus/Claude-Projects/cw-library-celaeno-wt/solo"
 SSH_KEY="$HOME/.ssh/oracle_cw_ed25519"
 SSH_OPTS="-o StrictHostKeyChecking=no"
@@ -40,6 +45,9 @@ if [ ! -f "$SSH_KEY" ]; then
     echo "ERROR: ssh key not found at: $SSH_KEY"
     exit 1
 fi
+
+echo "==> [git push] pushing source to remote..."
+(cd "$SOURCE" && git push 2>&1 | tail -3)
 
 MAIN_JS="$SOURCE/target/scala-2.13/cthulhu-wars-solo-hrf-opt/main.js"
 if $DO_BUILD || [ ! -f "$MAIN_JS" ]; then

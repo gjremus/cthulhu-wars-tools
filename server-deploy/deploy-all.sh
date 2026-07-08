@@ -12,6 +12,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../scripts/deploy-lock.sh"
+deploy_lock_acquire "all" "deploy-all" || exit 1
+trap deploy_lock_release EXIT
 
 BUILDS=(
     "Library:deploy-library-to-vm.sh"
