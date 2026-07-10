@@ -2566,7 +2566,7 @@ function reinsertStashed(stashIdx) {
   if (!Number.isFinite(idxNum)) { alert('Invalid index.'); return; }
   fetch(`${SERVER}/admin/${TOKEN}/write/${CURRENT_GAME.id}/${idxNum}`, {
     method: 'POST',
-    body: (entry.role || '$') + '\t' + entry.value,
+    body: entry.value,
   }).then(r => {
     if (r.ok) {
       const newStash = stash.filter((_, i) => i !== stashIdx);
@@ -2641,7 +2641,7 @@ function reinsertAll() {
   sorted.forEach((entry, i) => {
     chain = chain.then(() =>
       fetch(`${SERVER}/admin/${TOKEN}/write/${CURRENT_GAME.id}/${startIdx + i}`, {
-        method: 'POST', body: (entry.role || '$') + '\t' + entry.value
+        method: 'POST', body: entry.value
       }).then(r => {
         if (!r.ok) throw new Error(`Failed at index ${startIdx + i}: HTTP ${r.status}`);
       })
