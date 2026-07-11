@@ -239,6 +239,11 @@ object CthulhuWarsOnline {
             q(meta.filter(_.gameId === gameId).delete, meta += Meta(gameId, now))
         }
 
+        // In-memory set of frozen game IDs. When frozen, player /write and
+        // /rollback-v2 return 423 Locked; admin endpoints still work normally.
+        // Resets on server restart (no persistence needed).
+        val frozenGames = scala.collection.mutable.Set[Int]()
+
         implicit val system = ActorSystem()
         implicit val executionContext = system.dispatcher
 
@@ -347,37 +352,36 @@ object CthulhuWarsOnline {
             (post & path("write" / Segment / IntNumber)) { (role, index) =>
                 decodeRequest {
                     entity(as[String]) { body =>
-                        val ss = body.split("\n").toList.map(_.ascii)
-
-                        try {
-                            // Original atomic shape — single composed DBIO with pinned session
-                            // (the prior multi-query refactor + touchMeta broke /write atomicity
-                            // for online games and is the suspected cause of the Thousand Forms
-                            // online-only regression). Meta last-write tracking still happens on
-                            // /create and admin-side endpoints; for /write we now just append the
-                            // log rows and let touchMeta run after, OUTSIDE the atomic block, so
-                            // any meta failure does not abort the log write.
-                            q(roles.filter(_.secret === role).filter(_.name =!= "#").map(r => (r.name, r.gameId)).result.head.flatMap { case (name, id) =>
-                                logs ++= 0.until(ss.size).map(n => Log(id, index + n, name, ss(n)))
-                            })
-                            try { touchMeta(q(roles.filter(_.secret === role).filter(_.name =!= "#").map(_.gameId).result.head)) }
-                            catch { case _ : Throwable => () }
-                            complete(StatusCodes.Accepted)
-                        }
-                        catch {
-                            case e : java.sql.SQLIntegrityConstraintViolationException => complete(StatusCodes.Conflict)
+                        val gameId = try { q(roles.filter(_.secret === role).filter(_.name =!= "#").map(_.gameId).result.head) } catch { case _ : Throwable => -1 }
+                        if (frozenGames.contains(gameId)) complete(StatusCodes.custom(423, "Locked", "Game is frozen"))
+                        else {
+                            val ss = body.split("\n").toList.map(_.ascii)
+                            try {
+                                q(roles.filter(_.secret === role).filter(_.name =!= "#").map(r => (r.name, r.gameId)).result.head.flatMap { case (name, id) =>
+                                    logs ++= 0.until(ss.size).map(n => Log(id, index + n, name, ss(n)))
+                                })
+                                try { touchMeta(gameId) }
+                                catch { case _ : Throwable => () }
+                                complete(StatusCodes.Accepted)
+                            }
+                            catch {
+                                case e : java.sql.SQLIntegrityConstraintViolationException => complete(StatusCodes.Conflict)
+                            }
                         }
                     }
                 }
             } ~
             (post & path("rollback-v2" / Segment / IntNumber)) { (role, index) =>
-                // Atomic: composed action, then optional meta touch (best-effort).
-                q(roles.filter(_.secret === role).map(_.gameId).result.head.flatMap { id =>
-                    logs.filter(_.gameId === id).filter(_.index >= index).delete
-                })
-                try { touchMeta(q(roles.filter(_.secret === role).map(_.gameId).result.head)) }
-                catch { case _ : Throwable => () }
-                complete(StatusCodes.Accepted)
+                val gameId = try { q(roles.filter(_.secret === role).map(_.gameId).result.head) } catch { case _ : Throwable => -1 }
+                if (frozenGames.contains(gameId)) complete(StatusCodes.custom(423, "Locked", "Game is frozen"))
+                else {
+                    q(roles.filter(_.secret === role).map(_.gameId).result.head.flatMap { id =>
+                        logs.filter(_.gameId === id).filter(_.index >= index).delete
+                    })
+                    try { touchMeta(gameId) }
+                    catch { case _ : Throwable => () }
+                    complete(StatusCodes.Accepted)
+                }
             } ~
             // ── ADMIN ENDPOINTS (owner-only) ──
             // Gated by ownerToken matching the 5th argv. If ownerToken is empty (not
@@ -445,28 +449,36 @@ object CthulhuWarsOnline {
                 (post & path("write" / Segment / IntNumber)) { (role, index) =>
                     decodeRequest {
                         entity(as[String]) { body =>
-                            val ss = body.split("\n").toList.map(_.ascii)
-                            try {
-                                q(roles.filter(_.secret === role).filter(_.name =!= "#").map(r => (r.name, r.gameId)).result.head.flatMap { case (name, id) =>
-                                    logs ++= 0.until(ss.size).map(n => Log(id, index + n, name, ss(n)))
-                                })
-                                try { touchMeta(q(roles.filter(_.secret === role).filter(_.name =!= "#").map(_.gameId).result.head)) }
-                                catch { case _ : Throwable => () }
-                                complete(StatusCodes.Accepted)
-                            }
-                            catch {
-                                case e : java.sql.SQLIntegrityConstraintViolationException => complete(StatusCodes.Conflict)
+                            val gameId = try { q(roles.filter(_.secret === role).filter(_.name =!= "#").map(_.gameId).result.head) } catch { case _ : Throwable => -1 }
+                            if (frozenGames.contains(gameId)) complete(StatusCodes.custom(423, "Locked", "Game is frozen"))
+                            else {
+                                val ss = body.split("\n").toList.map(_.ascii)
+                                try {
+                                    q(roles.filter(_.secret === role).filter(_.name =!= "#").map(r => (r.name, r.gameId)).result.head.flatMap { case (name, id) =>
+                                        logs ++= 0.until(ss.size).map(n => Log(id, index + n, name, ss(n)))
+                                    })
+                                    try { touchMeta(gameId) }
+                                    catch { case _ : Throwable => () }
+                                    complete(StatusCodes.Accepted)
+                                }
+                                catch {
+                                    case e : java.sql.SQLIntegrityConstraintViolationException => complete(StatusCodes.Conflict)
+                                }
                             }
                         }
                     }
                 } ~
                 (post & path("rollback-v2" / Segment / IntNumber)) { (role, index) =>
-                    q(roles.filter(_.secret === role).map(_.gameId).result.head.flatMap { id =>
-                        logs.filter(_.gameId === id).filter(_.index >= index).delete
-                    })
-                    try { touchMeta(q(roles.filter(_.secret === role).map(_.gameId).result.head)) }
-                    catch { case _ : Throwable => () }
-                    complete(StatusCodes.Accepted)
+                    val gameId = try { q(roles.filter(_.secret === role).map(_.gameId).result.head) } catch { case _ : Throwable => -1 }
+                    if (frozenGames.contains(gameId)) complete(StatusCodes.custom(423, "Locked", "Game is frozen"))
+                    else {
+                        q(roles.filter(_.secret === role).map(_.gameId).result.head.flatMap { id =>
+                            logs.filter(_.gameId === id).filter(_.index >= index).delete
+                        })
+                        try { touchMeta(gameId) }
+                        catch { case _ : Throwable => () }
+                        complete(StatusCodes.Accepted)
+                    }
                 } ~
                 // /mnu/play/<role-secret> — game-join URL. Serve MNU's index.html so
                 // the SPA can pick up the role from window.location and start the
@@ -541,7 +553,8 @@ object CthulhuWarsOnline {
                         val (h, bt) = rosterCounts.getOrElse(id, (0, 0))
                         val il = if (liveFlagged.contains(id)) "1" else "0"
                         val hfr = if (hasFixResp.contains(id)) "1" else "0"
-                        s"$id\t$name\t$secret\t${lastMs.getOrElse(0L)}\t$b\t$c\t$ib\t$h\t$bt\t$il\t$hfr"
+                        val frz = if (frozenGames.contains(id)) "1" else "0"
+                        s"$id\t$name\t$secret\t${lastMs.getOrElse(0L)}\t$b\t$c\t$ib\t$h\t$bt\t$il\t$hfr\t$frz"
                     }.mkString("\n"))
                 }
             } ~
@@ -568,6 +581,26 @@ object CthulhuWarsOnline {
                 else {
                     q(liveGames.filter(_.gameId === gameId).delete)
                     complete(StatusCodes.Accepted)
+                }
+            } ~
+            (post & path("admin" / Segment / "freeze" / IntNumber)) { (token, gameId) =>
+                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
+                else {
+                    frozenGames += gameId
+                    complete(StatusCodes.Accepted)
+                }
+            } ~
+            (post & path("admin" / Segment / "unfreeze" / IntNumber)) { (token, gameId) =>
+                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
+                else {
+                    frozenGames -= gameId
+                    complete(StatusCodes.Accepted)
+                }
+            } ~
+            (get & path("admin" / Segment / "frozen")) { token =>
+                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
+                else {
+                    txt(frozenGames.mkString(","))
                 }
             } ~
             (get & path("admin" / Segment / "annotation" / IntNumber)) { (token, gameId) =>

@@ -1317,10 +1317,11 @@ function populateGames(text) {
       humanCount: parseInt(parts[7] || '0', 10),
       botCount: parseInt(parts[8] || '0', 10),
       isLive: (parts[9] || '0').trim() === '1',
-      build: (['library','mnu','tt','bb','hb'].includes((parts[10]||'').trim()) ? parts[10].trim() : 'unknown'),
-      startMs: parseInt(parts[11] || '0', 10),
-      // 2026-06-04: col 12 = RL-tuning corpus submission timestamp (0 = not submitted).
-      rlSubmittedMs: parseInt(parts[12] || '0', 10),
+      hasFixResp: (parts[10] || '0').trim() === '1',
+      frozen: (parts[11] || '0').trim() === '1',
+      build: (['library','mnu','tt','bb','hb'].includes((parts[12]||'').trim()) ? parts[12].trim() : 'unknown'),
+      startMs: parseInt(parts[13] || '0', 10),
+      rlSubmittedMs: parseInt(parts[14] || '0', 10),
     };
   }).filter(g => g.id).filter(g => showBots || !g.isBot);
   games.forEach(g => { g.playerCount = g.humanCount + g.botCount; });
@@ -1440,7 +1441,9 @@ function populateGames(text) {
         // browser, captures console errors/pageerrors, and writes a "CONSOLE @ …"
         // note into the game's annotation (visible in the Notes box on row select).
         `<button class="small console-grab-btn" title="Load this game in a headless browser and capture console errors into its Notes." onclick="event.stopPropagation(); requestConsoleGrab('${id}', '${esc(g.build)}', this)">Grab console</button>` +
-        `<button class="small" style="background:#5a2222;border-color:#8a3030;color:#fff;" onclick="event.stopPropagation(); confirmDeleteGame('${id}','${esc(name).replace(/'/g, "\\'")}')">Delete</button>` +
+        `<button class="small freeze-flag ${g.frozen ? 'on' : ''}" style="${g.frozen ? 'background:#1a3a5a;border-color:#3080aa;color:#fff;' : ''}" title="${g.frozen ? 'Game is FROZEN (player writes blocked). Click to unfreeze.' : 'Freeze this game (blocks player writes/rollbacks)'}" ` +
+        `onclick="event.stopPropagation(); toggleFreezeFromList('${id}', this)">${g.frozen ? '❄ Frozen' : 'Freeze'}</button>` +
+      `<button class="small" style="background:#5a2222;border-color:#8a3030;color:#fff;" onclick="event.stopPropagation(); confirmDeleteGame('${id}','${esc(name).replace(/'/g, "\\'")}')">Delete</button>` +
       `</div>`;
     row.onclick = () => selectGame(row, id, name, secret);
     list.appendChild(row);
@@ -1503,6 +1506,24 @@ function toggleLiveFromList(gameId, btn) {
     btn.title = newLive
       ? 'This game is monitored every 15 min. Click to stop monitoring.'
       : 'Flag for automatic 15-min health checks';
+  });
+}
+
+// Toggle the frozen flag for a game — blocks player writes/rollbacks while frozen.
+function toggleFreezeFromList(gameId, btn) {
+  const isCurrentlyFrozen = btn.classList.contains('on');
+  const endpoint = isCurrentlyFrozen ? 'unfreeze' : 'freeze';
+  fetch(`${SERVER}/admin/${TOKEN}/${endpoint}/${gameId}`, { method: 'POST' }).then(r => {
+    if (!r.ok) { alert(`Could not toggle freeze (HTTP ${r.status})`); return; }
+    const newFrozen = !isCurrentlyFrozen;
+    btn.classList.toggle('on', newFrozen);
+    btn.textContent = newFrozen ? '❄ Frozen' : 'Freeze';
+    btn.style.background = newFrozen ? '#1a3a5a' : '';
+    btn.style.borderColor = newFrozen ? '#3080aa' : '';
+    btn.style.color = newFrozen ? '#fff' : '';
+    btn.title = newFrozen
+      ? 'Game is FROZEN (player writes blocked). Click to unfreeze.'
+      : 'Freeze this game (blocks player writes/rollbacks)';
   });
 }
 
@@ -1691,6 +1712,7 @@ function refreshDetail() {
     <div class="toolbar">
       <button class="small" onclick="refreshDetail()">Refresh</button>
       <button class="small" style="background:#5a2222;border-color:#8a3030;color:#fff;" onclick="confirmDeleteGame('${id}','${esc(name).replace(/'/g, "\\'")}')">Delete game</button>
+      <button class="small" id="freeze-detail-btn" onclick="toggleFreezeFromDetail()">Freeze</button>
       <label style="display:inline-flex;align-items:center;gap:6px;margin:0 0 0 12px;color:#aaa;font-size:10pt;">
         <input type="checkbox" id="broken-cb" onchange="toggleBrokenFromDetail()" />
         Mark game broken
@@ -1766,6 +1788,18 @@ function refreshDetail() {
   // 2026-06-03 21:25: pull auto-captured browser console errors into the new feed.
   refreshConsoleErrors();
   fetch(`${SERVER}/admin/${TOKEN}/annotation/${id}`).then(r => r.text()).then(populateAnnotation);
+  // Sync freeze button state from the list row.
+  const row = document.querySelector(`.game-row[data-game-id="${id}"]`);
+  const listFreezeBtn = row && row.querySelector('.freeze-flag');
+  const detailFreezeBtn = document.getElementById('freeze-detail-btn');
+  if (detailFreezeBtn && listFreezeBtn) {
+    const isFrozen = listFreezeBtn.classList.contains('on');
+    detailFreezeBtn.classList.toggle('on', isFrozen);
+    detailFreezeBtn.textContent = isFrozen ? '❄ Frozen' : 'Freeze';
+    detailFreezeBtn.style.background = isFrozen ? '#1a3a5a' : '';
+    detailFreezeBtn.style.borderColor = isFrozen ? '#3080aa' : '';
+    detailFreezeBtn.style.color = isFrozen ? '#fff' : '';
+  }
   renderStash();
 }
 
@@ -1980,6 +2014,34 @@ function toggleBrokenFromDetail() {
         btn.classList.toggle('on', cb.checked);
         btn.textContent = cb.checked ? '✖ Broken' : 'Mark broken';
         btn.title = cb.checked ? 'Click to clear the broken flag' : 'Click to mark this game as broken';
+      }
+    }
+  });
+}
+
+function toggleFreezeFromDetail() {
+  if (!CURRENT_GAME) return;
+  const btn = document.getElementById('freeze-detail-btn');
+  if (!btn) return;
+  const isCurrentlyFrozen = btn.classList.contains('on');
+  const endpoint = isCurrentlyFrozen ? 'unfreeze' : 'freeze';
+  fetch(`${SERVER}/admin/${TOKEN}/${endpoint}/${CURRENT_GAME.id}`, { method: 'POST' }).then(r => {
+    if (!r.ok) { alert(`Could not toggle freeze (HTTP ${r.status})`); return; }
+    const newFrozen = !isCurrentlyFrozen;
+    btn.classList.toggle('on', newFrozen);
+    btn.textContent = newFrozen ? '❄ Frozen' : 'Freeze';
+    btn.style.background = newFrozen ? '#1a3a5a' : '';
+    btn.style.borderColor = newFrozen ? '#3080aa' : '';
+    btn.style.color = newFrozen ? '#fff' : '';
+    const row = document.querySelector(`.game-row[data-game-id="${CURRENT_GAME.id}"]`);
+    if (row) {
+      const listBtn = row.querySelector('.freeze-flag');
+      if (listBtn) {
+        listBtn.classList.toggle('on', newFrozen);
+        listBtn.textContent = newFrozen ? '❄ Frozen' : 'Freeze';
+        listBtn.style.background = newFrozen ? '#1a3a5a' : '';
+        listBtn.style.borderColor = newFrozen ? '#3080aa' : '';
+        listBtn.style.color = newFrozen ? '#fff' : '';
       }
     }
   });

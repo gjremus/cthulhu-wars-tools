@@ -11,9 +11,9 @@
 
 set -euo pipefail
 
-REPO_ROOT="/Users/gremus/claude-projects/cthulhu-wars-tools"
+REPO_ROOT="/Users/gremus/Claude-Projects/cthulhu-wars-tools"
 ADMIN_HTML="$REPO_ROOT/admin/admin.html"
-SSH_KEY="/Users/gremus/My Drive/Personal/Games/Cthulhu Wars/Library at Celaeno/Server Deployment/oracle_cw_ed25519"
+SSH_KEY="$HOME/.ssh/oracle_cw_ed25519"
 HOST="oracle-cw-server@35.255.125.91"
 REMOTE_PATH="/opt/cwo/solo/admin.html"
 

@@ -415,6 +415,19 @@ def poll_once():
                 send_message(chat_id, f"*Pending responses ({len(lines)}):*\n" + "\n".join(lines))
             continue
 
+        # Handle /killtickers — nuke all stuck Claude ticker sessions
+        if text == "/killtickers":
+            result = subprocess.run(
+                ["pkill", "-f", "claude -p You are the"],
+                capture_output=True, text=True
+            )
+            # Clear escalation files
+            if os.path.isdir(ESCALATION_DIR):
+                for f in os.listdir(ESCALATION_DIR):
+                    os.remove(os.path.join(ESCALATION_DIR, f))
+            send_message(chat_id, "Killed all ticker Claude sessions. They'll restart on next cron fire (within 5 min).")
+            continue
+
         # Handle /build, /deploy, /builddeploy commands
         if text.startswith("/build") or text.startswith("/deploy"):
             if handle_build_deploy(chat_id, text):
@@ -471,6 +484,36 @@ def status_ticker_loop():
         except Exception as e:
             print(f"Status ticker error: {e}", file=sys.stderr)
 
+ESCALATION_DIR = "/tmp/cwo-ticker-escalations"
+_escalation_notified = set()
+
+def check_escalations():
+    """Check for ticker escalation files and alert owner via Telegram."""
+    if not OWNER_CHAT_ID:
+        return
+    if not os.path.isdir(ESCALATION_DIR):
+        return
+    for fname in os.listdir(ESCALATION_DIR):
+        if not fname.endswith(".escalation"):
+            continue
+        fpath = os.path.join(ESCALATION_DIR, fname)
+        ticker_name = fname.replace(".escalation", "")
+        mtime = os.path.getmtime(fpath)
+        notify_key = f"{ticker_name}_{int(mtime)}"
+        if notify_key in _escalation_notified:
+            continue
+        try:
+            with open(fpath) as f:
+                content = f.read().strip()
+            _escalation_notified.add(notify_key)
+            send_message(OWNER_CHAT_ID,
+                f"*TICKER FAILURE ALERT*: `{ticker_name}`\n\n"
+                f"```\n{content}\n```\n\n"
+                f"Tickers are stuck (likely corporate proxy choking on concurrent sessions). "
+                f"Use /killtickers to kill all stuck sessions, or wait for them to self-recover.")
+        except Exception as e:
+            print(f"Escalation read error: {e}", file=sys.stderr)
+
 def main():
     load_owner_chat_id()
     load_pending()
@@ -483,13 +526,14 @@ def main():
     print("Status ticker thread started (every 15 min on quarter hour)", file=sys.stderr)
 
     last_response_check = 0
+    last_escalation_check = 0
     RESPONSE_CHECK_INTERVAL = 15  # Check for responses every 15 seconds
+    ESCALATION_CHECK_INTERVAL = 60  # Check escalations every minute
 
     while True:
         try:
             poll_once()
 
-            # Check for responses periodically (not every poll cycle, to avoid SSH spam)
             now = time.time()
             if now - last_response_check >= RESPONSE_CHECK_INTERVAL:
                 last_response_check = now
@@ -498,6 +542,13 @@ def main():
                     expire_old_pending()
                 except Exception as e:
                     print(f"Response check error: {e}", file=sys.stderr)
+
+            if now - last_escalation_check >= ESCALATION_CHECK_INTERVAL:
+                last_escalation_check = now
+                try:
+                    check_escalations()
+                except Exception as e:
+                    print(f"Escalation check error: {e}", file=sys.stderr)
 
         except KeyboardInterrupt:
             break
