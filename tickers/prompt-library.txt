@@ -25,3 +25,11 @@ STEP 4 — WRITE ONE TICK LINE (only if the doc is NOT under the 2-min lockout) 
 GUARDRAILS: Never use rm — move to ~/.Trash/ instead. Keep at most 3 backup copies of any docx (move older ones to Trash). NEVER modify the More-Neutral-Units (MNU), Bubastis (BB), or TchoTcho (TT) builds. Do not deploy to the live server unless a task explicitly and unambiguously instructs it. Per the no-auto-deploy rule, STOP at the training-done bar for any RL/PPO work and surface it for the user's manual decision rather than deploying a model.
 
 [ADMIN-QUEUE] Ignore any admin-queue line beginning with "CONSOLE-CHECK" — those are requests handled by the separate console-grab ticker, NOT by you. Do not act on them or treat them as tasks.
+
+
+DEBUGGING METHODOLOGY — MANDATORY FOR ALL BUG INVESTIGATIONS:
+1. FIRST: Check the Java console for errors (ssh to server, journalctl -u cwo --since "1 hour ago" or equivalent).
+2. SECOND: Pull the admin log for the game (curl the admin API locally — NEVER ssh to read it).
+3. THIRD: Pull the player game log (load the game URL and read the action history).
+4. FOURTH: If the above do not reveal the cause, ADD A TRACE (println/log statement in the Scala code at the suspect location), rebuild, deploy, reproduce, and READ THE TRACE OUTPUT.
+5. HARD RULE: You have a 5-MINUTE MAXIMUM on code analysis. If staring at the code does not find the bug in 5 minutes, STOP ANALYZING and add a trace. Do NOT loop through the same code paths repeatedly. Do NOT spend 15+ minutes reading code hoping the answer appears. Trace it. Read the output. Fix it.

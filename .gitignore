@@ -9,3 +9,27 @@ __pycache__/
 *.pyc
 *.swp
 .DS_Store
+
+# Ephemeral timestamped ticker/backup scripts (one-off, generated per tick)
+scripts/backup_tick_*.py
+scripts/fbe_tick_*.py
+scripts/hb_tick_*.py
+scripts/tt_tick_*.py
+scripts/bb_tick_*.py
+scripts/library_tick_*.py
+scripts/mnu_tick_*.py
+scripts/master_tick_*.py
+scripts/admin_tick_*.py
+
+# One-off rollback/fix writer scripts
+scripts/*_rollback_writer*.py
+scripts/*_rollback_update_*.py
+scripts/rollback_audit_*.py
+scripts/master_insert_tasks_*.py
+scripts/master_tb_bullet_writer.py
+scripts/tb_section2_*.py
+scripts/tb_section2_*.md
+scripts/tb_section2_*.txt
+
+# Game log dumps (can always re-fetch from server)
+online/cwoim_*.txt

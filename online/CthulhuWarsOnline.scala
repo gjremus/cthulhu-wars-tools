@@ -166,9 +166,35 @@ object CthulhuWarsOnline {
             case e : Exception => println("BotGame table init: " + e.getMessage)
         }
 
+        // LiveGame registry — games flagged for periodic health-check by the
+        // admin ticker. Any game the user asks to fix gets this flag; the ticker
+        // checks flagged games every 15 min and auto-submits crash reports.
+        case class LiveGame(gameId : Int)
+
+        class LiveGames(tag : Tag) extends Table[LiveGame](tag, "LiveGame") {
+            def gameId = column[Int]("gameId", O.PrimaryKey)
+            def * = (gameId).mapTo[LiveGame]
+        }
+
+        val liveGames = TableQuery[LiveGames]
+
+        try {
+            import slick.jdbc.HsqldbProfile.api.actionBasedSQLInterpolation
+            q(sqlu"""CREATE TABLE IF NOT EXISTS "LiveGame" ("gameId" INTEGER PRIMARY KEY)""")
+        }
+        catch {
+            case e : Exception => println("LiveGame table init: " + e.getMessage)
+        }
+
         if (!mode.contains("run")) {
             return
         }
+
+        // In-memory frozen-game set. When a game ID is in this set, player
+        // write and rollback-v2 endpoints return 423 Locked. Admin endpoints
+        // still work normally. Resets on server restart (no persistence needed).
+        val frozenGames = new java.util.concurrent.ConcurrentHashMap[Int, Boolean]()
+        def isFrozen(gameId : Int) : Boolean = frozenGames.containsKey(gameId)
 
         def secret = {
             val random = new scala.util.Random()
@@ -301,15 +327,16 @@ object CthulhuWarsOnline {
 
                         try {
                             val (name, id) = q(roles.filter(_.secret === role).filter(_.name =!= "#").map(r => (r.name, r.gameId)).result.head)
-                            // Reject writes that would create a gap in the index sequence.
-                            // After rollback truncates to index N, only index N is valid next.
-                            val maxIdx = q(logs.filter(_.gameId === id).map(_.index).max.result).getOrElse(-1)
-                            if (index != maxIdx + 1)
-                                throw new IllegalStateException("index gap")
-                            q(logs ++= 0.until(ss.size).map(n => Log(id, index + n, name, ss(n))))
-                            try { touchMeta(id) }
-                            catch { case _ : Throwable => () }
-                            complete(StatusCodes.Accepted)
+                            if (isFrozen(id)) complete(StatusCodes.custom(423, "Locked"))
+                            else {
+                                val maxIdx = q(logs.filter(_.gameId === id).map(_.index).max.result).getOrElse(-1)
+                                if (index != maxIdx + 1)
+                                    throw new IllegalStateException("index gap")
+                                q(logs ++= 0.until(ss.size).map(n => Log(id, index + n, name, ss(n))))
+                                try { touchMeta(id) }
+                                catch { case _ : Throwable => () }
+                                complete(StatusCodes.Accepted)
+                            }
                         }
                         catch {
                             case e : java.sql.SQLIntegrityConstraintViolationException => complete(StatusCodes.Conflict)
@@ -320,10 +347,13 @@ object CthulhuWarsOnline {
             } ~
             (post & path("rollback-v2" / Segment / IntNumber)) { (role, index) =>
                 val id = q(roles.filter(_.secret === role).map(_.gameId).result.head)
-                q(logs.filter(_.gameId === id).filter(_.index >= index).delete)
-                try { touchMeta(id) }
-                catch { case _ : Throwable => () }
-                complete(StatusCodes.Accepted)
+                if (isFrozen(id)) complete(StatusCodes.custom(423, "Locked"))
+                else {
+                    q(logs.filter(_.gameId === id).filter(_.index >= index).delete)
+                    try { touchMeta(id) }
+                    catch { case _ : Throwable => () }
+                    complete(StatusCodes.Accepted)
+                }
             } ~
             // [2026-06-11] Client-side crash reporting. Authenticated by game role secret
             // (same as /write). Sets broken=1 and stores the error in the annotation notes.
@@ -413,13 +443,16 @@ object CthulhuWarsOnline {
                             val ss = body.split("\n").toList.map(_.ascii)
                             try {
                                 val (name, id) = q(roles.filter(_.secret === role).filter(_.name =!= "#").map(r => (r.name, r.gameId)).result.head)
-                                val maxIdx = q(logs.filter(_.gameId === id).map(_.index).max.result).getOrElse(-1)
-                                if (index != maxIdx + 1)
-                                    throw new IllegalStateException("index gap")
-                                q(logs ++= 0.until(ss.size).map(n => Log(id, index + n, name, ss(n))))
-                                try { touchMeta(id) }
-                                catch { case _ : Throwable => () }
-                                complete(StatusCodes.Accepted)
+                                if (isFrozen(id)) complete(StatusCodes.custom(423, "Locked"))
+                                else {
+                                    val maxIdx = q(logs.filter(_.gameId === id).map(_.index).max.result).getOrElse(-1)
+                                    if (index != maxIdx + 1)
+                                        throw new IllegalStateException("index gap")
+                                    q(logs ++= 0.until(ss.size).map(n => Log(id, index + n, name, ss(n))))
+                                    try { touchMeta(id) }
+                                    catch { case _ : Throwable => () }
+                                    complete(StatusCodes.Accepted)
+                                }
                             }
                             catch {
                                 case e : java.sql.SQLIntegrityConstraintViolationException => complete(StatusCodes.Conflict)
@@ -430,10 +463,13 @@ object CthulhuWarsOnline {
                 } ~
                 (post & path("rollback-v2" / Segment / IntNumber)) { (role, index) =>
                     val id = q(roles.filter(_.secret === role).map(_.gameId).result.head)
-                    q(logs.filter(_.gameId === id).filter(_.index >= index).delete)
-                    try { touchMeta(id) }
-                    catch { case _ : Throwable => () }
-                    complete(StatusCodes.Accepted)
+                    if (isFrozen(id)) complete(StatusCodes.custom(423, "Locked"))
+                    else {
+                        q(logs.filter(_.gameId === id).filter(_.index >= index).delete)
+                        try { touchMeta(id) }
+                        catch { case _ : Throwable => () }
+                        complete(StatusCodes.Accepted)
+                    }
                 } ~
                 (post & path("error" / Segment)) { (role) =>
                     decodeRequest {
@@ -527,13 +563,16 @@ object CthulhuWarsOnline {
                             val ss = body.split("\n").toList.map(_.ascii)
                             try {
                                 val (name, id) = q(roles.filter(_.secret === role).filter(_.name =!= "#").map(r => (r.name, r.gameId)).result.head)
-                                val maxIdx = q(logs.filter(_.gameId === id).map(_.index).max.result).getOrElse(-1)
-                                if (index != maxIdx + 1)
-                                    throw new IllegalStateException("index gap")
-                                q(logs ++= 0.until(ss.size).map(n => Log(id, index + n, name, ss(n))))
-                                try { touchMeta(id) }
-                                catch { case _ : Throwable => () }
-                                complete(StatusCodes.Accepted)
+                                if (isFrozen(id)) complete(StatusCodes.custom(423, "Locked"))
+                                else {
+                                    val maxIdx = q(logs.filter(_.gameId === id).map(_.index).max.result).getOrElse(-1)
+                                    if (index != maxIdx + 1)
+                                        throw new IllegalStateException("index gap")
+                                    q(logs ++= 0.until(ss.size).map(n => Log(id, index + n, name, ss(n))))
+                                    try { touchMeta(id) }
+                                    catch { case _ : Throwable => () }
+                                    complete(StatusCodes.Accepted)
+                                }
                             }
                             catch {
                                 case e : java.sql.SQLIntegrityConstraintViolationException => complete(StatusCodes.Conflict)
@@ -544,10 +583,13 @@ object CthulhuWarsOnline {
                 } ~
                 (post & path("rollback-v2" / Segment / IntNumber)) { (role, index) =>
                     val id = q(roles.filter(_.secret === role).map(_.gameId).result.head)
-                    q(logs.filter(_.gameId === id).filter(_.index >= index).delete)
-                    try { touchMeta(id) }
-                    catch { case _ : Throwable => () }
-                    complete(StatusCodes.Accepted)
+                    if (isFrozen(id)) complete(StatusCodes.custom(423, "Locked"))
+                    else {
+                        q(logs.filter(_.gameId === id).filter(_.index >= index).delete)
+                        try { touchMeta(id) }
+                        catch { case _ : Throwable => () }
+                        complete(StatusCodes.Accepted)
+                    }
                 } ~
                 (post & path("error" / Segment)) { (role) =>
                     decodeRequest {
@@ -610,6 +652,7 @@ object CthulhuWarsOnline {
                         id -> (n > 0)
                     }.toMap
                     val botFlagged = q(botGames.map(_.gameId).result).toSet
+                    val liveFlagged = q(liveGames.map(_.gameId).result).toSet
                     // Count humans + bots per game by reading the options line (log
                     // idx 2) which contains the roster like "SL:Human/OW:Bot/...".
                     // The admin UI uses this to bucket games into SimRun (all bots),
@@ -618,7 +661,7 @@ object CthulhuWarsOnline {
                         val v = q(logs.filter(_.gameId === id).filter(_.index === 2).map(_.value).result.headOption).getOrElse("")
                         val roster = v.takeWhile(_ != ' ').split('/')
                         val humans = roster.count(_.endsWith(":Human"))
-                        val bots = roster.count(_.endsWith(":Bot"))
+                        val bots = roster.count(p => p.endsWith(":Bot") || p.endsWith(":Normal"))
                         id -> (humans, bots)
                     }.toMap
                     txt(rows.map { case (id, name, secret, lastMs, broken) =>
@@ -626,7 +669,9 @@ object CthulhuWarsOnline {
                         val c = if (completed.getOrElse(id, false)) "1" else "0"
                         val ib = if (botFlagged.contains(id)) "1" else "0"
                         val (h, bt) = rosterCounts.getOrElse(id, (0, 0))
-                        s"$id\t$name\t$secret\t${lastMs.getOrElse(0L)}\t$b\t$c\t$ib\t$h\t$bt"
+                        val il = if (liveFlagged.contains(id)) "1" else "0"
+                        val fr = if (isFrozen(id)) "1" else "0"
+                        s"$id\t$name\t$secret\t${lastMs.getOrElse(0L)}\t$b\t$c\t$ib\t$h\t$bt\t$il\t0\t$fr"
                     }.mkString("\n"))
                 }
             } ~
@@ -639,6 +684,41 @@ object CthulhuWarsOnline {
                 else {
                     q(botGames.filter(_.gameId === gameId).delete, botGames += BotGame(gameId))
                     complete(StatusCodes.Accepted)
+                }
+            } ~
+            (post & path("admin" / Segment / "mark-live" / IntNumber)) { (token, gameId) =>
+                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
+                else {
+                    q(liveGames.filter(_.gameId === gameId).delete, liveGames += LiveGame(gameId))
+                    complete(StatusCodes.Accepted)
+                }
+            } ~
+            (post & path("admin" / Segment / "unmark-live" / IntNumber)) { (token, gameId) =>
+                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
+                else {
+                    q(liveGames.filter(_.gameId === gameId).delete)
+                    complete(StatusCodes.Accepted)
+                }
+            } ~
+            (post & path("admin" / Segment / "freeze" / IntNumber)) { (token, gameId) =>
+                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
+                else {
+                    frozenGames.put(gameId, true)
+                    complete(StatusCodes.Accepted)
+                }
+            } ~
+            (post & path("admin" / Segment / "unfreeze" / IntNumber)) { (token, gameId) =>
+                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
+                else {
+                    frozenGames.remove(gameId)
+                    complete(StatusCodes.Accepted)
+                }
+            } ~
+            (get & path("admin" / Segment / "live-games")) { token =>
+                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
+                else {
+                    val ids = q(liveGames.map(_.gameId).result)
+                    txt(ids.mkString("\n"))
                 }
             } ~
             (get & path("admin" / Segment / "annotation" / IntNumber)) { (token, gameId) =>
@@ -728,6 +808,7 @@ object CthulhuWarsOnline {
                         meta.filter(_.gameId === gameId).delete,
                         adminAnnotations.filter(_.gameId === gameId).delete,
                         botGames.filter(_.gameId === gameId).delete,
+                        liveGames.filter(_.gameId === gameId).delete,
                         games.filter(_.id === gameId).delete
                     )
                     complete(StatusCodes.Accepted)

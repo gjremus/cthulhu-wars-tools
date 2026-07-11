@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+LaunchAgent: Ticker watchdog. Fires every 5 min to check ticker health.
+Install:   launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.gremus.cw-ticker-watchdog.plist
+Uninstall: launchctl bootout   gui/$(id -u) ~/Library/LaunchAgents/com.gremus.cw-ticker-watchdog.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.gremus.cw-ticker-watchdog</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>/Users/gremus/Claude-Projects/cthulhu-wars-tools/tickers/run-ticker-watchdog.sh</string>
+    </array>
+
+    <key>StartInterval</key>
+    <integer>300</integer>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/cw-ticker-watchdog.stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/cw-ticker-watchdog.stderr.log</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+</dict>
+</plist>
