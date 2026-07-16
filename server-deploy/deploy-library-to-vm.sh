@@ -70,6 +70,9 @@ echo "==> [upload] index.html → $REMOTE_ROOT/index.html"
 scp -i "$SSH_KEY" -C "$TMP_INDEX" "$HOST:$REMOTE_ROOT/index.html" 2>&1 | tail -1
 rm -f "$TMP_INDEX"
 
+echo "==> [write] cache-bust.txt → $REMOTE_ROOT/cache-bust.txt"
+ssh -i "$SSH_KEY" "$HOST" "echo '$CACHE_TAG' > $REMOTE_ROOT/cache-bust.txt"
+
 if $DO_ASSETS; then
     echo "==> [upload] webp + fonts (tar pipe) ..."
     (cd "$LIB_ROOT/solo" && tar -czf - webp fonts \
