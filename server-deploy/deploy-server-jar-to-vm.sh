@@ -12,10 +12,10 @@
 
 set -euo pipefail
 
-REPO_ROOT="/Users/gremus/claude-projects/cthulhu-wars-tools"
+REPO_ROOT="/Users/gremus/cthulhu-wars-tools"
 ONLINE_DIR="$REPO_ROOT/online"
 JAR_PATH="$ONLINE_DIR/target/scala-2.13/Cthulhu Wars Online-assembly-8.0.jar"
-SSH_KEY="/Users/gremus/My Drive/Personal/Games/Cthulhu Wars/Library at Celaeno/Server Deployment/oracle_cw_ed25519"
+SSH_KEY="$HOME/.ssh/oracle_cw_ed25519"
 HOST="oracle-cw-server@35.255.125.91"
 REMOTE_PATH="/opt/cwo/server/server.jar"
 
