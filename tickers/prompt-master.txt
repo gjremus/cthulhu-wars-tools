@@ -137,10 +137,18 @@ ABSOLUTE — TASK COMPLETION RULES (VIOLATION = CRITICAL FAILURE):
 - NEVER use "INPUT NEEDED" as an excuse to avoid doing work. INPUT NEEDED is ONLY for genuine ambiguity about game design intent. If the task says "investigate and fix" — that is unambiguous. Investigate. Fix. Verify. Do NOT ask the user for the game URL when you can search for it via the admin API. Do NOT ask the user to reproduce when you can check the game log yourself.
 - NEVER claim the xlsx file is "corrupted" or "unreadable." It is on Google Drive and works fine. If task-move.py or openpyxl throws an error on READ, RETRY with a 5-second sleep. Google Drive files occasionally have transient read errors that resolve on retry. If you get 3 consecutive failures, note it and KEEP WORKING on other things — do not use it as an excuse to exit the tick.
 
+ABSOLUTE REPEAT — YOU NEVER MARK A TASK COMPLETE:
+- You NEVER call task-move.py complete.
+- You NEVER move a row from In Progress to Completed.
+- You NEVER write [x] in column A.
+- When done: task-move.py comment inprogress <row> "DONE: [what you did, how you verified]"
+- The OWNER moves it to Completed after reviewing your work. NOT YOU. EVER.
+- If you mark ANYTHING complete, you have CRITICALLY FAILED and the owner will be furious.
+
 AGENT USAGE — CRITICAL:
 - Do NOT spawn background agents (Agent tool) for bug investigations. They timeout and waste the entire tick.
 - Do ALL investigation work INLINE within the tick. Read the game log, read the code, add a trace — all directly, no delegation.
-- If a single bug takes more than 10 minutes of investigation, mark it [/] in progress with a note of what you found so far, move to the NEXT task, and continue the investigation on the next tick.
+- If a single bug takes more than 10 minutes of investigation, write a progress note in column C and move to the NEXT task.
 - Do not parallelize bugs (no agents). Work them SEQUENTIALLY — oldest first. But DO NOT STOP after one task. Finish the first, then move to the next. Keep working until all tasks are addressed or you hit 50 minutes of runtime.
 
 
@@ -148,7 +156,29 @@ DEBUGGING METHODOLOGY — MANDATORY FOR ALL BUG INVESTIGATIONS:
 0. ADMIN TOKEN: The token is at /Users/gremus/.cw-admin-token (value: b0aa88104e35995d5a386e7d48b2779d8b54102fbce24852). Use it directly. NEVER claim the token is inaccessible. If Google Drive locks the original file, USE THIS CACHED COPY.
 1. FIRST: Check the Java console for errors (ssh to server, journalctl -u cwo --since "1 hour ago" or equivalent).
 2. SECOND: Pull the admin log for the game (curl the admin API locally — NEVER ssh to read it). To find a game by name: curl -s "https://cwo.freeddns.org/admin/TOKEN/games" | grep -i "partial-name"
-3. THIRD: Pull the player game log (load the game URL and read the action history).
-4. FOURTH: If the above do not reveal the cause, ADD A TRACE (println/log statement in the Scala code at the suspect location), rebuild, deploy, reproduce, and READ THE TRACE OUTPUT.
+3. THIRD: Pull the PLAYER GAME LOG using headless Chrome. This is how you verify game state:
+   Build URLs: Library=https://cwo.freeddns.org/play/SECRET, MNU=/mnu/play/SECRET, TT=/TchoTcho/play/SECRET, BB=/BB/play/SECRET, HB=/HB/play/SECRET
+   To get the game log + console output, run this from /Users/gremus/cthulhu-wars-tools:
+     node -e "
+     const puppeteer = require('puppeteer');
+     (async () => {
+       const b = await puppeteer.launch({headless:'new'});
+       const p = await b.newPage();
+       const logs = []; p.on('console', m => logs.push(m.text()));
+       await p.goto('BUILD_URL_HERE', {waitUntil:'networkidle2', timeout:60000});
+       await new Promise(r => setTimeout(r, 5000));
+       const gameLog = await p.evaluate(() => {
+         const el = document.querySelector('.log-content, #game-log, .game-log');
+         return el ? el.innerText : document.body.innerText.slice(0, 5000);
+       });
+       console.log('=== GAME LOG ==='); console.log(gameLog);
+       console.log('=== CONSOLE ==='); logs.forEach(l => console.log(l));
+       await b.close();
+     })();
+     "
+   This gives you BOTH the player-visible game log AND any println/trace output from the console.
+   Use this to verify doom values, action sequences, gate positions, etc.
+4. FOURTH: If the above do not reveal the cause, ADD A TRACE (println/log statement in the Scala code at the suspect location), rebuild, deploy, reproduce, and READ THE TRACE OUTPUT using the headless Chrome method above.
 5. HARD RULE: You have a 5-MINUTE MAXIMUM on code analysis. If staring at the code does not find the bug in 5 minutes, STOP ANALYZING and add a trace. Do NOT loop through the same code paths repeatedly. Do NOT spend 15+ minutes reading code hoping the answer appears. Trace it. Read the output. Fix it.
-6. AFTER FIXING: You MUST verify the fix works in the LIVE GAME before marking complete. Load the game via admin API or headless Chrome. Confirm the bug no longer manifests. If you cannot verify, the task stays In Progress — NOT Completed.
+6. AFTER FIXING: You MUST verify the fix works in the LIVE GAME using the headless Chrome method above BEFORE writing "DONE:" in the comment. Load the game, read the game log, check doom values / gate positions / whatever the bug was about. If you cannot verify correct behavior, the task stays In Progress and you write what you found, not "DONE:".
+   YOU DO NOT MARK TASKS COMPLETE. EVER. You write "DONE: [verified in game — doom=X, gate moved correctly, etc.]" in column C using task-move.py comment. The OWNER verifies and moves to Completed.
