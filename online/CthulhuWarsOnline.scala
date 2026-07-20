@@ -95,13 +95,14 @@ object CthulhuWarsOnline {
         // bookkeeping in the admin console (mark games that crashed; jot notes about
         // what went wrong). Stored in a separate table so a broken/notes update never
         // touches Logs and can't be mistaken for game state by the engine.
-        case class AdminAnnotation(gameId : Int, broken : Boolean, notes : String)
+        case class AdminAnnotation(gameId : Int, broken : Boolean, notes : String, build : String)
 
         class AdminAnnotations(tag : Tag) extends Table[AdminAnnotation](tag, "AdminAnnotation") {
             def gameId = column[Int]("gameId", O.PrimaryKey)
             def broken = column[Boolean]("broken")
             def notes = column[String]("notes")
-            def * = (gameId, broken, notes).mapTo[AdminAnnotation]
+            def build = column[String]("build")
+            def * = (gameId, broken, notes, build).mapTo[AdminAnnotation]
         }
 
         val adminAnnotations = TableQuery[AdminAnnotations]
@@ -164,10 +165,17 @@ object CthulhuWarsOnline {
         // existing DBs get the new table without a drop/create cycle.
         try {
             import slick.jdbc.HsqldbProfile.api.actionBasedSQLInterpolation
-            q(sqlu"""CREATE TABLE IF NOT EXISTS "AdminAnnotation" ("gameId" INTEGER PRIMARY KEY, "broken" BOOLEAN NOT NULL, "notes" LONGVARCHAR NOT NULL)""")
+            q(sqlu"""CREATE TABLE IF NOT EXISTS "AdminAnnotation" ("gameId" INTEGER PRIMARY KEY, "broken" BOOLEAN NOT NULL, "notes" LONGVARCHAR NOT NULL, "build" VARCHAR(20) DEFAULT '' NOT NULL)""")
         }
         catch {
             case e : Exception => println("AdminAnnotation table init: " + e.getMessage)
+        }
+        try {
+            import slick.jdbc.HsqldbProfile.api.actionBasedSQLInterpolation
+            q(sqlu"""ALTER TABLE "AdminAnnotation" ADD COLUMN IF NOT EXISTS "build" VARCHAR(20) DEFAULT '' NOT NULL""")
+        }
+        catch {
+            case e : Exception => // column already exists — expected on most boots
         }
 
         // BotGame registry — same idempotent CREATE IF NOT EXISTS pattern.
@@ -186,6 +194,35 @@ object CthulhuWarsOnline {
         }
         catch {
             case e : Exception => println("LiveGames table init: " + e.getMessage)
+        }
+
+        // Boot migration: auto-populate build field for games with empty build annotation.
+        // Reads log line 0 which contains the version string (e.g. "library-at-celaeno-v5.7").
+        try {
+            val allGameIds = q(games.map(_.id).result)
+            val annotatedWithBuild = q(adminAnnotations.filter(_.build =!= "").map(_.gameId).result).toSet
+            val needBuild = allGameIds.filterNot(annotatedWithBuild.contains)
+            if (needBuild.nonEmpty) {
+                println(s"Build migration: ${needBuild.size} games need build annotation")
+                needBuild.foreach { gid =>
+                    val line0 = q(logs.filter(l => l.gameId === gid && l.index === 0).map(_.value).result.headOption).getOrElse("")
+                    val build = if (line0.contains("library-at-celaeno")) "library"
+                        else if (line0.contains("more-neutral-units")) "mnu"
+                        else if (line0.contains("tcho-tcho")) "tt"
+                        else if (line0.contains("bubastis")) "bb"
+                        else if (line0.contains("homebrew")) "hb"
+                        else "library"
+                    val existing = q(adminAnnotations.filter(_.gameId === gid).result.headOption)
+                    existing match {
+                        case Some(a) => q(adminAnnotations.filter(_.gameId === gid).map(_.build).update(build))
+                        case None => q(adminAnnotations += AdminAnnotation(gid, false, "", build))
+                    }
+                }
+                println(s"Build migration: done, annotated ${needBuild.size} games")
+            }
+        }
+        catch {
+            case e : Exception => println("Build migration error: " + e.getMessage)
         }
 
         if (!mode.contains("run")) {
@@ -324,8 +361,7 @@ object CthulhuWarsOnline {
                             )))
                             val newGameId = q(roles.filter(_.secret === srs("$")).map(_.gameId).result.head)
                             touchMeta(newGameId)
-                            // bot=true: insert into BotGame in the same call, saving the orchestrator
-                            // a separate /admin/mark-bot HTTP roundtrip per game.
+                            try { q(adminAnnotations += AdminAnnotation(newGameId, false, "", "library")) } catch { case _ : Throwable => () }
                             if (botFlag)
                                 try { q(botGames += BotGame(newGameId)) }
                                 catch { case _ : Throwable => () }
@@ -429,6 +465,7 @@ object CthulhuWarsOnline {
                                 )))
                                 val newGameId = q(roles.filter(_.secret === srs("$")).map(_.gameId).result.head)
                                 touchMeta(newGameId)
+                                try { q(adminAnnotations += AdminAnnotation(newGameId, false, "", "mnu")) } catch { case _ : Throwable => () }
                                 if (botFlag)
                                     try { q(botGames += BotGame(newGameId)) }
                                     catch { case _ : Throwable => () }
@@ -531,6 +568,7 @@ object CthulhuWarsOnline {
                                 )))
                                 val newGameId = q(roles.filter(_.secret === srs("$")).map(_.gameId).result.head)
                                 touchMeta(newGameId)
+                                try { q(adminAnnotations += AdminAnnotation(newGameId, false, "", "tt")) } catch { case _ : Throwable => () }
                                 if (botFlag)
                                     try { q(botGames += BotGame(newGameId)) }
                                     catch { case _ : Throwable => () }
@@ -628,6 +666,7 @@ object CthulhuWarsOnline {
                                 )))
                                 val newGameId = q(roles.filter(_.secret === srs("$")).map(_.gameId).result.head)
                                 touchMeta(newGameId)
+                                try { q(adminAnnotations += AdminAnnotation(newGameId, false, "", "bb")) } catch { case _ : Throwable => () }
                                 if (botFlag)
                                     try { q(botGames += BotGame(newGameId)) }
                                     catch { case _ : Throwable => () }
@@ -717,7 +756,7 @@ object CthulhuWarsOnline {
                         .filter(_._2.name === "$")
                         .joinLeft(meta).on(_._1.id === _.gameId)
                         .joinLeft(adminAnnotations).on(_._1._1.id === _.gameId)
-                        .map { case (((g, r), m), a) => (g.id, g.name, r.secret, m.map(_.lastWriteMs), a.map(_.broken)) }
+                        .map { case (((g, r), m), a) => (g.id, g.name, r.secret, m.map(_.lastWriteMs), a.map(_.broken), a.map(_.build)) }
                         .result)
                     // Detect completion per game: any log row whose value contains
                     // "GameOverPhaseAction" means the engine reached the end-of-game phase.
@@ -732,14 +771,15 @@ object CthulhuWarsOnline {
                     val factionCounts = q(roles.filter(r => r.name =!= "$" && r.name =!= "#")
                         .groupBy(_.gameId).map { case (gid, grp) => (gid, grp.length) }.result)
                         .toMap
-                    txt(rows.map { case (id, name, secret, lastMs, broken) =>
+                    txt(rows.map { case (id, name, secret, lastMs, broken, build) =>
                         val b = if (broken.getOrElse(false)) "1" else "0"
                         val c = if (completed.getOrElse(id, false)) "1" else "0"
                         val ib = if (botFlagged.contains(id)) "1" else "0"
                         val il = if (liveFlagged.contains(id)) "1" else "0"
                         val fc = factionCounts.getOrElse(id, 0)
                         val (pc, bc) = if (botFlagged.contains(id)) (0, fc) else (fc, 0)
-                        s"$id\t$name\t$secret\t${lastMs.getOrElse(0L)}\t$b\t$c\t$ib\t$pc\t$bc\t$il"
+                        val bld = build.getOrElse("")
+                        s"$id\t$name\t$secret\t${lastMs.getOrElse(0L)}\t$b\t$c\t$ib\t$pc\t$bc\t$il\t$bld"
                     }.mkString("\n"))
                 }
             } ~
@@ -772,8 +812,8 @@ object CthulhuWarsOnline {
                 if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
                 else {
                     val row = q(adminAnnotations.filter(_.gameId === gameId).result.headOption)
-                    val (broken, notes) = row.map(r => (r.broken, r.notes)).getOrElse((false, ""))
-                    txt((if (broken) "1" else "0") + "\t" + notes)
+                    val (broken, notes, build) = row.map(r => (r.broken, r.notes, r.build)).getOrElse((false, "", ""))
+                    txt((if (broken) "1" else "0") + "\t" + notes + "\t" + build)
                 }
             } ~
             (post & path("admin" / Segment / "annotation" / IntNumber)) { (token, gameId) =>
@@ -781,16 +821,16 @@ object CthulhuWarsOnline {
                 else {
                     decodeRequest {
                         entity(as[String]) { body =>
-                            // Body: "broken\tnotes" where broken is "0" or "1" and notes is
-                            // the remaining string (newlines and tabs preserved verbatim).
-                            val tab = body.indexOf('\t')
-                            val (brokenStr, notes) =
-                                if (tab >= 0) (body.substring(0, tab), body.substring(tab + 1))
-                                else (body, "")
+                            // Body: "broken\tnotes\tbuild" — build is optional (preserves existing if absent).
+                            val parts = body.split('\t')
+                            val brokenStr = if (parts.nonEmpty) parts(0) else "0"
+                            val notes = if (parts.length > 1) parts(1) else ""
                             val broken = brokenStr.trim == "1"
+                            val existing = q(adminAnnotations.filter(_.gameId === gameId).result.headOption)
+                            val build = if (parts.length > 2) parts(2).trim else existing.map(_.build).getOrElse("")
                             q(
                                 adminAnnotations.filter(_.gameId === gameId).delete,
-                                adminAnnotations += AdminAnnotation(gameId, broken, notes)
+                                adminAnnotations += AdminAnnotation(gameId, broken, notes, build)
                             )
                             complete(StatusCodes.Accepted)
                         }

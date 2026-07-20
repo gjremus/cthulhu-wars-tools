@@ -623,12 +623,9 @@ const BUILD_PATH_PREFIX = { library: '', mnu: '/mnu', tt: '/TchoTcho', bb: '/BB'
 function buildPlayUrl(secret) {
   return `${SERVER}${BUILD_PATH_PREFIX[getBuild()] || ''}/play/${secret}`;
 }
-// Like buildPlayUrl but uses the CURRENT_GAME's own build field (if available)
-// instead of the global build switcher. This ensures player links always point
-// to the correct build regardless of the admin's current filter selection.
-function gamePlayUrl(secret) {
-  const build = (CURRENT_GAME && CURRENT_GAME.build) ? CURRENT_GAME.build : getBuild();
-  return `${SERVER}${BUILD_PATH_PREFIX[build] || ''}/play/${secret}`;
+function gamePlayUrl(secret, build) {
+  const b = build || getBuild();
+  return `${SERVER}${BUILD_PATH_PREFIX[b] || ''}/play/${secret}`;
 }
 function setBuild(name) {
   if (!(name in BUILD_LABELS)) return;
@@ -1328,11 +1325,11 @@ function populateGames(text) {
       humanCount: parseInt(parts[7] || '0', 10),
       botCount: parseInt(parts[8] || '0', 10),
       isLive: (parts[9] || '0').trim() === '1',
-      hasFixResp: (parts[10] || '0').trim() === '1',
-      frozen: (parts[11] || '0').trim() === '1',
-      build: (['library','mnu','tt','bb','hb'].includes((parts[12]||'').trim()) ? parts[12].trim() : 'unknown'),
-      startMs: parseInt(parts[13] || '0', 10),
-      rlSubmittedMs: parseInt(parts[14] || '0', 10),
+      build: (['library','mnu','tt','bb','hb'].includes((parts[10]||'').trim().toLowerCase()) ? parts[10].trim().toLowerCase() : ''),
+      hasFixResp: false,
+      frozen: false,
+      startMs: 0,
+      rlSubmittedMs: 0,
     };
   }).filter(g => g.id).filter(g => showBots || !g.isBot);
   games.forEach(g => { g.playerCount = g.humanCount + g.botCount; });
@@ -1390,7 +1387,7 @@ function populateGames(text) {
     row.dataset.broken = broken ? '1' : '0';
     row.dataset.completed = completed ? '1' : '0';
     row.dataset.errored = errored ? '1' : '0';
-    row.dataset.build = g.build || 'library';
+    row.dataset.build = g.build || getBuild();
     const brokenLabel = broken ? '✖ Broken' : 'Mark broken';
     const brokenTitle = broken ? 'Click to clear the broken flag' : 'Click to mark this game as broken';
     const isLive = g.isLive;
@@ -1442,7 +1439,7 @@ function populateGames(text) {
         `onclick="event.stopPropagation(); toggleLiveFromList('${id}', this)">${liveLabel}</button>` +
       `<div style="flex:1;">` +
         `<span class="game-name">${esc(name)}</span> ${statusLabel}${rlBadge}<br/>` +
-        `<span class="game-meta">${(g.build||'library').toUpperCase()} ${id} · ${g.humanCount}H${g.botCount > 0 ? ' '+g.botCount+'B' : ''} · ${inactivityLabel(lastWriteMs)}</span>` +
+        `<span class="game-meta">${(g.build || getBuild()).toUpperCase()} ${id} · ${g.humanCount}H${g.botCount > 0 ? ' '+g.botCount+'B' : ''} · ${inactivityLabel(lastWriteMs)}</span>` +
       `</div>` +
       `<div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">` +
         replayCell +
@@ -1837,7 +1834,7 @@ function submitGameToTerminal() {
   // body is complete on the first POST (no second tick needed).
   const status = document.getElementById('submit-terminal-status');
   const build = CURRENT_GAME.build || getBuild();
-  const gameUrl = gamePlayUrl(CURRENT_GAME.masterSecret);
+  const gameUrl = gamePlayUrl(CURRENT_GAME.masterSecret, build);
   const adminUrl = `${SERVER}/admin.html#game=${CURRENT_GAME.id}`;
   if (status) { status.textContent = 'Sending…'; status.style.color = 'var(--text-muted)'; }
   // First fetch the auto-captured stored errors, then build the full body, then submit.
@@ -2237,7 +2234,7 @@ function populateRoles(text) {
     if (isBot) {
       return `<div class="role-link" style="color:#888;">${esc(label)} <span style="color:#666;">(bot)</span></div>`;
     }
-    return `<div class="role-link"><a href="${gamePlayUrl(secret)}" target="_blank">${esc(label)}</a></div>`;
+    return `<div class="role-link"><a href="${gamePlayUrl(secret, CURRENT_GAME.build)}" target="_blank">${esc(label)}</a></div>`;
   }).join('');
 }
 
