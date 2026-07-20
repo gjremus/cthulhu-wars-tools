@@ -36,6 +36,18 @@ CLAUDE="/Users/gremus/.local/bin/claude"
 CW="/Users/gremus/Library/CloudStorage/GoogleDrive-gremus@salesforce.com/My Drive/Personal/Games/Cthulhu Wars"
 TOOLS="/Users/gremus/Claude-Projects/cthulhu-wars-tools"
 
+LOCKFILE="/tmp/cw-ticker-${TICKER}.lock"
+if [[ -f "$LOCKFILE" ]]; then
+    LOCK_PID=$(cat "$LOCKFILE" 2>/dev/null)
+    if kill -0 "$LOCK_PID" 2>/dev/null; then
+        echo "[$(date '+%F %T')] SKIP   ticker=${TICKER} — previous run (pid $LOCK_PID) still active" >> "$HIST"
+        exit 0
+    fi
+    rm -f "$LOCKFILE"
+fi
+echo $$ > "$LOCKFILE"
+trap 'rm -f "$LOCKFILE"' EXIT
+
 echo "[$(date '+%F %T')] FIRED  ticker=${TICKER}" >> "$HIST"
 
 if [[ ! -f "$PROMPT_FILE" ]]; then
@@ -43,24 +55,41 @@ if [[ ! -f "$PROMPT_FILE" ]]; then
   exit 1
 fi
 
-cd "$WORKDIR" || { echo "[$(date '+%F %T')] ABORT  cd failed: $WORKDIR" >> "$HIST"; exit 1; }
+TICKER_WORKDIR="${CW}/ticker-workdir"
+mkdir -p "$TICKER_WORKDIR" 2>/dev/null
+cd "$TICKER_WORKDIR" || { echo "[$(date '+%F %T')] ABORT  cd failed: $TICKER_WORKDIR" >> "$HIST"; exit 1; }
 
 # Hard per-tick timeout. macOS ships no `timeout` binary, so we run the tick
 # in the background and use a watchdog subshell to kill it if it overruns.
 # Override per-ticker from the plist with the TICK_TIMEOUT env var (seconds).
-TICK_TIMEOUT="${TICK_TIMEOUT:-1500}"   # default 25 min
+TICK_TIMEOUT="${TICK_TIMEOUT:-3600}"   # default 60 min
 
 echo "===== [$(date '+%F %T')] ${TICKER} tick start (timeout ${TICK_TIMEOUT}s) =====" >> "$LOG"
 
-"$CLAUDE" -p "$(cat "$PROMPT_FILE")" \
+"$CLAUDE" -p "Read the file ${PROMPT_FILE} and follow its instructions exactly. Do all work described there." \
   --permission-mode bypassPermissions \
-  --add-dir "$CW" \
-  --add-dir "$TOOLS" \
+  --model opus \
   >> "$LOG" 2>&1 &
 CLAUDE_PID=$!
 
+# Soft-timeout: write a wrapup signal file 5 minutes before the hard kill.
+# The ticker prompt checks for this file between tasks and exits gracefully.
+WRAPUP_FILE="/tmp/cw-ticker-${TICKER}-wrapup"
+rm -f "$WRAPUP_FILE"
+
 (
-  sleep "$TICK_TIMEOUT"
+  # Soft signal at TICK_TIMEOUT - 300s (5 minutes before hard kill)
+  SOFT_TIMEOUT=$((TICK_TIMEOUT - 300))
+  if [[ $SOFT_TIMEOUT -gt 0 ]]; then
+    sleep "$SOFT_TIMEOUT"
+    if kill -0 "$CLAUDE_PID" 2>/dev/null; then
+      echo "[$(date '+%F %T')] SOFT-TIMEOUT  ticker=${TICKER} — wrapup signal written, 5min until hard kill" >> "$HIST"
+      echo "WRAPUP $(date '+%F %T')" > "$WRAPUP_FILE"
+    fi
+  fi
+
+  # Hard kill at full TICK_TIMEOUT
+  sleep 300
   if kill -0 "$CLAUDE_PID" 2>/dev/null; then
     echo "[$(date '+%F %T')] TIMEOUT  ticker=${TICKER} pid=${CLAUDE_PID} exceeded ${TICK_TIMEOUT}s; killing" >> "$HIST"
     echo "===== [$(date '+%F %T')] ${TICKER} TIMEOUT after ${TICK_TIMEOUT}s -- killing tick =====" >> "$LOG"
@@ -79,6 +108,7 @@ RC=$?
 # Tick finished on its own; cancel the watchdog so it doesn't linger.
 kill "$WATCHDOG_PID" 2>/dev/null
 wait "$WATCHDOG_PID" 2>/dev/null
+rm -f "$WRAPUP_FILE"
 
 echo "===== [$(date '+%F %T')] ${TICKER} tick done rc=${RC} =====" >> "$LOG"
 echo "[$(date '+%F %T')] DONE   ticker=${TICKER} rc=${RC}" >> "$HIST"
