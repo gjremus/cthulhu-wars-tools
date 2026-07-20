@@ -119,42 +119,18 @@ object CthulhuWarsOnline {
 
         val botGames = TableQuery[BotGames]
 
-        // Live-game registry. Presence of a gameId in this table means the game
-        // is flagged for periodic 15-min health monitoring by the admin ticker.
+        // Live-game registry. Presence of a gameId here means the game is
+        // currently "live" (featured / actively being streamed). The admin
+        // console's "Mark live" button toggles this; the admin game list
+        // includes an isLive column so the UI can highlight these.
         case class LiveGame(gameId : Int)
 
-        class LiveGames(tag : Tag) extends Table[LiveGame](tag, "LiveGame") {
+        class LiveGames(tag : Tag) extends Table[LiveGame](tag, "LiveGames") {
             def gameId = column[Int]("gameId", O.PrimaryKey)
             def * = (gameId).mapTo[LiveGame]
         }
 
         val liveGames = TableQuery[LiveGames]
-
-        // FixResponse: holds Claude's diagnosis + proposed fix for a broken
-        // game, plus the user's directive (proceed/discuss/dismiss/null) on
-        // that proposal. Phase A/B of the proactive broken-game pipeline
-        // (2026-06-03). One row per game; the row exists once Claude posts a
-        // proposal and stays until the user clears it.
-        //
-        // responseText = Claude's diagnosis + proposed fix (free text, structured
-        //                with [STATUS:...] markers).
-        // userAction   = "proceed" | "discuss" | "dismiss" | "" (empty means
-        //                Claude posted a proposal, user hasn't decided yet).
-        // updatedMs    = last server-side touch (set on every POST).
-        //
-        // Column names avoid HSQLDB reserved words ("response" and "action"
-        // are both reserved per HSQLDB; using ...Text and userAction instead).
-        case class FixResponse(gameId : Int, responseText : String, userAction : String, updatedMs : Long)
-
-        class FixResponses(tag : Tag) extends Table[FixResponse](tag, "FixResponse") {
-            def gameId = column[Int]("gameId", O.PrimaryKey)
-            def responseText = column[String]("responseText")
-            def userAction = column[String]("userAction")
-            def updatedMs = column[Long]("updatedMs")
-            def * = (gameId, responseText, userAction, updatedMs).mapTo[FixResponse]
-        }
-
-        val fixResponses = TableQuery[FixResponses]
 
         val db = Database.forURL("jdbc:hsqldb:file:" + database, driver="org.hsqldb.jdbcDriver")
 
@@ -194,16 +170,6 @@ object CthulhuWarsOnline {
             case e : Exception => println("AdminAnnotation table init: " + e.getMessage)
         }
 
-        // Same pattern for FixResponse — Phase A/B of proactive broken-game
-        // pipeline. Idempotent boot-time create.
-        try {
-            import slick.jdbc.HsqldbProfile.api.actionBasedSQLInterpolation
-            q(sqlu"""CREATE TABLE IF NOT EXISTS "FixResponse" ("gameId" INTEGER PRIMARY KEY, "responseText" LONGVARCHAR NOT NULL, "userAction" VARCHAR(16) NOT NULL, "updatedMs" BIGINT NOT NULL)""")
-        }
-        catch {
-            case e : Exception => println("FixResponse table init: " + e.getMessage)
-        }
-
         // BotGame registry — same idempotent CREATE IF NOT EXISTS pattern.
         try {
             import slick.jdbc.HsqldbProfile.api.actionBasedSQLInterpolation
@@ -213,13 +179,13 @@ object CthulhuWarsOnline {
             case e : Exception => println("BotGame table init: " + e.getMessage)
         }
 
-        // LiveGame registry — games flagged for periodic health monitoring.
+        // LiveGames registry — same idempotent CREATE IF NOT EXISTS pattern.
         try {
             import slick.jdbc.HsqldbProfile.api.actionBasedSQLInterpolation
-            q(sqlu"""CREATE TABLE IF NOT EXISTS "LiveGame" ("gameId" INTEGER PRIMARY KEY)""")
+            q(sqlu"""CREATE TABLE IF NOT EXISTS "LiveGames" ("gameId" INTEGER PRIMARY KEY)""")
         }
         catch {
-            case e : Exception => println("LiveGame table init: " + e.getMessage)
+            case e : Exception => println("LiveGames table init: " + e.getMessage)
         }
 
         if (!mode.contains("run")) {
@@ -239,18 +205,53 @@ object CthulhuWarsOnline {
             q(meta.filter(_.gameId === gameId).delete, meta += Meta(gameId, now))
         }
 
-        // In-memory set of frozen game IDs. When frozen, player /write and
-        // /rollback-v2 return 423 Locked; admin endpoints still work normally.
-        // Resets on server restart (no persistence needed).
-        val frozenGames = scala.collection.mutable.Set[Int]()
+        // Undo-turn validation and execution. Returns (success, errorMessage).
+        // The client sends the action index of its last PreMainAction; the server
+        // validates that (a) the entry at that index IS a PreMainAction for the
+        // requesting player's faction, (b) no ElderSignAction exists in the span,
+        // and (c) no other player wrote actions after that point.
+        def undoTurn(roleSecret : String, targetIndex : Int) : (Boolean, String) = {
+            val roleInfo = try {
+                q(roles.filter(_.secret === roleSecret).filter(_.name =!= "#").filter(_.name =!= "$").map(r => (r.name, r.gameId)).result.head)
+            } catch {
+                case _ : Throwable => return (false, "invalid role")
+            }
+            val (roleName, gameId) = roleInfo
+            val entries = q(logs.filter(_.gameId === gameId).filter(_.index >= targetIndex).sortBy(_.index).result)
+            if (entries.isEmpty)
+                return (false, "no actions to undo")
+            val first = entries.head
+            if (!first.value.startsWith("PreMainAction("))
+                return (false, "target is not a turn boundary")
+            val factionInAction = first.value.stripPrefix("PreMainAction(").takeWhile(c => c != ',' && c != ')')
+            if (factionInAction != roleName)
+                return (false, "not your turn boundary")
+            if (entries.exists(_.value.startsWith("ElderSignAction(")))
+                return (false, "elder signs were drawn")
+            if (entries.exists(e => e.value.startsWith("AttackAction(") || e.value.startsWith("NuclearChaosDieAction(")))
+                return (false, "dice were rolled")
+            if (entries.tail.exists(e => e.role != "" && e.role != roleName && e.role != "$" && !e.value.startsWith("PreMainAction(")))
+                return (false, "another player has acted")
+            q(logs.filter(_.gameId === gameId).filter(_.index >= targetIndex).delete)
+            touchMeta(gameId)
+            (true, "ok")
+        }
 
         implicit val system = ActorSystem()
         implicit val executionContext = system.dispatcher
 
-        def htm(s : String) = complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, s))
+        val noCache = respondWithHeaders(
+            `Cache-Control`(CacheDirectives.`no-cache`, CacheDirectives.`no-store`, CacheDirectives.`must-revalidate`),
+            RawHeader("Pragma", "no-cache"),
+            RawHeader("Expires", "0"),
+        )
+        def htm(s : String) = noCache { complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, s)) }
         def jsx(s : String) = complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, s))
         def txt(s : String) = complete(HttpEntity(ContentTypes.`text/plain(UTF-8)`, s))
         def rdr(s : String) = redirect(s, StatusCodes.TemporaryRedirect)
+        def mnuIndex = noCache { getFromFile("../mnu/index.html") }
+        def ttIndex  = noCache { getFromFile("../tt/index.html") }
+        def bbIndex  = noCache { getFromFile("../bb/index.html") }
 
         // encodeResponse wraps every response in gzip / deflate / brotli where the
         // client's Accept-Encoding allows. Static assets like main.js (now ~2.9 MB
@@ -352,36 +353,42 @@ object CthulhuWarsOnline {
             (post & path("write" / Segment / IntNumber)) { (role, index) =>
                 decodeRequest {
                     entity(as[String]) { body =>
-                        val gameId = try { q(roles.filter(_.secret === role).filter(_.name =!= "#").map(_.gameId).result.head) } catch { case _ : Throwable => -1 }
-                        if (frozenGames.contains(gameId)) complete(StatusCodes.custom(423, "Locked", "Game is frozen"))
-                        else {
-                            val ss = body.split("\n").toList.map(_.ascii)
-                            try {
-                                q(roles.filter(_.secret === role).filter(_.name =!= "#").map(r => (r.name, r.gameId)).result.head.flatMap { case (name, id) =>
-                                    logs ++= 0.until(ss.size).map(n => Log(id, index + n, name, ss(n)))
-                                })
-                                try { touchMeta(gameId) }
-                                catch { case _ : Throwable => () }
-                                complete(StatusCodes.Accepted)
-                            }
-                            catch {
-                                case e : java.sql.SQLIntegrityConstraintViolationException => complete(StatusCodes.Conflict)
-                            }
+                        val ss = body.split("\n").toList.map(_.ascii)
+
+                        try {
+                            // Original atomic shape — single composed DBIO with pinned session
+                            // (the prior multi-query refactor + touchMeta broke /write atomicity
+                            // for online games and is the suspected cause of the Thousand Forms
+                            // online-only regression). Meta last-write tracking still happens on
+                            // /create and admin-side endpoints; for /write we now just append the
+                            // log rows and let touchMeta run after, OUTSIDE the atomic block, so
+                            // any meta failure does not abort the log write.
+                            q(roles.filter(_.secret === role).filter(_.name =!= "#").map(r => (r.name, r.gameId)).result.head.flatMap { case (name, id) =>
+                                logs ++= 0.until(ss.size).map(n => Log(id, index + n, name, ss(n)))
+                            })
+                            try { touchMeta(q(roles.filter(_.secret === role).filter(_.name =!= "#").map(_.gameId).result.head)) }
+                            catch { case _ : Throwable => () }
+                            complete(StatusCodes.Accepted)
+                        }
+                        catch {
+                            case e : java.sql.SQLIntegrityConstraintViolationException => complete(StatusCodes.Conflict)
                         }
                     }
                 }
             } ~
             (post & path("rollback-v2" / Segment / IntNumber)) { (role, index) =>
-                val gameId = try { q(roles.filter(_.secret === role).map(_.gameId).result.head) } catch { case _ : Throwable => -1 }
-                if (frozenGames.contains(gameId)) complete(StatusCodes.custom(423, "Locked", "Game is frozen"))
-                else {
-                    q(roles.filter(_.secret === role).map(_.gameId).result.head.flatMap { id =>
-                        logs.filter(_.gameId === id).filter(_.index >= index).delete
-                    })
-                    try { touchMeta(gameId) }
-                    catch { case _ : Throwable => () }
-                    complete(StatusCodes.Accepted)
-                }
+                // Atomic: composed action, then optional meta touch (best-effort).
+                q(roles.filter(_.secret === role).map(_.gameId).result.head.flatMap { id =>
+                    logs.filter(_.gameId === id).filter(_.index >= index).delete
+                })
+                try { touchMeta(q(roles.filter(_.secret === role).map(_.gameId).result.head)) }
+                catch { case _ : Throwable => () }
+                complete(StatusCodes.Accepted)
+            } ~
+            (post & path("undo-turn" / Segment / IntNumber)) { (role, index) =>
+                val (ok, msg) = undoTurn(role, index)
+                if (ok) complete(StatusCodes.Accepted)
+                else complete(StatusCodes.Forbidden, msg)
             } ~
             // ── ADMIN ENDPOINTS (owner-only) ──
             // Gated by ownerToken matching the 5th argv. If ownerToken is empty (not
@@ -449,36 +456,33 @@ object CthulhuWarsOnline {
                 (post & path("write" / Segment / IntNumber)) { (role, index) =>
                     decodeRequest {
                         entity(as[String]) { body =>
-                            val gameId = try { q(roles.filter(_.secret === role).filter(_.name =!= "#").map(_.gameId).result.head) } catch { case _ : Throwable => -1 }
-                            if (frozenGames.contains(gameId)) complete(StatusCodes.custom(423, "Locked", "Game is frozen"))
-                            else {
-                                val ss = body.split("\n").toList.map(_.ascii)
-                                try {
-                                    q(roles.filter(_.secret === role).filter(_.name =!= "#").map(r => (r.name, r.gameId)).result.head.flatMap { case (name, id) =>
-                                        logs ++= 0.until(ss.size).map(n => Log(id, index + n, name, ss(n)))
-                                    })
-                                    try { touchMeta(gameId) }
-                                    catch { case _ : Throwable => () }
-                                    complete(StatusCodes.Accepted)
-                                }
-                                catch {
-                                    case e : java.sql.SQLIntegrityConstraintViolationException => complete(StatusCodes.Conflict)
-                                }
+                            val ss = body.split("\n").toList.map(_.ascii)
+                            try {
+                                q(roles.filter(_.secret === role).filter(_.name =!= "#").map(r => (r.name, r.gameId)).result.head.flatMap { case (name, id) =>
+                                    logs ++= 0.until(ss.size).map(n => Log(id, index + n, name, ss(n)))
+                                })
+                                try { touchMeta(q(roles.filter(_.secret === role).filter(_.name =!= "#").map(_.gameId).result.head)) }
+                                catch { case _ : Throwable => () }
+                                complete(StatusCodes.Accepted)
+                            }
+                            catch {
+                                case e : java.sql.SQLIntegrityConstraintViolationException => complete(StatusCodes.Conflict)
                             }
                         }
                     }
                 } ~
                 (post & path("rollback-v2" / Segment / IntNumber)) { (role, index) =>
-                    val gameId = try { q(roles.filter(_.secret === role).map(_.gameId).result.head) } catch { case _ : Throwable => -1 }
-                    if (frozenGames.contains(gameId)) complete(StatusCodes.custom(423, "Locked", "Game is frozen"))
-                    else {
-                        q(roles.filter(_.secret === role).map(_.gameId).result.head.flatMap { id =>
-                            logs.filter(_.gameId === id).filter(_.index >= index).delete
-                        })
-                        try { touchMeta(gameId) }
-                        catch { case _ : Throwable => () }
-                        complete(StatusCodes.Accepted)
-                    }
+                    q(roles.filter(_.secret === role).map(_.gameId).result.head.flatMap { id =>
+                        logs.filter(_.gameId === id).filter(_.index >= index).delete
+                    })
+                    try { touchMeta(q(roles.filter(_.secret === role).map(_.gameId).result.head)) }
+                    catch { case _ : Throwable => () }
+                    complete(StatusCodes.Accepted)
+                } ~
+                (post & path("undo-turn" / Segment / IntNumber)) { (role, index) =>
+                    val (ok, msg) = undoTurn(role, index)
+                    if (ok) complete(StatusCodes.Accepted)
+                    else complete(StatusCodes.Forbidden, msg)
                 } ~
                 // /mnu/play/<role-secret> — game-join URL. Serve MNU's index.html so
                 // the SPA can pick up the role from window.location and start the
@@ -493,20 +497,214 @@ object CthulhuWarsOnline {
                         pathPrefix("webp")   { getFromDirectory("../mnu/webp") } ~
                         pathPrefix("fonts")  { getFromDirectory("../mnu/fonts") } ~
                         pathPrefix("target") { getFromDirectory("../mnu/target") } ~
-                        pathEnd { getFromFile("../mnu/index.html") }
+                        pathEnd { mnuIndex }
                     } ~
-                    pathEnd { getFromFile("../mnu/index.html") }
+                    pathEnd { mnuIndex }
                 } ~
                 pathPrefix("webp")   { getFromDirectory("../mnu/webp") } ~
                 pathPrefix("fonts")  { getFromDirectory("../mnu/fonts") } ~
                 pathPrefix("target") { getFromDirectory("../mnu/target") } ~
-                pathEnd { getFromFile("../mnu/index.html") } ~
-                path("") { getFromFile("../mnu/index.html") } ~
+                pathEnd { mnuIndex } ~
+                path("") { mnuIndex } ~
                 pathPrefix(Segment) { _ =>
                     pathPrefix("webp")   { getFromDirectory("../mnu/webp") } ~
                     pathPrefix("fonts")  { getFromDirectory("../mnu/fonts") } ~
                     pathPrefix("target") { getFromDirectory("../mnu/target") } ~
-                    pathEnd { getFromFile("../mnu/index.html") }
+                    pathEnd { mnuIndex }
+                }
+            } ~
+            // Serve the TchoTcho build under /TchoTcho/. Assets in ../tt/ on the VM.
+            // API endpoints delegated to same handlers as root routes, same pattern as /mnu/.
+            pathPrefix("TchoTcho") {
+                (post & path("create")) {
+                    parameter("bot".as[Boolean].?(false)) { botFlag =>
+                        decodeRequest {
+                            entity(as[String]) { body =>
+                                val ss = body.split("\n").toList.map(_.ascii)
+                                val rls = List("$", "#") ++ ss(0).split(" ").toList
+                                val name = ss(2)
+                                val lgs = ss.drop(1)
+                                val srs = rls.map(r => r -> secret).toMap
+                                q((gamesId += Game(name)).flatMap(id => seq(
+                                    roles ++= rls.map(r => Role(id, r, srs(r))),
+                                    logs ++= lgs.zipWithIndex.map { case (l, n) => Log(id, n, "", l) }
+                                )))
+                                val newGameId = q(roles.filter(_.secret === srs("$")).map(_.gameId).result.head)
+                                touchMeta(newGameId)
+                                if (botFlag)
+                                    try { q(botGames += BotGame(newGameId)) }
+                                    catch { case _ : Throwable => () }
+                                txt(srs("$"))
+                            }
+                        }
+                    }
+                } ~
+                (get & path("roles" / Segment)) { role =>
+                    val list = q(roles.filter(_.secret === role).filter(_.name === "$").map(_.gameId).result.head.flatMap { id =>
+                        roles.filter(_.gameId === id).result
+                    })
+                    txt(list.map(r => r.name + " " + r.secret).mkString("\n"))
+                } ~
+                (get & path("role" / Segment)) { role =>
+                    val name = q(roles.filter(_.secret === role).map(_.name).result.head)
+                    txt(name)
+                } ~
+                (get & path("read" / Segment / IntNumber)) { (role, from) =>
+                    val log = q(roles.filter(_.secret === role).map(_.gameId).result.head.flatMap { id =>
+                            logs.filter(_.gameId === id).filter(_.index >= from).map(_.value).result
+                    })
+                    txt(log.mkString("\n"))
+                } ~
+                (post & path("write" / Segment / IntNumber)) { (role, index) =>
+                    decodeRequest {
+                        entity(as[String]) { body =>
+                            val ss = body.split("\n").toList.map(_.ascii)
+                            try {
+                                q(roles.filter(_.secret === role).filter(_.name =!= "#").map(r => (r.name, r.gameId)).result.head.flatMap { case (name, id) =>
+                                    logs ++= 0.until(ss.size).map(n => Log(id, index + n, name, ss(n)))
+                                })
+                                try { touchMeta(q(roles.filter(_.secret === role).filter(_.name =!= "#").map(_.gameId).result.head)) }
+                                catch { case _ : Throwable => () }
+                                complete(StatusCodes.Accepted)
+                            }
+                            catch {
+                                case e : java.sql.SQLIntegrityConstraintViolationException => complete(StatusCodes.Conflict)
+                            }
+                        }
+                    }
+                } ~
+                (post & path("rollback-v2" / Segment / IntNumber)) { (role, index) =>
+                    q(roles.filter(_.secret === role).map(_.gameId).result.head.flatMap { id =>
+                        logs.filter(_.gameId === id).filter(_.index >= index).delete
+                    })
+                    try { touchMeta(q(roles.filter(_.secret === role).map(_.gameId).result.head)) }
+                    catch { case _ : Throwable => () }
+                    complete(StatusCodes.Accepted)
+                } ~
+                (post & path("undo-turn" / Segment / IntNumber)) { (role, index) =>
+                    val (ok, msg) = undoTurn(role, index)
+                    if (ok) complete(StatusCodes.Accepted)
+                    else complete(StatusCodes.Forbidden, msg)
+                } ~
+                pathPrefix("play") {
+                    pathPrefix("webp")   { getFromDirectory("../tt/webp") } ~
+                    pathPrefix("fonts")  { getFromDirectory("../tt/fonts") } ~
+                    pathPrefix("target") { getFromDirectory("../tt/target") } ~
+                    pathPrefix(Segment) { _ =>
+                        pathPrefix("webp")   { getFromDirectory("../tt/webp") } ~
+                        pathPrefix("fonts")  { getFromDirectory("../tt/fonts") } ~
+                        pathPrefix("target") { getFromDirectory("../tt/target") } ~
+                        pathEnd { ttIndex }
+                    } ~
+                    pathEnd { ttIndex }
+                } ~
+                pathPrefix("webp")   { getFromDirectory("../tt/webp") } ~
+                pathPrefix("fonts")  { getFromDirectory("../tt/fonts") } ~
+                pathPrefix("target") { getFromDirectory("../tt/target") } ~
+                pathEnd { ttIndex } ~
+                path("") { ttIndex } ~
+                pathPrefix(Segment) { _ =>
+                    pathPrefix("webp")   { getFromDirectory("../tt/webp") } ~
+                    pathPrefix("fonts")  { getFromDirectory("../tt/fonts") } ~
+                    pathPrefix("target") { getFromDirectory("../tt/target") } ~
+                    pathEnd { ttIndex }
+                }
+            } ~
+            // Serve the Bubastis build under /BB/. Assets in ../bb/ on the VM.
+            // API endpoints delegated to same handlers as root routes, same pattern as /TchoTcho/.
+            pathPrefix("BB") {
+                (post & path("create")) {
+                    parameter("bot".as[Boolean].?(false)) { botFlag =>
+                        decodeRequest {
+                            entity(as[String]) { body =>
+                                val ss = body.split("\n").toList.map(_.ascii)
+                                val rls = List("$", "#") ++ ss(0).split(" ").toList
+                                val name = ss(2)
+                                val lgs = ss.drop(1)
+                                val srs = rls.map(r => r -> secret).toMap
+                                q((gamesId += Game(name)).flatMap(id => seq(
+                                    roles ++= rls.map(r => Role(id, r, srs(r))),
+                                    logs ++= lgs.zipWithIndex.map { case (l, n) => Log(id, n, "", l) }
+                                )))
+                                val newGameId = q(roles.filter(_.secret === srs("$")).map(_.gameId).result.head)
+                                touchMeta(newGameId)
+                                if (botFlag)
+                                    try { q(botGames += BotGame(newGameId)) }
+                                    catch { case _ : Throwable => () }
+                                txt(srs("$"))
+                            }
+                        }
+                    }
+                } ~
+                (get & path("roles" / Segment)) { role =>
+                    val list = q(roles.filter(_.secret === role).filter(_.name === "$").map(_.gameId).result.head.flatMap { id =>
+                        roles.filter(_.gameId === id).result
+                    })
+                    txt(list.map(r => r.name + " " + r.secret).mkString("\n"))
+                } ~
+                (get & path("role" / Segment)) { role =>
+                    val name = q(roles.filter(_.secret === role).map(_.name).result.head)
+                    txt(name)
+                } ~
+                (get & path("read" / Segment / IntNumber)) { (role, from) =>
+                    val log = q(roles.filter(_.secret === role).map(_.gameId).result.head.flatMap { id =>
+                            logs.filter(_.gameId === id).filter(_.index >= from).map(_.value).result
+                    })
+                    txt(log.mkString("\n"))
+                } ~
+                (post & path("write" / Segment / IntNumber)) { (role, index) =>
+                    decodeRequest {
+                        entity(as[String]) { body =>
+                            val ss = body.split("\n").toList.map(_.ascii)
+                            try {
+                                q(roles.filter(_.secret === role).filter(_.name =!= "#").map(r => (r.name, r.gameId)).result.head.flatMap { case (name, id) =>
+                                    logs ++= 0.until(ss.size).map(n => Log(id, index + n, name, ss(n)))
+                                })
+                                try { touchMeta(q(roles.filter(_.secret === role).filter(_.name =!= "#").map(_.gameId).result.head)) }
+                                catch { case _ : Throwable => () }
+                                complete(StatusCodes.Accepted)
+                            }
+                            catch {
+                                case e : java.sql.SQLIntegrityConstraintViolationException => complete(StatusCodes.Conflict)
+                            }
+                        }
+                    }
+                } ~
+                (post & path("rollback-v2" / Segment / IntNumber)) { (role, index) =>
+                    q(roles.filter(_.secret === role).map(_.gameId).result.head.flatMap { id =>
+                        logs.filter(_.gameId === id).filter(_.index >= index).delete
+                    })
+                    try { touchMeta(q(roles.filter(_.secret === role).map(_.gameId).result.head)) }
+                    catch { case _ : Throwable => () }
+                    complete(StatusCodes.Accepted)
+                } ~
+                (post & path("undo-turn" / Segment / IntNumber)) { (role, index) =>
+                    val (ok, msg) = undoTurn(role, index)
+                    if (ok) complete(StatusCodes.Accepted)
+                    else complete(StatusCodes.Forbidden, msg)
+                } ~
+                pathPrefix("play") {
+                    pathPrefix("webp")   { getFromDirectory("../bb/webp") } ~
+                    pathPrefix("fonts")  { getFromDirectory("../bb/fonts") } ~
+                    pathPrefix("target") { getFromDirectory("../bb/target") } ~
+                    pathPrefix(Segment) { _ =>
+                        pathPrefix("webp")   { getFromDirectory("../bb/webp") } ~
+                        pathPrefix("fonts")  { getFromDirectory("../bb/fonts") } ~
+                        pathPrefix("target") { getFromDirectory("../bb/target") } ~
+                        pathEnd { bbIndex }
+                    } ~
+                    pathEnd { bbIndex }
+                } ~
+                pathPrefix("webp")   { getFromDirectory("../bb/webp") } ~
+                pathPrefix("fonts")  { getFromDirectory("../bb/fonts") } ~
+                pathPrefix("target") { getFromDirectory("../bb/target") } ~
+                pathEnd { bbIndex } ~
+                path("") { bbIndex } ~
+                pathPrefix(Segment) { _ =>
+                    pathPrefix("webp")   { getFromDirectory("../bb/webp") } ~
+                    pathPrefix("fonts")  { getFromDirectory("../bb/fonts") } ~
+                    pathPrefix("target") { getFromDirectory("../bb/target") } ~
+                    pathEnd { bbIndex }
                 }
             } ~
             (get & path("admin" / Segment / "games")) { token =>
@@ -531,30 +729,17 @@ object CthulhuWarsOnline {
                     }.toMap
                     val botFlagged = q(botGames.map(_.gameId).result).toSet
                     val liveFlagged = q(liveGames.map(_.gameId).result).toSet
-                    // FixResponse rows: games where Claude has posted a proactive
-                    // proposal (Phase A/B 2026-06-03). Emitted as col 10
-                    // (hasFixResponse) so admin.html can filter accordingly.
-                    val hasFixResp = q(fixResponses.map(_.gameId).result).toSet
-                    // Count humans + bots per game by reading the options line (log
-                    // idx 2) which contains the roster like "SL:Human/OW:Bot/...".
-                    // The admin UI uses this to bucket games into SimRun (all bots),
-                    // Test (exactly 1 human), and Live (all humans).
-                    val rosterCounts = rows.map(_._1).map { id =>
-                        val v = q(logs.filter(_.gameId === id).filter(_.index === 2).map(_.value).result.headOption).getOrElse("")
-                        val roster = v.takeWhile(_ != ' ').split('/')
-                        val humans = roster.count(_.endsWith(":Human"))
-                        val bots = roster.count(p => p.endsWith(":Bot") || p.endsWith(":Normal"))
-                        id -> (humans, bots)
-                    }.toMap
+                    val factionCounts = q(roles.filter(r => r.name =!= "$" && r.name =!= "#")
+                        .groupBy(_.gameId).map { case (gid, grp) => (gid, grp.length) }.result)
+                        .toMap
                     txt(rows.map { case (id, name, secret, lastMs, broken) =>
                         val b = if (broken.getOrElse(false)) "1" else "0"
                         val c = if (completed.getOrElse(id, false)) "1" else "0"
                         val ib = if (botFlagged.contains(id)) "1" else "0"
-                        val (h, bt) = rosterCounts.getOrElse(id, (0, 0))
                         val il = if (liveFlagged.contains(id)) "1" else "0"
-                        val hfr = if (hasFixResp.contains(id)) "1" else "0"
-                        val frz = if (frozenGames.contains(id)) "1" else "0"
-                        s"$id\t$name\t$secret\t${lastMs.getOrElse(0L)}\t$b\t$c\t$ib\t$h\t$bt\t$il\t$hfr\t$frz"
+                        val fc = factionCounts.getOrElse(id, 0)
+                        val (pc, bc) = if (botFlagged.contains(id)) (0, fc) else (fc, 0)
+                        s"$id\t$name\t$secret\t${lastMs.getOrElse(0L)}\t$b\t$c\t$ib\t$pc\t$bc\t$il"
                     }.mkString("\n"))
                 }
             } ~
@@ -581,26 +766,6 @@ object CthulhuWarsOnline {
                 else {
                     q(liveGames.filter(_.gameId === gameId).delete)
                     complete(StatusCodes.Accepted)
-                }
-            } ~
-            (post & path("admin" / Segment / "freeze" / IntNumber)) { (token, gameId) =>
-                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
-                else {
-                    frozenGames += gameId
-                    complete(StatusCodes.Accepted)
-                }
-            } ~
-            (post & path("admin" / Segment / "unfreeze" / IntNumber)) { (token, gameId) =>
-                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
-                else {
-                    frozenGames -= gameId
-                    complete(StatusCodes.Accepted)
-                }
-            } ~
-            (get & path("admin" / Segment / "frozen")) { token =>
-                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
-                else {
-                    txt(frozenGames.mkString(","))
                 }
             } ~
             (get & path("admin" / Segment / "annotation" / IntNumber)) { (token, gameId) =>
@@ -630,80 +795,6 @@ object CthulhuWarsOnline {
                             complete(StatusCodes.Accepted)
                         }
                     }
-                }
-            } ~
-            // ===========================================================
-            // FixResponse endpoints — Phase A/B proactive broken-game pipeline.
-            // GET /admin/<t>/fix-response/<id>   → returns response text
-            // POST /admin/<t>/fix-response/<id>  → set response text (empty body clears row; resets action to "")
-            // POST /admin/<t>/fix-action/<id>    → record user button click (body = proceed|discuss|dismiss)
-            // GET /admin/<t>/fix-actions-pending → list game IDs with action set
-            // ===========================================================
-            (get & path("admin" / Segment / "fix-response" / IntNumber)) { (token, gameId) =>
-                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
-                else {
-                    val row = q(fixResponses.filter(_.gameId === gameId).result.headOption)
-                    txt(row.map(_.responseText).getOrElse(""))
-                }
-            } ~
-            (post & path("admin" / Segment / "fix-response" / IntNumber)) { (token, gameId) =>
-                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
-                else {
-                    decodeRequest {
-                        entity(as[String]) { body =>
-                            val now = System.currentTimeMillis()
-                            if (body.isEmpty) {
-                                // Empty body → user clicked Clear; remove the row entirely.
-                                q(fixResponses.filter(_.gameId === gameId).delete)
-                            } else {
-                                // Upsert: delete + insert (Slick doesn't have a built-in
-                                // upsert on HSQLDB; this pattern matches AdminAnnotation).
-                                // Reset userAction to "" since a new proposal supersedes any
-                                // prior user decision.
-                                q(
-                                    fixResponses.filter(_.gameId === gameId).delete,
-                                    fixResponses += FixResponse(gameId, body, "", now)
-                                )
-                            }
-                            complete(StatusCodes.Accepted)
-                        }
-                    }
-                }
-            } ~
-            (post & path("admin" / Segment / "fix-action" / IntNumber)) { (token, gameId) =>
-                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
-                else {
-                    decodeRequest {
-                        entity(as[String]) { body =>
-                            val act = body.trim.toLowerCase
-                            val allowed = Set("proceed", "discuss", "dismiss")
-                            if (!allowed.contains(act)) {
-                                complete(StatusCodes.BadRequest -> s"action must be one of ${allowed.mkString(",")}; got '$act'")
-                            } else {
-                                val existing = q(fixResponses.filter(_.gameId === gameId).result.headOption)
-                                existing match {
-                                    case Some(row) =>
-                                        val now = System.currentTimeMillis()
-                                        q(
-                                            fixResponses.filter(_.gameId === gameId).delete,
-                                            fixResponses += row.copy(userAction = act, updatedMs = now)
-                                        )
-                                        complete(StatusCodes.Accepted)
-                                    case None =>
-                                        // Can't act on a proposal that doesn't exist.
-                                        complete(StatusCodes.NotFound -> "no fix-response for this game; nothing to action")
-                                }
-                            }
-                        }
-                    }
-                }
-            } ~
-            (get & path("admin" / Segment / "fix-actions-pending")) { token =>
-                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
-                else {
-                    // TSV: gameId, userAction, updatedMs. Only rows where userAction is set.
-                    val rows = q(fixResponses.filter(_.userAction =!= "").result)
-                    txt(rows.map(r => s"${r.gameId}\t${r.userAction}\t${r.updatedMs}").mkString("\n"))
                 }
             } ~
             (get & path("admin" / Segment / "roles" / IntNumber)) { (token, gameId) =>
@@ -757,6 +848,7 @@ object CthulhuWarsOnline {
                         meta.filter(_.gameId === gameId).delete,
                         adminAnnotations.filter(_.gameId === gameId).delete,
                         botGames.filter(_.gameId === gameId).delete,
+                        liveGames.filter(_.gameId === gameId).delete,
                         games.filter(_.id === gameId).delete
                     )
                     complete(StatusCodes.Accepted)
@@ -852,7 +944,7 @@ object CthulhuWarsOnline {
             } ~
             (get & path("admin" / Segment / "claude-prompts-log")) { token =>
                 if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
-                else parameter("lines".as[Int].?, "all".as[Boolean].?(false)) { (linesOpt, all) =>
+                else parameter("lines".as[Int].?) { linesOpt =>
                     val n = linesOpt.getOrElse(100).max(1).min(2000)
                     val f = new java.io.File("/tmp/claude-prompts.log")
                     if (!f.exists) complete(HttpEntity(ContentTypes.`text/plain(UTF-8)`, ""))
@@ -861,46 +953,8 @@ object CthulhuWarsOnline {
                         val out = new StringBuilder
                         Process(Seq("tail", "-n", n.toString, f.getAbsolutePath))
                             .!(ProcessLogger(line => out.append(line + "\n")))
-                        val raw = out.toString
-                        // [2026-05-25] Filter out already-acknowledged prompts so the
-                        // admin "Prompt" pane only shows pending work. Each tick of the
-                        // ticker writes the latest processed prompt timestamp to
-                        // /tmp/claude-prompts.ack; we hide every prompt line whose
-                        // timestamp is <= that mark. `?all=true` overrides the filter
-                        // for debugging.
-                        if (all) complete(HttpEntity(ContentTypes.`text/plain(UTF-8)`, raw))
-                        else {
-                            val ackFile = new java.io.File("/tmp/claude-prompts.ack")
-                            val ack = if (ackFile.exists)
-                                scala.io.Source.fromFile(ackFile).getLines().toList.headOption.getOrElse("").trim
-                            else ""
-                            // Prompts start with "[YYYY-MM-DD HH:MM:SS]" — split entries on
-                            // that prefix, drop the ones whose timestamp <= ack, keep the rest.
-                            val tsPattern = """\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]""".r
-                            val entries = raw.split("(?=\\[\\d{4}-)")
-                            val filtered = entries.filter { entry =>
-                                tsPattern.findFirstMatchIn(entry) match {
-                                    case Some(m) => m.group(1) > ack
-                                    case None    => false  // pre-amble lines (none expected)
-                                }
-                            }
-                            complete(HttpEntity(ContentTypes.`text/plain(UTF-8)`, filtered.mkString))
-                        }
+                        complete(HttpEntity(ContentTypes.`text/plain(UTF-8)`, out.toString))
                     }
-                }
-            } ~
-            // [2026-05-25] Mark all prompts up to <timestamp> as acknowledged so the
-            // admin Prompt pane stops showing them. The ticker calls this at the end
-            // of each tick with the most-recent prompt it just responded to.
-            (post & path("admin" / Segment / "claude-prompt-ack") & entity(as[String])) { (token, ts) =>
-                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
-                else {
-                    val cleaned = ts.trim.take(64)  // expected "YYYY-MM-DD HH:MM:SS"
-                    java.nio.file.Files.write(
-                        java.nio.file.Paths.get("/tmp/claude-prompts.ack"),
-                        cleaned.getBytes("UTF-8")
-                    )
-                    complete(StatusCodes.Accepted)
                 }
             } ~
             // [2026-05-23] Claude terminal log — full history of prompts I've
@@ -918,7 +972,20 @@ object CthulhuWarsOnline {
                         val out = new StringBuilder
                         Process(Seq("tail", "-n", n.toString, f.getAbsolutePath))
                             .!(ProcessLogger(line => out.append(line + "\n")))
-                        complete(HttpEntity(ContentTypes.`text/plain(UTF-8)`, out.toString))
+                        val raw = out.toString
+                        val cutoffMs = System.currentTimeMillis - 36L * 60 * 60 * 1000
+                        val fmt = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+                        val tsPattern = """\[(?:PROMPT|RESPONSE) @(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]""".r
+                        val entries = tsPattern.split(raw).toList
+                        val filtered = if (entries.length <= 1) raw
+                        else {
+                            val matches = tsPattern.findAllMatchIn(raw).toList
+                            val chunks = matches.zip(entries.tail).filter { case (m, _) =>
+                                try { fmt.parse(m.group(1)).getTime >= cutoffMs } catch { case _ : Exception => true }
+                            }
+                            if (chunks.isEmpty) "" else chunks.map { case (m, body) => m.matched + body }.mkString
+                        }
+                        complete(HttpEntity(ContentTypes.`text/plain(UTF-8)`, filtered))
                     }
                 }
             } ~
@@ -941,8 +1008,6 @@ object CthulhuWarsOnline {
                     val jar = buildSel match {
                         case "library" => "/opt/cwo/server/online-sim.jar"
                         case "mnu"     => "/opt/cwo/server/online-sim-mnu.jar"
-                        case "tt"      => "/opt/cwo/server/online-sim-tt.jar"
-                        case "bb"      => "/opt/cwo/server/online-sim-bb.jar"
                         case _         => ""
                     }
                     val factions = factionsStr.getOrElse("").split(",").map(_.trim).filter(_.nonEmpty).toList
@@ -951,7 +1016,7 @@ object CthulhuWarsOnline {
                     val games = gamesOpt.getOrElse(30).max(1).min(2000)
                     val players = playersOpt.getOrElse(4).max(2).min(11)
 
-                    if (jar.isEmpty) complete(StatusCodes.BadRequest -> s"bad build (must be 'library', 'mnu', 'tt', or 'bb'); got $buildSel")
+                    if (jar.isEmpty) complete(StatusCodes.BadRequest -> s"bad build (must be 'library' or 'mnu'); got $buildSel")
                     else if (factions.exists(!factionCodes.contains(_))) complete(StatusCodes.BadRequest -> ("bad faction code: " + factions.filterNot(factionCodes).mkString(",")))
                     else if (opts.exists(!optCodes.contains(_))) complete(StatusCodes.BadRequest -> ("bad opt: " + opts.filterNot(optCodes).mkString(",")))
                     else if (maps.exists(!mapCodes.contains(_))) complete(StatusCodes.BadRequest -> ("bad map: " + maps.filterNot(mapCodes).mkString(",")))
