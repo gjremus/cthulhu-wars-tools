@@ -356,6 +356,14 @@
             <label class="sim-checkbox" style="margin-right:6px;"><input type="checkbox" id="flt-allbots-yes" onchange="applyGamesSortSearch()"/>All bots</label>
             <label class="sim-checkbox"><input type="checkbox" id="flt-anybots-yes" onchange="applyGamesSortSearch()"/>Any bots</label>
           </div>
+          <div>
+            <div style="color:var(--text-muted);margin-bottom:4px;">Build</div>
+            <label class="sim-checkbox" style="margin-right:4px;"><input type="checkbox" id="flt-build-library" onchange="applyGamesSortSearch()"/>Library</label>
+            <label class="sim-checkbox" style="margin-right:4px;"><input type="checkbox" id="flt-build-mnu" onchange="applyGamesSortSearch()"/>MNU</label>
+            <label class="sim-checkbox" style="margin-right:4px;"><input type="checkbox" id="flt-build-tt" onchange="applyGamesSortSearch()"/>TT</label>
+            <label class="sim-checkbox" style="margin-right:4px;"><input type="checkbox" id="flt-build-bb" onchange="applyGamesSortSearch()"/>BB</label>
+            <label class="sim-checkbox"><input type="checkbox" id="flt-build-hb" onchange="applyGamesSortSearch()"/>HB</label>
+          </div>
           <div style="margin-top:6px;">
             <label class="sim-checkbox"><input type="checkbox" id="flt-live-yes" onchange="applyGamesSortSearch()"/>Live (monitored)</label>
           </div>
@@ -1042,6 +1050,11 @@ function readFilters() {
     allBots:   g('flt-allbots-yes'),
     anyBots:   g('flt-anybots-yes'),
     liveOnly:  g('flt-live-yes'),
+    buildLibrary: g('flt-build-library'),
+    buildMNU:     g('flt-build-mnu'),
+    buildTT:      g('flt-build-tt'),
+    buildBB:      g('flt-build-bb'),
+    buildHB:      g('flt-build-hb'),
     search:    (document.getElementById('games-search')?.value || '').trim().toLowerCase(),
     sort:      document.getElementById('games-sort')?.value || 'default',
   };
@@ -1056,6 +1069,7 @@ function activeFilterCount() {
   if (f.pc3) n++; if (f.pc4) n++; if (f.pc5) n++;
   if (f.allHumans) n++; if (f.allBots) n++; if (f.anyBots) n++;
   if (f.liveOnly) n++;
+  if (f.buildLibrary) n++; if (f.buildMNU) n++; if (f.buildTT) n++; if (f.buildBB) n++; if (f.buildHB) n++;
   if (f.search) n++;
   return n;
 }
@@ -1069,7 +1083,8 @@ function toggleFilterPyramid() {
 
 function clearAllFilters() {
   ['flt-rep-yes','flt-rep-no','flt-err-yes','flt-err-no',
-   'flt-pc-3','flt-pc-4','flt-pc-5','flt-allhumans-yes','flt-allbots-yes','flt-anybots-yes','flt-live-yes']
+   'flt-pc-3','flt-pc-4','flt-pc-5','flt-allhumans-yes','flt-allbots-yes','flt-anybots-yes','flt-live-yes',
+   'flt-build-library','flt-build-mnu','flt-build-tt','flt-build-bb','flt-build-hb']
     .forEach(id => { const el = document.getElementById(id); if (el) el.checked = false; });
   const s = document.getElementById('games-search'); if (s) s.value = '';
   const so = document.getElementById('games-sort'); if (so) so.value = 'default';
@@ -1096,12 +1111,17 @@ function updateFilterCounts(games) {
 
 // Predicate: does this game row pass the current filter set?
 function gamePassesFilters(g, f) {
-  // Build axis. The Build switcher (Library/MNU/TT/BB) is the dominant filter:
-  // games must match the currently-active build, OR be 'unknown' (legacy games
-  // pre version-header). 2026-06-03 15:55: this was previously absent — the
-  // switcher controlled SimRunner jar selection but not the games list.
-  const activeBuild = getBuild();
-  if (g.build && g.build !== 'unknown' && g.build !== activeBuild) return false;
+  // Build axis. If any build checkbox is checked, the game must match one of them.
+  // If no build checkboxes are checked, all games pass. Unknown/empty builds always pass.
+  const buildChecked = f.buildLibrary || f.buildMNU || f.buildTT || f.buildBB || f.buildHB;
+  if (buildChecked && g.build && g.build !== 'unknown' && g.build !== '') {
+    const ok = (f.buildLibrary && g.build === 'library') ||
+               (f.buildMNU && g.build === 'mnu') ||
+               (f.buildTT && g.build === 'tt') ||
+               (f.buildBB && g.build === 'bb') ||
+               (f.buildHB && g.build === 'hb');
+    if (!ok) return false;
+  }
   // Replay axis. Filter passes if either checkbox is off, or if the game's
   // replay-existence (from REPLAY_EXISTS cache) matches the checked option.
   // For unknown (probe pending), let it through so the user isn't blocked.
