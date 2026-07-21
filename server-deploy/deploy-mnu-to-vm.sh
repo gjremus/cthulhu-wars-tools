@@ -28,6 +28,7 @@ trap deploy_lock_release EXIT
 
 MNU_ROOT="/Users/gremus/Claude-Projects/cw-mnu-wt"
 SSH_KEY="$HOME/.ssh/oracle_cw_ed25519"
+SSH_OPTS="-o ConnectTimeout=10 -o StrictHostKeyChecking=no"
 HOST="oracle-cw-server@35.255.125.91"
 REMOTE_ROOT="/opt/cwo/mnu"
 
