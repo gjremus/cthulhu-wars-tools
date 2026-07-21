@@ -645,13 +645,10 @@ function setBuild(name) {
   // Top-of-page persistent build indicator (always visible).
   const topLbl = document.getElementById('top-build-label');
   if (topLbl) topLbl.textContent = '[' + BUILD_LABELS[name].short + ']';
-  // 2026-06-03 15:55: re-filter the games list against the new build using
-  // the cached TSV (populated by the last /games fetch). Without this, the
-  // user changes build but the games list still shows the previous build's
-  // games until next refresh.
-  if (typeof LAST_GAMES_TEXT !== 'undefined' && LAST_GAMES_TEXT !== null) {
-    populateGames(LAST_GAMES_TEXT);
-  }
+  // 2026-07-21 (row 6): the Build switcher screen must have ZERO effect on the
+  // game list. The game list is filtered SOLELY by its own Build checkboxes
+  // (flt-build-*). We intentionally do NOT re-render the games list here — the
+  // switcher only drives SimRunner jar selection and the play-URL prefix.
 }
 function refreshBuildIndicator() {
   const b = getBuild();
