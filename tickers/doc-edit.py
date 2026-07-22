@@ -285,6 +285,20 @@ def cmd_add_open(text):
     write_doc('\n'.join(lines))
     print("Done.")
 
+def cmd_add_in_progress(text):
+    md = read_doc()
+    lines = md.split('\n')
+    for i, line in enumerate(lines):
+        if line.strip() == 'In Progress':
+            insert_at = i + 1
+            if insert_at < len(lines) and lines[insert_at].strip() == '':
+                insert_at += 1
+            lines.insert(insert_at, '')
+            lines.insert(insert_at, text)
+            break
+    write_doc('\n'.join(lines))
+    print("Done.")
+
 def cmd_add_completed(text):
     md = read_doc()
     lines = md.split('\n')
@@ -400,6 +414,8 @@ if __name__ == '__main__':
         cmd_mark_done(sys.argv[2], replacement)
     elif cmd == 'add-open':
         cmd_add_open(sys.argv[2])
+    elif cmd == 'add-in-progress':
+        cmd_add_in_progress(sys.argv[2])
     elif cmd == 'add-completed':
         cmd_add_completed(sys.argv[2])
     elif cmd == 'add-summary':

@@ -21,6 +21,9 @@
 
 set -euo pipefail
 
+export JAVA_HOME="/Users/gremus/.local/jdk/zulu21.50.19-ca-jdk21.0.11-macosx_aarch64/Contents/Home"
+export PATH="$JAVA_HOME/bin:$PATH"
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/../scripts/deploy-lock.sh"
 deploy_lock_acquire "mnu" "deploy-mnu" || exit 1

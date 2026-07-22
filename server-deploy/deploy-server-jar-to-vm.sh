@@ -12,6 +12,9 @@
 
 set -euo pipefail
 
+export JAVA_HOME="/Users/gremus/.local/jdk/zulu21.50.19-ca-jdk21.0.11-macosx_aarch64/Contents/Home"
+export PATH="$JAVA_HOME/bin:$PATH"
+
 REPO_ROOT="/Users/gremus/cthulhu-wars-tools"
 ONLINE_DIR="$REPO_ROOT/online"
 JAR_PATH="$ONLINE_DIR/target/scala-2.13/Cthulhu Wars Online-assembly-8.0.jar"

@@ -133,6 +133,8 @@ object CthulhuWarsOnline {
 
         val liveGames = TableQuery[LiveGames]
 
+        val frozenGames = scala.collection.mutable.Set[Int]()
+
         val db = Database.forURL("jdbc:hsqldb:file:" + database, driver="org.hsqldb.jdbcDriver")
 
         object q {
@@ -206,11 +208,12 @@ object CthulhuWarsOnline {
                 println(s"Build migration: ${needBuild.size} games need build annotation")
                 needBuild.foreach { gid =>
                     val line0 = q(logs.filter(l => l.gameId === gid && l.index === 0).map(_.value).result.headOption).getOrElse("")
-                    val build = if (line0.contains("library-at-celaeno")) "library"
-                        else if (line0.contains("more-neutral-units")) "mnu"
-                        else if (line0.contains("tcho-tcho")) "tt"
-                        else if (line0.contains("bubastis")) "bb"
-                        else if (line0.contains("homebrew")) "hb"
+                    val line0lc = line0.toLowerCase
+                    val build = if (line0lc.contains("library-at-celaeno")) "library"
+                        else if (line0lc.contains("more-neutral-units")) "mnu"
+                        else if (line0lc.contains("tcho-tcho")) "tt"
+                        else if (line0lc.contains("bubastis")) "bb"
+                        else if (line0lc.contains("homebrew")) "hb"
                         else "library"
                     val existing = q(adminAnnotations.filter(_.gameId === gid).result.headOption)
                     existing match {
@@ -389,42 +392,46 @@ object CthulhuWarsOnline {
             (post & path("write" / Segment / IntNumber)) { (role, index) =>
                 decodeRequest {
                     entity(as[String]) { body =>
-                        val ss = body.split("\n").toList.map(_.ascii)
+                        val gameId = try { q(roles.filter(_.secret === role).filter(_.name =!= "#").map(_.gameId).result.head) } catch { case _ : Throwable => -1 }
+                        if (gameId >= 0 && frozenGames.contains(gameId)) complete(StatusCodes.ServiceUnavailable, "Game is frozen")
+                        else {
+                            val ss = body.split("\n").toList.map(_.ascii)
 
-                        try {
-                            // Original atomic shape — single composed DBIO with pinned session
-                            // (the prior multi-query refactor + touchMeta broke /write atomicity
-                            // for online games and is the suspected cause of the Thousand Forms
-                            // online-only regression). Meta last-write tracking still happens on
-                            // /create and admin-side endpoints; for /write we now just append the
-                            // log rows and let touchMeta run after, OUTSIDE the atomic block, so
-                            // any meta failure does not abort the log write.
-                            q(roles.filter(_.secret === role).filter(_.name =!= "#").map(r => (r.name, r.gameId)).result.head.flatMap { case (name, id) =>
-                                logs ++= 0.until(ss.size).map(n => Log(id, index + n, name, ss(n)))
-                            })
-                            try { touchMeta(q(roles.filter(_.secret === role).filter(_.name =!= "#").map(_.gameId).result.head)) }
-                            catch { case _ : Throwable => () }
-                            complete(StatusCodes.Accepted)
-                        }
-                        catch {
-                            case e : java.sql.SQLIntegrityConstraintViolationException => complete(StatusCodes.Conflict)
+                            try {
+                                q(roles.filter(_.secret === role).filter(_.name =!= "#").map(r => (r.name, r.gameId)).result.head.flatMap { case (name, id) =>
+                                    logs ++= 0.until(ss.size).map(n => Log(id, index + n, name, ss(n)))
+                                })
+                                try { touchMeta(gameId) }
+                                catch { case _ : Throwable => () }
+                                complete(StatusCodes.Accepted)
+                            }
+                            catch {
+                                case e : java.sql.SQLIntegrityConstraintViolationException => complete(StatusCodes.Conflict)
+                            }
                         }
                     }
                 }
             } ~
             (post & path("rollback-v2" / Segment / IntNumber)) { (role, index) =>
-                // Atomic: composed action, then optional meta touch (best-effort).
-                q(roles.filter(_.secret === role).map(_.gameId).result.head.flatMap { id =>
-                    logs.filter(_.gameId === id).filter(_.index >= index).delete
-                })
-                try { touchMeta(q(roles.filter(_.secret === role).map(_.gameId).result.head)) }
-                catch { case _ : Throwable => () }
-                complete(StatusCodes.Accepted)
+                val gameId = try { q(roles.filter(_.secret === role).map(_.gameId).result.head) } catch { case _ : Throwable => -1 }
+                if (gameId >= 0 && frozenGames.contains(gameId)) complete(StatusCodes.ServiceUnavailable, "Game is frozen")
+                else {
+                    q(roles.filter(_.secret === role).map(_.gameId).result.head.flatMap { id =>
+                        logs.filter(_.gameId === id).filter(_.index >= index).delete
+                    })
+                    try { touchMeta(gameId) }
+                    catch { case _ : Throwable => () }
+                    complete(StatusCodes.Accepted)
+                }
             } ~
             (post & path("undo-turn" / Segment / IntNumber)) { (role, index) =>
-                val (ok, msg) = undoTurn(role, index)
-                if (ok) complete(StatusCodes.Accepted)
-                else complete(StatusCodes.Forbidden, msg)
+                val gameId = try { q(roles.filter(_.secret === role).map(_.gameId).result.head) } catch { case _ : Throwable => -1 }
+                if (gameId >= 0 && frozenGames.contains(gameId)) complete(StatusCodes.ServiceUnavailable, "Game is frozen")
+                else {
+                    val (ok, msg) = undoTurn(role, index)
+                    if (ok) complete(StatusCodes.Accepted)
+                    else complete(StatusCodes.Forbidden, msg)
+                }
             } ~
             // ── ADMIN ENDPOINTS (owner-only) ──
             // Gated by ownerToken matching the 5th argv. If ownerToken is empty (not
@@ -493,33 +500,45 @@ object CthulhuWarsOnline {
                 (post & path("write" / Segment / IntNumber)) { (role, index) =>
                     decodeRequest {
                         entity(as[String]) { body =>
-                            val ss = body.split("\n").toList.map(_.ascii)
-                            try {
-                                q(roles.filter(_.secret === role).filter(_.name =!= "#").map(r => (r.name, r.gameId)).result.head.flatMap { case (name, id) =>
-                                    logs ++= 0.until(ss.size).map(n => Log(id, index + n, name, ss(n)))
-                                })
-                                try { touchMeta(q(roles.filter(_.secret === role).filter(_.name =!= "#").map(_.gameId).result.head)) }
-                                catch { case _ : Throwable => () }
-                                complete(StatusCodes.Accepted)
-                            }
-                            catch {
-                                case e : java.sql.SQLIntegrityConstraintViolationException => complete(StatusCodes.Conflict)
+                            val gameId = try { q(roles.filter(_.secret === role).filter(_.name =!= "#").map(_.gameId).result.head) } catch { case _ : Throwable => -1 }
+                            if (gameId >= 0 && frozenGames.contains(gameId)) complete(StatusCodes.ServiceUnavailable, "Game is frozen")
+                            else {
+                                val ss = body.split("\n").toList.map(_.ascii)
+                                try {
+                                    q(roles.filter(_.secret === role).filter(_.name =!= "#").map(r => (r.name, r.gameId)).result.head.flatMap { case (name, id) =>
+                                        logs ++= 0.until(ss.size).map(n => Log(id, index + n, name, ss(n)))
+                                    })
+                                    try { touchMeta(gameId) }
+                                    catch { case _ : Throwable => () }
+                                    complete(StatusCodes.Accepted)
+                                }
+                                catch {
+                                    case e : java.sql.SQLIntegrityConstraintViolationException => complete(StatusCodes.Conflict)
+                                }
                             }
                         }
                     }
                 } ~
                 (post & path("rollback-v2" / Segment / IntNumber)) { (role, index) =>
-                    q(roles.filter(_.secret === role).map(_.gameId).result.head.flatMap { id =>
-                        logs.filter(_.gameId === id).filter(_.index >= index).delete
-                    })
-                    try { touchMeta(q(roles.filter(_.secret === role).map(_.gameId).result.head)) }
-                    catch { case _ : Throwable => () }
-                    complete(StatusCodes.Accepted)
+                    val gameId = try { q(roles.filter(_.secret === role).map(_.gameId).result.head) } catch { case _ : Throwable => -1 }
+                    if (gameId >= 0 && frozenGames.contains(gameId)) complete(StatusCodes.ServiceUnavailable, "Game is frozen")
+                    else {
+                        q(roles.filter(_.secret === role).map(_.gameId).result.head.flatMap { id =>
+                            logs.filter(_.gameId === id).filter(_.index >= index).delete
+                        })
+                        try { touchMeta(gameId) }
+                        catch { case _ : Throwable => () }
+                        complete(StatusCodes.Accepted)
+                    }
                 } ~
                 (post & path("undo-turn" / Segment / IntNumber)) { (role, index) =>
-                    val (ok, msg) = undoTurn(role, index)
-                    if (ok) complete(StatusCodes.Accepted)
-                    else complete(StatusCodes.Forbidden, msg)
+                    val gameId = try { q(roles.filter(_.secret === role).map(_.gameId).result.head) } catch { case _ : Throwable => -1 }
+                    if (gameId >= 0 && frozenGames.contains(gameId)) complete(StatusCodes.ServiceUnavailable, "Game is frozen")
+                    else {
+                        val (ok, msg) = undoTurn(role, index)
+                        if (ok) complete(StatusCodes.Accepted)
+                        else complete(StatusCodes.Forbidden, msg)
+                    }
                 } ~
                 // /mnu/play/<role-secret> — game-join URL. Serve MNU's index.html so
                 // the SPA can pick up the role from window.location and start the
@@ -596,33 +615,45 @@ object CthulhuWarsOnline {
                 (post & path("write" / Segment / IntNumber)) { (role, index) =>
                     decodeRequest {
                         entity(as[String]) { body =>
-                            val ss = body.split("\n").toList.map(_.ascii)
-                            try {
-                                q(roles.filter(_.secret === role).filter(_.name =!= "#").map(r => (r.name, r.gameId)).result.head.flatMap { case (name, id) =>
-                                    logs ++= 0.until(ss.size).map(n => Log(id, index + n, name, ss(n)))
-                                })
-                                try { touchMeta(q(roles.filter(_.secret === role).filter(_.name =!= "#").map(_.gameId).result.head)) }
-                                catch { case _ : Throwable => () }
-                                complete(StatusCodes.Accepted)
-                            }
-                            catch {
-                                case e : java.sql.SQLIntegrityConstraintViolationException => complete(StatusCodes.Conflict)
+                            val gameId = try { q(roles.filter(_.secret === role).filter(_.name =!= "#").map(_.gameId).result.head) } catch { case _ : Throwable => -1 }
+                            if (gameId >= 0 && frozenGames.contains(gameId)) complete(StatusCodes.ServiceUnavailable, "Game is frozen")
+                            else {
+                                val ss = body.split("\n").toList.map(_.ascii)
+                                try {
+                                    q(roles.filter(_.secret === role).filter(_.name =!= "#").map(r => (r.name, r.gameId)).result.head.flatMap { case (name, id) =>
+                                        logs ++= 0.until(ss.size).map(n => Log(id, index + n, name, ss(n)))
+                                    })
+                                    try { touchMeta(gameId) }
+                                    catch { case _ : Throwable => () }
+                                    complete(StatusCodes.Accepted)
+                                }
+                                catch {
+                                    case e : java.sql.SQLIntegrityConstraintViolationException => complete(StatusCodes.Conflict)
+                                }
                             }
                         }
                     }
                 } ~
                 (post & path("rollback-v2" / Segment / IntNumber)) { (role, index) =>
-                    q(roles.filter(_.secret === role).map(_.gameId).result.head.flatMap { id =>
-                        logs.filter(_.gameId === id).filter(_.index >= index).delete
-                    })
-                    try { touchMeta(q(roles.filter(_.secret === role).map(_.gameId).result.head)) }
-                    catch { case _ : Throwable => () }
-                    complete(StatusCodes.Accepted)
+                    val gameId = try { q(roles.filter(_.secret === role).map(_.gameId).result.head) } catch { case _ : Throwable => -1 }
+                    if (gameId >= 0 && frozenGames.contains(gameId)) complete(StatusCodes.ServiceUnavailable, "Game is frozen")
+                    else {
+                        q(roles.filter(_.secret === role).map(_.gameId).result.head.flatMap { id =>
+                            logs.filter(_.gameId === id).filter(_.index >= index).delete
+                        })
+                        try { touchMeta(gameId) }
+                        catch { case _ : Throwable => () }
+                        complete(StatusCodes.Accepted)
+                    }
                 } ~
                 (post & path("undo-turn" / Segment / IntNumber)) { (role, index) =>
-                    val (ok, msg) = undoTurn(role, index)
-                    if (ok) complete(StatusCodes.Accepted)
-                    else complete(StatusCodes.Forbidden, msg)
+                    val gameId = try { q(roles.filter(_.secret === role).map(_.gameId).result.head) } catch { case _ : Throwable => -1 }
+                    if (gameId >= 0 && frozenGames.contains(gameId)) complete(StatusCodes.ServiceUnavailable, "Game is frozen")
+                    else {
+                        val (ok, msg) = undoTurn(role, index)
+                        if (ok) complete(StatusCodes.Accepted)
+                        else complete(StatusCodes.Forbidden, msg)
+                    }
                 } ~
                 pathPrefix("play") {
                     pathPrefix("webp")   { getFromDirectory("../tt/webp") } ~
@@ -694,33 +725,45 @@ object CthulhuWarsOnline {
                 (post & path("write" / Segment / IntNumber)) { (role, index) =>
                     decodeRequest {
                         entity(as[String]) { body =>
-                            val ss = body.split("\n").toList.map(_.ascii)
-                            try {
-                                q(roles.filter(_.secret === role).filter(_.name =!= "#").map(r => (r.name, r.gameId)).result.head.flatMap { case (name, id) =>
-                                    logs ++= 0.until(ss.size).map(n => Log(id, index + n, name, ss(n)))
-                                })
-                                try { touchMeta(q(roles.filter(_.secret === role).filter(_.name =!= "#").map(_.gameId).result.head)) }
-                                catch { case _ : Throwable => () }
-                                complete(StatusCodes.Accepted)
-                            }
-                            catch {
-                                case e : java.sql.SQLIntegrityConstraintViolationException => complete(StatusCodes.Conflict)
+                            val gameId = try { q(roles.filter(_.secret === role).filter(_.name =!= "#").map(_.gameId).result.head) } catch { case _ : Throwable => -1 }
+                            if (gameId >= 0 && frozenGames.contains(gameId)) complete(StatusCodes.ServiceUnavailable, "Game is frozen")
+                            else {
+                                val ss = body.split("\n").toList.map(_.ascii)
+                                try {
+                                    q(roles.filter(_.secret === role).filter(_.name =!= "#").map(r => (r.name, r.gameId)).result.head.flatMap { case (name, id) =>
+                                        logs ++= 0.until(ss.size).map(n => Log(id, index + n, name, ss(n)))
+                                    })
+                                    try { touchMeta(gameId) }
+                                    catch { case _ : Throwable => () }
+                                    complete(StatusCodes.Accepted)
+                                }
+                                catch {
+                                    case e : java.sql.SQLIntegrityConstraintViolationException => complete(StatusCodes.Conflict)
+                                }
                             }
                         }
                     }
                 } ~
                 (post & path("rollback-v2" / Segment / IntNumber)) { (role, index) =>
-                    q(roles.filter(_.secret === role).map(_.gameId).result.head.flatMap { id =>
-                        logs.filter(_.gameId === id).filter(_.index >= index).delete
-                    })
-                    try { touchMeta(q(roles.filter(_.secret === role).map(_.gameId).result.head)) }
-                    catch { case _ : Throwable => () }
-                    complete(StatusCodes.Accepted)
+                    val gameId = try { q(roles.filter(_.secret === role).map(_.gameId).result.head) } catch { case _ : Throwable => -1 }
+                    if (gameId >= 0 && frozenGames.contains(gameId)) complete(StatusCodes.ServiceUnavailable, "Game is frozen")
+                    else {
+                        q(roles.filter(_.secret === role).map(_.gameId).result.head.flatMap { id =>
+                            logs.filter(_.gameId === id).filter(_.index >= index).delete
+                        })
+                        try { touchMeta(gameId) }
+                        catch { case _ : Throwable => () }
+                        complete(StatusCodes.Accepted)
+                    }
                 } ~
                 (post & path("undo-turn" / Segment / IntNumber)) { (role, index) =>
-                    val (ok, msg) = undoTurn(role, index)
-                    if (ok) complete(StatusCodes.Accepted)
-                    else complete(StatusCodes.Forbidden, msg)
+                    val gameId = try { q(roles.filter(_.secret === role).map(_.gameId).result.head) } catch { case _ : Throwable => -1 }
+                    if (gameId >= 0 && frozenGames.contains(gameId)) complete(StatusCodes.ServiceUnavailable, "Game is frozen")
+                    else {
+                        val (ok, msg) = undoTurn(role, index)
+                        if (ok) complete(StatusCodes.Accepted)
+                        else complete(StatusCodes.Forbidden, msg)
+                    }
                 } ~
                 pathPrefix("play") {
                     pathPrefix("webp")   { getFromDirectory("../bb/webp") } ~
@@ -806,6 +849,67 @@ object CthulhuWarsOnline {
                 else {
                     q(liveGames.filter(_.gameId === gameId).delete)
                     complete(StatusCodes.Accepted)
+                }
+            } ~
+            (post & path("admin" / Segment / "freeze" / IntNumber)) { (token, gameId) =>
+                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
+                else {
+                    frozenGames += gameId
+                    complete(StatusCodes.Accepted)
+                }
+            } ~
+            (post & path("admin" / Segment / "unfreeze" / IntNumber)) { (token, gameId) =>
+                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
+                else {
+                    frozenGames -= gameId
+                    complete(StatusCodes.Accepted)
+                }
+            } ~
+            (get & path("frozen" / IntNumber)) { gameId =>
+                if (frozenGames.contains(gameId)) complete(StatusCodes.OK, "frozen")
+                else complete(StatusCodes.OK, "active")
+            } ~
+            (get & path("frozen-by-secret" / Segment)) { secret =>
+                val gameId = try { q(roles.filter(_.secret === secret).filter(_.name =!= "#").map(_.gameId).result.head) } catch { case _ : Throwable => -1 }
+                if (gameId >= 0 && frozenGames.contains(gameId)) complete(StatusCodes.OK, "frozen")
+                else complete(StatusCodes.OK, "active")
+            } ~
+            (get & path("admin" / Segment / "server-stats")) { token =>
+                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
+                else {
+                    val rt = Runtime.getRuntime
+                    val mb = 1024 * 1024
+                    val heapMax = rt.maxMemory / mb
+                    val heapTotal = rt.totalMemory / mb
+                    val heapUsed = (rt.totalMemory - rt.freeMemory) / mb
+                    val heapFree = rt.freeMemory / mb
+                    val cpus = rt.availableProcessors
+                    val threads = Thread.activeCount
+                    val uptime = java.lang.management.ManagementFactory.getRuntimeMXBean.getUptime / 1000
+                    val uptimeD = uptime / 86400
+                    val uptimeH = (uptime % 86400) / 3600
+                    val uptimeM = (uptime % 3600) / 60
+                    val uptimeS = uptime % 60
+                    val gcBeans = java.lang.management.ManagementFactory.getGarbageCollectorMXBeans
+                    val gcInfo = {
+                        import scala.jdk.CollectionConverters._
+                        gcBeans.asScala.map(gc => s"${gc.getName}\t${gc.getCollectionCount}\t${gc.getCollectionTime}").mkString("\n")
+                    }
+                    val osMx = java.lang.management.ManagementFactory.getOperatingSystemMXBean
+                    val loadAvg = osMx.getSystemLoadAverage
+                    val osName = osMx.getName
+                    val osArch = osMx.getArch
+                    val frozenCount = frozenGames.size
+                    val diskInfo = try {
+                        import scala.sys.process._
+                        "df -h /opt/cwo".!!.split("\n").drop(1).headOption.getOrElse("")
+                    } catch { case _ : Throwable => "unavailable" }
+                    val memInfo = try {
+                        import scala.sys.process._
+                        "free -m".!!.split("\n").drop(1).headOption.getOrElse("")
+                    } catch { case _ : Throwable => "unavailable" }
+                    val stats = s"heap_used_mb\t$heapUsed\nheap_total_mb\t$heapTotal\nheap_max_mb\t$heapMax\nheap_free_mb\t$heapFree\ncpus\t$cpus\nthreads\t$threads\nuptime_seconds\t$uptime\nuptime_display\t${uptimeD}d ${uptimeH}h ${uptimeM}m ${uptimeS}s\nload_avg\t$loadAvg\nos\t$osName $osArch\nfrozen_games\t$frozenCount\ndisk\t$diskInfo\nhost_mem\t$memInfo\ngc\n$gcInfo"
+                    txt(stats)
                 }
             } ~
             (get & path("admin" / Segment / "annotation" / IntNumber)) { (token, gameId) =>
