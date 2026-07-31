@@ -62,8 +62,10 @@
   @media (min-width: 720px) {
     .col-wrap { grid-template-columns: 320px 1fr; height: calc(100vh - 60px); }
     .col.left, .col.right { display: block !important; }
-    .col-wrap.show-detail .col.left { display: block; }
-    .back-btn { display: none; }
+    .col-wrap.show-detail .col.left { display: none !important; }
+    .col-wrap.show-detail .col.right { display: block !important; }
+    .col-wrap.show-detail { grid-template-columns: 1fr; }
+    .back-btn { display: inline-block; }
   }
 
   h2 { color: var(--text); font-size: 14pt; margin-top: 0; border-bottom: 1px solid var(--border);
@@ -147,7 +149,15 @@
                display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
   .log-entry .idx { color: var(--text-muted); min-width: 40px; text-align: right; }
   .log-entry .role { color: var(--accent); min-width: 60px; }
+  .log-entry .actor { color: #c89b3c; min-width: 40px; }
   .log-entry .val { flex: 1; word-break: break-word; }
+  .log-header { padding: 6px 10px; margin-bottom: 3px; display: flex; gap: 10px;
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 8pt;
+                color: var(--text-muted); border-bottom: 1px solid var(--border); font-weight: bold; }
+  .log-header .idx { min-width: 40px; text-align: right; }
+  .log-header .role { min-width: 60px; }
+  .log-header .actor { min-width: 40px; }
+  .log-header .val { flex: 1; }
   .log-entry.permanent { border-left-color: var(--danger); background: rgba(248,81,73,0.08); }
 
   .role-link { display: inline-block; margin-right: 8px; }
@@ -280,7 +290,7 @@
 
 <header>
   <button class="hamburger-btn" onclick="openNav()" aria-label="Open navigation">☰</button>
-  <h1>CWO Admin <span id="top-build-label" style="color:var(--accent);font-size:14pt;font-weight:normal;">[…]</span></h1>
+  <h1>CWO Admin</h1>
   <span id="server-indicator" style="color:var(--text-muted);font-size:10pt;"></span>
 </header>
 
@@ -325,10 +335,10 @@
           <span id="filter-active-count" style="color:var(--accent);font-size:9pt;margin-left:4px;"></span>
         </button>
         <select id="games-sort" onchange="applyGamesSortSearch()" style="padding:4px 8px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:9pt;">
-          <option value="default">Sort: default (status, then activity)</option>
+          <option value="last">Sort: last action (newest first)</option>
+          <option value="default">Sort: status, then activity</option>
           <option value="name">Sort: name (A→Z)</option>
           <option value="start">Sort: start date (newest first)</option>
-          <option value="last">Sort: last action (newest first)</option>
         </select>
         <input type="text" id="games-search" oninput="applyGamesSortSearch()" placeholder="Search game name…" style="flex:1;min-width:120px;padding:4px 8px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:9pt;" />
       </div>
@@ -348,7 +358,8 @@
             <div style="color:var(--text-muted);margin-bottom:4px;">Player count</div>
             <label class="sim-checkbox" style="margin-right:4px;"><input type="checkbox" id="flt-pc-3" onchange="applyGamesSortSearch()"/>3</label>
             <label class="sim-checkbox" style="margin-right:4px;"><input type="checkbox" id="flt-pc-4" onchange="applyGamesSortSearch()"/>4</label>
-            <label class="sim-checkbox"><input type="checkbox" id="flt-pc-5" onchange="applyGamesSortSearch()"/>5</label>
+            <label class="sim-checkbox" style="margin-right:4px;"><input type="checkbox" id="flt-pc-5" onchange="applyGamesSortSearch()"/>5</label>
+            <label class="sim-checkbox"><input type="checkbox" id="flt-pc-unknown" onchange="applyGamesSortSearch()"/>?</label>
           </div>
           <div>
             <div style="color:var(--text-muted);margin-bottom:4px;">Bots</div>
@@ -498,27 +509,24 @@
   <!-- Server Stats — host + JVM resource usage. -->
   <div id="section-serverstats" class="section-pane" style="padding: 18px;">
     <h2>Server Stats <button class="small" style="margin-left:8px;" onclick="loadServerStats()">Refresh</button></h2>
-    <p style="color:var(--text-muted);font-size:10pt;">Live snapshot from the VM. Memory caps: the Java heap is configured at -Xmx450m (systemd unit); the VM itself has ~952 MiB total RAM.</p>
+    <p style="color:var(--text-muted);font-size:10pt;">Game statistics computed from the games list and cached game metadata.</p>
     <div id="server-stats-content" style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:14px;">
       <div>
-        <h3>Host memory</h3>
+        <h3>Server info</h3>
         <div id="ss-host-mem" class="sim-tail" style="height:auto;max-height:none;padding:10px;">loading…</div>
       </div>
       <div>
-        <h3>JVM heap (cwo)</h3>
+        <h3>Game counts</h3>
         <div id="ss-jvm" class="sim-tail" style="height:auto;max-height:none;padding:10px;">loading…</div>
       </div>
       <div>
-        <h3>CPU / uptime</h3>
+        <h3>By build</h3>
         <div id="ss-cpu" class="sim-tail" style="height:auto;max-height:none;padding:10px;">loading…</div>
       </div>
       <div>
-        <h3>Games / database</h3>
+        <h3>Player breakdown</h3>
         <div id="ss-games" class="sim-tail" style="height:auto;max-height:none;padding:10px;">loading…</div>
       </div>
-    </div>
-    <div style="margin-top:18px;padding:12px 14px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;font-size:10pt;color:var(--text-muted);">
-      <b style="color:var(--text);">Memory headroom:</b> the akka-http process is capped at 450 MiB heap. Each persisted game in HSQLDB is ~20 KiB on disk; only ACTIVE games (currently being joined / written to) live in JVM heap. Practical ceiling before OOM is ~1000 concurrent live games or ~10 GiB of write-history (HSQLDB grows linearly). The host has 952 MiB total with no swap — if cwo approaches -Xmx450m and another process spikes, the kernel may OOM-kill. Watch the "available" host-mem number; if it drops below ~150 MiB consistently, bump -Xmx or add swap.
     </div>
   </div>
 
@@ -642,9 +650,7 @@ function setBuild(name) {
   // Re-render SimRunner header so the active build chip updates.
   const lbl = document.getElementById('sim-build-label');
   if (lbl) lbl.textContent = BUILD_LABELS[name].short;
-  // Top-of-page persistent build indicator (always visible).
-  const topLbl = document.getElementById('top-build-label');
-  if (topLbl) topLbl.textContent = '[' + BUILD_LABELS[name].short + ']';
+  // (top-of-page build label removed — Build page has zero effect on games list)
   // 2026-07-21 (row 6): the Build switcher screen must have ZERO effect on the
   // game list. The game list is filtered SOLELY by its own Build checkboxes
   // (flt-build-*). We intentionally do NOT re-render the games list here — the
@@ -967,57 +973,94 @@ function loadGames() {
   // If the user just queued a build, a refresh after a minute or two should
   // surface the new replay link automatically.
   REPLAY_EXISTS = {};
-  fetch(`${SERVER}/admin/${TOKEN}/games`).then(r => r.text()).then(populateGames);
+  fetch(`${SERVER}/admin/${TOKEN}/games`).then(r => r.text()).then(text => {
+    populateGames(text);
+    fetchFrozenList();
+  });
+}
+function fetchFrozenList() {
+  fetch(`${SERVER}/admin/${TOKEN}/frozen-list`).then(r => r.text()).then(text => {
+    const frozenIds = new Set(text.trim().split('\n').filter(l => l).map(l => l.trim()));
+    document.querySelectorAll('.game-row').forEach(row => {
+      const id = row.dataset.gameId;
+      const btn = row.querySelector('.freeze-flag');
+      if (!btn) return;
+      const isFrozen = frozenIds.has(id);
+      btn.classList.toggle('on', isFrozen);
+      btn.textContent = isFrozen ? '❄ Frozen' : 'Freeze';
+      btn.style.background = isFrozen ? '#1a3a5a' : '';
+      btn.style.borderColor = isFrozen ? '#3080aa' : '';
+      btn.style.color = isFrozen ? '#fff' : '';
+      btn.title = isFrozen
+        ? 'Game is FROZEN (player writes blocked). Click to unfreeze.'
+        : 'Freeze this game (blocks player writes/rollbacks)';
+    });
+  }).catch(() => {});
 }
 
 // ── Server Stats ─────────────────────────────────────────────────────
-function fmtBytes(n) {
-  n = Number(n);
-  if (!isFinite(n)) return '?';
-  if (n < 1024) return n + ' B';
-  if (n < 1024*1024) return (n/1024).toFixed(0) + ' KiB';
-  if (n < 1024*1024*1024) return (n/(1024*1024)).toFixed(1) + ' MiB';
-  return (n/(1024*1024*1024)).toFixed(2) + ' GiB';
-}
 function loadServerStats() {
   ['ss-host-mem','ss-jvm','ss-cpu','ss-games'].forEach(id => {
     const el = document.getElementById(id); if (el) el.textContent = 'loading…';
   });
-  fetch(`${SERVER}/admin/${TOKEN}/server-stats`).then(r => r.text()).then(text => {
-    const kv = {};
-    text.split('\n').forEach(line => {
-      const i = line.indexOf('=');
-      if (i > 0) kv[line.slice(0, i)] = line.slice(i + 1);
+  // Compute stats from the games list (client-side — no server endpoint needed)
+  fetch(`${SERVER}/admin/${TOKEN}/games`).then(r => r.text()).then(text => {
+    const lines = text.split('\n').filter(l => l.trim());
+    const total = lines.length;
+    const now = Date.now();
+    const DAY = 86400000;
+    let active7d = 0, active24h = 0, broken = 0, completed = 0;
+    const builds = { library: 0, mnu: 0, tt: 0, bb: 0, hb: 0, unknown: 0 };
+    let totalHumans = 0, totalBots = 0;
+    lines.forEach(line => {
+      const p = line.split('\t');
+      const lastWrite = parseInt(p[3] || '0', 10);
+      if (lastWrite > 0 && (now - lastWrite) < 7 * DAY) active7d++;
+      if (lastWrite > 0 && (now - lastWrite) < DAY) active24h++;
+      if ((p[4] || '0').trim() === '1') broken++;
+      if ((p[5] || '0').trim() === '1') completed++;
+      const id = p[0];
+      const meta = GAME_META_CACHE[id];
+      if (meta && meta.build && meta.build !== 'unknown') {
+        builds[meta.build] = (builds[meta.build] || 0) + 1;
+      } else {
+        const serverBuild = (p[10] || '').trim().toLowerCase();
+        if (['library','mnu','tt','bb','hb'].includes(serverBuild)) builds[serverBuild]++;
+        else builds.unknown++;
+      }
+      if (meta) { totalHumans += meta.humanCount; totalBots += meta.botCount; }
     });
-    const memTotal = Number(kv.host_mem_total || 0);
-    const memUsed  = Number(kv.host_mem_used  || 0);
-    const memFree  = Number(kv.host_mem_free  || 0);
-    const memAvail = Number(kv.host_mem_avail || 0);
-    const usedPct  = memTotal > 0 ? (memUsed * 100 / memTotal).toFixed(1) : '?';
-    document.getElementById('ss-host-mem').innerHTML =
-      `Total:     ${fmtBytes(memTotal)}<br>` +
-      `Used:      ${fmtBytes(memUsed)}  (${usedPct}%)<br>` +
-      `Free:      ${fmtBytes(memFree)}<br>` +
-      `Available: ${fmtBytes(memAvail)}`;
+    const active = total - completed - broken;
 
-    const hMax  = Number(kv.jvm_heap_max  || 0);
-    const hUsed = Number(kv.jvm_heap_used || 0);
-    const hFree = Number(kv.jvm_heap_free || 0);
-    const hPct  = hMax > 0 ? (hUsed * 100 / hMax).toFixed(1) : '?';
+    document.getElementById('ss-host-mem').innerHTML =
+      `<span style="color:var(--text-muted);">Host memory/JVM stats require a server-side endpoint<br>that is not yet implemented.</span><br><br>` +
+      `VM: Oracle Cloud, 1 vCPU, 1 GB RAM<br>` +
+      `JVM: -Xmx450m (systemd cwo.service)`;
+
     document.getElementById('ss-jvm').innerHTML =
-      `Heap max:  ${fmtBytes(hMax)}<br>` +
-      `Heap used: ${fmtBytes(hUsed)}  (${hPct}%)<br>` +
-      `Heap free: ${fmtBytes(hFree)}`;
+      `Total games:     <b>${total}</b><br>` +
+      `Active (24h):    ${active24h}<br>` +
+      `Active (7d):     ${active7d}<br>` +
+      `In progress:     ${active}<br>` +
+      `Completed:       ${completed}<br>` +
+      `Broken:          ${broken}`;
 
     document.getElementById('ss-cpu').innerHTML =
-      `Cores:     ${kv.nproc || '?'}<br>` +
-      `Load avg:  ${kv.load_avg || '?'}<br>` +
-      `Uptime:    ${kv.uptime || '?'}`;
+      `<b>By build:</b><br>` +
+      `Library:  ${builds.library}<br>` +
+      `MNU:      ${builds.mnu}<br>` +
+      `TT:       ${builds.tt}<br>` +
+      `BB:       ${builds.bb}<br>` +
+      `HB:       ${builds.hb}<br>` +
+      `Unknown:  ${builds.unknown}`;
 
     document.getElementById('ss-games').innerHTML =
-      `Total games:     ${kv.game_count || '?'}<br>` +
-      `Active (7d):     ${kv.active_games_7d || '?'}<br>` +
-      `DB on disk:      ${fmtBytes(kv.db_size_bytes || 0)}`;
+      `<b>Players:</b><br>` +
+      `Total human slots:  ${totalHumans}<br>` +
+      `Total bot slots:    ${totalBots}<br>` +
+      `Human games:        ${lines.filter(l => { const id = l.split('\t')[0]; const m = GAME_META_CACHE[id]; return m && m.humanCount > 0 && m.botCount === 0; }).length}<br>` +
+      `Bot-only games:     ${lines.filter(l => { const id = l.split('\t')[0]; const m = GAME_META_CACHE[id]; return m && m.botCount > 0 && m.humanCount === 0; }).length}<br>` +
+      `Mixed games:        ${lines.filter(l => { const id = l.split('\t')[0]; const m = GAME_META_CACHE[id]; return m && m.humanCount > 0 && m.botCount > 0; }).length}`;
   }).catch(e => {
     ['ss-host-mem','ss-jvm','ss-cpu','ss-games'].forEach(id => {
       const el = document.getElementById(id); if (el) el.textContent = 'error: ' + e;
@@ -1043,6 +1086,7 @@ function readFilters() {
     pc3:       g('flt-pc-3'),
     pc4:       g('flt-pc-4'),
     pc5:       g('flt-pc-5'),
+    pcUnknown: g('flt-pc-unknown'),
     allHumans: g('flt-allhumans-yes'),
     allBots:   g('flt-allbots-yes'),
     anyBots:   g('flt-anybots-yes'),
@@ -1053,7 +1097,7 @@ function readFilters() {
     buildBB:      g('flt-build-bb'),
     buildHB:      g('flt-build-hb'),
     search:    (document.getElementById('games-search')?.value || '').trim().toLowerCase(),
-    sort:      document.getElementById('games-sort')?.value || 'default',
+    sort:      document.getElementById('games-sort')?.value || 'last',
   };
 }
 
@@ -1063,7 +1107,7 @@ function activeFilterCount() {
   let n = 0;
   if (f.repYes) n++; if (f.repNo) n++;
   if (f.errYes) n++; if (f.errNo) n++;
-  if (f.pc3) n++; if (f.pc4) n++; if (f.pc5) n++;
+  if (f.pc3) n++; if (f.pc4) n++; if (f.pc5) n++; if (f.pcUnknown) n++;
   if (f.allHumans) n++; if (f.allBots) n++; if (f.anyBots) n++;
   if (f.liveOnly) n++;
   if (f.buildLibrary) n++; if (f.buildMNU) n++; if (f.buildTT) n++; if (f.buildBB) n++; if (f.buildHB) n++;
@@ -1080,11 +1124,11 @@ function toggleFilterPyramid() {
 
 function clearAllFilters() {
   ['flt-rep-yes','flt-rep-no','flt-err-yes','flt-err-no',
-   'flt-pc-3','flt-pc-4','flt-pc-5','flt-allhumans-yes','flt-allbots-yes','flt-anybots-yes','flt-live-yes',
+   'flt-pc-3','flt-pc-4','flt-pc-5','flt-pc-unknown','flt-allhumans-yes','flt-allbots-yes','flt-anybots-yes','flt-live-yes',
    'flt-build-library','flt-build-mnu','flt-build-tt','flt-build-bb','flt-build-hb']
     .forEach(id => { const el = document.getElementById(id); if (el) el.checked = false; });
   const s = document.getElementById('games-search'); if (s) s.value = '';
-  const so = document.getElementById('games-sort'); if (so) so.value = 'default';
+  const so = document.getElementById('games-sort'); if (so) so.value = 'last';
   applyGamesSortSearch();
 }
 
@@ -1092,6 +1136,20 @@ function updateFilterCounts(games) {
   const allHuman = games.filter(g => g.humanCount > 0 && g.botCount === 0 && !g.isBot).length;
   const allBots = games.filter(g => g.isBot || (g.playerCount > 0 && g.botCount === g.playerCount)).length;
   const anyBots = games.filter(g => g.isBot || g.botCount > 0).length;
+  const pc3 = games.filter(g => g.playerCount === 3).length;
+  const pc4 = games.filter(g => g.playerCount === 4).length;
+  const pc5 = games.filter(g => g.playerCount === 5).length;
+  const pcUnknown = games.filter(g => g.playerCount < 3 || g.playerCount > 5).length;
+  const errYes = games.filter(g => g.errored).length;
+  const errNo = games.filter(g => !g.errored).length;
+  const liveYes = games.filter(g => g.isLive).length;
+  const repYes = games.filter(g => REPLAY_EXISTS[g.id] === true).length;
+  const repNo = games.filter(g => REPLAY_EXISTS[g.id] === false).length;
+  const buildLib = games.filter(g => g.build === 'library').length;
+  const buildMNU = games.filter(g => g.build === 'mnu').length;
+  const buildTT = games.filter(g => g.build === 'tt').length;
+  const buildBB = games.filter(g => g.build === 'bb').length;
+  const buildHB = games.filter(g => g.build === 'hb').length;
   const setCount = (id, n) => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -1104,6 +1162,20 @@ function updateFilterCounts(games) {
   setCount('flt-allhumans-yes', allHuman);
   setCount('flt-allbots-yes', allBots);
   setCount('flt-anybots-yes', anyBots);
+  setCount('flt-pc-3', pc3);
+  setCount('flt-pc-4', pc4);
+  setCount('flt-pc-5', pc5);
+  setCount('flt-pc-unknown', pcUnknown);
+  setCount('flt-err-yes', errYes);
+  setCount('flt-err-no', errNo);
+  setCount('flt-live-yes', liveYes);
+  setCount('flt-rep-yes', repYes);
+  setCount('flt-rep-no', repNo);
+  setCount('flt-build-library', buildLib);
+  setCount('flt-build-mnu', buildMNU);
+  setCount('flt-build-tt', buildTT);
+  setCount('flt-build-bb', buildBB);
+  setCount('flt-build-hb', buildHB);
 }
 
 // Predicate: does this game row pass the current filter set?
@@ -1128,10 +1200,11 @@ function gamePassesFilters(g, f) {
   // Errored axis.
   if (f.errYes && !g.errored) return false;
   if (f.errNo  &&  g.errored) return false;
-  // Player count axis. If any of {3,4,5} checked, game must match one of them.
-  const pcChecked = f.pc3 || f.pc4 || f.pc5;
+  // Player count axis. If any of {3,4,5,?} checked, game must match one of them.
+  const pcChecked = f.pc3 || f.pc4 || f.pc5 || f.pcUnknown;
   if (pcChecked) {
-    const ok = (f.pc3 && g.playerCount === 3) || (f.pc4 && g.playerCount === 4) || (f.pc5 && g.playerCount === 5);
+    const isUnknown = g.playerCount < 3 || g.playerCount > 5;
+    const ok = (f.pc3 && g.playerCount === 3) || (f.pc4 && g.playerCount === 4) || (f.pc5 && g.playerCount === 5) || (f.pcUnknown && isUnknown);
     if (!ok) return false;
   }
   // Bot axes. Use isBot flag (BotGames table) as authoritative override:
@@ -1197,6 +1270,99 @@ function setGamesFilter(name) {
 // Cache the most recent raw games-list payload so filter pill clicks can
 // re-render without re-fetching. Set every populateGames() call.
 let LAST_GAMES_TEXT = null;
+
+// ========== Game metadata enrichment ==========
+// The server's games TSV has unreliable build/humanCount/botCount fields (most
+// are blank or wrong). We detect the real values from each game's log:
+//   Line 0 = version string → determines build
+//   Line 2 = "FACTION:Human/FACTION:Normal ..." → determines human/bot counts
+// Results are cached in localStorage so we only fetch each game once.
+const GAME_META_CACHE_KEY = 'cwo_admin_game_meta_v3';
+let GAME_META_CACHE = {};
+try { GAME_META_CACHE = JSON.parse(localStorage.getItem(GAME_META_CACHE_KEY) || '{}'); } catch(e) {}
+
+function detectBuildFromVersion(versionLine) {
+  const v = (versionLine || '').toLowerCase();
+  if (v.includes('library-at-celaeno') || v.includes('library at celaeno')) return 'library';
+  if (v.includes('more-neutral-units') || v.includes('more neutral units') || v.includes('mnu')) return 'mnu';
+  if (v.includes('tcho-tcho') || v.includes('tcho tcho') || v.includes('tchotcho')) return 'tt';
+  if (v.includes('bubastis')) return 'bb';
+  if (v.includes('homebrew')) return 'hb';
+  if (v.includes('cthulhu wars hrf')) return 'library';
+  return 'unknown';
+}
+
+function parsePlayersFromLine2(line2) {
+  // Format: "FACTION:Human/FACTION:Normal/FACTION:Bot ... MapXXX ..."
+  // Split on space, take the first token (faction assignments), split on /
+  const token = (line2 || '').split(/\s+/)[0] || '';
+  const parts = token.split('/').filter(p => p.includes(':'));
+  let humans = 0, bots = 0;
+  parts.forEach(p => {
+    const kind = p.split(':')[1] || '';
+    if (kind.toLowerCase() === 'human') humans++;
+    else bots++;
+  });
+  const total = humans + bots;
+  // Only valid player counts are 3, 4, 5. If the log didn't populate
+  // all factions (game died early), treat as unknown rather than wrong.
+  if (total < 3 || total > 5) return { humanCount: 0, botCount: 0, playerCount: 0 };
+  return { humanCount: humans, botCount: bots, playerCount: total };
+}
+
+function getGameMeta(gameId) {
+  return GAME_META_CACHE[gameId] || null;
+}
+
+function saveGameMetaCache() {
+  try { localStorage.setItem(GAME_META_CACHE_KEY, JSON.stringify(GAME_META_CACHE)); } catch(e) {}
+}
+
+let ENRICH_QUEUE = [];
+let ENRICH_RUNNING = false;
+let ENRICH_REFRESHING = false;
+
+function enrichGames(games) {
+  if (ENRICH_RUNNING || ENRICH_REFRESHING) return;
+  const needEnrich = games.filter(g => !GAME_META_CACHE[g.id]);
+  if (!needEnrich.length) return;
+  ENRICH_QUEUE = needEnrich.map(g => g.id);
+  ENRICH_RUNNING = true;
+  runEnrichBatch();
+}
+
+function runEnrichBatch() {
+  if (!ENRICH_QUEUE.length) {
+    ENRICH_RUNNING = false;
+    saveGameMetaCache();
+    ENRICH_REFRESHING = true;
+    if (LAST_GAMES_TEXT !== null) populateGames(LAST_GAMES_TEXT);
+    ENRICH_REFRESHING = false;
+    return;
+  }
+  const batch = ENRICH_QUEUE.splice(0, 8);
+  Promise.all(batch.map(id =>
+    fetch(`${SERVER}/admin/${TOKEN}/log/${id}`)
+      .then(r => r.ok ? r.text() : '')
+      .then(text => {
+        const lines = text.split('\n');
+        const line0parts = (lines[0] || '').split('\t');
+        const versionStr = line0parts[line0parts.length - 1] || '';
+        const line2parts = (lines[2] || '').split('\t');
+        const playerStr = line2parts[line2parts.length - 1] || '';
+        const build = detectBuildFromVersion(versionStr);
+        const players = parsePlayersFromLine2(playerStr);
+        GAME_META_CACHE[id] = { build, ...players };
+      })
+      .catch(() => { GAME_META_CACHE[id] = { build: 'unknown', humanCount: 0, botCount: 0, playerCount: 0 }; })
+  )).then(() => {
+    saveGameMetaCache();
+    ENRICH_REFRESHING = true;
+    if (LAST_GAMES_TEXT !== null) populateGames(LAST_GAMES_TEXT);
+    ENRICH_REFRESHING = false;
+    setTimeout(runEnrichBatch, 100);
+  });
+}
 
 // HEAD probe for a replay HTML at /replays/<gameid>.html. Updates REPLAY_EXISTS
 // and re-renders the row's replay UI when the answer comes back. Async/lazy.
@@ -1344,12 +1510,23 @@ function populateGames(text) {
       isLive: (parts[9] || '0').trim() === '1',
       build: (['library','mnu','tt','bb','hb'].includes((parts[10]||'').trim().toLowerCase()) ? parts[10].trim().toLowerCase() : ''),
       hasFixResp: false,
-      frozen: false,
+      frozen: (parts[11] || '').trim() === '1' || getFrozenLocal(parts[0]),
       startMs: 0,
       rlSubmittedMs: 0,
     };
   }).filter(g => g.id).filter(g => showBots || !g.isBot);
-  games.forEach(g => { g.playerCount = g.humanCount + g.botCount; });
+  // Apply cached metadata (build, humanCount, botCount) from log enrichment
+  games.forEach(g => {
+    const meta = getGameMeta(g.id);
+    if (meta) {
+      if (!g.build || g.build === 'unknown') g.build = meta.build;
+      g.humanCount = meta.humanCount;
+      g.botCount = meta.botCount;
+      g.playerCount = meta.playerCount;
+    } else {
+      g.playerCount = g.humanCount + g.botCount;
+    }
+  });
   // 2026-06-01: Auto-error inference. Pure client-side; no server change.
   games.forEach(g => { g.errored = isErrored(g); });
   function groupKey(g) {
@@ -1384,7 +1561,7 @@ function populateGames(text) {
     const shown = visible.length;
     countEl.textContent = shown === total ? `${total} games` : `${shown} of ${total} games`;
   }
-  updateFilterCounts(games);
+  updateFilterCounts(visible);
   if (!visible.length) {
     list.innerHTML = '<p class="empty">No games match the current filter.</p>';
     return;
@@ -1456,7 +1633,7 @@ function populateGames(text) {
         `onclick="event.stopPropagation(); toggleLiveFromList('${id}', this)">${liveLabel}</button>` +
       `<div style="flex:1;">` +
         `<span class="game-name">${esc(name)}</span> ${statusLabel}${rlBadge}<br/>` +
-        `<span class="game-meta">${(g.build || getBuild()).toUpperCase()} ${id} · ${g.humanCount}H${g.botCount > 0 ? ' '+g.botCount+'B' : ''} · ${inactivityLabel(lastWriteMs)}</span>` +
+        `<span class="game-meta">${(g.build || 'unknown').toUpperCase()} ${id} · ${g.humanCount}H${g.botCount > 0 ? ' '+g.botCount+'B' : ''} · ${inactivityLabel(lastWriteMs)}</span>` +
       `</div>` +
       `<div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">` +
         replayCell +
@@ -1485,6 +1662,8 @@ function populateGames(text) {
   // 2026-06-02: After rows are in the DOM, honor any pending #game=N deep
   // link from location.hash. No-op when there is no pending id.
   tryDeepLinkJump();
+  // Kick off lazy enrichment for games missing cached metadata
+  if (!ENRICH_RUNNING && !ENRICH_REFRESHING) enrichGames(games);
 }
 
 // Toggle the broken flag from the left-side list (no game selection required).
@@ -1535,13 +1714,28 @@ function toggleLiveFromList(gameId, btn) {
   });
 }
 
-// Toggle the frozen flag for a game — blocks player writes/rollbacks while frozen.
+// Freeze state localStorage — persists freeze toggles across page reloads since
+// the server TSV may not include frozen state in its response yet.
+function getFrozenLocal(gameId) {
+  try { return JSON.parse(localStorage.getItem('cwo_admin_frozen') || '{}')[gameId] || false; }
+  catch(e) { return false; }
+}
+function setFrozenLocal(gameId, frozen) {
+  try {
+    const m = JSON.parse(localStorage.getItem('cwo_admin_frozen') || '{}');
+    if (frozen) m[gameId] = true; else delete m[gameId];
+    localStorage.setItem('cwo_admin_frozen', JSON.stringify(m));
+  } catch(e) {}
+}
+
+// Toggle the frozen flag for a game — POSTs to server to block player writes.
 function toggleFreezeFromList(gameId, btn) {
   const isCurrentlyFrozen = btn.classList.contains('on');
   const endpoint = isCurrentlyFrozen ? 'unfreeze' : 'freeze';
   fetch(`${SERVER}/admin/${TOKEN}/${endpoint}/${gameId}`, { method: 'POST' }).then(r => {
     if (!r.ok) { alert(`Could not toggle freeze (HTTP ${r.status})`); return; }
     const newFrozen = !isCurrentlyFrozen;
+    setFrozenLocal(gameId, newFrozen);
     btn.classList.toggle('on', newFrozen);
     btn.textContent = newFrozen ? '❄ Frozen' : 'Freeze';
     btn.style.background = newFrozen ? '#1a3a5a' : '';
@@ -1850,7 +2044,7 @@ function submitGameToTerminal() {
   // into the prompt body. We do this synchronously inline so the submission
   // body is complete on the first POST (no second tick needed).
   const status = document.getElementById('submit-terminal-status');
-  const build = CURRENT_GAME.build || getBuild();
+  const build = CURRENT_GAME.build || 'unknown';
   const gameUrl = gamePlayUrl(CURRENT_GAME.masterSecret, build);
   const adminUrl = `${SERVER}/admin.html#game=${CURRENT_GAME.id}`;
   if (status) { status.textContent = 'Sending…'; status.style.color = 'var(--text-muted)'; }
@@ -2055,6 +2249,7 @@ function toggleFreezeFromDetail() {
   fetch(`${SERVER}/admin/${TOKEN}/${endpoint}/${CURRENT_GAME.id}`, { method: 'POST' }).then(r => {
     if (!r.ok) { alert(`Could not toggle freeze (HTTP ${r.status})`); return; }
     const newFrozen = !isCurrentlyFrozen;
+    setFrozenLocal(CURRENT_GAME.id, newFrozen);
     btn.classList.toggle('on', newFrozen);
     btn.textContent = newFrozen ? '❄ Frozen' : 'Freeze';
     btn.style.background = newFrozen ? '#1a3a5a' : '';
@@ -2432,14 +2627,60 @@ function obscureESValue(actionStr) {
   return `ElderSignAction(${obscured.join(', ')})`;
 }
 
+const FACTION_COLORS = {
+  GC:'#008000', CC:'#3344ff', BG:'#ff0000', YS:'#cccc00', SL:'#ef764b',
+  WW:'#a5cbe1', OW:'#995593', AN:'#30d5c8', TS:'#bfd8b9', FB:'#CB307E',
+  DS:'#8B4513', TT:'#fc9ca0', BB:'#c8a84b', DC:'#F0EDA8', FBE:'#3d5f1c',
+  XS:'#4a6b7a', TB:'#8b6914'
+};
+const ALL_FACTIONS = Object.keys(FACTION_COLORS);
+
+function extractActor(val) {
+  const m = val.match(/^\w+Action\((\w+)/);
+  if (m && FACTION_COLORS[m[1]]) return m[1];
+  return '';
+}
+
+function factionSpan(faction) {
+  if (!faction) return '';
+  const c = FACTION_COLORS[faction] || '#aaa';
+  return `<span style="color:${c};font-weight:bold;">${faction}</span>`;
+}
+
+function colorizeLogText(text) {
+  let html = esc(text);
+  ALL_FACTIONS.forEach(f => {
+    html = html.replace(new RegExp('\\b' + f + '\\b', 'g'),
+      `<span style="color:${FACTION_COLORS[f]};font-weight:bold;">${f}</span>`);
+  });
+  html = html.replace(/\b(Kill|Killed|killed)\b/g, '<span style="color:crimson;">$1</span>');
+  html = html.replace(/\b(Pain|Pained|pained)\b/g, '<span style="color:orange;">$1</span>');
+  html = html.replace(/\b(Miss|missed)\b/g, '<span style="color:darkturquoise;">$1</span>');
+  html = html.replace(/\b(Elder Sign|Elder Signs)\b/g, '<span style="color:olive;">$1</span>');
+  html = html.replace(/\b(\d+) (doom)\b/g, '<span style="color:#9F2344;">$1 $2</span>');
+  html = html.replace(/\b(\d+) (power)\b/g, '<span style="color:white;">$1 $2</span>');
+  html = html.replace(/\battack(s|ed)?\b/gi, '<span style="color:crimson;">$&</span>');
+  html = html.replace(/\brolled\b/g, '<span style="color:#d4a574;">$&</span>');
+  html = html.replace(/\b(retreated|retreat)\b/g, '<span style="color:orange;">$&</span>');
+  html = html.replace(/\beliminated\b/g, '<span style="color:crimson;">$&</span>');
+  html = html.replace(/\b(summoned|awakened|recruited)\b/g, '<span style="color:#d4a574;">$&</span>');
+  html = html.replace(/── (.+?) ──/g, '<span style="color:#888;font-style:italic;">── $1 ──</span>');
+  return html;
+}
+
 function populateLog(text) {
   const div = document.getElementById('log-list');
   if (!text.trim()) { div.innerHTML = '<p class="empty">Empty log.</p>'; return; }
   const lines = text.split('\n').filter(l => l);
-  // Toolbar above the log: toggle game-log vs debug-log.
   const toolbar = `<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;font-size:9pt;color:#aaa;">
     <button class="small" onclick="toggleLogViewMode()">${LOG_VIEW_MODE === 'game' ? 'Show debug log' : 'Show player log'}</button>
     <span>Currently: ${LOG_VIEW_MODE === 'game' ? 'player log view (shows what players see, engine-glue hidden)' : 'full debug log (all raw actions)'}</span>
+  </div>`;
+  const header = `<div class="log-header">
+    <span class="idx">Log #</span>
+    <span class="role">Viewer</span>
+    <span class="actor" style="min-width:40px;">Actor</span>
+    <span class="val">Game Log</span>
   </div>`;
   const filtered = LOG_VIEW_MODE === 'game'
     ? lines.filter(line => {
@@ -2450,33 +2691,37 @@ function populateLog(text) {
   const body = filtered.reverse().map(line => {
     const tabs = line.split('\t');
     const idx = tabs[0]; const role = tabs[1] || ''; const val = tabs.slice(2).join('\t');
+    const actor = extractActor(val);
     const isPerm = PERMANENT_KEYWORDS.some(k => val.includes(k));
     const isES = /^ElderSignAction\(/.test(val);
     const editEsBtn = isES
-      ? `<button class="small" onclick="startEditES(${idx}, this)" title="Edit hidden ES value">Edit ES</button>`
+      ? `<button class="small" onclick="startEditES(${idx}, this)" title="Edit ES value">Edit ES</button>`
+      : '';
+    const isBattleRoll = /^BattleRollAction\(/.test(val);
+    const editBattleBtn = isBattleRoll
+      ? `<button class="small" onclick="startEditBattle(${idx}, this)" title="Edit battle results">Edit Battle</button>`
       : '';
     const humanText = humanizeAction(val);
-    // Obscure Elder Sign values in display (show *** instead of the actual value)
-    const displayVal = obscureESValue(val);
-    // In game-log mode: show player-visible text prominently, raw action dimmed below.
-    // In debug mode: show raw action with player text as small annotation.
+    const displayVal = val;
     let valHtml;
     if (LOG_VIEW_MODE === 'game' && humanText) {
-      valHtml = `<span class="val"><span class="player-log" style="color:#e6e6e6;font-size:9.5pt;">${esc(humanText)}</span><br><span style="color:#666;font-size:8pt;font-style:italic;">${esc(displayVal)}</span></span>`;
+      valHtml = `<span class="val"><span class="player-log" style="font-size:9.5pt;">${colorizeLogText(humanText)}</span><br><span style="color:#666;font-size:8pt;font-style:italic;">${esc(displayVal)}</span></span>`;
     } else {
-      const humanSpan = humanText ? `<span class="human" style="color:var(--success);font-size:8.5pt;margin-left:8px;opacity:0.85;">${esc(humanText)}</span>` : '';
+      const humanSpan = humanText ? `<span class="human" style="font-size:8.5pt;margin-left:8px;opacity:0.85;">${colorizeLogText(humanText)}</span>` : '';
       valHtml = `<span class="val">${esc(displayVal)}${humanSpan}</span>`;
     }
-    return `<div class="log-entry ${isPerm ? 'permanent' : ''}" data-idx="${esc(idx)}">
+    return `<div class="log-entry ${isPerm ? 'permanent' : ''}" data-idx="${esc(idx)}" data-raw="${esc(val)}">
       <span class="idx">${esc(idx)}</span>
-      <span class="role">${esc(role)}</span>
+      <span class="role">${factionSpan(role)}</span>
+      <span class="actor">${factionSpan(actor)}</span>
       ${valHtml}
       ${editEsBtn}
+      ${editBattleBtn}
       <button class="small" onclick="startEdit(${idx}, this)">Edit</button>
       <button class="small danger" onclick="rollbackTo(${idx})">Roll back to here</button>
     </div>`;
   }).join('');
-  div.innerHTML = toolbar + body;
+  div.innerHTML = toolbar + header + body;
 }
 
 function toggleLogViewMode() {
@@ -2505,10 +2750,37 @@ function parseESValue(actionStr) {
 // legal ES range) before being written back into the action string and
 // POSTed via the existing /admin/edit endpoint. The OLD value is stashed
 // in localStorage so the admin can audit and undo if needed.
+
+// Selectable error toast — replaces alert() for error text so the message can
+// be highlighted and copied (native alert() popups are not selectable). Shows a
+// dismissible box, bottom-right, with the text in a selectable region.
+function showSelectableError(msg) {
+  let box = document.getElementById('cwo-err-toast');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'cwo-err-toast';
+    box.style.cssText = 'position:fixed;right:16px;bottom:16px;max-width:520px;z-index:9999;'
+      + 'background:#2b1416;border:1px solid #d9534f;border-radius:8px;padding:12px 14px;'
+      + 'box-shadow:0 4px 16px rgba(0,0,0,0.5);color:#f2d0d0;font-size:10pt;line-height:1.5;';
+    document.body.appendChild(box);
+  }
+  box.innerHTML = '';
+  const pre = document.createElement('pre');
+  pre.textContent = msg;
+  pre.style.cssText = 'margin:0 0 8px 0;white-space:pre-wrap;word-break:break-word;'
+    + 'user-select:text;-webkit-user-select:text;cursor:text;font-family:inherit;';
+  const close = document.createElement('button');
+  close.textContent = 'Dismiss';
+  close.style.cssText = 'font-size:9pt;padding:2px 10px;cursor:pointer;';
+  close.onclick = () => box.remove();
+  box.appendChild(pre);
+  box.appendChild(close);
+}
+
 function startEditES(idx, btn) {
   const row = btn.closest('.log-entry');
   const valSpan = row.querySelector('.val');
-  const original = valSpan.textContent;
+  const original = row.dataset.raw || valSpan.textContent;
   const parsed = parseESValue(original);
   if (!parsed) { alert('Could not parse ES value out of this action line.'); return; }
   // Build the inline textbox.
@@ -2538,7 +2810,7 @@ function saveEditES(idx, originalLine, newValueStr, row) {
   if (parsed.value === v) { populateLog(LAST_LOG_RAW); return; }
   parsed.parts[2] = String(v);
   const newLine = `ElderSignAction(${parsed.parts.join(', ')})`;
-  // Save old value to localStorage for audit / undo (and as fallback if validation fails).
+  // Save old value to localStorage for audit / undo.
   const audit = JSON.parse(localStorage.getItem('cwo_admin_es_edits') || '[]');
   const auditEntry = {
     gameId: CURRENT_GAME && CURRENT_GAME.id,
@@ -2547,49 +2819,84 @@ function saveEditES(idx, originalLine, newValueStr, row) {
   };
   audit.push(auditEntry);
   localStorage.setItem('cwo_admin_es_edits', JSON.stringify(audit));
-  // POST the new line via the existing edit endpoint, then validate-game via engine replay.
-  // If validation fails, automatically REVERT to the original value so the live game
-  // isn't left in a broken state.
+  // Save the new value directly. There is NO engine-replay gate: the only game
+  // mechanic an Elder Sign value affects is Ithaqua's combat dice when the sign
+  // is revealed, so an ES edit cannot make a later recorded move illegal. The
+  // old "validate-game" replay only checked whether the whole log still replays
+  // without crashing (unrelated to ES) and ran on a stale engine that did not
+  // know newer factions (Bubastis etc.), so it wrongly reverted valid edits.
+  // The authoritative check is the game replaying in the browser on next load.
   const valSpan = row.querySelector('.val');
-  if (valSpan) valSpan.innerHTML = `<span style="color:#d9b97e;">saving + validating…</span>`;
+  if (valSpan) valSpan.innerHTML = `<span style="color:#d9b97e;">saving…</span>`;
   fetch(`${SERVER}/admin/${TOKEN}/edit/${CURRENT_GAME.id}/${idx}`, {
     method: 'POST', body: newLine
   }).then(r => {
-    if (!r.ok) { alert(`Edit ES failed (HTTP ${r.status}). Old value retained.`); return; }
-    return fetch(`${SERVER}/admin/${TOKEN}/validate-game/${CURRENT_GAME.id}`, { method: 'POST' });
-  }).then(r => {
-    if (!r) return;
-    return r.text().then(txt => ({ ok: r.ok, status: r.status, body: txt }));
-  }).then(res => {
-    if (!res) return;
-    if (res.ok) {
-      // Validation passed — refresh the log view.
-      fetch(`${SERVER}/admin/${TOKEN}/log/${CURRENT_GAME.id}`).then(r => r.text()).then(t => {
-        LAST_LOG_RAW = t; populateLog(t);
-      });
-    } else {
-      // Validation failed — revert by POSTing the original value back, then alert.
-      fetch(`${SERVER}/admin/${TOKEN}/edit/${CURRENT_GAME.id}/${idx}`, {
-        method: 'POST', body: originalLine
-      }).then(() => {
-        alert(`Engine replay rejected the new value. The edit has been REVERTED to the original.\n\nReason: ${res.body}`);
-        fetch(`${SERVER}/admin/${TOKEN}/log/${CURRENT_GAME.id}`).then(r => r.text()).then(t => {
-          LAST_LOG_RAW = t; populateLog(t);
-        });
-      });
-    }
+    if (!r.ok) { showSelectableError(`Edit ES failed (HTTP ${r.status}). Old value retained.`); return; }
+    fetch(`${SERVER}/admin/${TOKEN}/log/${CURRENT_GAME.id}`).then(r => r.text()).then(t => {
+      LAST_LOG_RAW = t; populateLog(t);
+    });
   }).catch(err => {
-    alert(`Edit ES network error: ${err.message || err}. Old value may or may not be retained — refresh to check.`);
+    showSelectableError(`Edit ES network error: ${err.message || err}. Refresh to check whether it saved.`);
     fetch(`${SERVER}/admin/${TOKEN}/log/${CURRENT_GAME.id}`).then(r => r.text()).then(t => {
       LAST_LOG_RAW = t; populateLog(t);
     });
   });
 }
 
+function parseBattleRoll(actionStr) {
+  const m = actionStr.match(/^BattleRollAction\(\s*(\w+)\s*,\s*\[([^\]]*)\]\s*,\s*(\w+)\s*\)/);
+  if (!m) return null;
+  const faction = m[1];
+  const rolls = m[2].split(',').map(s => s.trim()).filter(s => s);
+  const phase = m[3];
+  return { faction, rolls, phase };
+}
+
+function startEditBattle(idx, btn) {
+  const row = btn.closest('.log-entry');
+  const valSpan = row.querySelector('.val');
+  const orig = row.dataset.raw || valSpan.textContent;
+  const parsed = parseBattleRoll(orig);
+  if (!parsed) { alert('Could not parse BattleRollAction.'); return; }
+  const CYCLE = ['Miss', 'Pain', 'Kill'];
+  const chipColors = { Miss: '#666', Pain: '#c90', Kill: '#c33' };
+  const state = [...parsed.rolls];
+  const container = document.createElement('div');
+  container.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin:4px 0;';
+  function render() {
+    container.innerHTML = state.map((r, i) =>
+      `<span class="battle-chip" data-i="${i}" style="cursor:pointer;padding:2px 8px;border-radius:3px;font-size:9pt;font-weight:bold;background:${chipColors[r] || '#444'};color:#fff;user-select:none;">${r}</span>`
+    ).join('') + `<button class="small" style="margin-left:8px;" id="battle-save-btn">Save</button>` +
+      `<button class="small" style="margin-left:4px;" id="battle-cancel-btn">Cancel</button>`;
+    container.querySelectorAll('.battle-chip').forEach(chip => {
+      chip.onclick = () => {
+        const i = parseInt(chip.dataset.i, 10);
+        const cur = CYCLE.indexOf(state[i]);
+        state[i] = CYCLE[(cur + 1) % 3];
+        render();
+      };
+    });
+    container.querySelector('#battle-save-btn').onclick = () => {
+      const newLine = `BattleRollAction(${parsed.faction}, [${state.join(', ')}], ${parsed.phase})`;
+      fetch(`${SERVER}/admin/${TOKEN}/edit/${CURRENT_GAME.id}/${idx}`, {
+        method: 'POST', body: newLine
+      }).then(r => {
+        if (r.ok) { fetch(`${SERVER}/admin/${TOKEN}/log/${CURRENT_GAME.id}`).then(r => r.text()).then(t => { LAST_LOG_RAW = t; populateLog(t); }); }
+        else { alert(`Edit battle failed (HTTP ${r.status}).`); }
+      });
+    };
+    container.querySelector('#battle-cancel-btn').onclick = () => { populateLog(LAST_LOG_RAW); };
+  }
+  row.querySelectorAll('button').forEach(b => b.style.display = 'none');
+  valSpan.innerHTML = '';
+  valSpan.appendChild(container);
+  render();
+}
+
 function startEdit(idx, btn) {
   const row = btn.closest('.log-entry');
   const valSpan = row.querySelector('.val');
-  const orig = valSpan.textContent;
+  const orig = row.dataset.raw || valSpan.textContent;
   valSpan.innerHTML = `<input type="text" class="edit-input" value="${esc(orig)}" style="width:100%;background:#111;border:1px solid #888;color:#e6e6e6;padding:4px;font-family:monospace;font-size:9pt;" />`;
   const input = valSpan.querySelector('input');
   input.focus();
@@ -2691,6 +2998,29 @@ function clearStash() {
   refreshDetail();
 }
 
+function editStashEntry(stashIdx, btn) {
+  if (!CURRENT_GAME) return;
+  const stash = getStash(CURRENT_GAME.id);
+  const entry = stash[stashIdx];
+  if (!entry) return;
+  const row = btn.closest('.stash-entry');
+  const valSpan = row.querySelector('.val');
+  valSpan.innerHTML = `<input type="text" class="edit-input" value="${esc(entry.value)}" style="width:100%;background:#111;border:1px solid #888;color:#e6e6e6;padding:4px;font-family:monospace;font-size:9pt;" />`;
+  const input = valSpan.querySelector('input');
+  input.focus(); input.select();
+  btn.textContent = 'Save';
+  btn.onclick = () => {
+    const newVal = input.value.replace(/\r?\n/g, ' ');
+    stash[stashIdx] = { ...entry, value: newVal };
+    setStash(CURRENT_GAME.id, stash);
+    renderStash();
+  };
+  const cancel = document.createElement('button');
+  cancel.className = 'small'; cancel.textContent = 'Cancel';
+  cancel.onclick = () => { renderStash(); };
+  btn.parentNode.insertBefore(cancel, btn.nextSibling);
+}
+
 function renderStash() {
   const div = document.getElementById('stash-list');
   if (!div) return;
@@ -2709,22 +3039,28 @@ function renderStash() {
     groups.map((group, gi) => {
       const label = groupLabel(group);
       const playerActions = group.filter(e => !isEngineGlue(e.value));
-      const isExpanded = LOG_VIEW_MODE === 'debug';
+      const isExpanded = true;
       const summary = playerActions.length > 0
         ? playerActions.map(e => esc(e.value.substring(0, 70))).join('<br/>')
         : esc(group[0].value.substring(0, 70));
       const detailRows = isExpanded
-        ? group.map(e => `<div class="log-entry" style="margin-left:20px;opacity:${isEngineGlue(e.value) ? '0.5' : '1'};">
+        ? group.map((e, ei) => {
+            const stashIdx = stash.indexOf(e);
+            return `<div class="log-entry stash-entry" data-stash-idx="${stashIdx}" style="margin-left:20px;opacity:${isEngineGlue(e.value) ? '0.5' : '1'};">
             <span class="idx">${esc(String(e.index))}</span>
             <span class="role">${esc(e.role)}</span>
             <span class="val">${esc(e.value)}</span>
-          </div>`).join('')
+            <button class="small" onclick="editStashEntry(${stashIdx}, this)">Edit</button>
+            <button class="small" onclick="reinsertStashed(${stashIdx})">Re-insert</button>
+          </div>`;
+          }).join('')
         : '';
       return `<div style="border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:6px;">
         <div style="display:flex;align-items:center;gap:8px;">
           <span class="idx" style="min-width:50px;">${esc(String(group[0].index))}–${esc(String(group[group.length-1].index))}</span>
           <span style="flex:1;">${summary}</span>
           <span style="color:var(--text-muted);font-size:9pt;">${group.length} action${group.length>1?'s':''}</span>
+          <button class="small" onclick="reinsertStashGroup(${gi})">Re-insert turn</button>
           <button class="small danger" onclick="deleteStashGroup(${gi})">Delete turn</button>
         </div>
         ${detailRows}
@@ -2787,6 +3123,43 @@ function groupLabel(group) {
   const playerActions = group.filter(e => !isEngineGlue(e.value));
   if (playerActions.length > 0) return playerActions[0];
   return group[0];
+}
+
+function reinsertStashGroup(groupIdx) {
+  if (!CURRENT_GAME) return;
+  const stash = getStash(CURRENT_GAME.id);
+  const groups = groupStashEntries(stash);
+  const group = groups[groupIdx];
+  if (!group) return;
+  const label = groupLabel(group);
+  const lines = (LAST_LOG_RAW || '').split('\n').filter(Boolean);
+  const maxLiveIdx = lines.length ? Math.max(...lines.map(l => parseInt(l.split('\t')[0], 10) || 0)) : -1;
+  const startIdx = maxLiveIdx + 1;
+  if (!confirm(
+    `Re-insert this turn (${group.length} actions) starting at index ${startIdx}?\n\n` +
+    `Player action: ${label.value.substring(0, 70)}\n` +
+    `Original indices ${group[0].index}–${group[group.length-1].index}`
+  )) return;
+  const sorted = group.slice().sort((a, b) => a.index - b.index);
+  let chain = Promise.resolve();
+  sorted.forEach((entry, i) => {
+    chain = chain.then(() =>
+      fetch(`${SERVER}/admin/${TOKEN}/write/${CURRENT_GAME.id}/${startIdx + i}`, {
+        method: 'POST', body: entry.value
+      }).then(r => {
+        if (!r.ok) throw new Error(`Failed at index ${startIdx + i}: HTTP ${r.status}`);
+      })
+    );
+  });
+  chain.then(() => {
+    const toRemove = new Set(group.map(e => e.index + '|' + e.value));
+    const newStash = stash.filter(e => !toRemove.has(e.index + '|' + e.value));
+    setStash(CURRENT_GAME.id, newStash);
+    refreshDetail();
+  }).catch(e => {
+    alert(`Re-insert turn stopped: ${e.message}\nSome actions may have been written. Check the log and stash.`);
+    refreshDetail();
+  });
 }
 
 function deleteStashGroup(groupIdx) {
