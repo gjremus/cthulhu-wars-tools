@@ -1277,7 +1277,16 @@ let LAST_GAMES_TEXT = null;
 //   Line 0 = version string → determines build
 //   Line 2 = "FACTION:Human/FACTION:Normal ..." → determines human/bot counts
 // Results are cached in localStorage so we only fetch each game once.
-const GAME_META_CACHE_KEY = 'cwo_admin_game_meta_v3';
+// IMPORTANT: bump this key's version suffix whenever detectBuildFromVersion (or
+// parsePlayersFromLine2) changes classification logic. enrichGames() skips any
+// game already present in the cache, so stale values are otherwise frozen
+// forever. v3→v4 (2026-08-04): the 'homebrew'→'hb' branch was only added to
+// detectBuildFromVersion on 2026-07-31; every HB game enriched before that fell
+// through to the 'cthulhu wars hrf'→'library' fallback and was cached as
+// 'library', so HB games showed up misfiled under Library with wrong /play
+// links. Bumping the key discards those stale entries and re-enriches every
+// game with the corrected logic.
+const GAME_META_CACHE_KEY = 'cwo_admin_game_meta_v4';
 let GAME_META_CACHE = {};
 try { GAME_META_CACHE = JSON.parse(localStorage.getItem(GAME_META_CACHE_KEY) || '{}'); } catch(e) {}
 
