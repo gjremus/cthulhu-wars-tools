@@ -16,9 +16,20 @@ Physical guarantees enforced on every write (any violation => abort, no write):
     unchanged.
   * A raw-bytes backup of the whole .docx is taken before any write.
 
-Commands (all operate on a single existing paragraph — no bulk ops exist):
+Commands:
   hb-doc-edit.py <docx-path> replace-text "unique search text" "new text"
       Replace the visible text of the ONE paragraph matching the search string.
+  hb-doc-edit.py <docx-path> insert-after "unique anchor text" "new paragraph"
+  hb-doc-edit.py <docx-path> insert-after "unique anchor text" --file text.txt [--style "donor"]
+      Insert one or more NEW paragraphs immediately AFTER the anchor paragraph.
+      Each new paragraph is a CLONE of an existing paragraph's markup (the anchor
+      by default, or the --style donor) with ONLY its visible text swapped, so it
+      inherits the document's embedded-font run styling and cannot corrupt the
+      file. With --file, every non-blank line of the text file becomes one new
+      paragraph, in order. This command can ONLY ADD paragraphs: it never
+      deletes, never overwrites, never replaces an existing paragraph, and the
+      guards abort unless the paragraph count grows by exactly the number added
+      and every original paragraph survives byte-for-byte.
   hb-doc-edit.py <docx-path> read
       Print every paragraph with an index (read-only; for finding search text).
   hb-doc-edit.py <docx-path> repair-borders [--apply]
@@ -28,7 +39,9 @@ Commands (all operate on a single existing paragraph — no bulk ops exist):
       is copied verbatim from an undamaged paragraph in the same document.
       Refuses to run on a document that already parses. Dry run by default.
 
-There is deliberately NO remove, NO add, NO mass-edit, NO sheet/section op.
+There is NO remove, NO overwrite-of-existing, NO full-replace, NO mass-edit, NO
+sheet op. replace-text changes exactly one paragraph's text; insert-after only
+ADDS new paragraphs. Neither can shrink or blank the file.
 The first argument MUST be a .docx inside the HomeBrews folder.
 """
 import sys, os, time, zipfile, shutil, re, hashlib
@@ -231,6 +244,103 @@ def replace_text(doc, search, new_text):
     print(f"  new: {new_text.strip()[:80]}")
 
 
+def _clone_para_with_text(donor_para, new_text):
+    """Return a copy of donor_para with all visible text replaced by new_text.
+
+    All text goes into the FIRST <w:t> run; subsequent runs are blanked. This
+    preserves the paragraph's pStyle/numPr/run props (and thus the embedded-font
+    references) exactly — identical mechanism to replace-text, so it inherits the
+    same anti-corruption behavior. The donor MUST have an editable text run.
+    """
+    if not WT_RE.search(donor_para):
+        die("style-donor paragraph has no editable text run to clone.", 1)
+    state = {"done": False}
+    def sub(m):
+        if state["done"]:
+            return m.group(1) + m.group(3)
+        state["done"] = True
+        return m.group(1) + xml_escape(new_text) + m.group(3)
+    return WT_RE.sub(sub, donor_para)
+
+
+def insert_after(doc, anchor, new_texts, donor_search=None):
+    """Insert new paragraph(s) immediately after the anchor paragraph.
+
+    INSERT-ONLY: existing paragraphs are never changed or removed. Each new
+    paragraph clones the markup of a donor (the anchor by default, or the
+    paragraph matched by donor_search) so embedded fonts are preserved.
+    """
+    new_texts = [t for t in new_texts if t.strip()]
+    if not new_texts:
+        die("refusing to insert: no non-blank paragraph text provided.", 5)
+
+    entries = read_entries(doc)
+    orig_xml = next(b for i, b in entries if i.filename == DOCXML).decode("utf-8")
+    if not xml_is_wellformed(orig_xml):
+        die("this document's markup does not parse; refusing to edit until "
+            "it is repaired.", 7)
+    paras = PARA_RE.findall(orig_xml)
+
+    # locate the single anchor paragraph
+    amatches = [i for i, p in enumerate(paras) if anchor.lower() in para_text(p).lower()]
+    if not amatches:
+        die(f"no paragraph contains anchor: {anchor}", 1)
+    if len(amatches) > 1:
+        die(f"anchor matched {len(amatches)} paragraphs; must match exactly one. "
+            f"Use a longer, unique anchor string.", 1)
+    tgt = amatches[0]
+    anchor_para = paras[tgt]
+
+    # pick the style donor
+    if donor_search:
+        dmatches = [i for i, p in enumerate(paras) if donor_search.lower() in para_text(p).lower()]
+        if not dmatches:
+            die(f"no paragraph contains style donor: {donor_search}", 1)
+        if len(dmatches) > 1:
+            die(f"style donor matched {len(dmatches)} paragraphs; must be unique.", 1)
+        donor_para = paras[dmatches[0]]
+    else:
+        donor_para = anchor_para
+
+    new_paras = [_clone_para_with_text(donor_para, t) for t in new_texts]
+
+    # Splice the new paragraphs in right after the anchor's unique occurrence.
+    if orig_xml.count(anchor_para) != 1:
+        die("anchor paragraph is not uniquely locatable in XML; aborting.", 6)
+    insertion = anchor_para + "".join(new_paras)
+    new_xml = orig_xml.replace(anchor_para, insertion, 1)
+
+    # ---- GUARD A: paragraph count grew by EXACTLY len(new_paras) ------------
+    after = PARA_RE.findall(new_xml)
+    if len(after) != len(paras) + len(new_paras):
+        die(f"internal guard: expected {len(paras)+len(new_paras)} paragraphs, "
+            f"got {len(after)}; aborting.", 6)
+
+    # ---- GUARD B: every ORIGINAL paragraph still present verbatim -----------
+    for i, p in enumerate(paras):
+        if p not in new_xml:
+            die(f"internal guard: original paragraph {i} vanished; aborting.", 6)
+
+    # ---- GUARD C: the anchor is immediately followed by the new paragraphs --
+    if insertion not in new_xml:
+        die("internal guard: insertion block not found intact; aborting.", 6)
+
+    # ---- GUARD D: result must be WELL-FORMED XML ----------------------------
+    if not xml_is_wellformed(new_xml):
+        die("internal guard: the insert would produce markup Word cannot open. "
+            "Nothing was written.", 6)
+
+    # ---- GUARD E: file must not shrink (insert can only grow it) ------------
+    # (commit_new_xml also enforces >=90% of original; inserting only adds.)
+
+    bkp = commit_new_xml(doc, entries, new_xml)
+    mark_our_write()
+    print(f"Inserted {len(new_paras)} paragraph(s) after [{tgt}] "
+          f"(\"{para_text(anchor_para).strip()[:50]}\"). Backup: {bkp}")
+    for j, t in enumerate(new_texts):
+        print(f"  +[{tgt+1+j}] {t.strip()[:80]}")
+
+
 def commit_new_xml(doc, entries, new_xml):
     """Swap in a new document.xml, keeping every other zip entry byte-identical.
 
@@ -281,7 +391,14 @@ def commit_new_xml(doc, entries, new_xml):
         if new_size < old_size * 0.90:
             die(f"output ({new_size}) <90% of original ({old_size}); aborting.", 6)
 
-        os.replace(tmp, doc)
+        # CRITICAL — do NOT os.replace(tmp, doc): on Google Drive File Stream a
+        # rename swaps in a NEW file object, so the doc gets a fresh Drive file
+        # ID and ALL its sharing permissions are destroyed (the "wiped doc that
+        # loses sharing" bug). Instead overwrite the EXISTING file in place
+        # (truncate + rewrite the same path/inode), which keeps the Drive file
+        # ID — and therefore the sharing — intact.
+        with open(tmp, "rb") as src, open(doc, "wb") as dst:
+            shutil.copyfileobj(src, dst)
     finally:
         if os.path.exists(tmp):
             os.remove(tmp)
@@ -381,8 +498,34 @@ if __name__ == "__main__":
         if len(sys.argv) < 5:
             die("replace-text requires: <docx> replace-text \"search\" \"new text\"", 1)
         replace_text(DOC, sys.argv[3], sys.argv[4])
+    elif cmd == "insert-after":
+        if len(sys.argv) < 4:
+            die("insert-after requires: <docx> insert-after \"anchor\" "
+                "(\"new text\" | --file text.txt) [--style \"donor\"]", 1)
+        anchor = sys.argv[3]
+        rest = sys.argv[4:]
+        donor_search = None
+        if "--style" in rest:
+            si = rest.index("--style")
+            if si + 1 >= len(rest):
+                die("--style requires a donor search string.", 1)
+            donor_search = rest[si + 1]
+            del rest[si:si + 2]
+        if rest and rest[0] == "--file":
+            if len(rest) < 2:
+                die("--file requires a path.", 1)
+            fp = rest[1]
+            if not os.path.isfile(fp):
+                die(f"text file not found: {fp}", 1)
+            with open(fp, encoding="utf-8") as fh:
+                new_texts = [ln.rstrip("\n") for ln in fh]
+        else:
+            if not rest:
+                die("insert-after requires new paragraph text (or --file).", 1)
+            new_texts = [rest[0]]
+        insert_after(DOC, anchor, new_texts, donor_search)
     elif cmd == "repair-borders":
         cmd_repair_borders(DOC, apply_it="--apply" in sys.argv[3:])
     else:
-        die(f"unknown command: {cmd}. Only 'read', 'replace-text' and "
-            f"'repair-borders' exist.", 1)
+        die(f"unknown command: {cmd}. Only 'read', 'replace-text', "
+            f"'insert-after' and 'repair-borders' exist.", 1)

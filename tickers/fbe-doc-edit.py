@@ -202,7 +202,14 @@ def replace_text(search, new_text):
         if os.path.getsize(tmp) < os.path.getsize(DOC) * 0.90:
             die("output <90% of original size; aborting.", 6)
 
-        os.replace(tmp, DOC)
+        # CRITICAL — do NOT os.replace(tmp, DOC): on Google Drive File Stream a
+        # rename swaps in a NEW file object, so the doc gets a fresh Drive file
+        # ID and ALL its sharing permissions are destroyed (the "wiped doc that
+        # loses sharing" bug). Instead overwrite the EXISTING file in place
+        # (truncate + rewrite the same path/inode), which keeps the Drive file
+        # ID — and therefore the sharing — intact.
+        with open(tmp, "rb") as src, open(DOC, "wb") as dst:
+            shutil.copyfileobj(src, dst)
     finally:
         if os.path.exists(tmp):
             os.remove(tmp)
