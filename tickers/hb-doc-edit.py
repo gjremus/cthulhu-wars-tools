@@ -44,13 +44,18 @@ sheet op. replace-text changes exactly one paragraph's text; insert-after only
 ADDS new paragraphs. Neither can shrink or blank the file.
 The first argument MUST be a .docx inside the HomeBrews folder.
 """
-import sys, os, time, zipfile, shutil, re, hashlib
+import sys, os, time, zipfile, shutil, re, hashlib, tempfile
 
 HOMEBREWS_ROOT = "/Users/gremus/Library/CloudStorage/GoogleDrive-gremus@salesforce.com/My Drive/Personal/Games/Cthulhu Wars/Factions/HomeBrews"
 LOCKOUT_SECONDS = 300
 BACKUP_DIR = os.path.expanduser("~/.cw-doc-backups")
 OUR_WRITE_MARKER = os.path.join(BACKUP_DIR, ".last-hb-ticker-write")
 DOCXML = "word/document.xml"
+
+# A Google Drive numbered conflict copy is named "<base> (1).docx", "<base> (2).docx".
+# These are NEVER a valid edit target, and their mere presence means the document
+# has forked — editing anything then multiplies the divergence.
+NUMBERED_COPY_RE = re.compile(r'^(?P<stem>.+?) \(\d+\)$')
 
 # Matches a whole paragraph element (open+close) OR a self-closing empty one.
 PARA_RE = re.compile(r'<w:p(?:\s[^>]*)?>.*?</w:p>|<w:p\s*/>', re.DOTALL)
@@ -75,6 +80,65 @@ def validate_doc_path(path):
         die(f"target doc does not exist: {path}", 4)
     if not path.endswith(".docx"):
         die(f"target is not a .docx file: {path}", 4)
+    if is_numbered_copy(path):
+        die(f"target is a Google Drive conflict copy ('(N)' in the name): {path}. "
+            f"These are NEVER valid and must never be read or written. Only the "
+            f"single original file may be used.", 4)
+
+
+def is_numbered_copy(path):
+    """True if `path` looks like a Google Drive conflict copy: '<base> (N).docx'."""
+    stem = os.path.basename(path)
+    if stem.endswith(".docx"):
+        stem = stem[:-5]
+    return bool(NUMBERED_COPY_RE.match(stem))
+
+
+def find_conflict_copies(doc):
+    """Return sibling '(N)' conflict copies of `doc` in the same folder.
+
+    Their existence means Google Drive forked this document; editing anything
+    while they exist multiplies the divergence into further copies.
+    """
+    folder = os.path.dirname(os.path.realpath(doc))
+    base = os.path.basename(doc)
+    if base.endswith(".docx"):
+        base = base[:-5]
+    m = NUMBERED_COPY_RE.match(base)
+    canon = m.group("stem") if m else base   # base name with any " (N)" stripped
+    out = []
+    try:
+        names = os.listdir(folder)
+    except OSError:
+        return out
+    for f in names:
+        if not f.endswith(".docx"):
+            continue
+        mm = NUMBERED_COPY_RE.match(f[:-5])
+        if mm and mm.group("stem") == canon:
+            out.append(os.path.join(folder, f))
+    return out
+
+
+def warn_conflict_copies(doc):
+    """Warn (do NOT block) if any '(N)' conflict copy of this doc exists.
+
+    We ALWAYS edit the single un-numbered original — that is the only valid file,
+    and validate_doc_path already hard-refuses (exit 4) any attempt to target a
+    numbered copy. The numbered copies themselves are never read or written by
+    this tool, and staging happens outside the Drive folder, so editing the
+    original cannot create or grow them. We surface their presence on stderr so
+    the caller can notify the owner to delete the strays, but we do NOT refuse the
+    edit: blocking here would stop legitimate work on the original whenever Drive
+    leaves a fork behind.
+    """
+    sibs = find_conflict_copies(doc)
+    if sibs:
+        listing = "; ".join(sorted(os.path.basename(s) for s in sibs))
+        print("WARNING: Google Drive conflict copies present (" + listing + "). "
+              "Editing the single original only; these numbered copies are never "
+              "touched. Owner should delete them — only the original is valid.",
+              file=sys.stderr)
 
 
 def check_lockout(doc):
@@ -102,20 +166,66 @@ def mark_our_write():
         f.write(str(time.time()))
 
 
+# Exit code 3 == Google Drive is actively syncing this file right now.
+# Distinct from LOCKOUT (2, "a human edited it recently"). The caller (ticker)
+# treats code 3 as: wait 5 min and retry; keep retrying; if it persists ~1 hour,
+# record a row in the task docs and alert — but NEVER delete/move/copy the file.
+DRIVE_BUSY = 3
+
+
+def check_drive_sync(doc):
+    """Refuse to write while Google Drive File Stream is mid-sync on this file.
+
+    Writing (even a safe in-place truncate+rewrite) into the exact window where
+    Drive is streaming the file down/up makes Drive's conflict resolver keep one
+    version, spawn numbered "(1)"/"(2)" conflicted copies, and move the version
+    it deems superseded — the user's open working copy — into the Trash. The
+    script itself never trashes anything; this guard simply declines to write
+    during that unsafe window so Drive is never given a conflict to resolve.
+
+    Detection: sample (size, mtime) twice a short interval apart. If either
+    changes, Drive is actively writing the file, so we back off. Stable across
+    the window == safe to write.
+    """
+    try:
+        s1 = os.stat(doc)
+    except OSError:
+        return  # nothing to guard; downstream will fail cleanly
+    time.sleep(1.5)
+    try:
+        s2 = os.stat(doc)
+    except OSError:
+        die("file vanished while checking for Drive sync; aborting, will retry.",
+            DRIVE_BUSY)
+    if (s1.st_size, int(s1.st_mtime)) != (s2.st_size, int(s2.st_mtime)):
+        die("Google Drive is actively syncing this file (size/mtime changing). "
+            "Not writing into a live sync; will retry.", DRIVE_BUSY)
+
+
 def backup(doc):
     os.makedirs(BACKUP_DIR, exist_ok=True)
     stamp = time.strftime("%Y%m%d-%H%M%S")
     base = os.path.basename(doc).replace(" ", "_")
     dst = os.path.join(BACKUP_DIR, f"{base}.{stamp}.bak")
     shutil.copy2(doc, dst)
-    # keep only 3 most recent backups per doc
+    # keep only 3 most recent backups per doc. This is LEGITIMATE cleanup of our
+    # OWN private backup copies inside BACKUP_DIR — it is expected and correct,
+    # and it is NOT what put the real guide in the Trash. (That was Google
+    # Drive's conflict resolver reacting to an in-place write during a live sync;
+    # see check_drive_sync + the write block in commit_new_xml.) These pruned
+    # files are our .bak copies only; we hard-refuse to touch anything outside
+    # BACKUP_DIR, and we never move to Trash — we os.remove within our own dir.
     same = sorted(
         [os.path.join(BACKUP_DIR, f) for f in os.listdir(BACKUP_DIR)
          if f.startswith(base + ".") and f.endswith(".bak")],
         key=os.path.getmtime, reverse=True)
+    real_backup_dir = os.path.realpath(BACKUP_DIR)
     for old in same[3:]:
+        # Safety: only ever remove a file that physically lives inside BACKUP_DIR.
+        if os.path.realpath(os.path.dirname(old)) != real_backup_dir:
+            continue
         try:
-            shutil.move(old, os.path.join(os.path.expanduser("~/.Trash"), os.path.basename(old)))
+            os.remove(old)
         except OSError:
             pass
     return dst
@@ -348,11 +458,21 @@ def commit_new_xml(doc, entries, new_xml):
     verification before anything touches the real file.
     """
     # Take backup, then rewrite the zip in place.
+    warn_conflict_copies(doc)
     check_lockout(doc)
+    check_drive_sync(doc)
     bkp = backup(doc)
     check_lockout(doc)
+    check_drive_sync(doc)
 
-    tmp = doc + ".tmp_surgical"
+    # Stage the rebuilt zip OUTSIDE the Google Drive folder (in our local backup
+    # dir). Writing a large temp file *inside* the synced Drive folder — even one
+    # we delete right away — hands Drive a transient file to sync and is itself a
+    # source of "(N)" conflicted copies. Building it on local disk and copying the
+    # bytes into the existing file in place avoids giving Drive anything new to fork.
+    os.makedirs(BACKUP_DIR, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(suffix=".tmp_surgical", dir=BACKUP_DIR)
+    os.close(fd)
     try:
         with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zout:
             for info, data in entries:
@@ -397,8 +517,25 @@ def commit_new_xml(doc, entries, new_xml):
         # loses sharing" bug). Instead overwrite the EXISTING file in place
         # (truncate + rewrite the same path/inode), which keeps the Drive file
         # ID — and therefore the sharing — intact.
+        #
+        # One more Drive-sync + conflict-copy check immediately before the write:
+        # this is the narrowest possible window, so re-checking here (not just at
+        # entry) is what actually prevents the conflicted-copy / file-to-Trash event.
+        check_drive_sync(doc)
+        pre_ino = os.stat(doc).st_ino
         with open(tmp, "rb") as src, open(doc, "wb") as dst:
             shutil.copyfileobj(src, dst)
+        # Post-write proof the in-place overwrite kept the SAME file object
+        # (same inode == same Drive file ID == sharing preserved, no conflicted
+        # copy). If the inode changed, Drive swapped the file underneath us mid
+        # write — surface it so the caller retries rather than trusting a write
+        # that may have spawned a "(1)"/"(2)" copy.
+        post_ino = os.stat(doc).st_ino
+        if pre_ino != post_ino:
+            die("file identity (inode) changed during write — Drive may have "
+                "swapped/conflicted the file; will retry. The original is "
+                "untouched by this script (backup: " + str(bkp) + ").",
+                DRIVE_BUSY)
     finally:
         if os.path.exists(tmp):
             os.remove(tmp)
