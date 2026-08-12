@@ -73,26 +73,60 @@ run_ticker() {
     # is actually doing anything. The human-readable summary is still appended
     # to $log at the end.
     local stream="/tmp/cw-ticker-${name}.stream.jsonl"
-    : > "$stream"
 
     # Model: claude-sonnet-5 (owner requested Sonnet, 2026-08-11). Use the
     # explicit id, NOT a bare alias: on the Bedrock/SF gateway "opus"/older
     # sonnet ids 401 ("Team not allowed to access model"). Verified accessible:
     # claude-sonnet-5 OK; claude-sonnet-4-5 is 401-blocked; claude-opus-4-8 OK.
     #
-    # --strict-mcp-config: disable ALL filesystem MCP servers for the tick.
-    # 2026-08-11: every homebrews tick from ~13:00-18:05 hung at 0 bytes and got
-    # stall-killed (rc=143). Root cause: claude blocks before emitting its init
-    # line until MCP servers connect, and the Org62-Sobject-Read (Salesforce)
-    # connector hangs in the headless launchd context (no interactive auth). The
-    # ticker needs zero Salesforce access, so we start with no MCP at all.
-    "$CLAUDE" -p "Read the file ${prompt_file} and follow its instructions exactly. Do all work described there." \
-        --permission-mode bypassPermissions \
-        --model claude-sonnet-5 \
-        --strict-mcp-config \
-        --output-format stream-json --verbose \
-        >> "$stream" 2>&1 &
-    local CPID=$!
+    # --strict-mcp-config: start with NO filesystem MCP servers for the tick (the
+    # Salesforce Org62 connector hangs in the headless launchd context, and the
+    # ticker needs zero Salesforce access). < /dev/null: never block waiting on
+    # stdin under launchd.
+    #
+    # STARTUP-RETRY (2026-08-11): intermittently a launchd-spawned claude
+    # deadlocks on an INTERNAL startup mutex before it ever emits its init line —
+    # traced live: main thread parked in __ulock_wait with ZERO network sockets,
+    # so it is NOT the API/MCP, just a flaky startup race. A freshly-launched
+    # claude is healthy. So instead of letting the 20-min progress watchdog burn
+    # a whole tick on a corpse (which is exactly why the ticker "did nothing"), we
+    # watch for the FIRST byte of output within STARTUP_GRACE and, if none comes,
+    # kill and RELAUNCH — up to STARTUP_RETRIES times. This self-heals the race.
+    local STARTUP_GRACE="${STARTUP_GRACE:-90}"
+    local STARTUP_RETRIES="${STARTUP_RETRIES:-3}"
+
+    local CPID="" attempt=0
+    while : ; do
+        attempt=$(( attempt + 1 ))
+        : > "$stream"
+        "$CLAUDE" -p "Read the file ${prompt_file} and follow its instructions exactly. Do all work described there." \
+            --permission-mode bypassPermissions \
+            --model claude-sonnet-5 \
+            --strict-mcp-config \
+            --output-format stream-json --verbose \
+            < /dev/null >> "$stream" 2>&1 &
+        CPID=$!
+
+        # Wait for the first output (init line) within the grace window.
+        local waited=0 started=0 sz=0
+        while [[ "$waited" -lt "$STARTUP_GRACE" ]]; do
+            sleep 5; waited=$(( waited + 5 ))
+            if ! kill -0 "$CPID" 2>/dev/null; then started=1; break; fi   # exited fast; let wait handle rc
+            sz=$(wc -c < "$stream" 2>/dev/null | tr -d ' '); [[ -z "$sz" ]] && sz=0
+            if [[ "$sz" -gt 0 ]]; then started=1; break; fi
+        done
+        [[ "$started" -eq 1 ]] && break
+
+        echo "[$(date '+%F %T')] STARTUP-HANG ticker=${name} attempt=${attempt}/${STARTUP_RETRIES} pid=${CPID} — no output in ${STARTUP_GRACE}s; relaunching" >> "$hist"
+        pkill -TERM -P "$CPID" 2>/dev/null; kill -TERM "$CPID" 2>/dev/null; sleep 3
+        pkill -KILL -P "$CPID" 2>/dev/null; kill -KILL "$CPID" 2>/dev/null
+        if [[ "$attempt" -ge "$STARTUP_RETRIES" ]]; then
+            echo "[$(date '+%F %T')] STARTUP-FAIL ticker=${name} — ${STARTUP_RETRIES} silent starts; skipping this tick" >> "$hist"
+            echo "[$(date '+%F %T')] ${name}: claude failed to start ${STARTUP_RETRIES}x (startup deadlock, no output); tick skipped, will retry next cycle." >> /tmp/cw-ticker-alerts.txt
+            return 1
+        fi
+        sleep 5
+    done
 
     # Progress watchdog: kill ONLY on a genuine stall (no new output for
     # STALL_MAX_MISSES consecutive samples). Slow-but-working ticks are fine.
