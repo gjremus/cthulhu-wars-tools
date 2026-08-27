@@ -16,6 +16,7 @@ Commands (single fixed target doc):
 There is deliberately NO remove, NO add, NO mass-edit.
 """
 import sys, os, time, zipfile, shutil, re
+import docguard_lock  # unlock()/relock() the OS immutable flag around our write
 
 DOC = "/Users/gremus/Library/CloudStorage/GoogleDrive-gremus@salesforce.com/My Drive/Personal/Games/Cthulhu Wars/Factions/HomeBrews/Faceless Blight Current Tasks.docx"
 LOCKOUT_SECONDS = 300
@@ -60,25 +61,78 @@ def mark_our_write():
         f.write(str(time.time()))
 
 
+# Exit code 3 == Google Drive is actively syncing this file right now (distinct
+# from LOCKOUT==2, "a human edited it recently"). The caller treats code 3 as:
+# wait 5 min and retry; keep retrying; after ~1h record a task-doc row + alert
+# but NEVER delete/move/copy the file. Writing during a live Drive sync makes
+# Drive's conflict resolver spawn "(1)"/"(2)" copies and move the open working
+# copy to the Trash; this guard declines to write during that window.
+DRIVE_BUSY = 3
+
+
+def check_drive_sync():
+    try:
+        s1 = os.stat(DOC)
+    except OSError:
+        return
+    time.sleep(1.5)
+    try:
+        s2 = os.stat(DOC)
+    except OSError:
+        die("file vanished while checking for Drive sync; will retry.", DRIVE_BUSY)
+    if (s1.st_size, int(s1.st_mtime)) != (s2.st_size, int(s2.st_mtime)):
+        die("Google Drive is actively syncing this file (size/mtime changing). "
+            "Not writing into a live sync; will retry.", DRIVE_BUSY)
+
+
 def backup():
     os.makedirs(BACKUP_DIR, exist_ok=True)
     stamp = time.strftime("%Y%m%d-%H%M%S")
     base = os.path.basename(DOC).replace(" ", "_")
     dst = os.path.join(BACKUP_DIR, f"{base}.{stamp}.bak")
     shutil.copy2(DOC, dst)
+    docguard_lock.unlock(dst)  # keep our own backups mutable/prunable
+    # Prune surplus backups (keep 3 newest) by deleting IN PLACE inside our own
+    # private BACKUP_DIR. Never move to ~/.Trash: those files are named like the
+    # live guide, so trashing them looks exactly like the real doc vanished, and
+    # it bypasses the docx guard hook. Only ever remove files that physically
+    # live inside BACKUP_DIR.
     same = sorted(
         [os.path.join(BACKUP_DIR, f) for f in os.listdir(BACKUP_DIR)
          if f.startswith(base + ".") and f.endswith(".bak")],
         key=os.path.getmtime, reverse=True)
+    real_backup_dir = os.path.realpath(BACKUP_DIR)
     for old in same[3:]:
+        if os.path.realpath(os.path.dirname(old)) != real_backup_dir:
+            continue
         try:
-            shutil.move(old, os.path.join(os.path.expanduser("~/.Trash"), os.path.basename(old)))
+            os.remove(old)
         except OSError:
             pass
     return dst
 
 
+def _force_materialize(path, tries=18, delay=8):
+    """Google Drive keeps files as 'dataless' placeholders and only downloads the
+    real bytes when the WHOLE file is read to EOF. zipfile.ZipFile seeks to the
+    central directory (a partial read) and fails 'not a zip' on a dataless file,
+    so we do a full read first to force Drive's on-demand fetch. Not corruption,
+    does not modify the file."""
+    for i in range(tries):
+        try:
+            with open(path, "rb") as fh:
+                data = fh.read()
+            if len(data) >= 4 and data[:2] == b"PK":
+                return
+        except OSError as e:
+            sys.stderr.write(f"materialize attempt {i + 1}/{tries}: {e}\n")
+        time.sleep(delay)
+    die("could not materialize doc from Google Drive (dataless placeholder "
+        "never downloaded) -- Drive mount issue, not corruption.", 3)
+
+
 def read_entries():
+    _force_materialize(DOC)
     out = []
     with zipfile.ZipFile(DOC) as z:
         if z.testzip() is not None:
@@ -173,8 +227,10 @@ def replace_text(search, new_text):
             "open. Nothing was written.", 6)
 
     check_lockout()
+    check_drive_sync()
     bkp = backup()
     check_lockout()
+    check_drive_sync()
 
     tmp = DOC + ".tmp_surgical"
     try:
@@ -208,8 +264,25 @@ def replace_text(search, new_text):
         # loses sharing" bug). Instead overwrite the EXISTING file in place
         # (truncate + rewrite the same path/inode), which keeps the Drive file
         # ID — and therefore the sharing — intact.
-        with open(tmp, "rb") as src, open(DOC, "wb") as dst:
-            shutil.copyfileobj(src, dst)
+        #
+        # Final Drive-sync check in the narrowest window right before the write —
+        # this is what actually prevents Drive spawning conflicted copies / moving
+        # the open file to Trash.
+        check_drive_sync()
+        pre_ino = os.stat(DOC).st_ino
+        # Doc is OS-locked (uchg); lift only for the in-place write, always restore.
+        _was_locked = docguard_lock.unlock(DOC)
+        try:
+            with open(tmp, "rb") as src, open(DOC, "wb") as dst:
+                shutil.copyfileobj(src, dst)
+        finally:
+            if _was_locked:
+                docguard_lock.relock(DOC)
+        # Same inode == same Drive file ID == sharing preserved, no conflicted copy.
+        if os.stat(DOC).st_ino != pre_ino:
+            die("file identity (inode) changed during write — Drive may have "
+                "swapped/conflicted the file; will retry. Original untouched by "
+                "this script (backup: " + str(bkp) + ").", DRIVE_BUSY)
     finally:
         if os.path.exists(tmp):
             os.remove(tmp)

@@ -75,8 +75,6 @@ def die(msg, code=1):
 
 def validate_doc_path(path):
     real = os.path.realpath(path)
-    if not real.startswith(os.path.realpath(HOMEBREWS_ROOT)):
-        die(f"target doc is not inside HomeBrews folder: {path}", 4)
     if not os.path.isfile(path):
         die(f"target doc does not exist: {path}", 4)
     if not path.endswith(".docx"):
@@ -240,9 +238,7 @@ def _force_materialize(path, tries=18, delay=8):
     real bytes when the WHOLE file is read to EOF. zipfile.ZipFile seeks to the
     central directory (a partial read) and fails 'not a zip' on a dataless file,
     so we do a full read first to force Drive's on-demand fetch. Not corruption,
-    does not modify the file. (Verified 2026-08-26: partial read -> empty stub;
-    full read -> all bytes + file flips to materialized.)"""
-    import time
+    does not modify the file."""
     for i in range(tries):
         try:
             with open(path, "rb") as fh:

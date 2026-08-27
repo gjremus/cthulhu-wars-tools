@@ -20,7 +20,28 @@ import subprocess, sys, os
 DOC = "/Users/gremus/Library/CloudStorage/GoogleDrive-gremus@salesforce.com/My Drive/Personal/Games/Cthulhu Wars/BGA/BGA current tasks.docx"
 PANDOC = "/Users/gremus/.local/bin/pandoc"
 
+def _force_materialize(path, tries=18, delay=8):
+    """Google Drive keeps files as 'dataless' placeholders and only downloads the
+    real bytes when the WHOLE file is read to EOF. pandoc's buffered header read
+    does NOT trigger the fetch and fails 'resource busy' on a dataless file, so we
+    do a full read first to force Drive's on-demand download. Not corruption, does
+    not modify the file."""
+    import time
+    for i in range(tries):
+        try:
+            with open(path, "rb") as fh:
+                data = fh.read()
+            if len(data) >= 4 and data[:2] == b"PK":
+                return
+        except OSError as e:
+            print(f"materialize attempt {i + 1}/{tries}: {e}", file=sys.stderr)
+        time.sleep(delay)
+    print("could not materialize doc from Google Drive (dataless placeholder "
+          "never downloaded) -- Drive mount issue, not corruption.", file=sys.stderr)
+    sys.exit(1)
+
 def read_doc():
+    _force_materialize(DOC)
     result = subprocess.run([PANDOC, DOC, "-t", "markdown"], capture_output=True, text=True)
     if result.returncode != 0:
         print(f"pandoc read failed: {result.stderr}", file=sys.stderr)
