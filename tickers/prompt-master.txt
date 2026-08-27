@@ -21,9 +21,20 @@ ABSOLUTE PHYSICAL CONSTRAINTS — VIOLATION = IMMEDIATE TERMINATION
    - start <row>                   → mark O → / (in-progress)
    - complete <row>                → move X row from Open → Completed
    - reopen <row>                  → mark / → O
-   - comment open <row> "text"     → write to column C in Open Tasks
-   - comment completed <row> "text"→ write to column C in Completed Tasks
-   - comment summary <row> "text"  → write to Recent Summary
+   - append open <row> "text"      → ADD a note to column C in Open Tasks (SAFE — keeps history)
+   - append completed <row> "text" → ADD a note to column C in Completed Tasks (SAFE)
+   - comment open <row> "text"     → OVERWRITE all of column C in Open Tasks (DESTROYS history)
+   - comment completed <row> "text"→ OVERWRITE all of column C in Completed Tasks (DESTROYS history)
+   - comment summary <row> "text"  → write to Recent Summary (this sheet is a rolling summary — overwrite is fine here)
+
+   3a. USE `append` FOR EVERY ROUTINE TICK NOTE ON A TASK ROW. The `comment`
+       command replaces the ENTIRE cell, so if you pass only your new note it
+       silently wipes every earlier note on that row. That has already destroyed
+       history on multiple rows and forced painful "sorry, re-recording it"
+       cleanups. Do NOT read the old text and re-type it back with `comment` —
+       just use `append`, which adds your note after what is already there and
+       can never lose anything. Reserve `comment` ONLY for a deliberate correction
+       where you truly intend to replace the whole cell.
 
 4. There is NO "add" command. There is NO way to create new rows. There is NO way to insert tasks. If you feel the urge to add a task, STOP. Write "INPUT NEEDED" in an existing row's comment instead.
 
@@ -114,13 +125,13 @@ STEP 2: Read the Rules sheet (MANDATORY — see G1):
   any task that touches game code before you write a single line.
 
 STEP 3: Process in this order:
-  a) @@@ markers in column B — these are owner commands. Execute them. Acknowledge in column C with task-move.py comment.
+  a) @@@ markers in column B — these are owner commands. Execute them. Acknowledge in column C with task-move.py append.
   b) X-marked rows in Open Tasks — move each to Completed with task-move.py complete <row>.
   c) Work through O and / tasks. For each:
      - Investigate the bug (check game logs, admin API, console).
      - Fix it if you can (compile, deploy via scripts, verify).
-     - Write findings in column C with task-move.py comment.
-     - If you finish a fix and verify it works: write "DONE: [what, how verified]" in column C. Do NOT mark it X. The owner does that.
+     - Write findings in column C with task-move.py append (NOT comment — append keeps prior history).
+     - If you finish a fix and verify it works: append "DONE: [what, how verified]" in column C. Do NOT mark it X. The owner does that.
 
 STEP 4: Update Recent Summary (row 2 only — leave row 1 as the header):
   python3 /Users/gremus/Claude-Projects/cthulhu-wars-tools/tickers/task-move.py comment summary 2 "Brief summary of what you did this tick"
@@ -176,8 +187,8 @@ TICKER ALERTS
 
 Check /tmp/cw-ticker-alerts.txt every tick. This file is where other tickers (FBE, Homebrews) write alerts when they are locked out of their docs or hit blockers. If the file exists and has content:
 1. Read it.
-2. Write a summary of all alerts as a comment on an Open Tasks row:
-   python3 task-move.py comment open <row> "TICKER ALERT: <summarize alerts>"
+2. Add a summary of all alerts as a note on an Open Tasks row (append — never overwrite):
+   python3 task-move.py append open <row> "TICKER ALERT: <summarize alerts>"
    Use the row most relevant to the alert content. If no row is relevant, use the first empty-comment row in Open Tasks.
 3. After processing all alerts, truncate the file: echo -n "" > /tmp/cw-ticker-alerts.txt
 This ensures the owner sees lockout issues and blocker notifications in the Open Tasks sheet.

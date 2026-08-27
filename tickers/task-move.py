@@ -24,8 +24,15 @@ Usage:
   task-move.py reopen <row_number>
       Reset a / task back to O in "Open Tasks" (if ticker can't finish it this tick).
 
+  task-move.py append <sheet> <row_number> <comment_text>
+      SAFE DEFAULT for tick notes. Appends comment_text to whatever is already in
+      column C, so history can NEVER be lost by accident. Idempotent: re-running
+      with the same tail text does nothing. USE THIS for every routine tick note.
+      Sheet must be one of: open, completed, summary
+
   task-move.py comment <sheet> <row_number> <comment_text>
-      Write comment text into column C of the given row on the given sheet.
+      OVERWRITES all of column C with comment_text. Use ONLY to deliberately
+      correct/replace a cell — never for routine notes (it destroys history).
       Sheet must be one of: open, completed, summary
 
   task-move.py read
@@ -339,6 +346,46 @@ def cmd_comment(sheet_key, row_num, text):
     save_wb(wb)
     print(f"Done. Updated comment on row {row_num}: {text[:60]}...")
 
+def cmd_append(sheet_key, row_num, text):
+    """APPEND text to column C without ever destroying what is already there.
+
+    This is the SAFE default for the ticker's per-pass notes. The old 'comment'
+    command overwrites the whole cell, so any tick that passed only its new note
+    (instead of old+new concatenated) silently wiped the row's entire history —
+    the recurring 'my previous edit overwrote and lost this row's record' bug.
+    Appending here makes that class of data loss impossible.
+
+    Idempotent: if the exact new text is already the tail of the cell (a resumed
+    or re-run tick), it is NOT appended again, so retries can't duplicate notes.
+    """
+    sheet_map = {'open': SHEET_OPEN, 'completed': SHEET_DONE, 'summary': SHEET_SUMMARY}
+    if sheet_key not in sheet_map:
+        print(f"ERROR: sheet must be one of: open, completed, summary. Got: {sheet_key}", file=sys.stderr)
+        sys.exit(1)
+
+    wb = load_wb()
+    ws = wb[sheet_map[sheet_key]]
+
+    task = ws.cell(row=row_num, column=2).value
+    if not task:
+        print(f"ERROR: Row {row_num} in '{sheet_map[sheet_key]}' is empty.", file=sys.stderr)
+        sys.exit(1)
+
+    existing = ws.cell(row=row_num, column=3).value or ''
+    new_text = text.strip()
+    if not new_text:
+        print("ERROR: refusing to append empty text.", file=sys.stderr)
+        sys.exit(1)
+
+    if existing.rstrip().endswith(new_text):
+        print(f"No change — that note is already the latest on row {row_num} (idempotent skip).")
+        return
+
+    combined = (existing.rstrip() + ' ' + new_text) if existing.strip() else new_text
+    ws.cell(row=row_num, column=3, value=combined)
+    save_wb(wb)
+    print(f"Done. Appended to row {row_num} (cell now {len(combined)} chars): ...{new_text[:60]}")
+
 def cmd_add_task(task_description):
     """DISABLED — tickers are forbidden from adding tasks. Only the owner adds tasks."""
     print("ERROR: The 'add' command is disabled. Tickers CANNOT add new tasks.")
@@ -401,6 +448,8 @@ if __name__ == '__main__':
         cmd_reopen(int(sys.argv[2]))
     elif cmd == 'comment' and len(sys.argv) == 5:
         cmd_comment(sys.argv[2], int(sys.argv[3]), sys.argv[4])
+    elif cmd == 'append' and len(sys.argv) == 5:
+        cmd_append(sys.argv[2], int(sys.argv[3]), sys.argv[4])
     elif cmd == 'add' and len(sys.argv) == 3:
         cmd_add_task(sys.argv[2])
     elif cmd == 'read':
