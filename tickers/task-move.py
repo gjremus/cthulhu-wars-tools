@@ -129,7 +129,7 @@ def backup():
         except OSError:
             pass
 
-def _materialize_or_die(path, tries=18, delay=8):
+def _materialize_or_die(path, tries=30, delay=8):
     """Google Drive File Stream sometimes serves this file as a non-materialized
     ('dataless') placeholder. The ONLY thing that triggers Drive's on-demand
     download is reading the WHOLE file to EOF -- a small peek (e.g. read(2))

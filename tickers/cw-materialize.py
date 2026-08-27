@@ -28,7 +28,11 @@ import os
 import sys
 import time
 
-TRIES = 18
+# Budget: some Drive files (esp. uchg/locked task docs) sit in "resource deadlock
+# avoided" for over two minutes while Drive fetches them, then materialize. Give a
+# comfortable margin -- verified a real doc that materialized right around the old
+# 144s cap. 30 * 8s = 240s, still far under the 3600s per-tick watchdog.
+TRIES = 30
 DELAY = 8
 
 

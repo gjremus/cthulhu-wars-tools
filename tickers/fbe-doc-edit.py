@@ -112,7 +112,7 @@ def backup():
     return dst
 
 
-def _force_materialize(path, tries=18, delay=8):
+def _force_materialize(path, tries=30, delay=8):
     """Google Drive keeps files as 'dataless' placeholders and only downloads the
     real bytes when the WHOLE file is read to EOF. zipfile.ZipFile seeks to the
     central directory (a partial read) and fails 'not a zip' on a dataless file,

@@ -20,7 +20,7 @@ import subprocess, sys, os
 DOC = "/Users/gremus/Library/CloudStorage/GoogleDrive-gremus@salesforce.com/My Drive/Personal/Games/Cthulhu Wars/BGA/BGA current tasks.docx"
 PANDOC = "/Users/gremus/.local/bin/pandoc"
 
-def _force_materialize(path, tries=18, delay=8):
+def _force_materialize(path, tries=30, delay=8):
     """Google Drive keeps files as 'dataless' placeholders and only downloads the
     real bytes when the WHOLE file is read to EOF. pandoc's buffered header read
     does NOT trigger the fetch and fails 'resource busy' on a dataless file, so we
