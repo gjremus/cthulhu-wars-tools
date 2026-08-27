@@ -59,6 +59,13 @@ SHEET_OPEN = "Open Tasks"
 SHEET_DONE = "Completed Tasks"
 SHEET_SUMMARY = "Recent Summary"
 
+# Count of populated Open-Tasks rows AT THE MOMENT WE OPENED THE FILE. The
+# grow-guard in save_wb() compares the post-mutation count against THIS, so it
+# catches only rows OUR operation inserted — not tasks the owner legitimately
+# added since the last run. (A stale persisted count used to block every save
+# forever the moment the owner appended a new task.)
+LOAD_OPEN_COUNT = None
+
 def check_lockout():
     try:
         mtime = os.path.getmtime(XLSX)
@@ -168,12 +175,25 @@ def _materialize_or_die(path, tries=30, delay=8):
           file=sys.stderr)
     sys.exit(1)
 
+def _count_open_rows(wb):
+    """Number of Open-Tasks rows with a task description (column B)."""
+    ws = wb[SHEET_OPEN]
+    return sum(1 for r in range(1, ws.max_row + 1) if ws.cell(row=r, column=2).value)
+
 def load_wb():
     import openpyxl
+    global LOAD_OPEN_COUNT
     _materialize_or_die(XLSX)
     for attempt in range(3):
         try:
-            return openpyxl.load_workbook(XLSX)
+            wb = openpyxl.load_workbook(XLSX)
+            # Snapshot the row count as we found it — this is the honest
+            # baseline for the grow-guard (owner additions are already counted).
+            try:
+                LOAD_OPEN_COUNT = _count_open_rows(wb)
+            except Exception:
+                LOAD_OPEN_COUNT = None
+            return wb
         except Exception as e:
             if attempt < 2:
                 _materialize_or_die(XLSX)  # re-nudge Drive before each retry
@@ -187,22 +207,21 @@ def save_wb(wb):
     check_drive_sync()
     backup()
     check_lockout()
-    # Guard: count rows in Open Tasks BEFORE saving. If it grew beyond what
-    # we expect (header + data rows we read), refuse to save — something tried
-    # to insert rows. The complete command DELETES a row (net -1), start/comment
-    # don't change row count (net 0). Growing is NEVER valid.
+    # Guard: refuse to save if OUR operation inserted rows into Open Tasks.
+    # complete DELETES a row (net -1); start/comment/append don't change the row
+    # count (net 0). So the count must NEVER exceed what we loaded. We compare
+    # against LOAD_OPEN_COUNT (the count as we opened the file) rather than a
+    # persisted marker: tasks the owner adds between runs raise the load-time
+    # baseline legitimately and must NOT trip the guard. (The old persisted-count
+    # comparison blocked every save forever the moment the owner added a task —
+    # which is exactly why the ticker stopped picking up new tasks.)
     ws_open = wb[SHEET_OPEN]
     new_count = sum(1 for r in range(1, ws_open.max_row + 1) if ws_open.cell(row=r, column=2).value)
     marker_file = os.path.join(BACKUP_DIR, ".open-task-count")
-    try:
-        with open(marker_file, 'r') as f:
-            prev_count = int(f.read().strip())
-        if new_count > prev_count:
-            # exit 6 (integrity guard), NOT 3 — code 3 is reserved for Drive-busy.
-            print(f"FATAL: Open Tasks grew from {prev_count} to {new_count} rows. REFUSING TO SAVE. Something tried to insert rows.", file=sys.stderr)
-            sys.exit(6)
-    except (OSError, ValueError):
-        pass
+    if LOAD_OPEN_COUNT is not None and new_count > LOAD_OPEN_COUNT:
+        # exit 6 (integrity guard), NOT 3 — code 3 is reserved for Drive-busy.
+        print(f"FATAL: Open Tasks grew from {LOAD_OPEN_COUNT} (at load) to {new_count} rows during this operation. REFUSING TO SAVE — our write tried to insert rows.", file=sys.stderr)
+        sys.exit(6)
     # Final Drive-sync check in the narrowest window right before the write, then
     # capture the file identity. openpyxl writes directly to XLSX (it does not
     # os.replace), so the inode — and therefore the Drive file ID and sharing —
