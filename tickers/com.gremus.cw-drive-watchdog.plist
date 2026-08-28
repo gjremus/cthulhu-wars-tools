@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+Google Drive wedge watchdog. Reads a canary Drive file; if the read deadlocks
+(EDEADLK) or times out, it restarts Google Drive so the CW ticker can read
+`master current tasks.xlsx` again. Rate-limited inside the script (6-min cooldown).
+
+Runs in the gui/$UID session (same as the ticker) so its File Provider access
+matches the ticker's. Scheduled at :07/:22/:37/:52 — between the ticker's
+:00/:15/:30/:45 runs — so a wedge is cleared BEFORE the next tick.
+
+Install:   launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.gremus.cw-drive-watchdog.plist
+Uninstall: launchctl bootout   gui/$(id -u)/com.gremus.cw-drive-watchdog
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.gremus.cw-drive-watchdog</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>/Users/gremus/Claude-Projects/cthulhu-wars-tools/tickers/drive-watchdog.sh</string>
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict><key>Minute</key><integer>7</integer></dict>
+        <dict><key>Minute</key><integer>22</integer></dict>
+        <dict><key>Minute</key><integer>37</integer></dict>
+        <dict><key>Minute</key><integer>52</integer></dict>
+    </array>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/cw-drive-watchdog.stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/cw-drive-watchdog.stderr.log</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+</dict>
+</plist>
