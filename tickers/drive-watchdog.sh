@@ -67,7 +67,7 @@ except OSError:
 # line is a wedge, measure back to the start of the unbroken wedge streak.
 TS = re.compile(r'^\[(\d{4}-\d{2}-\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?')
 RELEVANT = re.compile(r'\b(MASTER|HOMEBREWS|FBE)\b')
-WEDGE = re.compile(r'Resource deadlock avoided|Errno 11|dataless|materialize fail|Drive[- ]busy|Drive outage|mount error', re.I)
+WEDGE = re.compile(r'Resource deadlock avoided|Errno 11|dataless|materialize fail|Drive[- ]busy|Drive outage|mount error|mount (?:still )?unresponsive|Interrupted system call|ongoing outage|Outage persisting|chronic (?:per-file )?lock|hung with zero output', re.I)
 
 def ts_of(line):
     m = TS.match(line)
