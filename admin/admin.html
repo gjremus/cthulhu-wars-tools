@@ -369,6 +369,7 @@
           </div>
           <div>
             <div style="color:var(--text-muted);margin-bottom:4px;">Build</div>
+            <label class="sim-checkbox" style="margin-right:4px;"><input type="checkbox" id="flt-build-main" onchange="applyGamesSortSearch()"/>Main</label>
             <label class="sim-checkbox" style="margin-right:4px;"><input type="checkbox" id="flt-build-library" onchange="applyGamesSortSearch()"/>Library</label>
             <label class="sim-checkbox" style="margin-right:4px;"><input type="checkbox" id="flt-build-mnu" onchange="applyGamesSortSearch()"/>MNU</label>
             <label class="sim-checkbox" style="margin-right:4px;"><input type="checkbox" id="flt-build-tt" onchange="applyGamesSortSearch()"/>TT</label>
@@ -509,10 +510,15 @@
   <!-- Server Stats — host + JVM resource usage. -->
   <div id="section-serverstats" class="section-pane" style="padding: 18px;">
     <h2>Server Stats <button class="small" style="margin-left:8px;" onclick="loadServerStats()">Refresh</button></h2>
-    <p style="color:var(--text-muted);font-size:10pt;">Game statistics computed from the games list and cached game metadata.</p>
+    <p style="color:var(--text-muted);font-size:10pt;">Live host metrics + GCP Always-Free consumption are collected on the VM (cron, every 5 min) and served as <code>serverstats.json</code>. Game statistics are computed from the games list.</p>
+
+    <!-- Free-tier consumption: month-to-date usage vs. GCP Always-Free allowances. -->
+    <h3 style="margin-top:14px;">Free-tier consumption <span id="ss-consumption-month" style="color:var(--text-muted);font-weight:normal;font-size:10pt;"></span></h3>
+    <div id="ss-consumption" style="padding:6px 2px;">loading…</div>
+
     <div id="server-stats-content" style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:14px;">
       <div>
-        <h3>Server info</h3>
+        <h3>Server performance</h3>
         <div id="ss-host-mem" class="sim-tail" style="height:auto;max-height:none;padding:10px;">loading…</div>
       </div>
       <div>
@@ -625,17 +631,25 @@ function fallbackCopy(text, done) {
 // ========== Build switcher ==========
 // Persisted in localStorage("cwo_admin_build"). Default "library". Other
 // menus (SimRunner) read this via getBuild().
+// Default 'library' (root path). NOTE: this drives ONLY the SimRunner jar
+// selection + admin play-URL prefix — NOT the games-list build labels/filters
+// (those come from the server's parts[10] tag). Left as 'library' so SimRunner
+// keeps sending a jar tag the VM orchestrator recognizes ('main' is a games-list
+// label only, not a SimRunner jar).
 function getBuild() {
   return localStorage.getItem('cwo_admin_build') || 'library';
 }
 const BUILD_LABELS = {
+  main:    { short: 'Main',    full: 'Main (Cthulhu Wars Expansions)' },
   library: { short: 'Library', full: 'Library at Celaeno' },
   mnu:     { short: 'MNU',     full: 'More Neutral Units (MNU)' },
   tt:      { short: 'TT',      full: 'TchoTcho (TT)' },
   bb:      { short: 'BB',      full: 'Bubastis (BB)' },
   hb:      { short: 'HB',      full: 'Homebrew (HB)' },
 };
-const BUILD_PATH_PREFIX = { library: '', mnu: '/mnu', tt: '/TchoTcho', bb: '/BB', hb: '/HB' };
+// "main" and legacy "library" both serve at the root path (main is the
+// consolidated root build; library is the pre-consolidation root tag).
+const BUILD_PATH_PREFIX = { main: '', library: '', mnu: '/mnu', tt: '/TchoTcho', bb: '/BB', hb: '/HB' };
 function buildPlayUrl(secret) {
   return `${SERVER}${BUILD_PATH_PREFIX[getBuild()] || ''}/play/${secret}`;
 }
@@ -1000,9 +1014,10 @@ function fetchFrozenList() {
 
 // ── Server Stats ─────────────────────────────────────────────────────
 function loadServerStats() {
-  ['ss-host-mem','ss-jvm','ss-cpu','ss-games'].forEach(id => {
+  ['ss-host-mem','ss-jvm','ss-cpu','ss-games','ss-consumption'].forEach(id => {
     const el = document.getElementById(id); if (el) el.textContent = 'loading…';
   });
+  loadHostStats();  // live host performance + free-tier consumption (serverstats.json)
   // Compute stats from the games list (client-side — no server endpoint needed)
   fetch(`${SERVER}/admin/${TOKEN}/games`).then(r => r.text()).then(text => {
     const lines = text.split('\n').filter(l => l.trim());
@@ -1010,7 +1025,7 @@ function loadServerStats() {
     const now = Date.now();
     const DAY = 86400000;
     let active7d = 0, active24h = 0, broken = 0, completed = 0;
-    const builds = { library: 0, mnu: 0, tt: 0, bb: 0, hb: 0, unknown: 0 };
+    const builds = { main: 0, library: 0, mnu: 0, tt: 0, bb: 0, hb: 0, unknown: 0 };
     let totalHumans = 0, totalBots = 0;
     lines.forEach(line => {
       const p = line.split('\t');
@@ -1025,17 +1040,12 @@ function loadServerStats() {
         builds[meta.build] = (builds[meta.build] || 0) + 1;
       } else {
         const serverBuild = (p[10] || '').trim().toLowerCase();
-        if (['library','mnu','tt','bb','hb'].includes(serverBuild)) builds[serverBuild]++;
+        if (['main','library','mnu','tt','bb','hb'].includes(serverBuild)) builds[serverBuild]++;
         else builds.unknown++;
       }
       if (meta) { totalHumans += meta.humanCount; totalBots += meta.botCount; }
     });
     const active = total - completed - broken;
-
-    document.getElementById('ss-host-mem').innerHTML =
-      `<span style="color:var(--text-muted);">Host memory/JVM stats require a server-side endpoint<br>that is not yet implemented.</span><br><br>` +
-      `VM: Oracle Cloud, 1 vCPU, 1 GB RAM<br>` +
-      `JVM: -Xmx450m (systemd cwo.service)`;
 
     document.getElementById('ss-jvm').innerHTML =
       `Total games:     <b>${total}</b><br>` +
@@ -1047,6 +1057,7 @@ function loadServerStats() {
 
     document.getElementById('ss-cpu').innerHTML =
       `<b>By build:</b><br>` +
+      `Main:     ${builds.main}<br>` +
       `Library:  ${builds.library}<br>` +
       `MNU:      ${builds.mnu}<br>` +
       `TT:       ${builds.tt}<br>` +
@@ -1062,10 +1073,83 @@ function loadServerStats() {
       `Bot-only games:     ${lines.filter(l => { const id = l.split('\t')[0]; const m = GAME_META_CACHE[id]; return m && m.botCount > 0 && m.humanCount === 0; }).length}<br>` +
       `Mixed games:        ${lines.filter(l => { const id = l.split('\t')[0]; const m = GAME_META_CACHE[id]; return m && m.humanCount > 0 && m.botCount > 0; }).length}`;
   }).catch(e => {
-    ['ss-host-mem','ss-jvm','ss-cpu','ss-games'].forEach(id => {
+    ['ss-jvm','ss-cpu','ss-games'].forEach(id => {
       const el = document.getElementById(id); if (el) el.textContent = 'error: ' + e;
     });
   });
+}
+
+// ── Live host performance + free-tier consumption ──────────────────────
+// Fetches serverstats.json (written on the VM by collect-stats.py, every
+// 5 min). Served by Caddy at a token-in-path URL (same pattern as the other
+// admin calls), so the admin token gates it and no CORS preflight is needed.
+function loadHostStats() {
+  const fmtUptime = s => {
+    if (s == null) return '—';
+    const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+    return (d ? d + 'd ' : '') + h + 'h ' + m + 'm';
+  };
+  // Coloured usage bar: green < 75%, amber < 100%, red at/over the free limit.
+  const bar = (pct) => {
+    if (pct == null) return '';
+    const p = Math.min(100, pct);
+    const col = pct >= 100 ? '#c0392b' : (pct >= 75 ? '#d69a2d' : '#2e8b57');
+    return `<div style="background:#222;border:1px solid #444;border-radius:3px;height:11px;width:150px;display:inline-block;vertical-align:middle;overflow:hidden;">` +
+           `<div style="background:${col};height:100%;width:${p}%;"></div></div>`;
+  };
+  const ago = ts => {
+    const secs = Math.max(0, Math.floor(Date.now() / 1000 - ts));
+    if (secs < 90) return secs + 's ago';
+    if (secs < 5400) return Math.round(secs / 60) + 'm ago';
+    return Math.round(secs / 3600) + 'h ago';
+  };
+
+  fetch(`${SERVER}/admin/${TOKEN}/serverstats.json`)
+    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(s => {
+      // ---- Performance panel ----
+      const p = s.performance || {}, mem = p.mem || {}, disk = p.disk || {}, svc = p.service || {}, la = p.loadavg || {};
+      const memPct = mem.total_mb ? Math.round(mem.used_mb / mem.total_mb * 100) : null;
+      const svcColor = svc.cwo_service === 'active' ? '#2e8b57' : '#c0392b';
+      document.getElementById('ss-host-mem').innerHTML =
+        `cwo.service: <b style="color:${svcColor};">${svc.cwo_service || '?'}</b>` +
+        (svc.java_rss_mb != null ? ` &nbsp; JVM RSS: ${svc.java_rss_mb} MB` : '') +
+        (svc.xmx ? ` (${svc.xmx})` : '') + `<br>` +
+        `Uptime: ${fmtUptime(p.uptime_seconds)} &nbsp; CPUs: ${p.cpu_count ?? '?'}<br>` +
+        `Load (1/5/15m): ${la['1'] ?? '?'} / ${la['5'] ?? '?'} / ${la['15'] ?? '?'}<br>` +
+        `Memory: ${mem.used_mb ?? '?'} / ${mem.total_mb ?? '?'} MB ${memPct != null ? '(' + memPct + '%) ' + bar(memPct) : ''}<br>` +
+        (mem.swap_total_mb ? `Swap: ${mem.swap_used_mb} / ${mem.swap_total_mb} MB<br>` : '') +
+        `Disk /: ${disk.used_gb ?? '?'} / ${disk.total_gb ?? '?'} GB ${disk.used_pct != null ? '(' + disk.used_pct + '%) ' + bar(disk.used_pct) : ''}<br>` +
+        `<span style="color:var(--text-muted);font-size:9pt;">updated ${s.generated ? ago(s.ts) : '?'} • VM: GCP e2-micro, 2 shared vCPU, ~1 GB RAM, us-central1-a</span>`;
+
+      // ---- Consumption panel ----
+      const c = s.consumption || {};
+      document.getElementById('ss-consumption-month').textContent =
+        c.month ? `— ${c.month} (${c.hours_elapsed}h of month elapsed)` : '';
+      let rows = (c.items || []).map(it => {
+        const used = it.used == null ? '—' : it.used;
+        const totalTxt = it.total ? `${it.total} ${it.unit}` : `no free tier`;
+        const pctTxt = it.pct == null ? '—' : it.pct + '%';
+        return `<tr>` +
+          `<td style="padding:3px 10px 3px 0;">${it.label}</td>` +
+          `<td style="padding:3px 10px 3px 0;text-align:right;white-space:nowrap;">${used}${it.used == null ? '' : ' ' + it.unit}</td>` +
+          `<td style="padding:3px 10px 3px 0;text-align:right;white-space:nowrap;color:var(--text-muted);">/ ${totalTxt}</td>` +
+          `<td style="padding:3px 10px 3px 0;text-align:right;white-space:nowrap;"><b>${pctTxt}</b></td>` +
+          `<td style="padding:3px 0;">${bar(it.pct)}</td>` +
+          (it.note ? `<td style="padding:3px 0 3px 12px;color:var(--text-muted);font-size:9pt;">${it.note}</td>` : `<td></td>`) +
+          `</tr>`;
+      }).join('');
+      document.getElementById('ss-consumption').innerHTML =
+        `<table style="border-collapse:collapse;font-size:10pt;">` +
+        `<tr style="color:var(--text-muted);font-size:9pt;"><td>Resource</td><td style="text-align:right;">Used (MTD)</td><td style="text-align:right;">Free allowance</td><td style="text-align:right;">%</td><td></td><td></td></tr>` +
+        rows + `</table>`;
+    })
+    .catch(e => {
+      const msg = `<span style="color:var(--text-muted);">serverstats.json unavailable (${e.message}).<br>` +
+        `Confirm the VM collector cron is installed and Caddy serves /admin/&lt;token&gt;/serverstats.json.</span>`;
+      const h = document.getElementById('ss-host-mem'); if (h) h.innerHTML = msg;
+      const cc = document.getElementById('ss-consumption'); if (cc) cc.innerHTML = msg;
+    });
 }
 
 // 2026-06-02: Replaced single-pill GAMES_FILTER with multi-axis filter pyramid.
@@ -1091,6 +1175,7 @@ function readFilters() {
     allBots:   g('flt-allbots-yes'),
     anyBots:   g('flt-anybots-yes'),
     liveOnly:  g('flt-live-yes'),
+    buildMain:    g('flt-build-main'),
     buildLibrary: g('flt-build-library'),
     buildMNU:     g('flt-build-mnu'),
     buildTT:      g('flt-build-tt'),
@@ -1110,7 +1195,7 @@ function activeFilterCount() {
   if (f.pc3) n++; if (f.pc4) n++; if (f.pc5) n++; if (f.pcUnknown) n++;
   if (f.allHumans) n++; if (f.allBots) n++; if (f.anyBots) n++;
   if (f.liveOnly) n++;
-  if (f.buildLibrary) n++; if (f.buildMNU) n++; if (f.buildTT) n++; if (f.buildBB) n++; if (f.buildHB) n++;
+  if (f.buildMain) n++; if (f.buildLibrary) n++; if (f.buildMNU) n++; if (f.buildTT) n++; if (f.buildBB) n++; if (f.buildHB) n++;
   if (f.search) n++;
   return n;
 }
@@ -1125,7 +1210,7 @@ function toggleFilterPyramid() {
 function clearAllFilters() {
   ['flt-rep-yes','flt-rep-no','flt-err-yes','flt-err-no',
    'flt-pc-3','flt-pc-4','flt-pc-5','flt-pc-unknown','flt-allhumans-yes','flt-allbots-yes','flt-anybots-yes','flt-live-yes',
-   'flt-build-library','flt-build-mnu','flt-build-tt','flt-build-bb','flt-build-hb']
+   'flt-build-main','flt-build-library','flt-build-mnu','flt-build-tt','flt-build-bb','flt-build-hb']
     .forEach(id => { const el = document.getElementById(id); if (el) el.checked = false; });
   const s = document.getElementById('games-search'); if (s) s.value = '';
   const so = document.getElementById('games-sort'); if (so) so.value = 'last';
@@ -1145,6 +1230,7 @@ function updateFilterCounts(games) {
   const liveYes = games.filter(g => g.isLive).length;
   const repYes = games.filter(g => REPLAY_EXISTS[g.id] === true).length;
   const repNo = games.filter(g => REPLAY_EXISTS[g.id] === false).length;
+  const buildMain = games.filter(g => g.build === 'main').length;
   const buildLib = games.filter(g => g.build === 'library').length;
   const buildMNU = games.filter(g => g.build === 'mnu').length;
   const buildTT = games.filter(g => g.build === 'tt').length;
@@ -1171,6 +1257,7 @@ function updateFilterCounts(games) {
   setCount('flt-live-yes', liveYes);
   setCount('flt-rep-yes', repYes);
   setCount('flt-rep-no', repNo);
+  setCount('flt-build-main', buildMain);
   setCount('flt-build-library', buildLib);
   setCount('flt-build-mnu', buildMNU);
   setCount('flt-build-tt', buildTT);
@@ -1182,9 +1269,10 @@ function updateFilterCounts(games) {
 function gamePassesFilters(g, f) {
   // Build axis. If any build checkbox is checked, the game must match one of them.
   // If no build checkboxes are checked, all games pass. Unknown/empty builds always pass.
-  const buildChecked = f.buildLibrary || f.buildMNU || f.buildTT || f.buildBB || f.buildHB;
+  const buildChecked = f.buildMain || f.buildLibrary || f.buildMNU || f.buildTT || f.buildBB || f.buildHB;
   if (buildChecked && g.build && g.build !== 'unknown' && g.build !== '') {
-    const ok = (f.buildLibrary && g.build === 'library') ||
+    const ok = (f.buildMain && g.build === 'main') ||
+               (f.buildLibrary && g.build === 'library') ||
                (f.buildMNU && g.build === 'mnu') ||
                (f.buildTT && g.build === 'tt') ||
                (f.buildBB && g.build === 'bb') ||
@@ -1292,6 +1380,7 @@ try { GAME_META_CACHE = JSON.parse(localStorage.getItem(GAME_META_CACHE_KEY) || 
 
 function detectBuildFromVersion(versionLine) {
   const v = (versionLine || '').toLowerCase();
+  if (v.includes('expansions')) return 'main';
   if (v.includes('library-at-celaeno') || v.includes('library at celaeno')) return 'library';
   if (v.includes('more-neutral-units') || v.includes('more neutral units') || v.includes('mnu')) return 'mnu';
   if (v.includes('tcho-tcho') || v.includes('tcho tcho') || v.includes('tchotcho')) return 'tt';
@@ -1517,7 +1606,7 @@ function populateGames(text) {
       humanCount: parseInt(parts[7] || '0', 10),
       botCount: parseInt(parts[8] || '0', 10),
       isLive: (parts[9] || '0').trim() === '1',
-      build: (['library','mnu','tt','bb','hb'].includes((parts[10]||'').trim().toLowerCase()) ? parts[10].trim().toLowerCase() : ''),
+      build: (['main','library','mnu','tt','bb','hb'].includes((parts[10]||'').trim().toLowerCase()) ? parts[10].trim().toLowerCase() : ''),
       hasFixResp: false,
       frozen: (parts[11] || '').trim() === '1' || getFrozenLocal(parts[0]),
       startMs: 0,
@@ -2528,12 +2617,21 @@ function humanizeAction(val) {
   if ((m = val.match(/^PreMainAction\((\w+)\)/))) return `── ${m[1]}'s turn ──`;
   if ((m = val.match(/^GatherPowerAction\((\w+),\s*(\d+)\)/))) return `${m[1]} gathered ${m[2]} power`;
   if ((m = val.match(/^DoomAction\((\w+),\s*(\d+)/))) return `${m[1]} scored ${m[2]} doom`;
-  if ((m = val.match(/^DoomPhaseAction\(/))) return `── Doom Phase ──`;
-  if ((m = val.match(/^ActionPhaseAction\(/))) return `── Action Phase ──`;
+  if ((m = val.match(/^DoomAction\((\w+)\)/))) return `${m[1]}'s Doom turn`;
+  if ((m = val.match(/^DoomPhaseAction\b/))) return `── Doom Phase: award base Doom to all ──`;
+  if ((m = val.match(/^DoomNextPlayerAction\((\w+)\)/))) return `Doom Phase → next player (${m[1]})`;
+  if ((m = val.match(/^DoomDoneAction\((\w+)\)/))) return `${m[1]} finished Doom turn`;
+  if ((m = val.match(/^CheckSpellbooksAction\(/))) return `Check spellbooks (award new spellbooks)`;
+  if ((m = val.match(/^ActionPhaseAction\b/))) return `── Action Phase ──`;
   if ((m = val.match(/^PowerGatherAction\(/))) return `── Gather Power Phase ──`;
   if ((m = val.match(/^NextPlayerAction\((\w+)\)/))) return `${m[1]} became first player`;
   if ((m = val.match(/^PlayDirectionAction\((\w+),\s*\[([^\]]*)\]\)/))) return `Play order: ${m[2]}`;
   if ((m = val.match(/^StartingRegionAction\((\w+),\s*(\w+)\)/))) return `${m[1]} started in ${m[2]}`;
+  // Moonbeast return-from-Spellbook flow (recorded actions used in the Doom phase)
+  if ((m = val.match(/^MoonbeastReturnPlaceAction\((\w+),\s*([^,]+),\s*(\w+)/))) return `${m[1]} returned ${prettyUnit(m[2])} to ${m[3]} (off Spellbook)`;
+  if ((m = val.match(/^MoonbeastReturnLoopAction\(/))) return `Moonbeast return — process next`;
+  if ((m = val.match(/^MoonbeastInitialPlaceAction\((\w+),\s*(\w+),\s*(\w+)\)/))) return `${m[1]} placed Moonbeast onto ${m[3].replace(/([A-Z])/g, ' $1').trim()} of ${m[2]}`;
+  if ((m = val.match(/^MoonbeastPrematureReturnAction\((\w+)\)/))) return `${m[1]} paid 1 Doom to remove Moonbeast(s) from Spellbooks`;
 
   // --- FACTION-SPECIFIC: TCHO-TCHO (TT) ---
   if ((m = val.match(/^TTChooseTribeAction\((\w+),\s*(\w+)\)/))) return `${m[1]} chose tribe: ${m[2].replace(/([A-Z])/g, ' $1').trim()}`;
@@ -2606,6 +2704,16 @@ function humanizeAction(val) {
   // --- BUBASTIS (BB) ---
   if ((m = val.match(/^BBSatiateAction\((\w+)/))) return `${m[1]} used Satiate`;
   if ((m = val.match(/^BBBastetSummonAction\((\w+),\s*(\w+)\)/))) return `${m[1]} summoned Bastet in ${m[2]}`;
+
+  // --- DEATH CULT (DC) PROSELYTIZE ---
+  // New flow (2026-08): each drag is a recorded DCProselytizeDragAction whose
+  // first arg is the LOSING faction, then from-region, to-region, cultist ref.
+  if ((m = val.match(/^DCProselytizeDragAction\((\w+),\s*(\w+),\s*(\w+),\s*([^,]+)/))) return `Proselytize: ${m[1]} ${prettyUnit(m[4])} dragged from ${m[2]} to ${m[3]}`;
+  if ((m = val.match(/^DCProselytizeDoneAction\((\w+),\s*(\w+),\s*(\w+),\s*\[([^\]]*)\]/))) return `Proselytize: DC chose to drag from [${m[4] || 'none'}]`;
+  // Legacy recorded games (auto-every-enemy / shared-pool flows).
+  if ((m = val.match(/^DCProselytizeEnemyPickAction\((\w+),\s*(\w+),\s*(\w+),\s*([^,]+)/))) return `Proselytize: ${m[1]} ${prettyUnit(m[4])} dragged from ${m[2]} to ${m[3]}`;
+  if ((m = val.match(/^DCProselytizePickCultistAction\((\w+),\s*(\w+),\s*(\w+),\s*([^,]+)/))) return `Proselytize: ${m[1]} ${prettyUnit(m[4])} dragged to ${m[3]}`;
+  if ((m = val.match(/^DCProselytizeSelectFactionAction\((?:\w+),\s*(?:\w+),\s*(?:\w+),\s*(?:\d+),\s*(?:\d+),\s*\[[^\]]*\],\s*(\w+)/))) return `Proselytize: DC chose to drag from ${m[1]}`;
 
   // --- CATCH-ALL for other faction-prefixed actions ---
   if ((m = val.match(/^(\w{2})(\w+)Action\((\w+)/))) {
@@ -2969,11 +3077,37 @@ function rollbackTo(index) {
 
 // Write a stashed action back into the live log at a chosen index (defaults to the
 // stashed entry's original index). Uses the admin/write endpoint (writes as role "$").
+// Duplicate-insertion guard. Some actions (DoomPhaseAction, DoomNextPlayerAction,
+// phase markers, etc.) are NOT idempotent — writing one that already exists in the
+// live log double-awards Doom / re-runs a phase. Before a re-insert we scan the live
+// log for the exact same action value and, if found, warn with the human-friendly name
+// and the indices where it already appears. Returns true if the caller should proceed.
+function checkReinsertDuplicate(value, contextLabel) {
+  const lines = (LAST_LOG_RAW || '').split('\n').filter(Boolean);
+  const norm = s => (s || '').trim();
+  const matches = lines.map(l => {
+    const tabs = l.split('\t');
+    return { index: tabs[0], value: tabs.slice(2).join('\t') };
+  }).filter(e => norm(e.value) === norm(value));
+  if (matches.length === 0) return true;
+  const human = humanizeAction(value) || value;
+  const where = matches.map(e => `#${e.index}`).join(', ');
+  return confirm(
+    `⚠ DUPLICATE ACTION\n\n` +
+    `${contextLabel ? contextLabel + '\n\n' : ''}` +
+    `This action already exists in the live log at ${where}:\n\n` +
+    `  ${human}\n  (${value.substring(0, 90)})\n\n` +
+    `Re-inserting it will make the engine perform it AGAIN. For non-idempotent actions ` +
+    `(Doom awards, phase markers) this double-counts. Insert anyway?`
+  );
+}
+
 function reinsertStashed(stashIdx) {
   if (!CURRENT_GAME) return;
   const stash = getStash(CURRENT_GAME.id);
   const entry = stash[stashIdx];
   if (!entry) return;
+  if (!checkReinsertDuplicate(entry.value, `Re-inserting a single stashed action.`)) return;
   const lines = (LAST_LOG_RAW || '').split('\n').filter(Boolean);
   const nextIdx = lines.length ? Math.max(...lines.map(l => parseInt(l.split('\t')[0], 10) || 0)) + 1 : entry.index;
   const target = prompt(
@@ -3049,16 +3183,21 @@ function renderStash() {
       const label = groupLabel(group);
       const playerActions = group.filter(e => !isEngineGlue(e.value));
       const isExpanded = true;
+      const stashLabel = e => { const h = humanizeAction(e.value); return h ? esc(h) : esc(e.value.substring(0, 70)); };
       const summary = playerActions.length > 0
-        ? playerActions.map(e => esc(e.value.substring(0, 70))).join('<br/>')
-        : esc(group[0].value.substring(0, 70));
+        ? playerActions.map(stashLabel).join('<br/>')
+        : stashLabel(group[0]);
       const detailRows = isExpanded
         ? group.map((e, ei) => {
             const stashIdx = stash.indexOf(e);
+            const human = humanizeAction(e.value);
+            const valCell = human
+              ? `<span class="val"><span class="player-log" style="font-size:9.5pt;">${colorizeLogText(human)}</span><br><span style="color:#666;font-size:8pt;font-style:italic;">${esc(e.value)}</span></span>`
+              : `<span class="val">${esc(e.value)}</span>`;
             return `<div class="log-entry stash-entry" data-stash-idx="${stashIdx}" style="margin-left:20px;opacity:${isEngineGlue(e.value) ? '0.5' : '1'};">
             <span class="idx">${esc(String(e.index))}</span>
             <span class="role">${esc(e.role)}</span>
-            <span class="val">${esc(e.value)}</span>
+            ${valCell}
             <button class="small" onclick="editStashEntry(${stashIdx}, this)">Edit</button>
             <button class="small" onclick="reinsertStashed(${stashIdx})">Re-insert</button>
           </div>`;
@@ -3086,6 +3225,17 @@ function reinsertAll() {
   const lines = (LAST_LOG_RAW || '').split('\n').filter(Boolean);
   const maxLiveIdx = lines.length ? Math.max(...lines.map(l => parseInt(l.split('\t')[0], 10) || 0)) : -1;
   const startIdx = maxLiveIdx + 1;
+  const dups = sorted.filter(e => {
+    const norm = s => (s || '').trim();
+    return (LAST_LOG_RAW || '').split('\n').filter(Boolean)
+      .some(l => norm(l.split('\t').slice(2).join('\t')) === norm(e.value));
+  });
+  if (dups.length && !confirm(
+    `⚠ ${dups.length} of these ${sorted.length} actions ALREADY EXIST in the live log:\n\n` +
+    dups.slice(0, 8).map(e => '  • ' + (humanizeAction(e.value) || e.value.substring(0, 70))).join('\n') +
+    (dups.length > 8 ? `\n  …and ${dups.length - 8} more` : '') +
+    `\n\nRe-inserting duplicates double-counts non-idempotent actions (Doom, phases). Proceed anyway?`
+  )) return;
   if (!confirm(`Re-insert all ${sorted.length} stashed actions?\n\nWill write sequentially starting at index ${startIdx}.\n\nFirst action: ${sorted[0].value.substring(0, 60)}\nLast action: ${sorted[sorted.length-1].value.substring(0, 60)}`)) return;
   // Chain sequential POSTs, writing at consecutive indices from startIdx
   let chain = Promise.resolve();
@@ -3144,6 +3294,16 @@ function reinsertStashGroup(groupIdx) {
   const lines = (LAST_LOG_RAW || '').split('\n').filter(Boolean);
   const maxLiveIdx = lines.length ? Math.max(...lines.map(l => parseInt(l.split('\t')[0], 10) || 0)) : -1;
   const startIdx = maxLiveIdx + 1;
+  const gdups = group.filter(e => {
+    const norm = s => (s || '').trim();
+    return lines.some(l => norm(l.split('\t').slice(2).join('\t')) === norm(e.value));
+  });
+  if (gdups.length && !confirm(
+    `⚠ ${gdups.length} of this turn's ${group.length} actions ALREADY EXIST in the live log:\n\n` +
+    gdups.slice(0, 8).map(e => '  • ' + (humanizeAction(e.value) || e.value.substring(0, 70))).join('\n') +
+    (gdups.length > 8 ? `\n  …and ${gdups.length - 8} more` : '') +
+    `\n\nRe-inserting duplicates double-counts non-idempotent actions (Doom, phases). Proceed anyway?`
+  )) return;
   if (!confirm(
     `Re-insert this turn (${group.length} actions) starting at index ${startIdx}?\n\n` +
     `Player action: ${label.value.substring(0, 70)}\n` +
