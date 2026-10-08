@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sections Harness</title>
+  <style>
+    body {
+      font-family: 'Courier New', monospace;
+      background: #0a0a0a;
+      color: #eee;
+      padding: 20px;
+      margin: 0;
+    }
+    #controls {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: #1a1a1a;
+      padding: 12px;
+      border-bottom: 2px solid #444;
+      z-index: 1000;
+    }
+    #controls select {
+      padding: 8px;
+      background: #222;
+      color: #eee;
+      border: 1px solid #666;
+      font-size: 16px;
+    }
+    #container {
+      margin-top: 80px;
+      max-width: 1200px;
+    }
+    .status {
+      margin-left: 16px;
+      padding: 4px 12px;
+      background: #333;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <select id="section-select">
+      <option value="">-- Select Section --</option>
+    </select>
+    <span id="status" class="status"></span>
+  </div>
+
+  <div id="container"></div>
+
+  <script src="../rules.js"></script>
+  <script src="../sections.js"></script>
+  <script>
+    const design = Rules.newDesign();
+    const reference = {
+      earth33Regions: ["Arctic Ocean", "North Atlantic", "South Atlantic", "North Pacific", "Indian Ocean", "South Pacific", "Europe", "Asia", "Africa", "North America", "South America", "Australia", "Antarctica"],
+      library33Regions: ["Floating Tower", "Fountain", "Yr and the Nhhngr", "Guardian Under Lake", "Barrier of Naach Tith", "Gloomloft", "Larvae of Outer Gods", "Lake of Hali Overlook", "Chamber of Sngac", "Oubliette", "Blue Hall", "Chamber of Apkallu", "Black Hall", "Hyperquarium", "The Crawling Ones"],
+      glyphs: [
+        {codeName: "GlyphWW", nickname: "Thorn", unicodeSuggestion: "ᚦ"},
+        {codeName: "GlyphAA", nickname: "Dragon", unicodeSuggestion: "🐉"},
+        {codeName: "GlyphOO", nickname: "Chevron", unicodeSuggestion: "ᐯ"}
+      ],
+      placementOrder: [
+        {acronym: "GC", name: "Great Cthulhu"},
+        {acronym: "CC", name: "Crawling Chaos"},
+        {acronym: "BG", name: "Black Goat"},
+        {acronym: "YS", name: "Yellow Sign"},
+        {acronym: "SL", name: "Sleeper"},
+        {acronym: "WW", name: "Windwalker"}
+      ],
+      defaultUnitArt: {
+        cultist: {url: 'https://cwo.freeddns.org/HB/webp/images/gc-acolyte.webp', w: 40, h: 59},
+        monster: {url: 'https://cwo.freeddns.org/HB/webp/images/n-dimensional-shambler.webp', w: 70, h: 85},
+        terror: {url: 'https://cwo.freeddns.org/HB/webp/images/n-hound-of-tindalos.webp', w: 500, h: 500},
+        goo: {url: 'https://cwo.freeddns.org/HB/webp/images/n-cthugha.webp', w: 350, h: 500},
+        elderGod: {url: 'https://cwo.freeddns.org/HB/webp/images/bb-bastet.webp', w: 237, h: 405},
+        building: {url: 'https://cwo.freeddns.org/HB/webp/images/an-cathedral.webp', w: 78, h: 110},
+        customGate: {url: 'https://cwo.freeddns.org/HB/webp/images/ds-chaos-gate.webp', w: 110, h: 98}
+      },
+      earthMap3W: {
+        url: 'https://cwo.freeddns.org/HB/webp/images/earth33-dark.webp',
+        w: 1791,
+        h: 894,
+        southPacific: {x: 540, y: 830}
+      },
+      gcPreview: {
+        name: 'Great Cthulhu',
+        units: ['Acolyte', 'Deep One', 'Shoggoth', 'Starspawn', 'Cthulhu']
+      }
+    };
+
+    const faction = {
+      name: 'Test Faction',
+      acronym: 'TST'
+    };
+
+    const images = new Map();
+    let overlayEl = null;
+
+    function getByPath(obj, path) {
+      const parts = path.split('.');
+      let current = obj;
+      for (let part of parts) {
+        if (part.includes('[') && part.includes(']')) {
+          const match = part.match(/^(.+)\[(\d+)\]$/);
+          if (match) {
+            current = current[match[1]][parseInt(match[2])];
+          }
+        } else {
+          current = current[part];
+        }
+      }
+      return current;
+    }
+
+    function setByPath(obj, path, value) {
+      const parts = path.split('.');
+      const last = parts.pop();
+      let current = obj;
+
+      for (let part of parts) {
+        if (part.includes('[') && part.includes(']')) {
+          const match = part.match(/^(.+)\[(\d+)\]$/);
+          if (match) {
+            current = current[match[1]][parseInt(match[2])];
+          }
+        } else {
+          if (!current[part]) current[part] = {};
+          current = current[part];
+        }
+      }
+
+      if (last.includes('.')) {
+        const subParts = last.split('.');
+        for (let i = 0; i < subParts.length - 1; i++) {
+          const p = subParts[i];
+          if (p.match(/^[a-z0-9]+$/)) {
+            if (!current[p]) current[p] = {};
+            current = current[p];
+          }
+        }
+        current[subParts[subParts.length - 1]] = value;
+      } else {
+        current[last] = value;
+      }
+
+      updateStatus();
+    }
+
+    const ctx = {
+      design,
+      faction,
+      reference,
+      set(path, value) {
+        console.log('set', path, value);
+        setByPath(design, path, value);
+        updateStatus();
+      },
+      addRow(tablePath, row) {
+        console.log('addRow', tablePath, row);
+        const table = getByPath(design, tablePath);
+        table.push(row);
+        renderCurrent();
+      },
+      deleteRow(tablePath, id) {
+        console.log('deleteRow', tablePath, id);
+        const table = getByPath(design, tablePath);
+        const idx = table.findIndex(r => r.id === id);
+        if (idx >= 0) table.splice(idx, 1);
+        renderCurrent();
+      },
+      async uploadImage(kind) {
+        const id = 'mock_' + Rules.newId();
+        images.set(id, 'https://via.placeholder.com/200');
+        console.log('uploadImage', kind, '→', id);
+        return id;
+      },
+      imgUrl(id) {
+        return images.get(id) || 'https://via.placeholder.com/80';
+      },
+      async confirm(message, yes, no) {
+        return window.confirm(message);
+      },
+      rerender() {
+        renderCurrent();
+      },
+      openOverlay(content) {
+        if (overlayEl) {
+          document.body.removeChild(overlayEl);
+        }
+        overlayEl = document.createElement('div');
+        overlayEl.className = 'sx-overlay';
+        if (typeof content === 'string') {
+          overlayEl.innerHTML = content;
+        } else {
+          overlayEl.appendChild(content);
+        }
+        document.body.appendChild(overlayEl);
+      },
+      closeOverlay() {
+        if (overlayEl) {
+          document.body.removeChild(overlayEl);
+          overlayEl = null;
+        }
+      }
+    };
+
+    const select = document.getElementById('section-select');
+    const container = document.getElementById('container');
+    const statusEl = document.getElementById('status');
+
+    Rules.SECTIONS.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.key;
+      opt.textContent = s.title;
+      select.appendChild(opt);
+    });
+
+    let currentSection = null;
+
+    function renderCurrent() {
+      if (currentSection) {
+        Sections.render(currentSection, container, ctx);
+        updateStatus();
+      }
+    }
+
+    function updateStatus() {
+      if (currentSection) {
+        const isEmpty = Rules.isEmpty(currentSection, design);
+        const status = Rules.status(currentSection, design);
+        statusEl.textContent = `Empty: ${isEmpty} | Status: ${status}`;
+      }
+    }
+
+    select.addEventListener('change', () => {
+      currentSection = select.value;
+      if (currentSection) {
+        renderCurrent();
+      } else {
+        container.innerHTML = '';
+        statusEl.textContent = '';
+      }
+    });
+
+    console.log('Harness ready. Select a section to test.');
+  </script>
+</body>
+</html>

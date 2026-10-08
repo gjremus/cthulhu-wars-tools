@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Rules Tests</title>
+  <style>
+    body { font-family: monospace; background: #111; color: #eee; padding: 20px; }
+    .test { margin: 16px 0; padding: 12px; border: 1px solid #444; }
+    .pass { border-color: #0a0; background: #020; }
+    .fail { border-color: #a00; background: #200; }
+    h2 { margin-top: 24px; }
+  </style>
+</head>
+<body>
+  <h1>Rules.js Tests</h1>
+  <div id="results"></div>
+
+  <script src="../rules.js"></script>
+  <script>
+    const results = document.getElementById('results');
+
+    function test(name, fn) {
+      try {
+        fn();
+        results.innerHTML += `<div class="test pass">✓ ${name}</div>`;
+      } catch (e) {
+        results.innerHTML += `<div class="test fail">✗ ${name}<br>${e.message}</div>`;
+      }
+    }
+
+    function assert(condition, message) {
+      if (!condition) throw new Error(message || 'Assertion failed');
+    }
+
+    function assertEqual(a, b, message) {
+      if (JSON.stringify(a) !== JSON.stringify(b)) {
+        throw new Error(message || `Expected ${JSON.stringify(a)} to equal ${JSON.stringify(b)}`);
+      }
+    }
+
+    // Tests
+
+    test('newDesign creates a valid design', () => {
+      const design = Rules.newDesign();
+      assert(design.meta, 'has meta');
+      assert(design.ae, 'has ae');
+      assert(design.ufa, 'has ufa');
+      assert(design.setup, 'has setup');
+      assert(design.units, 'has units');
+      assert(design.sbr, 'has sbr');
+      assert(design.sb, 'has sb');
+      assert(design.region, 'has region');
+      assert(design.tokens, 'has tokens');
+      assert(design.custom, 'has custom');
+      assert(design.menus, 'has menus');
+      assert(design.units.rows.length === 3, 'units has 3 rows');
+      assert(design.sbr.rows.length === 6, 'sbr has 6 rows');
+      assert(design.sb.rows.length === 6, 'sb has 6 rows');
+    });
+
+    test('blankRow creates valid rows', () => {
+      const aeRow = Rules.blankRow('ae.rows');
+      assert(aeRow.id, 'ae row has id');
+      assert(aeRow.sign === '+', 'ae row has default sign');
+
+      const unitRow = Rules.blankRow('units.rows');
+      assert(unitRow.id, 'unit row has id');
+      assert(unitRow.type === null, 'unit row type is null');
+
+      const sbRow = Rules.blankRow('sb.rows');
+      assert(sbRow.id, 'sb row has id');
+      assert(sbRow.cost === 0, 'sb row has default cost 0');
+    });
+
+    test('isEmpty works for blank design', () => {
+      const design = Rules.newDesign();
+      assert(Rules.isEmpty('ae', design), 'ae is empty');
+      assert(Rules.isEmpty('ufa', design), 'ufa is empty');
+      assert(Rules.isEmpty('setup', design), 'setup is empty');
+      assert(Rules.isEmpty('units', design), 'units is empty');
+      assert(Rules.isEmpty('region', design), 'region is empty');
+    });
+
+    test('isEmpty works for modified design', () => {
+      const design = Rules.newDesign();
+      design.ae.name = 'Test';
+      assert(!Rules.isEmpty('ae', design), 'ae is not empty after modification');
+    });
+
+    test('status returns Incomplete for empty required sections', () => {
+      const design = Rules.newDesign();
+      assertEqual(Rules.status('ufa', design), 'Incomplete', 'ufa is incomplete when empty');
+      assertEqual(Rules.status('setup', design), 'Incomplete', 'setup is incomplete when empty');
+      assertEqual(Rules.status('units', design), 'Incomplete', 'units is incomplete when empty');
+      assertEqual(Rules.status('sbr', design), 'Incomplete', 'sbr is incomplete when empty');
+      assertEqual(Rules.status('sb', design), 'Incomplete', 'sb is incomplete when empty');
+    });
+
+    test('status returns N/A for optional empty sections', () => {
+      const design = Rules.newDesign();
+      assertEqual(Rules.status('ae', design), 'N/A', 'ae is N/A when disabled');
+      assertEqual(Rules.status('region', design), 'N/A', 'region is N/A when empty');
+      assertEqual(Rules.status('tokens', design), 'N/A', 'tokens is N/A when empty');
+      assertEqual(Rules.status('custom', design), 'N/A', 'custom is N/A when empty');
+    });
+
+    test('status returns Complete for filled UFA', () => {
+      const design = Rules.newDesign();
+      design.ufa.name = 'Test Ability';
+      design.ufa.phase = 'Action';
+      design.ufa.type = 'Ongoing';
+      design.ufa.text = 'Test text';
+      assertEqual(Rules.status('ufa', design), 'Complete', 'ufa is complete');
+    });
+
+    test('status returns Complete for filled unit', () => {
+      const design = Rules.newDesign();
+      const unit = design.units.rows[0];
+      unit.type = 'Monster';
+      unit.name = 'Deep One';
+      unit.silhouette = 'img123';
+      unit.qty = 6;
+      unit.costType = 'Fixed';
+      unit.cost = 2;
+      unit.combatType = 'Fixed Dice';
+      unit.dice = 2;
+      assertEqual(Rules.status('units', design), 'Complete', 'units is complete');
+    });
+
+    test('buildReady returns false for blank design', () => {
+      const design = Rules.newDesign();
+      assert(!Rules.buildReady(design), 'blank design is not ready');
+    });
+
+    test('buildReady returns true for complete design', () => {
+      const design = Rules.newDesign();
+
+      // UFA
+      design.ufa.name = 'Test';
+      design.ufa.phase = 'Action';
+      design.ufa.type = 'Ongoing';
+      design.ufa.text = 'Text';
+
+      // Setup
+      design.setup.text = 'Setup text';
+      design.setup.location = 'single';
+      design.setup.earthRegion = 'South Pacific';
+      design.setup.libraryRegion = 'Floating Tower';
+      design.setup.gate = true;
+      design.setup.units[0].name = 'Cultist';
+      design.setup.units[0].qty = 6;
+      design.setup.power = 8;
+
+      // Units
+      const unit = design.units.rows[0];
+      unit.type = 'Monster';
+      unit.name = 'Monster';
+      unit.silhouette = 'img1';
+      unit.qty = 6;
+      unit.costType = 'Fixed';
+      unit.cost = 2;
+      unit.combatType = 'Fixed Dice';
+      unit.dice = 2;
+
+      // SBR
+      design.sbr.rows.forEach((r, i) => {
+        r.text = `Requirement ${i + 1}`;
+      });
+
+      // SB
+      design.sb.rows.forEach((r, i) => {
+        r.name = `Spellbook ${i + 1}`;
+        r.type = 'Action';
+        r.text = 'Text';
+      });
+
+      assert(Rules.buildReady(design), 'complete design is ready');
+    });
+
+    test('fixedNumbers extracts numbers correctly', () => {
+      const design = Rules.newDesign();
+      design.ufa.hasCost = true;
+      design.ufa.cost = 3;
+      design.setup.power = 10;
+
+      const nums = Rules.fixedNumbers(design);
+      assert(nums.length >= 2, 'at least 2 numbers');
+      assert(nums.some(n => n.field === 'cost' && n.value === 3), 'has UFA cost');
+      assert(nums.some(n => n.field === 'power' && n.value === 10), 'has setup power');
+    });
+
+    test('describeSectionDiff detects changes', () => {
+      const old = Rules.newDesign();
+      const neu = Rules.newDesign();
+
+      assertEqual(Rules.describeSectionDiff('ufa', old, neu), '', 'no diff for identical designs');
+
+      neu.ufa.name = 'Changed';
+      const diff = Rules.describeSectionDiff('ufa', old, neu);
+      assert(diff.length > 0, 'detects name change');
+      assert(diff.includes('Changed'), 'diff mentions new name');
+    });
+
+    test('newId generates unique ids', () => {
+      const ids = new Set();
+      for (let i = 0; i < 100; i++) {
+        ids.add(Rules.newId());
+      }
+      assert(ids.size === 100, 'all ids are unique');
+    });
+
+    results.innerHTML += '<h2>All tests passed!</h2>';
+  </script>
+</body>
+</html>

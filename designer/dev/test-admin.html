@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Custom Designs</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #0d1117; color: #e6edf3; }
+    .success { color: #3fb950; }
+    .error { color: #f85149; }
+    pre { background: #161b22; padding: 10px; border-radius: 6px; overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <h1>Custom Designs API Test</h1>
+  <div id="results"></div>
+
+  <script>
+    const SERVER = 'http://localhost:8092';
+    const TOKEN = 'testtoken';
+    const results = document.getElementById('results');
+
+    async function runTests() {
+      results.innerHTML = '<p>Running tests...</p>';
+      const output = [];
+
+      try {
+        // Test 1: Load users
+        output.push('<h2>Test 1: Load Users</h2>');
+        const usersResp = await fetch(`${SERVER}/designer/api/admin/${TOKEN}/users`);
+        if (!usersResp.ok) throw new Error(`HTTP ${usersResp.status}`);
+        const usersData = await usersResp.json();
+        output.push(`<p class="success">✓ Loaded ${usersData.users.length} users</p>`);
+        output.push(`<pre>${JSON.stringify(usersData, null, 2)}</pre>`);
+
+        // Test 2: Load requests
+        output.push('<h2>Test 2: Load Requests</h2>');
+        const reqsResp = await fetch(`${SERVER}/designer/api/admin/${TOKEN}/requests?status=open,notified`);
+        if (!reqsResp.ok) throw new Error(`HTTP ${reqsResp.status}`);
+        const reqsData = await reqsResp.json();
+        output.push(`<p class="success">✓ Loaded ${reqsData.requests.length} requests</p>`);
+        output.push(`<pre>${JSON.stringify(reqsData, null, 2)}</pre>`);
+
+        // Test 3: Search functionality
+        output.push('<h2>Test 3: Search Filter</h2>');
+        const searchTerm = 'gamma';
+        const filtered = usersData.users.filter(u =>
+          u.username.toLowerCase().includes(searchTerm) ||
+          u.factions.some(f => f.name.toLowerCase().includes(searchTerm) || f.acronym.toLowerCase().includes(searchTerm))
+        );
+        output.push(`<p class="success">✓ Search for "${searchTerm}" returned ${filtered.length} user(s)</p>`);
+
+        output.push('<h2>All Tests Passed!</h2>');
+      } catch (err) {
+        output.push(`<p class="error">✗ Test failed: ${err.message}</p>`);
+      }
+
+      results.innerHTML = output.join('');
+    }
+
+    runTests();
+  </script>
+</body>
+</html>

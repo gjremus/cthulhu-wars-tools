@@ -243,6 +243,16 @@
   .sim-past-row .size { color: var(--text-muted); font-size: 8.5pt; }
   .sim-past-row button { padding: 3px 10px; font-size: 9pt; }
 
+  /* Designer request banners (flashing) */
+  .designer-banner { padding: 10px 12px; margin-bottom: 6px; border-radius: 6px;
+                     border: 2px solid var(--warn); background: rgba(210,153,34,0.15);
+                     color: var(--text); font-size: 10pt; font-weight: 500;
+                     animation: banner-flash 1.5s ease-in-out infinite; }
+  @keyframes banner-flash {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+
   /* Hamburger nav (mobile-first) — visible <720px, hidden ≥720px since the
      desktop view shows the games list inline in the left rail. */
   .hamburger-btn { display: inline-flex; align-items: center; justify-content: center;
@@ -285,6 +295,7 @@
   <a href="#" onclick="showSection('simrunner'); closeNav(); return false;">SimRunner</a>
   <a href="#" onclick="showSection('build'); closeNav(); return false;">Build</a>
   <a href="#" onclick="showSection('claude'); closeNav(); return false;">Claude Terminal</a>
+  <a href="#" onclick="showSection('customdesigns'); loadDesignerData(); closeNav(); return false;">Custom Designs</a>
   <a href="#" onclick="showSection('serverstats'); loadServerStats(); closeNav(); return false;">Server Stats</a>
 </nav>
 
@@ -315,6 +326,8 @@
   <div id="section-games" class="section-pane active col-wrap">
     <div class="col left">
       <h2>Live Games</h2>
+      <!-- Designer request banners -->
+      <div id="designer-banners" style="margin:8px 0;"></div>
       <p>
         <button class="small" onclick="loadGames()">Refresh</button>
         <label style="margin-left:10px;color:var(--text-muted);font-size:9pt;">
@@ -533,6 +546,34 @@
         <h3>Player breakdown</h3>
         <div id="ss-games" class="sim-tail" style="height:auto;max-height:none;padding:10px;">loading…</div>
       </div>
+    </div>
+  </div>
+
+  <!-- Custom Designs — user management + designer request banners. -->
+  <div id="section-customdesigns" class="section-pane" style="padding: 18px;">
+    <h2>Custom Designs <button class="small" style="margin-left:8px;" onclick="loadDesignerData()">Refresh</button></h2>
+    <p style="color:var(--text-muted);font-size:10pt;">Manage faction designer users and factions. Build-ready and simple-update requests appear as banners in the Games view.</p>
+
+    <!-- Search box -->
+    <div style="margin:12px 0;">
+      <input type="text" id="designer-search" oninput="filterDesignerList()" placeholder="Search users and factions…"
+        style="width:100%;max-width:400px;padding:8px 10px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:10pt;" />
+    </div>
+
+    <!-- Select mode toggle: shows a checkbox next to every user and faction -->
+    <div style="display:flex;gap:8px;align-items:center;margin:10px 0;font-size:10pt;">
+      <button class="small" id="designer-select-btn" onclick="toggleDesignerSelectMode()">Select</button>
+    </div>
+
+    <!-- Users list -->
+    <div id="designer-users-list" style="margin-top:14px;">
+      <p class="empty">Loading users…</p>
+    </div>
+
+    <!-- Delete all (only in Select mode) -->
+    <div id="designer-bulk-bar" style="display:none;gap:8px;align-items:center;margin:10px 0;font-size:10pt;">
+      <button class="small danger" onclick="bulkDeleteDesignerFactions()" id="designer-bulk-delete-btn">Delete all checked</button>
+      <span id="designer-bulk-status" style="font-size:9pt;color:var(--text-muted);"></span>
     </div>
   </div>
 
@@ -990,6 +1031,7 @@ function loadGames() {
   fetch(`${SERVER}/admin/${TOKEN}/games`).then(r => r.text()).then(text => {
     populateGames(text);
     fetchFrozenList();
+    loadDesignerBanners();
   });
 }
 function fetchFrozenList() {
@@ -3381,6 +3423,189 @@ function esc(s) {
     });
   }, 15 * 60 * 1000);
 })();
+
+// ========== CUSTOM DESIGNS ==========
+// Cache of loaded designer data (users + their factions)
+let DESIGNER_DATA = { users: [] };
+
+function loadDesignerBanners() {
+  if (!SERVER || !TOKEN) return;
+  fetch(`${SERVER}/designer/api/admin/${TOKEN}/requests?status=open,notified,in_progress`)
+    .then(r => r.ok ? r.json() : Promise.reject(`HTTP ${r.status}`))
+    .then(data => {
+      const requests = data.requests || [];
+      const buildReqs = requests.filter(r => r.type === 'build');
+      const simpleUpdateReqs = requests.filter(r => r.type === 'simple_update');
+      const bannersDiv = document.getElementById('designer-banners');
+      if (!bannersDiv) return;
+      if (buildReqs.length === 0 && simpleUpdateReqs.length === 0) {
+        bannersDiv.innerHTML = '';
+        return;
+      }
+      const html = [];
+      buildReqs.forEach(req => {
+        html.push(`<div class="designer-banner">▶ Design complete and ready to execute build for <b>${esc(req.faction)}</b></div>`);
+      });
+      simpleUpdateReqs.forEach(req => {
+        html.push(`<div class="designer-banner">⚙ Faction Simple Update Requested to Ticker — <b>${esc(req.faction)}</b></div>`);
+      });
+      bannersDiv.innerHTML = html.join('');
+    })
+    .catch(err => {
+      console.error('Failed to load designer banners:', err);
+    });
+}
+
+function loadDesignerData() {
+  if (!SERVER || !TOKEN) return;
+  fetch(`${SERVER}/designer/api/admin/${TOKEN}/users`)
+    .then(r => r.ok ? r.json() : Promise.reject(`HTTP ${r.status}`))
+    .then(data => {
+      DESIGNER_DATA = data;
+      renderDesignerList();
+    })
+    .catch(err => {
+      document.getElementById('designer-users-list').innerHTML =
+        `<div class="err">Failed to load designer users: ${esc(String(err))}</div>`;
+    });
+}
+
+// Select mode + which users are expanded survive re-renders (search typing, refresh)
+let DESIGNER_SELECT_MODE = false;
+const DESIGNER_EXPANDED = new Set();
+
+function renderDesignerList() {
+  const searchTerm = (document.getElementById('designer-search')?.value || '').trim().toLowerCase();
+  const users = DESIGNER_DATA.users || [];
+  // Keep ticks across re-renders
+  const checkedU = new Set(Array.from(document.querySelectorAll('.designer-user-cb:checked')).map(cb => cb.dataset.user));
+  const checkedF = new Set(Array.from(document.querySelectorAll('.designer-faction-cb:checked')).map(cb => cb.dataset.fid));
+  const fMatch = f => f.name.toLowerCase().includes(searchTerm) || f.acronym.toLowerCase().includes(searchTerm);
+  const filtered = users.filter(u => !searchTerm || u.username.toLowerCase().includes(searchTerm) || u.factions.some(fMatch));
+
+  const list = document.getElementById('designer-users-list');
+  if (filtered.length === 0) {
+    list.innerHTML = users.length ? '<p class="empty">No users match the search.</p>' : '<p class="empty">Nobody has registered yet.</p>';
+    return;
+  }
+  const sel = DESIGNER_SELECT_MODE;
+  list.innerHTML = filtered.map(user => {
+    // Username matches -> show all their factions; otherwise only the matching factions
+    const userHit = !searchTerm || user.username.toLowerCase().includes(searchTerm);
+    const shown = userHit ? user.factions : user.factions.filter(fMatch);
+    // Searching for a faction opens its owner so the match is visible
+    const open = DESIGNER_EXPANDED.has(user.username) || (searchTerm && !userHit);
+    const uq = esc(user.username).replace(/'/g, "\\'");
+    const factionsHtml = !open ? '' : shown.length === 0
+      ? '<p style="color:var(--text-muted);font-size:9pt;margin:4px 0 0 20px;">No factions</p>'
+      : `<div style="margin:8px 0 0 20px;">` +
+        shown.map(faction => {
+          const buildStatus = faction.buildStatus || 'none';
+          const versionLabel = faction.current ? `v${faction.current}` : '';
+          const liveLabel = faction.liveVersion ? ` (live: v${faction.liveVersion})` : '';
+          const cb = sel ? `<input type="checkbox" class="designer-faction-cb" data-fid="${esc(faction.id)}" ${checkedF.has(faction.id) ? 'checked' : ''} />` : '';
+          return `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;margin-bottom:4px;">
+            ${cb}
+            <span style="flex:1;"><b>${esc(faction.name)}</b> (${esc(faction.acronym)}) · ${versionLabel}${liveLabel} · ${esc(buildStatus)}</span>
+            <button class="small danger" onclick="deleteSingleDesignerFaction('${esc(faction.id)}', '${esc(faction.name).replace(/'/g, "\\'")}')">Delete</button>
+          </div>`;
+        }).join('') +
+        `</div>`;
+    const ucb = sel ? `<input type="checkbox" class="designer-user-cb" data-user="${esc(user.username)}" ${checkedU.has(user.username) ? 'checked' : ''} />` : '';
+    return `<div style="border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-bottom:8px;background:var(--bg-card);">
+      <div style="display:flex;align-items:center;gap:10px;">
+        ${ucb}
+        <span style="flex:1;font-weight:600;font-size:11pt;cursor:pointer;" onclick="toggleDesignerUser('${uq}')">${open ? '▾' : '▸'} ${esc(user.username)}</span>
+        <span style="color:var(--text-muted);font-size:9pt;">${user.factions.length} faction${user.factions.length !== 1 ? 's' : ''}</span>
+        <button class="small" onclick="resetDesignerPassword('${uq}')">Reset password</button>
+      </div>
+      ${factionsHtml}
+    </div>`;
+  }).join('');
+}
+
+function filterDesignerList() {
+  renderDesignerList();
+}
+
+function toggleDesignerUser(username) {
+  if (DESIGNER_EXPANDED.has(username)) DESIGNER_EXPANDED.delete(username); else DESIGNER_EXPANDED.add(username);
+  renderDesignerList();
+}
+
+function toggleDesignerSelectMode() {
+  DESIGNER_SELECT_MODE = !DESIGNER_SELECT_MODE;
+  document.getElementById('designer-select-btn').textContent = DESIGNER_SELECT_MODE ? 'Cancel select' : 'Select';
+  document.getElementById('designer-bulk-bar').style.display = DESIGNER_SELECT_MODE ? 'flex' : 'none';
+  // Factions must be visible to be ticked
+  if (DESIGNER_SELECT_MODE) (DESIGNER_DATA.users || []).forEach(u => DESIGNER_EXPANDED.add(u.username));
+  renderDesignerList();
+}
+
+function resetDesignerPassword(username) {
+  if (!confirm(`Reset password for user "${username}" to "password"?\n\nThe user will need to log in with this new password.`)) return;
+  fetch(`${SERVER}/designer/api/admin/${TOKEN}/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: username })
+  })
+    .then(r => r.ok ? r.json() : Promise.reject(`HTTP ${r.status}`))
+    .then(() => {
+      alert(`Password reset for ${username}.`);
+    })
+    .catch(err => {
+      alert(`Password reset failed: ${err}`);
+    });
+}
+
+function deleteSingleDesignerFaction(fid, name) {
+  if (!confirm(`Delete faction "${name}"?\n\nThis will remove all versions and design data. Cannot be undone.`)) return;
+  fetch(`${SERVER}/designer/api/admin/${TOKEN}/delete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ users: [], factions: [fid] })
+  })
+    .then(r => r.ok ? r.json() : Promise.reject(`HTTP ${r.status}`))
+    .then(() => {
+      loadDesignerData();
+    })
+    .catch(err => {
+      alert(`Delete failed: ${err}`);
+    });
+}
+
+function bulkDeleteDesignerFactions() {
+  const users = Array.from(document.querySelectorAll('.designer-user-cb:checked')).map(cb => cb.dataset.user);
+  const fids = Array.from(document.querySelectorAll('.designer-faction-cb:checked')).map(cb => cb.dataset.fid);
+  if (!users.length && !fids.length) {
+    alert('Nothing is checked yet. Tick the boxes next to the users or factions you want gone first.');
+    return;
+  }
+  const parts = [];
+  if (users.length) parts.push(`${users.length} user${users.length > 1 ? 's' : ''} (with ALL their factions): ${users.join(', ')}`);
+  if (fids.length) parts.push(`${fids.length} faction${fids.length > 1 ? 's' : ''}`);
+  if (!confirm(`Delete ${parts.join(' and ')}?\n\nThis removes every version and image too. It cannot be undone.`)) return;
+  const status = document.getElementById('designer-bulk-status');
+  const btn = document.getElementById('designer-bulk-delete-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'deleting…'; }
+  if (status) { status.textContent = 'deleting…'; status.style.color = 'var(--text-muted)'; }
+  fetch(`${SERVER}/designer/api/admin/${TOKEN}/delete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ users: users, factions: fids })
+  })
+    .then(r => r.ok ? r.json() : Promise.reject(`HTTP ${r.status}`))
+    .then(() => {
+      if (btn) { btn.disabled = false; btn.textContent = 'Delete all checked'; }
+      if (status) { status.textContent = `deleted ${parts.join(' and ')}`; status.style.color = 'var(--success)'; }
+      document.querySelectorAll('.designer-user-cb, .designer-faction-cb').forEach(cb => { cb.checked = false; });
+      loadDesignerData();
+    })
+    .catch(err => {
+      if (btn) { btn.disabled = false; btn.textContent = 'Delete all checked'; }
+      if (status) { status.textContent = `error: ${err}`; status.style.color = 'var(--danger)'; }
+    });
+}
 </script>
 
 </body>

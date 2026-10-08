@@ -1,0 +1,590 @@
+{
+ "earth33Regions": [
+  "Arctic Ocean",
+  "North Atlantic",
+  "South Atlantic",
+  "North Pacific",
+  "Indian Ocean",
+  "South Pacific",
+  "Europe",
+  "Asia",
+  "Africa",
+  "North America",
+  "South America",
+  "Australia",
+  "Antarctica"
+ ],
+ "earth33RegionsDetail": [
+  {
+   "name": "Arctic Ocean",
+   "scalaId": "ArcticOcean",
+   "ocean": true,
+   "glyph": null
+  },
+  {
+   "name": "North Atlantic",
+   "scalaId": "NorthAtlantic",
+   "ocean": true,
+   "glyph": null
+  },
+  {
+   "name": "South Atlantic",
+   "scalaId": "SouthAtlantic",
+   "ocean": true,
+   "glyph": null
+  },
+  {
+   "name": "North Pacific",
+   "scalaId": "NorthPacific",
+   "ocean": true,
+   "glyph": null
+  },
+  {
+   "name": "Indian Ocean",
+   "scalaId": "IndianOcean",
+   "ocean": true,
+   "glyph": null
+  },
+  {
+   "name": "South Pacific",
+   "scalaId": "SouthPacific",
+   "ocean": true,
+   "glyph": null
+  },
+  {
+   "name": "Europe",
+   "scalaId": "Europe",
+   "ocean": false,
+   "glyph": "GlyphWW"
+  },
+  {
+   "name": "Asia",
+   "scalaId": "Asia",
+   "ocean": false,
+   "glyph": "GlyphWW"
+  },
+  {
+   "name": "Africa",
+   "scalaId": "Africa",
+   "ocean": false,
+   "glyph": "GlyphAA"
+  },
+  {
+   "name": "North America",
+   "scalaId": "NorthAmerica",
+   "ocean": false,
+   "glyph": "GlyphOO"
+  },
+  {
+   "name": "South America",
+   "scalaId": "SouthAmerica",
+   "ocean": false,
+   "glyph": "GlyphOO"
+  },
+  {
+   "name": "Australia",
+   "scalaId": "Australia",
+   "ocean": false,
+   "glyph": "GlyphAA"
+  },
+  {
+   "name": "Antarctica",
+   "scalaId": "Antarctica",
+   "ocean": false,
+   "glyph": "NoGlyph"
+  }
+ ],
+ "library33Regions": [
+  "Floating Tower",
+  "Fountain",
+  "Yr and the Nhhngr",
+  "Guardian Under Lake",
+  "Barrier of Naach Tith",
+  "Gloomloft",
+  "Larvae of Outer Gods",
+  "Lake of Hali Overlook",
+  "Chamber of Sngac",
+  "Oubliette",
+  "Blue Hall",
+  "Chamber of Apkallu",
+  "Black Hall",
+  "Hyperquarium",
+  "The Crawling Ones"
+ ],
+ "library33RegionsDetail": [
+  {
+   "name": "Floating Tower",
+   "scalaId": "FloatingTower",
+   "ocean": false,
+   "glyph": null
+  },
+  {
+   "name": "Fountain",
+   "scalaId": "Fountain",
+   "ocean": false,
+   "glyph": null
+  },
+  {
+   "name": "Yr and the Nhhngr",
+   "scalaId": "YrAndTheNhhngr",
+   "ocean": false,
+   "glyph": null
+  },
+  {
+   "name": "Guardian Under Lake",
+   "scalaId": "GuardianUnderLake",
+   "ocean": false,
+   "glyph": null
+  },
+  {
+   "name": "Barrier of Naach Tith",
+   "scalaId": "BarrierOfNaachTith",
+   "ocean": false,
+   "glyph": null
+  },
+  {
+   "name": "Gloomloft",
+   "scalaId": "Gloomloft",
+   "ocean": false,
+   "glyph": null
+  },
+  {
+   "name": "Larvae of Outer Gods",
+   "scalaId": "LarvaeOfOuterGods",
+   "ocean": false,
+   "glyph": null
+  },
+  {
+   "name": "Lake of Hali Overlook",
+   "scalaId": "LakeOfHaliOverlook",
+   "ocean": false,
+   "glyph": null
+  },
+  {
+   "name": "Chamber of Sngac",
+   "scalaId": "ChamberOfSngac",
+   "ocean": false,
+   "glyph": null
+  },
+  {
+   "name": "Oubliette",
+   "scalaId": "Oubliette",
+   "ocean": false,
+   "glyph": null
+  },
+  {
+   "name": "Blue Hall",
+   "scalaId": "BlueHall",
+   "ocean": false,
+   "glyph": null
+  },
+  {
+   "name": "Chamber of Apkallu",
+   "scalaId": "ChamberOfApkallu",
+   "ocean": false,
+   "glyph": null
+  },
+  {
+   "name": "Black Hall",
+   "scalaId": "BlackHall",
+   "ocean": false,
+   "glyph": null
+  },
+  {
+   "name": "Hyperquarium",
+   "scalaId": "Hyperquarium",
+   "ocean": false,
+   "glyph": null
+  },
+  {
+   "name": "The Crawling Ones",
+   "scalaId": "TheCrawlingOnes",
+   "ocean": false,
+   "glyph": null
+  }
+ ],
+ "glyphs": [
+  {
+   "codeName": "Ocean",
+   "nickname": "Ocean",
+   "unicodeSuggestion": "\ud83c\udf0a",
+   "webpFile": null,
+   "url": null,
+   "regions": [
+    "Arctic Ocean",
+    "North Atlantic",
+    "South Atlantic",
+    "North Pacific",
+    "Indian Ocean",
+    "South Pacific"
+   ],
+   "_source": "Game.scala:15, Map.scala uses Ocean (AreaGlyph)"
+  },
+  {
+   "codeName": "GlyphWW",
+   "nickname": "Thorn",
+   "unicodeSuggestion": "\u16a6",
+   "webpFile": "ww-glyph.webp",
+   "url": "https://cwo.freeddns.org/HB/webp/images/ww-glyph.webp",
+   "regions": [
+    "Europe",
+    "Asia"
+   ],
+   "_source": "Game.scala:18, FactionWW uses Windwalker glyph"
+  },
+  {
+   "codeName": "GlyphAA",
+   "nickname": "Dragon",
+   "unicodeSuggestion": "\ud83d\udc09",
+   "webpFile": "bg-glyph.webp",
+   "url": "https://cwo.freeddns.org/HB/webp/images/bg-glyph.webp",
+   "regions": [
+    "Africa",
+    "Australia"
+   ],
+   "_source": "Game.scala:16, FactionBG (Black Goat) uses Dragon glyph"
+  },
+  {
+   "codeName": "GlyphOO",
+   "nickname": "Chevron",
+   "unicodeSuggestion": "\u142f",
+   "webpFile": "sl-glyph.webp",
+   "url": "https://cwo.freeddns.org/HB/webp/images/sl-glyph.webp",
+   "regions": [
+    "North America",
+    "South America"
+   ],
+   "_source": "Game.scala:17, FactionSL (Sleeper) uses Chevron glyph"
+  },
+  {
+   "codeName": "NoGlyph",
+   "nickname": "No Glyph",
+   "unicodeSuggestion": null,
+   "webpFile": null,
+   "url": null,
+   "regions": [
+    "Antarctica"
+   ],
+   "_source": "Game.scala:19"
+  }
+ ],
+ "placementOrder": [
+  {
+   "acronym": "GC",
+   "name": "Great Cthulhu",
+   "fixedRegions": 1
+  },
+  {
+   "acronym": "CC",
+   "name": "Crawling Chaos",
+   "fixedRegions": 1
+  },
+  {
+   "acronym": "BG",
+   "name": "Black Goat",
+   "fixedRegions": 1
+  },
+  {
+   "acronym": "YS",
+   "name": "Yellow Sign",
+   "fixedRegions": 1
+  },
+  {
+   "acronym": "SL",
+   "name": "Sleeper",
+   "fixedRegions": 1
+  },
+  {
+   "acronym": "WW",
+   "name": "Windwalker",
+   "fixedRegions": 2
+  },
+  {
+   "acronym": "AN",
+   "name": "The Ancients",
+   "fixedRegions": 6,
+   "notes": "non-faction regions only"
+  },
+  {
+   "acronym": "TS",
+   "name": "Tombstalker",
+   "fixedRegions": 6,
+   "notes": "ocean non-faction regions"
+  },
+  {
+   "acronym": "TT",
+   "name": "Tcho-Tcho",
+   "fixedRegions": 6,
+   "notes": "core faction glyphs"
+  },
+  {
+   "acronym": "CS",
+   "name": "Colour Out of Space",
+   "fixedRegions": 13,
+   "notes": "any region (constraint-sorted)"
+  },
+  {
+   "acronym": "FB",
+   "name": "Firstborn",
+   "fixedRegions": 13,
+   "notes": "any region (constraint-sorted)"
+  },
+  {
+   "acronym": "FBE",
+   "name": "Faceless Blight",
+   "fixedRegions": 13,
+   "notes": "any region; ALWAYS second-to-last per Game.scala line 3662"
+  },
+  {
+   "acronym": "OW",
+   "name": "Opener of the Way",
+   "fixedRegions": 13,
+   "notes": "any region; ALWAYS seats LAST per constraint solver"
+  }
+ ],
+ "placementOrderNotes": "Placement is constraint-sorted (minBy fewest legal regions). OW always seats last (13 options). FBE tiebreaker seats second-to-last. Fixed-region factions (GC/CC/BG/YS/SL) seat early. DS/BB/DC/XSS/TB have no map restriction or use expansion-specific logic. Source: Game.scala:3635-3662 SetupFactionsAction.",
+ "fixedStartFactions": [
+  {
+   "acronym": "GC",
+   "name": "Great Cthulhu",
+   "regions": [
+    "South Pacific"
+   ],
+   "_source": "Map.scala:68"
+  },
+  {
+   "acronym": "CC",
+   "name": "Crawling Chaos",
+   "regions": [
+    "Asia"
+   ],
+   "_source": "Map.scala:69"
+  },
+  {
+   "acronym": "BG",
+   "name": "Black Goat",
+   "regions": [
+    "Africa"
+   ],
+   "_source": "Map.scala:70"
+  },
+  {
+   "acronym": "YS",
+   "name": "Yellow Sign",
+   "regions": [
+    "Europe"
+   ],
+   "_source": "Map.scala:71"
+  },
+  {
+   "acronym": "SL",
+   "name": "Sleeper",
+   "regions": [
+    "North America"
+   ],
+   "_source": "Map.scala:72"
+  },
+  {
+   "acronym": "WW",
+   "name": "Windwalker",
+   "regions": [
+    "Arctic Ocean",
+    "Antarctica"
+   ],
+   "_source": "Map.scala:73"
+  }
+ ],
+ "defaultUnitArt": {
+  "cultist": {
+   "file": "gc-acolyte.webp",
+   "url": "https://cwo.freeddns.org/HB/webp/images/gc-acolyte.webp",
+   "w": 40,
+   "h": 59,
+   "_source": "/Users/gremus/Claude-Projects/cw-homebrew-wt/solo/webp/images/gc-acolyte.webp"
+  },
+  "monster": {
+   "file": "n-dimensional-shambler.webp",
+   "url": "https://cwo.freeddns.org/HB/webp/images/n-dimensional-shambler.webp",
+   "w": 70,
+   "h": 85,
+   "_source": "/Users/gremus/Claude-Projects/cw-homebrew-wt/solo/webp/images/n-dimensional-shambler.webp"
+  },
+  "terror": {
+   "file": "n-hound-of-tindalos.webp",
+   "url": "https://cwo.freeddns.org/HB/webp/images/n-hound-of-tindalos.webp",
+   "w": 500,
+   "h": 500,
+   "_source": "/Users/gremus/Claude-Projects/cw-homebrew-wt/solo/webp/images/n-hound-of-tindalos.webp"
+  },
+  "goo": {
+   "file": "n-cthugha.webp",
+   "url": "https://cwo.freeddns.org/HB/webp/images/n-cthugha.webp",
+   "w": 350,
+   "h": 500,
+   "_source": "/Users/gremus/Claude-Projects/cw-homebrew-wt/solo/webp/images/n-cthugha.webp"
+  },
+  "elderGod": {
+   "file": "bb-bastet.webp",
+   "url": "https://cwo.freeddns.org/HB/webp/images/bb-bastet.webp",
+   "w": 237,
+   "h": 405,
+   "_source": "/Users/gremus/Claude-Projects/cw-homebrew-wt/solo/webp/images/bb-bastet.webp"
+  },
+  "building": {
+   "file": "an-cathedral.webp",
+   "url": "https://cwo.freeddns.org/HB/webp/images/an-cathedral.webp",
+   "w": 78,
+   "h": 110,
+   "_source": "/Users/gremus/Claude-Projects/cw-homebrew-wt/solo/webp/images/an-cathedral.webp"
+  },
+  "customGate": {
+   "file": "ds-chaos-gate.webp",
+   "url": "https://cwo.freeddns.org/HB/webp/images/ds-chaos-gate.webp",
+   "w": 110,
+   "h": 98,
+   "_source": "/Users/gremus/Claude-Projects/cw-homebrew-wt/solo/webp/images/ds-chaos-gate.webp"
+  },
+  "gate": {
+   "file": "gate.webp",
+   "url": "https://cwo.freeddns.org/HB/webp/images/gate.webp",
+   "w": 76,
+   "h": 76,
+   "_source": "/Users/gremus/Claude-Projects/cw-homebrew-wt/solo/webp/images/gate.webp"
+  }
+ },
+ "earthMap3W": {
+  "file": "earth33-dark.webp",
+  "url": "https://cwo.freeddns.org/HB/webp/images/earth33-dark.webp",
+  "w": 1791,
+  "h": 894,
+  "southPacific": {
+   "x": 540,
+   "y": 830,
+   "note": "Gate placement coordinate from Map.scala EarthMap3.gateXYO(SouthPacific)"
+  },
+  "unitScaleNotes": "Earth maps unitScale=1.0. Library maps unitScale=2.0. Drawing applies: scale = board.unitScale * classK * uniformK. See CthulhuWarsSolo.scala:1525-1540.",
+  "_source": "Map.scala:5-123 (EarthMap3) and gateXYO method"
+ },
+ "fonts": {
+  "overlayTitle": {
+   "family": "Bohemian Typewriter",
+   "file": "bohemian-typewriter.woff2",
+   "url": "https://cwo.freeddns.org/HB/fonts/bohemian-typewriter.woff2",
+   "_source": "index.html lines 75-86 (@font-face and .bohemian-typewriter class)"
+  },
+  "overlayBody": {
+   "family": "Bohemian Typewriter",
+   "file": "bohemian-typewriter.woff2",
+   "url": "https://cwo.freeddns.org/HB/fonts/bohemian-typewriter.woff2",
+   "_source": "index.html body element uses .bohemian-typewriter"
+  },
+  "alternate": {
+   "family": "Abaddon",
+   "file": "abaddon.woff2",
+   "url": "https://cwo.freeddns.org/HB/fonts/abaddon.woff2",
+   "_source": "index.html lines 88-101"
+  }
+ },
+ "menuCss": {
+  "note": "Menu styling uses faction color classes (.gc, .cc, .bg, etc.) and standard text rules",
+  "factorColorClasses": "Each faction acronym (lowercase) is a CSS class with faction-specific color",
+  "example": ".gc { color: #008000; }",
+  "_source": "index.html lines 170-270 (faction color classes)"
+ },
+ "factionColors": {
+  "GC": "#008000",
+  "CC": "#3344ff",
+  "BG": "#ff0000",
+  "YS": "#cccc00",
+  "SL": "#ef764b",
+  "WW": "#a5cbe1",
+  "OW": "#995593",
+  "AN": "#30d5c8",
+  "TS": "#bfd8b9",
+  "FB": "#CB307E",
+  "DS": "#8B4513",
+  "TT": "#fc9ca0",
+  "BB": "#c8a84b",
+  "DC": "#F0EDA8",
+  "FBE": "#3d5f1c",
+  "XSS": "#4a6b7a",
+  "TB": "#8b6914",
+  "CS": "#d070d0",
+  "TI": "#cf5a48",
+  "_source": "index.html CSS classes"
+ },
+ "gcPreview": {
+  "name": "Great Cthulhu",
+  "units": [
+   "Acolyte",
+   "Deep One",
+   "Shoggoth",
+   "Starspawn",
+   "Cthulhu"
+  ],
+  "_source": "FactionGC.scala:41-57"
+ },
+ "textLengths": {
+  "_note": "estimated from overlay.scala strings (1357 strings >=40 chars: median 90, long tail to ~1000 for ability text)",
+  "ufa": {
+   "min": 60,
+   "median": 250,
+   "max": 1000
+  },
+  "spellbook": {
+   "min": 40,
+   "median": 200,
+   "max": 800
+  },
+  "sbr": {
+   "min": 20,
+   "median": 60,
+   "max": 200
+  },
+  "unitAbility": {
+   "min": 40,
+   "median": 200,
+   "max": 800
+  },
+  "setup": {
+   "min": 30,
+   "median": 120,
+   "max": 400
+  }
+ },
+ "reservedAcronyms": [
+  "GC",
+  "CC",
+  "BG",
+  "YS",
+  "SL",
+  "WW",
+  "OW",
+  "AN",
+  "CS",
+  "TS",
+  "FB",
+  "DS",
+  "BB",
+  "TT",
+  "DC",
+  "FBE",
+  "XSS",
+  "TB",
+  "TI"
+ ],
+ "_sources": {
+  "earth33Regions": "/Users/gremus/Claude-Projects/cw-homebrew-wt/solo/Map.scala:5-123 (EarthMap3 object)",
+  "library33Regions": "/Users/gremus/Claude-Projects/cw-homebrew-wt/solo/Map.scala:956-1030 (LibraryCelaeno33 object)",
+  "glyphs": "/Users/gremus/Claude-Projects/cw-homebrew-wt/solo/Game.scala:12-26 (Glyph sealed class and case objects)",
+  "placementOrder": "/Users/gremus/Claude-Projects/cw-homebrew-wt/solo/Game.scala:3635-3662 (SetupFactionsAction constraint solver) and Map.scala:67-105 (starting method)",
+  "factionColors": "/Users/gremus/Claude-Projects/cw-homebrew-wt/solo/index.html:170-270 (CSS faction color classes)",
+  "fonts": "/Users/gremus/Claude-Projects/cw-homebrew-wt/solo/index.html:75-101 (@font-face definitions)",
+  "defaultUnitArt": "/Users/gremus/Claude-Projects/cw-homebrew-wt/solo/webp/images/ directory",
+  "factionAcronyms": "/Users/gremus/Claude-Projects/cw-homebrew-wt/solo/FactionXX.scala files (case object XX extends Faction)",
+  "allFactionsList": "18 core factions in Faction*.scala + TI (19 total); Progenitus mentioned in comments but not yet implemented"
+ },
+ "_notes": {
+  "glyphNicknames": "Thorn/Dragon/Chevron mapping to GlyphWW/GlyphAA/GlyphOO is a best guess - owner to confirm"
+ }
+}

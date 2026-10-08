@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cthulhu Wars - Faction Designer</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div id="root"></div>
+  <div id="overlay" style="display:none;"></div>
+  <div id="save-indicator" style="display:none;">Saving...</div>
+
+  <!-- Load scripts -->
+  <script src="rules.js" onerror="console.log('rules.js not found, will try stub')"></script>
+  <script src="sections.js" onerror="console.log('sections.js not found, will try stub')"></script>
+  <script>
+    // Fallback to stubs if real files don't define the globals
+    (function() {
+      if (typeof window.Rules === 'undefined') {
+        console.log('Loading rules.stub.js');
+        const script = document.createElement('script');
+        script.src = 'dev/rules.stub.js';
+        document.head.appendChild(script);
+      }
+      if (typeof window.Sections === 'undefined') {
+        console.log('Loading sections.stub.js');
+        const script = document.createElement('script');
+        script.src = 'dev/sections.stub.js';
+        document.head.appendChild(script);
+      }
+    })();
+  </script>
+  <script src="app.js" defer></script>
+</body>
+</html>
