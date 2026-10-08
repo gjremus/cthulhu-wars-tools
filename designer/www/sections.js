@@ -764,8 +764,8 @@
     table.appendChild(h('thead', {},
       h('tr', {},
         h('th', {}, 'Spellbook Requirement Text'),
-        h('th', {style: 'width: 200px;'}, 'Includes Fixed Numeric?'),
-        h('th', {style: 'width: 150px;'}, 'Fixed Numeric')
+        h('th', {style: 'width: 200px;'}, 'Includes Fixed Numeric Cost or Effect?'),
+        h('th', {style: 'width: 150px;'}, 'Fixed Numeric Cost or Effect')
       )
     ));
 
@@ -807,8 +807,8 @@
         h('th', {}, 'Name'),
         h('th', {}, 'Type'),
         h('th', {style: 'width: 100px;'}, 'Cost'),
-        h('th', {style: 'width: 150px;'}, 'Has Effect?'),
-        h('th', {style: 'width: 100px;'}, 'Effect'),
+        h('th', {style: 'width: 150px;'}, 'Includes Fixed Numeric Effect?'),
+        h('th', {style: 'width: 100px;'}, 'Fixed Numeric Effect'),
         h('th', {}, 'Text'),
         h('th', {}, '')
       )
@@ -969,10 +969,10 @@
         h('th', {}, 'Name'),
         h('th', {}, 'Qty'),
         h('th', {}, 'Image'),
-        h('th', {}, 'Placement'),
+        h('th', {}, 'Placement on map or faction card'),
         h('th', {}, 'Effects'),
-        h('th', {style: 'width: 120px;'}, 'Has Effect?'),
-        h('th', {style: 'width: 100px;'}, 'Effect'),
+        h('th', {style: 'width: 120px;'}, 'Includes Fixed Numeric Effect?'),
+        h('th', {style: 'width: 100px;'}, 'Fixed Numeric Effect'),
         h('th', {}, '')
       )
     ));
@@ -1073,11 +1073,11 @@
       h('tr', {},
         h('th', {}, 'Name'),
         h('th', {}, 'Image'),
-        h('th', {}, 'Placement'),
+        h('th', {}, 'Placement on screen'),
         h('th', {}, 'Usage'),
         h('th', {}, 'Effects'),
-        h('th', {style: 'width: 120px;'}, 'Has Number?'),
-        h('th', {style: 'width: 100px;'}, 'Number'),
+        h('th', {style: 'width: 120px;'}, 'Includes Fixed Numeric Cost or Effect?'),
+        h('th', {style: 'width: 100px;'}, 'Fixed Numeric Cost or Effect'),
         h('th', {}, '')
       )
     ));
