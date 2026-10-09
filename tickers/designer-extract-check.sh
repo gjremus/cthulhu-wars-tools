@@ -83,6 +83,14 @@ PY
     return 1
 }
 
+# Free pre-check (owner chose this 2026-10-09): only start Haiku when something is waiting.
+pending=$(python3 "$TICKERS/designer-admin.py" list-extract 2>>"$LOG")
+if [[ $? -ne 0 ]]; then
+    echo "[$(date '+%F %T')] pre-check failed (see error above); skipping" >> "$LOG"
+    exit 0
+fi
+[[ "$(print -r -- "$pending" | tr -d ' \n')" == "[]" ]] && exit 0
+
 run_claude "$HAIKU" haiku 600
 
 if [[ -s "$HANDOFF" ]]; then
