@@ -76,6 +76,22 @@ const check = (name, ok, extra = '') => { results.push(ok); console.log(ok ? 'PA
   reqs = (await page.evaluate(async u => (await fetch(u)).json(), ADMIN + '/requests?status=open')).requests || [];
   check('Yes - Extract -> same waiting request reused (no duplicate job)', before === 1 && reqs.filter(r => r.fid === f.id && r.type === 'extract').length === 1 && /Extract requested/.test(dialogs.slice(-1)[0] || ''), dialogs.slice(-1)[0] || '');
 
+  // Faction glyph (under the card)
+  d = (await get()).design;
+  check('new faction has card.glyph default', d.card.glyph === null, JSON.stringify(d.card));
+  check('glyph upload button', await upload('Upload faction glyph', CARD, '.glyph-image-section'));
+  d = (await get()).design;
+  check('glyph saved', !!d.card.glyph && d.card.glyph !== d.card.image, d.card.glyph);
+  check('glyph thumbnail loads', await imgOk('.glyph-image-section img'));
+  const g1 = d.card.glyph;
+  check('glyph replace', await upload('Replace glyph', SB, '.glyph-image-section'));
+  d = (await get()).design;
+  check('glyph replaced', !!d.card.glyph && d.card.glyph !== g1, d.card.glyph);
+  await (await btn('Remove glyph', '.glyph-image-section')).evaluate(x => x.click()); await sleep(1500);
+  d = (await get()).design;
+  check('glyph removed -> upload button back', d.card.glyph === null && !!(await (await btn('Upload faction glyph', '.glyph-image-section')).evaluate(x => !!x)), String(d.card.glyph));
+  check('card image untouched by glyph edits', !!d.card.image);
+
   // Spellbooks: all 6 in 1
   check('SB all-in-1 upload', await upload('Upload all 6 in 1 image', SB, '.sb-images-section'));
   d = (await get()).design;

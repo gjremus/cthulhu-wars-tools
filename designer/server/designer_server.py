@@ -993,12 +993,14 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
 
     # ── Image Upload ─────────────────────────────────────────────────────────────
 
-    def handle_upload_image(self):
-        """POST /designer/api/images"""
-        username = self.verify_session()
-        if not username:
-            self.send_error_json("Unauthorized", 401)
-            return
+    def handle_upload_image(self, admin: bool = False):
+        """POST /designer/api/images (or admin/<TOKEN>/images: extractor uploads, no user quota)"""
+        username = None
+        if not admin:
+            username = self.verify_session()
+            if not username:
+                self.send_error_json("Unauthorized", 401)
+                return
 
         content_type = self.headers.get('Content-Type', '')
         ext = None
@@ -1034,13 +1036,19 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         images_dir.mkdir(parents=True, exist_ok=True)
         image_file = images_dir / image_id
 
-        # Check quota (300 MB per user)
+        # Check quota (300 MB per user; admin uploads have no user)
         users_file = self.server.data_dir / "users.json"
         users_data = load_json(users_file)
         users = users_data.get("users", {})
         user = users.get(username, {})
 
-        if not image_file.exists():
+        if not image_file.exists() and admin:
+            with WRITE_LOCK:
+                with open(image_file, 'wb') as f:
+                    f.write(body)
+                    f.flush()
+                    os.fsync(f.fileno())
+        elif not image_file.exists():
             # New image, check quota
             current_bytes = user.get("imageBytes", 0)
             if current_bytes + len(body) > 300_000_000:
@@ -1231,6 +1239,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             self.handle_admin_reset_password()
         elif endpoint == 'delete':
             self.handle_admin_delete()
+        elif endpoint == 'images':
+            self.handle_upload_image(admin=True)
         elif endpoint == 'requests' and len(parts) >= 7:
             rid = parts[6]
             self.handle_admin_update_request(rid)
@@ -1773,7 +1783,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         """Create a blank design with defaults."""
         return {
             "meta": {"color": None},
-            "card": {"image": None},
+            "card": {"image": None, "glyph": None},
             "sbImages": {"mode": None, "all": None, "each": [None]*6},
             "ae": {
                 "enabled": False,

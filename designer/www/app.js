@@ -787,6 +787,58 @@
         cardSection.appendChild(uploadBtn);
       }
 
+      // Faction glyph (the faction's symbol). Extract fills it from the card when it can.
+      const glyphDiv = document.createElement('div');
+      glyphDiv.className = 'glyph-image-section';
+      glyphDiv.style.marginTop = '14px';
+      const glyphTitle = document.createElement('h4');
+      glyphTitle.textContent = 'Faction Glyph';
+      glyphTitle.style.margin = '0 0 6px';
+      glyphDiv.appendChild(glyphTitle);
+      const setGlyph = id => {
+        this.scheduleSave(faction.id, 'card.glyph', id);
+        design.card.glyph = id;
+        this.renderMainDesign();
+      };
+      const glyphUpload = async () => {
+        const imageId = await this.uploadImage('small');
+        if (imageId) setGlyph(imageId);
+      };
+      if (design.card.glyph) {
+        const gimg = document.createElement('img');
+        gimg.src = this.imgUrl(design.card.glyph);
+        gimg.className = 'glyph-thumbnail';
+        gimg.alt = 'Faction glyph';
+        gimg.style.cssText = 'width: 72px; height: 72px; object-fit: contain; display: block; margin-bottom: 6px; cursor: pointer;';
+        gimg.title = 'Click to replace';
+        gimg.onclick = glyphUpload;
+        glyphDiv.appendChild(gimg);
+        const replaceBtn = document.createElement('button');
+        replaceBtn.className = 'small';
+        replaceBtn.textContent = 'Replace glyph';
+        replaceBtn.onclick = glyphUpload;
+        glyphDiv.appendChild(replaceBtn);
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'small';
+        removeBtn.textContent = 'Remove glyph';
+        removeBtn.style.marginLeft = '6px';
+        removeBtn.onclick = () => setGlyph(null);
+        glyphDiv.appendChild(removeBtn);
+      } else {
+        const glyphBtn = document.createElement('button');
+        glyphBtn.textContent = 'Upload faction glyph';
+        glyphBtn.onclick = glyphUpload;
+        glyphDiv.appendChild(glyphBtn);
+        if (design.card.image) {
+          const note = document.createElement('div');
+          note.className = 'sx-hint-text';
+          note.style.cssText = 'font-size: 0.85em; opacity: 0.75; margin-top: 4px;';
+          note.textContent = 'Or press Extract: it cuts the glyph and unit silhouettes out of the card for you.';
+          glyphDiv.appendChild(note);
+        }
+      }
+      cardSection.appendChild(glyphDiv);
+
       imagesSection.appendChild(cardSection);
 
       // Spellbook images

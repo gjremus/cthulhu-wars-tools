@@ -112,7 +112,7 @@ After every applied op:
 ```json
 {
   "meta":  {"color": null},                       // optional faction colour "#rrggbb" (used to tint unit art); added by us — doc says "if defined"
-  "card":  {"image": null},                       // faction card image
+  "card":  {"image": null, "glyph": null},        // faction card image; faction glyph (symbol) image
   "sbImages": {"mode": null, "all": null, "each": [null,null,null,null,null,null]},  // mode: null | "all" | "each"
   "ae": {"enabled": false, "name": "", "acronym": "",
          "rows": [ {"id","sign":"+","kind":"fixed","qty":null,"calc":"","desc":""} ]},
@@ -174,7 +174,7 @@ After every applied op:
   - No ticker. The server applies it at once and logs the request as already `done` (`data` also gets `path` and `rev`). The value is always read from the saved design, never from the browser.
   - Pushes are stored in `factions/<fid>/live-values.json` as `{rev, history:[{rev, path, from, to, at, liveVersion}]}`. Each push bumps `rev`. "Current value in build" = the `build.liveVersion` snapshot with that build's pushes laid over it. A rebuild starts clean.
   - The built faction reads its fixed numbers from the public GET `/designer/api/live/<ACR>/values?rev=N` → `{acronym, liveVersion, rev, latestRev, values:{path: number}}`. A game pins the `rev` it started with, so replays of that game never change; leaving out `rev` gives the latest.
-- **extract:** `data = {target: "card" | "sbAll" | "sbEach", index (0-5 for sbEach), image}`. `text = "Extract <target> text for <Faction>"`.
+- **extract:** `data = {target: "card" | "sbAll" | "sbEach", index (0-5 for sbEach), image}`. `text = "Extract <target> text for <Faction>"`. A card extract also cuts out each unit's icon into `units.rows[].silhouette` and the faction glyph into `card.glyph` (only where those are still empty).
   - The ticker reads the image and writes sections through the admin design-write endpoint. Card → ae/ufa/setup/units/sbr (with unit `relatedSbNames`). SB images → sb rows.
   - The write overwrites existing values and goes through the version rules as a normal edit.
 - **bug:** `text = "Bug report for <Faction> (built v<liveVersion>): <description>"`. `data = {description}`.
@@ -221,6 +221,7 @@ The section key = the first path segment. Unknown top-level sections are rejecte
 - POST `factions/<fid>/build-status` `{status:"in_progress"|"built"|"none", version}` → for `built`: `liveVersion = version`, append to `build.history`, mark that version locked, set builtAt
 - POST `factions/<fid>/live-game-versions` `{versions:[...]}`
 - GET `image-usage` → `{totalBytes, files, diskFreeBytes}` (for the admin page)
+- POST `images` (raw png/webp/jpeg body, same checks as the user upload, no user quota) → `{id, url}` (used by the extract checker to upload cut-out unit silhouettes and the faction glyph)
 
 ## 8. Client-side rules (frontend computes these; the backend stays generic)
 - **"empty" / "edited" label** per section button: "empty" if every value equals its default from §5 (blank rows count as empty). Otherwise "edited". The label is computed and not editable.
@@ -281,7 +282,7 @@ The files in `www/` are each owned by ONE agent:
   - hash router
   - login and register
   - faction list and create dialog
-  - main design page: name in the overlay font, faction colour, card image, spellbook images, section buttons with labels
+  - main design page: name in the overlay font, faction colour, card image, faction glyph (under the card; upload/replace/remove), spellbook images, section buttons with labels
   - image viewer and upload flow, with client-side downscaling: max 2000 px long side for card and spellbook images, 800 px for all other images; webp at quality 0.85, or png if webp encoding is unsupported
   - autosave engine: a 600 ms per-path debounce; the queue is flushed on blur, on route change and with `sendBeacon` on unload; a "Saving… / All changes saved" indicator
   - Versions, Build, Simple Update and Bug Report screens

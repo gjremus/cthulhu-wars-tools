@@ -593,6 +593,25 @@ class ImageTest(DesignerServerTest):
         self.assertIn('url', data)
         self.assertTrue(data['id'].endswith('.png'))
 
+    def test_admin_upload_png(self):
+        """Admin token can upload (extractor crops); wrong token cannot."""
+        png_data = (
+            b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x02\x00\x00\x00\x01'
+            b'\x08\x06\x00\x00\x00\xf4"\x7f\x8a\x00\x00\x00\rIDATx\x9cc\x00\x01'
+            b'\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82'
+        )
+        req = Request(f"{self.base_url}/admin/{self.admin_token}/images", data=png_data, method='POST')
+        req.add_header('Content-Type', 'image/png')
+        with urlopen(req) as resp:
+            data = json.loads(resp.read())
+        self.assertTrue(data['id'].endswith('.png'))
+        self.assertTrue((self.data_dir / 'images' / data['id']).exists())
+
+        bad = Request(f"{self.base_url}/admin/wrong-token/images", data=png_data, method='POST')
+        bad.add_header('Content-Type', 'image/png')
+        with self.assertRaises(HTTPError):
+            urlopen(bad)
+
     def test_upload_invalid_magic_bytes(self):
         """Upload with wrong magic bytes fails."""
         token = self.register_user(f'user{secrets.token_hex(4)}')

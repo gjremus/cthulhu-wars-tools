@@ -38,7 +38,7 @@
   function newDesign() {
     return {
       meta: {color: null},
-      card: {image: null},
+      card: {image: null, glyph: null},
       sbImages: {mode: null, all: null, each: [null, null, null, null, null, null]},
       ae: {
         enabled: false,
