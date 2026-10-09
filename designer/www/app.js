@@ -141,7 +141,33 @@
       if (window.location.hash.replace(/\/$/, '') === `#/faction/${fid}`) this.renderMainDesign();
     }
 
+    // A faction shared with this user as read only (owner set it up from the admin console)
+    isReadOnly() {
+      return !!(this.state.currentFaction && this.state.currentFaction.readOnly);
+    }
+
+    // Read only: every field is greyed out and every button that would change something is hidden.
+    // Buttons that only move between pages are kept (Exit to Main, Back to List, section buttons).
+    lockReadOnly(el) {
+      if (!this.isReadOnly() || !el) return;
+      el.querySelectorAll('input, select, textarea').forEach(x => { x.disabled = true; });
+      el.querySelectorAll('button').forEach(b => {
+        const keep = b.dataset.nav === '1' || b.textContent.trim() === 'Exit to Main';
+        if (!keep) b.style.display = 'none';
+      });
+    }
+
+    readOnlyBanner() {
+      const f = this.state.currentFaction;
+      const div = document.createElement('div');
+      div.className = 'read-only-banner';
+      div.style.cssText = 'border: 1px solid #000; background: #fde68a; color: #222; padding: 8px 12px; margin: 10px 0; border-radius: 4px;';
+      div.textContent = `Read only: ${f.ownerName || f.owner} shared this design with you. You can look at everything, but you can't change it.`;
+      return div;
+    }
+
     async patch(fid, ops) {
+      if (this.isReadOnly()) return;
       const data = await this.api('POST', `/factions/${fid}/patch`, {ops});
       // Update local state
       if (this.state.currentFaction && this.state.currentFaction.id === fid) {
@@ -154,6 +180,7 @@
     }
 
     async closeSession(fid) {
+      if (this.isReadOnly()) return;
       await this.api('POST', `/factions/${fid}/close-session`);
     }
 
@@ -167,6 +194,7 @@
 
     // Image upload with downscaling
     async uploadImage(kind) {
+      if (this.isReadOnly()) return null;
       return new Promise((resolve) => {
         const input = document.createElement('input');
         input.type = 'file';
@@ -269,6 +297,7 @@
 
     // Autosave
     scheduleSave(fid, path, value) {
+      if (this.isReadOnly()) return;
       const key = `${fid}:${path}`;
       this.saveQueue.set(key, {fid, path, value});
 
@@ -556,7 +585,7 @@
         createBtn.onclick = () => this.showCreateDialog();
         this.root.appendChild(createBtn);
 
-        if (factions.length === 0) {
+        if (factions.filter(f => !f.readOnly).length === 0) {
           const p = document.createElement('p');
           p.textContent = 'No factions yet. Create one to get started.';
           p.style.color = '#888';
@@ -565,7 +594,7 @@
           const grid = document.createElement('div');
           grid.className = 'faction-grid';
 
-          for (const faction of factions) {
+          for (const faction of factions.filter(f => !f.readOnly)) {
             const card = document.createElement('div');
             card.className = 'faction-card';
             card.onclick = () => {
@@ -594,6 +623,35 @@
             grid.appendChild(card);
           }
 
+          this.root.appendChild(grid);
+        }
+
+        // Designs other users shared with this user (read only)
+        const shared = factions.filter(f => f.readOnly);
+        if (shared.length) {
+          const h = document.createElement('h2');
+          h.textContent = 'Shared with me (read only)';
+          h.style.marginTop = '30px';
+          this.root.appendChild(h);
+          const grid = document.createElement('div');
+          grid.className = 'faction-grid';
+          for (const faction of shared) {
+            const card = document.createElement('div');
+            card.className = 'faction-card';
+            card.onclick = () => { window.location.hash = `#/faction/${faction.id}`; };
+            const name = document.createElement('h3');
+            name.textContent = faction.name;
+            card.appendChild(name);
+            const acronym = document.createElement('div');
+            acronym.className = 'acronym';
+            acronym.textContent = faction.acronym;
+            card.appendChild(acronym);
+            const by = document.createElement('div');
+            by.className = 'status';
+            by.textContent = `Designed by ${faction.ownerName || faction.owner}`;
+            card.appendChild(by);
+            grid.appendChild(card);
+          }
           this.root.appendChild(grid);
         }
       } catch (err) {
@@ -693,6 +751,7 @@
 
       const backBtn = document.createElement('button');
       backBtn.textContent = '← Back to List';
+      backBtn.dataset.nav = '1';
       backBtn.onclick = () => {
         this.flushSaves();
         window.location.hash = '#/factions';
@@ -725,6 +784,7 @@
       }
 
       this.root.appendChild(header);
+      if (this.isReadOnly()) this.root.appendChild(this.readOnlyBanner());
 
       // Images section
       const imagesSection = document.createElement('div');
@@ -890,6 +950,7 @@
         labelSpan.textContent = Rules.isEmpty(sec.key, design) ? 'empty' : 'edited';
         btn.appendChild(labelSpan);
 
+        btn.dataset.nav = '1';
         btn.onclick = () => {
           window.location.hash = `#/faction/${faction.id}/section/${sec.key}`;
         };
@@ -942,12 +1003,15 @@
       const versionsName = document.createElement('span');
       versionsName.textContent = 'Versions';
       versionsBtn.appendChild(versionsName);
+      versionsBtn.dataset.nav = '1';
       versionsBtn.onclick = () => {
         window.location.hash = `#/faction/${faction.id}/versions`;
       };
       sectionsDiv.appendChild(versionsBtn);
 
       this.root.appendChild(sectionsDiv);
+      // Read only: Build / Simple Update / Bug Report buttons are hidden with the other change buttons
+      this.lockReadOnly(this.root);
     }
 
     renderSpellbookImages(faction, container) {
@@ -1217,11 +1281,17 @@
         return;
       }
 
+      if (this.isReadOnly() && !screen.startsWith('section/') && screen !== 'versions') {
+        window.location.hash = `#/faction/${fid}`;
+        return;
+      }
+
       if (screen.startsWith('section/')) {
         const key = screen.split('/')[1];
         this.renderSectionScreen(key);
       } else if (screen === 'versions') {
         this.renderVersionsScreen();
+        this.lockReadOnly(this.root);
       } else if (screen === 'build') {
         this.renderBuildScreen();
       } else if (screen === 'simple-update') {
@@ -1258,6 +1328,7 @@
       };
       backBtn.style.marginTop = '20px';
 
+      if (this.isReadOnly()) this.root.appendChild(this.readOnlyBanner());
       const container = document.createElement('div');
       this.root.appendChild(container);
       // The doc puts Exit to Main at the bottom of every section
@@ -1268,6 +1339,7 @@
         faction,
         reference: this.state.reference,
         set: (path, value) => {
+          if (this.isReadOnly()) return;
           this.setDesignValue(design, path, value);
           this.scheduleSave(faction.id, path, value);
           // Greyed-out fields are decided at render time, so checkboxes, selects and radios must
@@ -1281,6 +1353,7 @@
           if (!typing) ctx.rerender();
         },
         addRow: (tablePath, row) => {
+          if (this.isReadOnly()) return;
           const parts = tablePath.split('.');
           let obj = design;
           for (let i = 0; i < parts.length; i++) {
@@ -1294,6 +1367,7 @@
           ctx.rerender();
         },
         deleteRow: (tablePath, rowId) => {
+          if (this.isReadOnly()) return;
           const parts = tablePath.split('.');
           let obj = design;
           for (let i = 0; i < parts.length; i++) {
@@ -1309,11 +1383,12 @@
         uploadImage: (kind) => this.uploadImage(kind),
         imgUrl: (id) => this.imgUrl(id),
         confirm: (msg, yes, no) => this.confirm(msg, yes, no),
-        createRequest: (type, text, data) => this.createRequest(faction.id, type, text, data),
+        createRequest: (type, text, data) => this.isReadOnly() ? Promise.resolve(null) : this.createRequest(faction.id, type, text, data),
         rerender: () => {
           const y = window.scrollY;
           container.innerHTML = '';
           Sections.render(key, container, ctx);
+          this.lockReadOnly(container);
           window.scrollTo(0, y);
         },
         openOverlay: (content) => this.openOverlay(content),
@@ -1321,6 +1396,7 @@
       };
 
       Sections.render(key, container, ctx);
+      this.lockReadOnly(container);
     }
 
     setDesignValue(design, path, value) {

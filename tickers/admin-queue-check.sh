@@ -31,6 +31,14 @@ RESUME_HOURS=6
 mkdir -p "$Q/pending" "$Q/running" "$Q/done"
 note() { echo "[$(date '+%F %T')] $*" >> "$LOG"; }
 
+# Claude Terminal Log tab (admin console): one row per prompt, kept by the designer service.
+# tlog add <name>  |  tlog summary <name> <file>   (row id = q_<queue file name>)
+tlog() {
+    local h="$TICKERS/designer-admin.py"
+    if [[ "$1" == add ]]; then python3 "$h" tlog-add admin admin "q_$2" "$Q/pending/$2" > /dev/null 2>>"$LOG"
+    else python3 "$h" tlog-summary "q_$2" "$3" 2>>"$LOG"; fi || note "terminal log update failed ($1 $2)"
+}
+
 # post_output <PROMPT|RESPONSE>  (body on stdin) -> console terminal log, stamped with VM time
 post_output() {
     "${SSH[@]}" "f=/tmp/claude-output.log; printf '\n[$1 @%s] ' \"\$(date '+%F %T')\" >> \$f; cat >> \$f; echo >> \$f"
@@ -67,6 +75,7 @@ if [[ "${1:-}" == "worker" ]]; then
             resume=(--resume "$(cat "$Q/session")")
         fi
         note "start ${job:t} ${resume:+(resume)} :: ${text[1,120]//$'\n'/ }"
+        print "Working on it now." > "$job.status"; tlog summary "${job:t}" "$job.status"; rm -f "$job.status"
         started=0
         for try in 1 2 3; do
             : > "$out"
@@ -118,6 +127,7 @@ PY
         # Start the reply with the first words of the request, so replies that come back after
         # a queue are easy to match to what was asked.
         { print -r -- "(re: ${${text//$'\n'/ }[1,70]}...)"; cat "$job.reply"; } | post_output RESPONSE || note "could not post reply to the console"
+        tlog summary "${job:t}" "$job.reply"
         # Telegram-tagged entries also want a one-line answer in the responses file.
         tg=$(print -r -- "$text" | grep -oE '\[TGMSG_[A-Za-z0-9_-]+\]' | head -1 | tr -d '[]')
         if [[ -n "$tg" ]]; then
@@ -162,6 +172,7 @@ for i in range(1, len(parts), 2):
         for a in "$Q"/pending/*(N); do [[ "${a:t}" < "$name" ]] && older+=( $a ); done
         msg="(queued for the Opus agent"; (( ${#older} )) && msg+=" - ${#older} ahead of it"; msg+=")"
         { cat "$Q/pending/$name"; echo "$msg"; } | post_output PROMPT || note "could not post queued notice"
+        tlog add "$name"
     done
 fi
 

@@ -8,7 +8,14 @@ Reads the owner admin token from its file so it never has to appear in a prompt.
   designer-admin.py faction <fid>           full faction record (JSON)
   designer-admin.py image <imageId>         download image, convert to PNG, print local path
   designer-admin.py patch <fid> <ops.json>  POST {"ops": [...]} from the file to admin patch
-  designer-admin.py done <rid>              mark request done
+  designer-admin.py done <rid> [summary...] mark request done; the summary (one or two plain
+                                            sentences on what you did) goes into the admin
+                                            console's Claude terminal log
+  designer-admin.py tlog-add <type> <user> <id> <promptFile>
+                                            add a Claude terminal log row (type: admin, design
+                                            extraction, design menu, design build, design bug fix)
+  designer-admin.py tlog-summary <id> <summaryFile>
+                                            set that row's summary from a file
   designer-admin.py handoff <rid> <reason>  queue request for the Sonnet fallback
   designer-admin.py grid <imageId> [x y w h]
                                             copy with labelled pixel grid (or a zoomed area of it)
@@ -273,8 +280,17 @@ def main():
         if isinstance(ops, dict):
             ops = ops.get('ops', [])
         print(json.dumps(api(f'factions/{args[0]}/patch', {'ops': ops})))
-    elif cmd == 'done' and len(args) == 1:
+    elif cmd == 'done' and len(args) >= 1:
         print(json.dumps(api(f'requests/{args[0]}', {'status': 'done'})))
+        if len(args) > 1:
+            api(f'terminal-log/{args[0]}', {'summary': ' '.join(args[1:])})
+    elif cmd == 'tlog-add' and len(args) == 4:
+        prompt = open(args[3], errors='replace').read().strip()
+        print(json.dumps(api('terminal-log', {'type': args[0], 'user': args[1], 'id': args[2],
+                                              'prompt': prompt, 'summary': 'Queued.'})))
+    elif cmd == 'tlog-summary' and len(args) == 2:
+        summary = open(args[1], errors='replace').read().strip()
+        api(f'terminal-log/{args[0]}', {'summary': summary})
     elif cmd == 'handoff' and len(args) >= 2:
         handoff(args[0], ' '.join(args[1:]))
     elif cmd == 'grid' and len(args) in (1, 5):

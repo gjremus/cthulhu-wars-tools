@@ -21,6 +21,8 @@ from urllib.parse import parse_qs, urlparse
 
 # Global write lock
 WRITE_LOCK = threading.Lock()
+# Separate lock for terminal-log.json (written while WRITE_LOCK may be held)
+TERMINAL_LOCK = threading.Lock()
 
 # Rate limiting storage (IP → timestamps)
 REGISTRATION_TIMES: Dict[str, List[float]] = defaultdict(list)
@@ -415,6 +417,19 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                         "buildStatus": faction.get("build", {}).get("status", "none"),
                         "updated": faction["updated"]
                     })
+                elif username in faction.get("viewers", []):
+                    # Shared with this user as read only (set by the admin)
+                    factions.append({
+                        "id": faction["id"],
+                        "name": faction["name"],
+                        "acronym": faction["acronym"],
+                        "current": faction["current"],
+                        "buildStatus": faction.get("build", {}).get("status", "none"),
+                        "updated": faction["updated"],
+                        "readOnly": True,
+                        "owner": faction["owner"],
+                        "ownerName": self.display_name(faction["owner"])
+                    })
 
         factions.sort(key=lambda f: f["updated"], reverse=True)
         self.send_json({"factions": factions})
@@ -518,11 +533,15 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             self.send_error_json("Faction not found", 404)
             return
 
-        if faction["owner"] != username:
+        read_only = faction["owner"] != username
+        if read_only and username not in faction.get("viewers", []):
             self.send_error_json("Forbidden", 403)
             return
 
         response = dict(faction)
+        if read_only:
+            response["readOnly"] = True
+            response["ownerName"] = self.display_name(faction["owner"])
         response["builtDesign"] = self.built_design_with_overrides(fid, faction)
         response["liveValues"] = self.load_live_values(fid)
         self.send_json(response)
@@ -1141,6 +1160,10 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             requests.append(request)
             requests_data["requests"] = requests
             atomic_write(requests_file, requests_data)
+            # Every designer prompt also goes into the admin console's Claude terminal log
+            self.add_terminal_entry(self.terminal_type(request), self.display_name(username),
+                                    text or f"{req_type} request for {faction['name']}",
+                                    "Waiting to be picked up.", ref=req_id)
 
         self.send_json(request)
 
@@ -1219,6 +1242,9 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             self.handle_admin_get_faction(fid)
         elif endpoint == 'image-usage':
             self.handle_admin_image_usage()
+        elif endpoint == 'terminal-log':
+            log = load_json(self.server.data_dir / "terminal-log.json") or {"entries": []}
+            self.send_json({"entries": sorted(log.get("entries", []), key=lambda e: e.get("at", 0), reverse=True)})
         else:
             self.send_error_json("Unknown admin endpoint", 404)
 
@@ -1241,6 +1267,10 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             self.handle_admin_delete()
         elif endpoint == 'images':
             self.handle_upload_image(admin=True)
+        elif endpoint == 'import-faction':
+            self.handle_admin_import_faction()
+        elif endpoint == 'terminal-log':
+            self.handle_admin_terminal_log(parts[6] if len(parts) >= 7 else None)
         elif endpoint == 'requests' and len(parts) >= 7:
             rid = parts[6]
             self.handle_admin_update_request(rid)
@@ -1254,6 +1284,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                     self.handle_admin_build_status(fid)
                 elif action == 'live-game-versions':
                     self.handle_admin_live_game_versions(fid)
+                elif action == 'viewers':
+                    self.handle_admin_viewers(fid)
                 else:
                     self.send_error_json("Unknown admin endpoint", 404)
             else:
@@ -1526,6 +1558,9 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             request["updated"] = int(time.time())
 
             atomic_write(requests_file, requests_data)
+            default = {"in_progress": "Being worked on now.", "notified": "Owner notified.",
+                       "done": "Done.", "cancelled": "Cancelled.", "open": "Waiting to be picked up."}
+            self.update_terminal_entry(rid, default.get(status, status), only_if_default=True)
 
         self.send_json(request)
 
@@ -1771,6 +1806,157 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         })
 
     # ── Helpers ──────────────────────────────────────────────────────────────────
+
+    # ---- Read-only sharing, admin import, Claude terminal log ----
+
+    def display_name(self, username_lc: str) -> str:
+        users = (load_json(self.server.data_dir / "users.json") or {}).get("users", {})
+        return users.get(username_lc, {}).get("username", username_lc)
+
+    def handle_admin_viewers(self, fid: str):
+        """POST admin/factions/<fid>/viewers {viewers:[username...]} -> read-only access for those users"""
+        body = self.read_json_body()
+        if body is None:
+            return
+        viewers = body.get('viewers', [])
+        if not isinstance(viewers, list):
+            self.send_error_json("viewers must be an array")
+            return
+        users = (load_json(self.server.data_dir / "users.json") or {}).get("users", {})
+        viewers = [str(v).strip().lower() for v in viewers]
+        missing = [v for v in viewers if v not in users]
+        if missing:
+            self.send_error_json(f"No such user: {', '.join(missing)}")
+            return
+        with WRITE_LOCK:
+            faction = self.load_faction(fid)
+            if not faction:
+                self.send_error_json("Faction not found", 404)
+                return
+            faction["viewers"] = [v for v in dict.fromkeys(viewers) if v != faction["owner"]]
+            atomic_write(self.server.data_dir / "factions" / fid / "faction.json", faction)
+        self.send_json({"id": fid, "viewers": faction["viewers"]})
+
+    def handle_admin_import_faction(self):
+        """POST admin/import-faction {owner, name, acronym, design, built:bool, viewers:[]}
+        Creates a design for a user from a faction that already exists in code (no reserved-acronym
+        check; still refuses an acronym another design uses). built=true marks version 1 as the live build."""
+        body = self.read_json_body()
+        if body is None:
+            return
+        owner = str(body.get('owner', '')).strip().lower()
+        name = str(body.get('name', '')).strip()
+        acronym = str(body.get('acronym', '')).strip().upper()
+        design = body.get('design')
+        users = (load_json(self.server.data_dir / "users.json") or {}).get("users", {})
+        if owner not in users:
+            self.send_error_json("No such user")
+            return
+        if len(name) < 5 or not re.match(r'^[A-Z0-9]{2,3}$', acronym):
+            self.send_error_json("Name must be 5+ characters and acronym 2-3 letters or digits")
+            return
+        base = self.new_design()
+        if not isinstance(design, dict) or set(design) - set(base):
+            self.send_error_json("design must be an object with only the known sections")
+            return
+        for key, value in base.items():
+            design.setdefault(key, value)
+        viewers = [str(v).strip().lower() for v in body.get('viewers', [])]
+        if any(v not in users for v in viewers):
+            self.send_error_json("A viewer is not a user")
+            return
+        factions_dir = self.server.data_dir / "factions"
+        factions_dir.mkdir(parents=True, exist_ok=True)
+        now = int(time.time())
+        fid = secrets.token_urlsafe(9).replace('_', '').replace('-', '').lower()[:12]
+        built = bool(body.get('built'))
+        faction = {
+            "id": fid, "owner": owner, "name": name, "acronym": acronym,
+            "created": now, "updated": now, "current": 1, "maxVersion": 1,
+            "versions": [{"n": 1, "from": None, "sections": [k for k in base if not self.is_section_empty(k, design.get(k))],
+                          "created": now, "deleted": False}],
+            "session": {"n": 1, "sections": [], "last": 0},
+            "build": {"status": "built" if built else "none", "liveVersion": 1 if built else None,
+                      "requestedAt": None, "builtAt": now if built else None,
+                      "history": [{"version": 1, "builtAt": now}] if built else []},
+            "liveGameVersions": [],
+            "viewers": [v for v in viewers if v != owner],
+            "imported": True,
+            "design": design
+        }
+        with WRITE_LOCK:
+            for fd in factions_dir.iterdir():
+                if (fd / "faction.json").exists() and load_json(fd / "faction.json").get("acronym") == acronym:
+                    self.send_error_json(f"Acronym {acronym} is already used by another design")
+                    return
+            (factions_dir / fid / "v").mkdir(parents=True, exist_ok=True)
+            atomic_write(factions_dir / fid / "faction.json", faction)
+            atomic_write(factions_dir / fid / "v" / "1.json", design)
+        self.send_json(faction)
+
+    @staticmethod
+    def terminal_type(request: Dict) -> str:
+        t = request.get("type")
+        if t == "extract":
+            return "design menu" if request.get("data", {}).get("target") == "menus" else "design extraction"
+        if t == "bug":
+            return "design bug fix"
+        return "design build"   # build and update both change the built faction
+
+    def add_terminal_entry(self, kind: str, user: str, prompt: str, summary: str, ref: Optional[str] = None) -> Dict:
+        """Append one row to terminal-log.json. Caller may already hold WRITE_LOCK (it is not re-entrant),
+        so this uses its own lock."""
+        entry = {"id": ref or f"t_{secrets.token_urlsafe(6)}", "at": int(time.time()), "type": kind,
+                 "user": user, "prompt": str(prompt)[:20000], "summary": str(summary)[:20000], "defaultSummary": True}
+        with TERMINAL_LOCK:
+            path = self.server.data_dir / "terminal-log.json"
+            log = load_json(path) or {"entries": []}
+            log.setdefault("entries", []).append(entry)
+            log["entries"] = log["entries"][-2000:]
+            atomic_write(path, log)
+        return entry
+
+    def update_terminal_entry(self, entry_id: str, summary: str, only_if_default: bool = False) -> Optional[Dict]:
+        with TERMINAL_LOCK:
+            path = self.server.data_dir / "terminal-log.json"
+            log = load_json(path) or {"entries": []}
+            entry = next((e for e in log.get("entries", []) if e.get("id") == entry_id), None)
+            if not entry or (only_if_default and not entry.get("defaultSummary")):
+                return entry
+            entry["summary"] = str(summary)[:20000]
+            entry["defaultSummary"] = only_if_default
+            entry["updatedAt"] = int(time.time())
+            atomic_write(path, log)
+        return entry
+
+    def handle_admin_terminal_log(self, entry_id: Optional[str]):
+        """POST admin/terminal-log {type,user,prompt,summary,[id],[at]} adds a row;
+        POST admin/terminal-log/<id> {summary} replaces that row's summary."""
+        body = self.read_json_body()
+        if body is None:
+            return
+        if entry_id:
+            entry = self.update_terminal_entry(entry_id, body.get('summary', ''))
+            if not entry:
+                self.send_error_json("Entry not found", 404)
+                return
+            self.send_json(entry)
+            return
+        kinds = ['admin', 'design extraction', 'design menu', 'design build', 'design bug fix']
+        if body.get('type') not in kinds:
+            self.send_error_json(f"type must be one of: {', '.join(kinds)}")
+            return
+        entry = self.add_terminal_entry(body['type'], str(body.get('user') or 'admin'), body.get('prompt', ''),
+                                        body.get('summary', ''), ref=body.get('id'))
+        if isinstance(body.get('at'), int):
+            with TERMINAL_LOCK:
+                path = self.server.data_dir / "terminal-log.json"
+                log = load_json(path)
+                for e in log["entries"]:
+                    if e["id"] == entry["id"]:
+                        e["at"] = body["at"]
+                atomic_write(path, log)
+        self.send_json(entry)
 
     def load_faction(self, fid: str) -> Optional[Dict]:
         """Load faction by ID."""

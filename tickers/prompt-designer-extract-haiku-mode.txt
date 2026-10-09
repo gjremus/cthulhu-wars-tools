@@ -14,5 +14,5 @@ MODE: HAIKU CHECK (runs every 2 minutes; be brief).
    - target is "card": ALWAYS hand it off at once ("faction card") without doing anything else.
      (A Haiku card read on 2026-10-09 misread names and missed units; cards go to Sonnet.)
    A handoff is cheap and safe; a wrong extraction is not. Never mark a handed-off request done.
-3. After a successful patch, run python3 $H done <rid>.
+3. After a successful patch, run python3 $H done <rid> <one plain sentence on what you filled in>.
 4. Final reply: one line per request: "<rid> <faction> extracted" or "<rid> <faction> handed off: <reason>".

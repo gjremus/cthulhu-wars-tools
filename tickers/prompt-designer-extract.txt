@@ -7,7 +7,8 @@ HELPER (use it for every server call; it holds the admin key, so never look for 
   python3 $H faction <fid>           -> faction record; the design is under "design"
   python3 $H image <imageId>         -> downloads the image as PNG and prints its path (open it with Read)
   python3 $H patch <fid> <file.json> -> applies {"ops":[{"op":"replaceSection","path":"<section>","value":{...}}]}
-  python3 $H done <rid>              -> marks the request done
+  python3 $H done <rid> <summary>    -> marks the request done; summary = one or two plain sentences on
+                                        what you did (shown in the admin console Claude terminal log)
   python3 $H handoff <rid> <reason>  -> passes the request to a stronger model (Haiku mode only)
   python3 $H grid <imageId> [x y w h]
                                      -> copy of the image (or a zoomed area) with a labelled pixel
