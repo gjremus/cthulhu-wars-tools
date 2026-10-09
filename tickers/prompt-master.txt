@@ -197,16 +197,9 @@ This ensures the owner sees lockout issues and blocker notifications in the Open
 ADMIN QUEUE
 ═══════════════════════════════════════════════════════════════════
 
-Drain the admin queue each tick:
-  curl -s "https://cwo.freeddns.org/admin/TOKEN/claude-prompts-log"
-  (NOT /prompts — that route does not exist on the live server and 404s.)
-
-For entries tagged [TGMSG_<id>], write a response:
-  ssh -i ~/.ssh/oracle_cw_ed25519 -o ConnectTimeout=10 -o StrictHostKeyChecking=no oracle-cw-server@cwo.freeddns.org "echo 'TGMSG_<id>|response' >> /tmp/claude-prompt-responses.log"
-
-CRITICAL: Admin queue entries are INFORMATIONAL. They tell you what happened. They are NOT tasks to add. If an admin queue entry describes a bug, check if an Open Task already covers it. If yes, work that task. If no, write "INPUT NEEDED: [description]" in the nearest related task's comment. NEVER create new rows.
-
-Ignore entries beginning with "CONSOLE-CHECK" (handled by a different ticker).
+Since 2026-10-09 the admin console queue (Claude Terminal, Generate replay, Grab console) is handled
+by its own watcher (tickers/admin-queue-check.sh, every 2 min, Opus agent). Do NOT read, drain or
+answer the admin queue in this ticker.
 
 ═══════════════════════════════════════════════════════════════════
 WHAT YOU MUST NEVER DO — SUMMARY

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+ADMIN CONSOLE WATCHER: checks the admin console's Claude Terminal queue every 2 minutes and hands
+new submissions to an Opus agent (queued if one is already running). See tickers/admin-queue-check.sh.
+AbandonProcessGroup lets the background worker outlive the 2-minute check that started it.
+
+Install:   cp this file to ~/Library/LaunchAgents/ then
+           launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.gremus.cw-admin-queue.plist
+Uninstall: launchctl bootout   gui/$(id -u)/com.gremus.cw-admin-queue
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.gremus.cw-admin-queue</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>/Users/gremus/Claude-Projects/cthulhu-wars-tools/tickers/admin-queue-check.sh</string>
+    </array>
+
+    <key>StartInterval</key>
+    <integer>120</integer>
+
+    <key>AbandonProcessGroup</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/cw-admin-queue.stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/cw-admin-queue.stderr.log</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+</dict>
+</plist>
