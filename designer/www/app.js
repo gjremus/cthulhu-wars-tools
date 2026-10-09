@@ -741,38 +741,56 @@
         img.onclick = () => this.showCardFullscreen(faction);
         cardSection.appendChild(img);
 
-        const extractBtn = document.createElement('button');
-        extractBtn.className = 'small';
-        extractBtn.textContent = 'Extract';
-        extractBtn.style.marginTop = '10px';
-        extractBtn.onclick = async () => {
-          const hasContent = !Rules.isEmpty('ufa', design) || !Rules.isEmpty('setup', design) ||
-                            !Rules.isEmpty('units', design) || !Rules.isEmpty('sbr', design);
-          if (hasContent) {
-            const confirmed = await this.confirm(
-              'Extract will overwrite existing sections. Are you sure?',
-              'Yes - Extract',
-              'Cancel'
-            );
-            if (!confirmed) return;
-          }
+        // Two extract choices. Times are measured end-to-end on a 5-unit card (2026-10-09).
+        const extractRow = document.createElement('div');
+        extractRow.className = 'extract-choices';
+        extractRow.style.cssText = 'display: flex; gap: 12px; margin-top: 10px; flex-wrap: wrap;';
+        const extractChoice = (label, minutes, withImages) => {
+          const wrap = document.createElement('div');
+          wrap.style.cssText = 'display: flex; flex-direction: column; align-items: center;';
+          const b = document.createElement('button');
+          b.className = 'small';
+          b.textContent = label;
+          const est = document.createElement('div');
+          est.className = 'extract-estimate';
+          est.style.cssText = 'font-size: 0.8em; opacity: 0.75; margin-top: 3px;';
+          est.textContent = `about ${minutes} min`;
+          b.onclick = async () => {
+            const hasContent = !Rules.isEmpty('ufa', design) || !Rules.isEmpty('setup', design) ||
+                              !Rules.isEmpty('units', design) || !Rules.isEmpty('sbr', design);
+            const hasPictures = withImages && (!!design.card.glyph ||
+                              ((design.units && design.units.rows) || []).some(u => u.silhouette));
+            if (hasContent || hasPictures) {
+              const confirmed = await this.confirm(
+                withImages ? 'Extract will overwrite existing sections, unit silhouettes and the faction glyph. Are you sure?'
+                           : 'Extract will overwrite existing sections. Are you sure?',
+                'Yes - Extract',
+                'Cancel'
+              );
+              if (!confirmed) return;
+            }
 
-          extractBtn.disabled = true;
-          try {
-            await this.createRequest(
-              faction.id,
-              'extract',
-              `Extract card text for ${faction.name}`,
-              {target: 'card', image: design.card.image}
-            );
-            alert('Extract requested. The ticker will read the card and fill in the sections for you. This usually happens within the next ticker run.');
-            extractBtn.disabled = false;
-          } catch (err) {
-            alert('Extract request failed: ' + err.message);
-            extractBtn.disabled = false;
-          }
+            b.disabled = true;
+            try {
+              await this.createRequest(
+                faction.id,
+                'extract',
+                withImages ? `Extract card text + images for ${faction.name}` : `Extract card text for ${faction.name}`,
+                {target: 'card', image: design.card.image, images: withImages}
+              );
+              alert(`Extract requested. The card will be read and the sections filled in for you, in about ${minutes} minutes.`);
+            } catch (err) {
+              alert('Extract request failed: ' + err.message);
+            }
+            b.disabled = false;
+          };
+          wrap.appendChild(b);
+          wrap.appendChild(est);
+          extractRow.appendChild(wrap);
         };
-        cardSection.appendChild(extractBtn);
+        extractChoice('Extract text', 7, false);
+        extractChoice('Extract text + images', 30, true);
+        cardSection.appendChild(extractRow);
       } else {
         const uploadBtn = document.createElement('button');
         uploadBtn.textContent = 'Upload faction card image';
@@ -833,7 +851,7 @@
           const note = document.createElement('div');
           note.className = 'sx-hint-text';
           note.style.cssText = 'font-size: 0.85em; opacity: 0.75; margin-top: 4px;';
-          note.textContent = 'Or press Extract: it cuts the glyph and unit silhouettes out of the card for you.';
+          note.textContent = 'Or press "Extract text + images": it cuts the glyph and unit silhouettes out of the card for you.';
           glyphDiv.appendChild(note);
         }
       }

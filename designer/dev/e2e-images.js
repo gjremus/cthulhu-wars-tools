@@ -55,26 +55,38 @@ const check = (name, ok, extra = '') => { results.push(ok); console.log(ok ? 'PA
   d = (await get()).design;
   check('card replaced from full-size view', !!d.card.image && !imgUrl.includes(d.card.image), d.card.image);
 
+  // Two extract buttons, each with its time estimate below
+  const ests = await page.$$eval('.card-image-section .extract-estimate', es => es.map(e => e.textContent.trim()));
+  check('two extract buttons with minute estimates', !!(await (await btn('Extract text', '.card-image-section')).evaluate(x => !!x)) && !!(await (await btn('Extract text + images', '.card-image-section')).evaluate(x => !!x)) && ests.length === 2 && ests.every(e => /^about \d+ min$/.test(e)), ests.join(', '));
+
   // Extract on card: empty design -> no confirm, request created
   dialogs.length = 0;
-  await (await btn('Extract', '.card-image-section')).evaluate(x => x.click()); await sleep(1000);
+  await (await btn('Extract text', '.card-image-section')).evaluate(x => x.click()); await sleep(1000);
   let reqs = (await page.evaluate(async u => (await fetch(u)).json(), ADMIN + '/requests?status=open')).requests || [];
-  check('extract (empty design) -> request, no overwrite warning', reqs.some(r => r.fid === f.id && r.type === 'extract' && r.data && r.data.target === 'card') && !(await page.$('.confirm-dialog')), dialogs.join(' | '));
+  check('extract (empty design) -> request, no overwrite warning', reqs.some(r => r.fid === f.id && r.type === 'extract' && r.data && r.data.target === 'card' && r.data.images === false) && !(await page.$('.confirm-dialog')), dialogs.join(' | '));
 
   // Extract with content -> confirm dialog first; Cancel makes no request
   await page.evaluate(async (t, id) => fetch('/designer/api/factions/' + id + '/patch', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + t }, body: JSON.stringify({ ops: [{ op: 'set', path: 'ufa.name', value: 'Something' }] }) }), tok, f.id);
   await page.reload({ waitUntil: 'networkidle0' }); await sleep(600);
   const before = reqs.filter(r => r.fid === f.id && r.type === 'extract').length;
-  await (await btn('Extract', '.card-image-section')).evaluate(x => x.click()); await sleep(500);
+  await (await btn('Extract text', '.card-image-section')).evaluate(x => x.click()); await sleep(500);
   const confTxt = await page.$eval('.confirm-dialog', e => e.innerText).catch(() => '');
   check('extract with content asks first', /overwrite/i.test(confTxt), confTxt.replace(/\n/g, ' '));
   await (await btn('Cancel', '.confirm-dialog')).evaluate(x => x.click()); await sleep(600);
   reqs = (await page.evaluate(async u => (await fetch(u)).json(), ADMIN + '/requests?status=open')).requests || [];
   check('cancel -> no extra request', reqs.filter(r => r.fid === f.id && r.type === 'extract').length === before);
-  await (await btn('Extract', '.card-image-section')).evaluate(x => x.click()); await sleep(500);
+  await (await btn('Extract text', '.card-image-section')).evaluate(x => x.click()); await sleep(500);
   await (await btn('Yes - Extract', '.confirm-dialog')).evaluate(x => x.click()); await sleep(1000);
   reqs = (await page.evaluate(async u => (await fetch(u)).json(), ADMIN + '/requests?status=open')).requests || [];
   check('Yes - Extract -> same waiting request reused (no duplicate job)', before === 1 && reqs.filter(r => r.fid === f.id && r.type === 'extract').length === 1 && /Extract requested/.test(dialogs.slice(-1)[0] || ''), dialogs.slice(-1)[0] || '');
+
+  // Text + images -> its own request with images: true, message gives the bigger estimate
+  await (await btn('Extract text + images', '.card-image-section')).evaluate(x => x.click()); await sleep(500);
+  const confImg = await page.$eval('.confirm-dialog', e => e.innerText).catch(() => '');
+  await (await btn('Yes - Extract', '.confirm-dialog')).evaluate(x => x.click()); await sleep(1000);
+  reqs = (await page.evaluate(async u => (await fetch(u)).json(), ADMIN + '/requests?status=open')).requests || [];
+  check('text + images -> request with images:true', reqs.some(r => r.fid === f.id && r.type === 'extract' && r.data.images === true) && /about 30 minutes/.test(dialogs.slice(-1)[0] || ''), dialogs.slice(-1)[0] || '');
+  check('text + images confirm mentions silhouettes', /silhouettes/.test(confImg), confImg.replace(/\n/g, ' '));
 
   // Faction glyph (under the card)
   d = (await get()).design;
