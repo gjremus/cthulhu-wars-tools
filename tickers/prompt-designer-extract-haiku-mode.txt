@@ -10,6 +10,9 @@ MODE: HAIKU CHECK (runs every 2 minutes; be brief).
      you cannot tell which picture is the faction glyph;
    - the patch call returns an error;
    - you are unsure about any field.
+   - target is "menus": ALWAYS hand it off at once ("menu design") without doing anything else.
+   - target is "card": ALWAYS hand it off at once ("faction card") without doing anything else.
+     (A Haiku card read on 2026-10-09 misread names and missed units; cards go to Sonnet.)
    A handoff is cheap and safe; a wrong extraction is not. Never mark a handed-off request done.
 3. After a successful patch, run python3 $H done <rid>.
 4. Final reply: one line per request: "<rid> <faction> extracted" or "<rid> <faction> handed off: <reason>".

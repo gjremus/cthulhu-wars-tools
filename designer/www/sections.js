@@ -1169,9 +1169,33 @@
     }}, 'Add row'));
   }
 
+  const MENU_RECOMMEND_MINUTES = 5;
+
   function renderMenus(container, ctx) {
     const d = ctx.design.menus;
     const ref = ctx.reference || {};
+
+    // The checker reads the whole design and writes suggested menus for every ability,
+    // spellbook, unit, etc. that needs a player choice. Time measured 2026-10-09.
+    const hasMenus = !window.Rules.isEmpty('menus', ctx.design);
+    const recBtn = h('button', {className: 'sx-btn', onclick: async () => {
+      if (hasMenus) {
+        const ok = await ctx.confirm('Recommend menu design will replace the menus below with suggested ones. Are you sure?', 'Yes - Recommend', 'Cancel');
+        if (!ok) return;
+      }
+      recBtn.disabled = true;
+      try {
+        await ctx.createRequest('extract', `Recommend menu design for ${ctx.faction.name}`, {target: 'menus'});
+        alert(`Menu design requested. Suggested menus will appear here in about ${MENU_RECOMMEND_MINUTES} minutes.`);
+      } catch (err) {
+        alert('Request failed: ' + err.message);
+      }
+      recBtn.disabled = false;
+    }}, 'Recommend menu design');
+    container.appendChild(h('div', {className: 'menu-recommend', style: 'margin-bottom: 24px;'},
+      recBtn,
+      h('div', {className: 'extract-estimate', style: 'font-size: 0.8em; opacity: 0.75; margin-top: 3px;'}, `about ${MENU_RECOMMEND_MINUTES} min`),
+      h('div', {style: 'font-size: 0.85em; opacity: 0.75; margin-top: 4px;'}, 'Reads everything you have filled in (abilities, spellbooks, units, tokens...) and suggests a menu for each choice a player makes. Fill those in first.')));
 
     d.rows.forEach((menu, idx) => {
       const menuDiv = h('div', {style: 'margin-bottom: 40px; padding: 16px; border: 2px solid #444;'});

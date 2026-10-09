@@ -123,6 +123,24 @@ const check = (name, ok, extra = '') => { results.push(ok); console.log(ok ? 'PA
   await (await btn('Delete', '.image-slot:nth-child(2)')).evaluate(x => x.click()); await sleep(1500);
   d = (await get()).design;
   check('delete one slot', !d.sbImages.each[1] && !!d.sbImages.each[4]);
+  check('no "extract all" until all 6 uploaded', !(await page.$('.sb-extract-all')));
+  for (const n of [1, 2, 3, 4, 6]) await upload('Upload', n % 2 ? CARD : SB, `.image-slot:nth-child(${n})`);
+  d = (await get()).design;
+  const allEst = await page.$eval('.sb-extract-all .extract-estimate', e => e.textContent.trim()).catch(() => '');
+  check('all 6 uploaded -> "Extract all spellbooks text" with estimate', d.sbImages.each.every(Boolean) && !!(await (await btn('Extract all spellbooks text', '.sb-extract-all')).evaluate(x => !!x)) && /^about \d+ min$/.test(allEst), allEst);
+  await (await btn('Extract all spellbooks text', '.sb-extract-all')).evaluate(x => x.click()); await sleep(1000);
+  reqs = (await page.evaluate(async u => (await fetch(u)).json(), ADMIN + '/requests?status=open')).requests || [];
+  check('extract all -> one request with all 6 images', reqs.some(r => r.fid === f.id && r.data.target === 'sbEachAll' && JSON.stringify(r.data.each) === JSON.stringify(d.sbImages.each)), dialogs.slice(-1)[0] || '');
+
+  // Menu Design: Recommend menu design
+  const secBtn = await page.evaluateHandle(() => [...document.querySelectorAll('button')].find(b => b.textContent.includes('Menu Design')) || null);
+  await secBtn.evaluate(x => x.click()); await sleep(600);
+  const menuEst = await page.$eval('.menu-recommend .extract-estimate', e => e.textContent.trim()).catch(() => '');
+  check('Menu Design has "Recommend menu design" with estimate', !!(await (await btn('Recommend menu design')).evaluate(x => !!x)) && /^about \d+ min$/.test(menuEst), menuEst);
+  await (await btn('Recommend menu design')).evaluate(x => x.click()); await sleep(1000);
+  reqs = (await page.evaluate(async u => (await fetch(u)).json(), ADMIN + '/requests?status=open')).requests || [];
+  check('recommend -> menus request, no confirm on empty menus', reqs.some(r => r.fid === f.id && r.type === 'extract' && r.data.target === 'menus') && !(await page.$('.confirm-dialog')), dialogs.slice(-1)[0] || '');
+  await page.goto(BASE + '/designer/#/faction/' + f.id, { waitUntil: 'networkidle0' }); await sleep(600);
   await (await btn('Delete all 6, to replace with 1 image for all 6')).evaluate(x => x.click()); await sleep(1500);
   d = (await get()).design;
   check('delete all 6 -> back to choice', !d.sbImages.mode && d.sbImages.each.every(x => !x), JSON.stringify(d.sbImages));

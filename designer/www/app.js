@@ -2,6 +2,9 @@
 (function() {
   'use strict';
 
+  // Measured end-to-end times (2026-10-09), shown under the matching buttons.
+  const SB_ALL_EXTRACT_MINUTES = 4;
+
   class App {
     constructor() {
       this.root = document.getElementById('root');
@@ -1128,6 +1131,37 @@
         }
 
         container.appendChild(grid);
+
+        // All six uploaded -> one request reads all of them (one run, cheaper than six).
+        if (sbImages.each.every(Boolean)) {
+          const allWrap = document.createElement('div');
+          allWrap.className = 'sb-extract-all';
+          allWrap.style.cssText = 'display: flex; flex-direction: column; align-items: center; margin-top: 15px;';
+          const allBtn = document.createElement('button');
+          allBtn.textContent = 'Extract all spellbooks text';
+          const est = document.createElement('div');
+          est.className = 'extract-estimate';
+          est.style.cssText = 'font-size: 0.8em; opacity: 0.75; margin-top: 3px;';
+          est.textContent = `about ${SB_ALL_EXTRACT_MINUTES} min`;
+          allBtn.onclick = async () => {
+            if (!Rules.isEmpty('sb', design)) {
+              const ok = await this.confirm('Extract will overwrite all 6 spellbooks. Are you sure?', 'Yes - Extract', 'Cancel');
+              if (!ok) return;
+            }
+            allBtn.disabled = true;
+            try {
+              await this.createRequest(faction.id, 'extract', `Extract all spellbooks text for ${faction.name}`,
+                {target: 'sbEachAll', each: sbImages.each.slice()});
+              alert(`Extract requested. All 6 spellbooks will be filled in for you in about ${SB_ALL_EXTRACT_MINUTES} minutes.`);
+            } catch (err) {
+              alert('Extract request failed: ' + err.message);
+            }
+            allBtn.disabled = false;
+          };
+          allWrap.appendChild(allBtn);
+          allWrap.appendChild(est);
+          container.appendChild(allWrap);
+        }
       }
     }
 
@@ -1275,6 +1309,7 @@
         uploadImage: (kind) => this.uploadImage(kind),
         imgUrl: (id) => this.imgUrl(id),
         confirm: (msg, yes, no) => this.confirm(msg, yes, no),
+        createRequest: (type, text, data) => this.createRequest(faction.id, type, text, data),
         rerender: () => {
           const y = window.scrollY;
           container.innerHTML = '';
