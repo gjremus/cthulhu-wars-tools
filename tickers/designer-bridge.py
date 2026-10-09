@@ -8,7 +8,8 @@ Per SPEC §9:
 - Reads owner-admin-token.txt
 - Polls /designer/api/admin/<TOKEN>/requests?status=open
 - For build requests: macOS notification + append to /tmp/cw-ticker-alerts.txt + mark notified
-- For extract/update/bug: write to /tmp/cw-designer-requests.json for run_ticker
+- For update/bug: write to /tmp/cw-designer-requests.json for run_ticker
+- Extract requests are left alone: designer-extract-check.sh (Haiku, every 2 min) handles them
 
 No idle writes: keeps a seen-ids state file to avoid writing on every tick when there are no new requests.
 """
@@ -152,8 +153,12 @@ def main():
 
     # Ticker requests stay queued until the ticker marks them done, so a
     # crashed tick is retried. Only rewrite the file when the list changes.
-    ticker_reqs = [r for r in requests if r['type'] in ('extract', 'update', 'bug')]
+    ticker_reqs = [r for r in requests if r['type'] in ('update', 'bug')]
     if not ticker_reqs:
+        # Clear a stale file (e.g. one that only held extract requests) so the
+        # 15-min ticker doesn't start a Sonnet tick for nothing.
+        if os.path.exists(REQUESTS_FILE):
+            os.remove(REQUESTS_FILE)
         return
     try:
         with open(REQUESTS_FILE) as f:

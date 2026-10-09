@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+DESIGNER EXTRACT CHECKER: Haiku checks for designer image-extract requests every 2 minutes,
+extracts what it can, hands the rest to Sonnet. See tickers/designer-extract-check.sh.
+
+Install:   cp this file to ~/Library/LaunchAgents/ then
+           launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.gremus.cw-designer-extract.plist
+Uninstall: launchctl bootout   gui/$(id -u)/com.gremus.cw-designer-extract
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.gremus.cw-designer-extract</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>/Users/gremus/Claude-Projects/cthulhu-wars-tools/tickers/designer-extract-check.sh</string>
+    </array>
+
+    <key>StartInterval</key>
+    <integer>120</integer>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/cw-designer-extract.stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/cw-designer-extract.stderr.log</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+</dict>
+</plist>

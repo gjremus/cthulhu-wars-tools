@@ -1,0 +1,13 @@
+MODE: HAIKU CHECK (runs every 2 minutes; be brief).
+1. Run: python3 $H list-extract
+   If it prints [] reply exactly "NO EXTRACT REQUESTS" and stop. Do nothing else.
+2. For each request, try the extraction yourself. Hand it off instead (python3 $H handoff <rid>
+   "<short reason>") and move on if ANY of these is true:
+   - the image is blurry, cut off, tiny, or you cannot read every word with confidence;
+   - target is "card" and the card has more than 4 units or any ability whose text you are
+     unsure where to put in the schema;
+   - the patch call returns an error;
+   - you are unsure about any field.
+   A handoff is cheap and safe; a wrong extraction is not. Never mark a handed-off request done.
+3. After a successful patch, run python3 $H done <rid>.
+4. Final reply: one line per request: "<rid> <faction> extracted" or "<rid> <faction> handed off: <reason>".

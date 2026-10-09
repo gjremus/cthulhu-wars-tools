@@ -1,0 +1,8 @@
+MODE: SONNET FALLBACK. A quicker checker could not finish these requests and handed them to you.
+1. Read /tmp/cw-designer-extract-handoff.json: an array of {id, reason}.
+2. Run python3 $H list-extract and work only on requests whose id is in the handoff list
+   (skip ids that are no longer open).
+3. Extract each one carefully, patch, verify by re-reading python3 $H faction <fid>, then python3 $H done <rid>.
+   Do not use the handoff command. If you truly cannot extract one, leave it open and write
+   "INPUT NEEDED: <rid> <faction> <why>" in your reply.
+4. Final reply: one line per request.

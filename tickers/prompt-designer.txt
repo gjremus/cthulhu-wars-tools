@@ -1,4 +1,4 @@
-You are the designer ticker. You process faction designer requests: Extract, Update, and Bug reports. (Simple Update is applied automatically by the server and never reaches you.) This is one tick.
+You are the designer ticker. You process faction designer requests: Update and Bug reports. (Simple Update is applied automatically by the server and never reaches you.) This is one tick.
 
 BASE PATH: "/Users/gremus/Library/CloudStorage/GoogleDrive-gremus@salesforce.com/My Drive/Personal/Games/Cthulhu Wars"
 TOOLS DIR: /Users/gremus/Claude-Projects/cthulhu-wars-tools
@@ -16,7 +16,7 @@ The designer-bridge.py script writes open designer requests to:
 Read this file at the start of each tick. It contains an array of request objects.
 Each request has:
   - id: request ID (e.g., "r_abc123")
-  - type: "extract" | "update" | "bug"
+  - type: "update" | "bug"
   - fid: faction ID
   - faction: faction name
   - acronym: faction acronym (2-3 letters)
@@ -29,25 +29,12 @@ Each request has:
 REQUEST TYPES
 ═══════════════════════════════════════════════════════════════════
 
-1. EXTRACT (type: "extract")
-   data: { target: "card" | "sbAll" | "sbEach", index: 0-5 (for sbEach), image: "sha256.webp" }
+1. EXTRACT: not handled here. A separate 2-minute checker (designer-extract-check.sh,
+   Haiku with a Sonnet fallback) does extractions; you will not see extract requests.
 
-   Extract text from the faction card or spellbook images. Use OCR (e.g., Tesseract via
-   a subprocess if available, or describe the manual process). Write the extracted sections
-   back to the faction via the admin patch API:
-
-   POST https://cwo.freeddns.org/designer/api/admin/<TOKEN>/factions/<fid>/patch
-   Body: { "ops": [ { "op": "replaceSection", "path": "<section>", "value": {...} } ] }
-
-   Card → extracts: ae, ufa, setup, units, sbr (with unit relatedSbNames).
-   SB images → extracts: sb rows (one per spellbook).
-
-   The admin patch endpoint follows the same version rules as user edits. Extract is a
-   Change if the old section was non-empty, else an Addition.
-
-   Mark the request done when complete:
+   (For reference, when marking any request done:
    POST https://cwo.freeddns.org/designer/api/admin/<TOKEN>/requests/<request_id>
-   Body: { "status": "done" }
+   Body: { "status": "done" })
 
 2. UPDATE (type: "update")
    data: { section: "<key>", fromVersion: <liveVersion>, toVersion: <current> }

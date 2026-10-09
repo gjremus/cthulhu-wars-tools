@@ -1166,6 +1166,15 @@
         set: (path, value) => {
           this.setDesignValue(design, path, value);
           this.scheduleSave(faction.id, path, value);
+          // Greyed-out fields are decided at render time, so checkboxes, selects and radios must
+          // redraw the section. Typing in a text/number box must not (it would steal focus).
+          // Judge by the event, not document.activeElement: Safari doesn't focus a clicked
+          // checkbox, so focus stays in the last text box and the redraw was skipped.
+          const ev = window.event;
+          const t = ev && ev.target;
+          const typing = ev && ev.type === 'input' && t &&
+            (t.tagName === 'TEXTAREA' || (t.tagName === 'INPUT' && /^(text|number|search|email|url)$/.test(t.type)));
+          if (!typing) ctx.rerender();
         },
         addRow: (tablePath, row) => {
           const parts = tablePath.split('.');
@@ -1197,8 +1206,10 @@
         imgUrl: (id) => this.imgUrl(id),
         confirm: (msg, yes, no) => this.confirm(msg, yes, no),
         rerender: () => {
+          const y = window.scrollY;
           container.innerHTML = '';
           Sections.render(key, container, ctx);
+          window.scrollTo(0, y);
         },
         openOverlay: (content) => this.openOverlay(content),
         closeOverlay: () => this.closeOverlay()
