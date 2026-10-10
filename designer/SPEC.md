@@ -131,7 +131,10 @@ After every applied op:
   "sbr": {"multiText":"", "rows": [ 6 × {"id","text":"","hasNum":false,"num":null} ]},
   "sb":  {"twoSided":false,                         // 2 sided: each spellbook has side A (plain fields) and side B (...B fields)
           "rows": [ 6 × {"id","name":"","type":null,"cost":0,"hasEffect":false,"effect":null,"text":"",
-                         "nameB":"","typeB":null,"costB":0,"hasEffectB":false,"effectB":null,"textB":""} ]},
+                         "nameB":"","typeB":null,"costB":0,"hasEffectB":false,"effectB":null,"textB":"",
+                         "dual":false, + name2,type2,cost2,hasEffect2,effect2,text2,      // dual powers on side A: power 2 fields
+                         "dualB":false, + nameB2,typeB2,costB2,hasEffectB2,effectB2,textB2 // dual powers on side B
+                        } ]},
   "region": {"rows": [ {"id","name":"","image":null,"restrictions":"","adjacency":""} ]},
   "tokens": {"rows": [ {"id","name":"","qty":null,"image":null,"placement":"","effects":"","hasEffect":false,"effect":null} ]},
   "custom": {"rows": [ {"id","name":"","image":null,"placement":"","usage":"","effects":"","hasNum":false,"num":null} ]},

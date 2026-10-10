@@ -105,7 +105,10 @@
           costB: 0,
           hasEffectB: false,
           effectB: null,
-          textB: ''
+          textB: '',
+          // Dual powers: a side split into power 1 (the fields above) and power 2 (the ...2 fields)
+          dual: false, name2: '', type2: null, cost2: 0, hasEffect2: false, effect2: null, text2: '',
+          dualB: false, nameB2: '', typeB2: null, costB2: 0, hasEffectB2: false, effectB2: null, textB2: ''
         }))
       },
       region: {
@@ -208,7 +211,9 @@
       return {id: newId(), text: '', hasNum: false, num: null};
     } else if (tablePath === 'sb.rows') {
       return {id: newId(), name: '', type: null, cost: 0, hasEffect: false, effect: null, text: '',
-        nameB: '', typeB: null, costB: 0, hasEffectB: false, effectB: null, textB: ''};
+        nameB: '', typeB: null, costB: 0, hasEffectB: false, effectB: null, textB: '',
+        dual: false, name2: '', type2: null, cost2: 0, hasEffect2: false, effect2: null, text2: '',
+        dualB: false, nameB2: '', typeB2: null, costB2: 0, hasEffectB2: false, effectB2: null, textB2: ''};
     } else if (tablePath === 'region.rows') {
       return {id: newId(), name: '', image: null, restrictions: '', adjacency: ''};
     } else if (tablePath === 'tokens.rows') {
@@ -339,15 +344,12 @@
       if (!row.text) return false;
       if (row.hasNum && row.num == null) return false;
       return true;
-    } else if (rowType === 'sb') {
-      if (!row.name || !row.type || !row.text) return false;
-      if (row.hasEffect && row.effect == null) return false;
-      return true;
-    } else if (rowType === 'sbB') {
-      // Side B of a 2 sided spellbook: same rules as side A
-      if (!row.nameB || !row.typeB || !row.textB) return false;
-      if (row.hasEffectB && row.effectB == null) return false;
-      return true;
+    } else if (rowType === 'sb' || rowType === 'sbB') {
+      // One side of a spellbook ('sbB' = side B of a 2 sided one). A side with dual powers needs both powers.
+      const side = rowType === 'sbB' ? 'B' : '';
+      const part = sfx => !!(row['name' + sfx] && row['type' + sfx] && row['text' + sfx]) &&
+        !(row['hasEffect' + sfx] && row['effect' + sfx] == null);
+      return part(side) && (!row['dual' + side] || part(side + '2'));
     } else if (rowType === 'region') {
       return row.name && row.image && row.restrictions && row.adjacency;
     } else if (rowType === 'tokens') {
@@ -642,14 +644,23 @@
             value: row.effect
           });
         }
-        if (design.sb.twoSided && row.nameB) {
-          if (row.costB != null) {
-            numbers.push({section: 'sb', sectionTitle: 'Spellbooks', rowId: row.id, field: 'costB', name: row.nameB + ' (side B) cost', value: row.costB});
-          }
-          if (row.hasEffectB && row.effectB != null) {
-            numbers.push({section: 'sb', sectionTitle: 'Spellbooks', rowId: row.id, field: 'effectB', name: row.nameB + ' (side B) effect', value: row.effectB});
-          }
+        // Extra parts: power 2 of a dual powers side, and side B (and its power 2) of a 2 sided spellbook
+        const extra = [];
+        if (row.dual) extra.push(['2', ' (power 2)']);
+        if (design.sb.twoSided) {
+          extra.push(['B', ' (side B)']);
+          if (row.dualB) extra.push(['B2', ' (side B, power 2)']);
         }
+        extra.forEach(([sfx, tag]) => {
+          const nm = row['name' + sfx];
+          if (!nm) return;
+          if (row['cost' + sfx] != null) {
+            numbers.push({section: 'sb', sectionTitle: 'Spellbooks', rowId: row.id, field: 'cost' + sfx, name: nm + tag + ' cost', value: row['cost' + sfx]});
+          }
+          if (row['hasEffect' + sfx] && row['effect' + sfx] != null) {
+            numbers.push({section: 'sb', sectionTitle: 'Spellbooks', rowId: row.id, field: 'effect' + sfx, name: nm + tag + ' effect', value: row['effect' + sfx]});
+          }
+        });
       });
     }
 

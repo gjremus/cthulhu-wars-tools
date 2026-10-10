@@ -810,10 +810,16 @@
 
     const tableDiv = h('div', {className: 'sx-table'});
     const table = h('table', {});
+    const sides = two ? ['', 'B'] : [''];
+    // Dual powers: a side split into power 1 and power 2, each with its own name, type, cost, effect and text
+    const anyDual = d.rows.some(r => sides.some(sd => r['dual' + sd]));
+    const grouped = two || anyDual;
     table.appendChild(h('thead', {},
       h('tr', {},
-        two ? h('th', {style: 'width: 90px;'}, 'Spellbook') : null,
+        grouped ? h('th', {style: 'width: 90px;'}, 'Spellbook') : null,
         two ? h('th', {style: 'width: 60px;'}, 'Side') : null,
+        h('th', {style: 'width: 70px;'}, 'Dual powers?'),
+        anyDual ? h('th', {style: 'width: 60px;'}, 'Power') : null,
         h('th', {}, 'Name'),
         h('th', {}, 'Type'),
         h('th', {style: 'width: 100px;'}, 'Cost'),
@@ -824,7 +830,7 @@
       )
     ));
 
-    // One side's cells. sfx = '' for side A (or the only side), 'B' for side B
+    // One side's (or one power's) cells. sfx = '' side A (or the only side), 'B' side B, '2' / 'B2' power 2
     function sideCells(tr, row, sfx) {
       const f = name => `sb.rows.${row.id}.${name}${sfx}`;
       const v = name => row[name + sfx];
@@ -867,33 +873,42 @@
 
     const tbody = h('tbody', {});
     d.rows.forEach((row, idx) => {
-      const tr = h('tr', {});
-      const span = two ? {rowSpan: 2} : {};
-      if (two) {
-        tr.appendChild(h('td', Object.assign({style: 'font-weight: bold;'}, span), `Spellbook ${idx + 1}`));
-        tr.appendChild(h('td', {}, 'Side A'));
-      }
-      sideCells(tr, row, '');
-
-      if (d.rows.length > 6) {
-        tr.appendChild(h('td', span,
-          h('button', {onclick: async () => {
-            const confirmed = await ctx.confirm('Are you sure you want to delete this spellbook?', 'Yes - delete', 'No - cancel');
-            if (confirmed) ctx.deleteRow('sb.rows', row.id);
-          }}, 'Delete')
-        ));
-      } else {
-        tr.appendChild(h('td', span));
-      }
-
-      tbody.appendChild(tr);
-
-      if (two) {
-        const trB = h('tr', {style: 'border-bottom: 3px solid #000;'});
-        trB.appendChild(h('td', {}, 'Side B'));
-        sideCells(trB, row, 'B');
-        tbody.appendChild(trB);
-      }
+      // sfx per table row: '' side A (or only side), 'B' side B, then '2' / 'B2' for power 2 of a dual powers side
+      const parts = sides.map(sd => row['dual' + sd] ? [sd, sd + '2'] : [sd]);
+      const total = parts.reduce((n, p) => n + p.length, 0);
+      let first = true;
+      const trs = [];
+      parts.forEach((sideParts, si) => {
+        const sd = sides[si];
+        sideParts.forEach((sfx, pi) => {
+          const tr = h('tr', {});
+          if (first && grouped) tr.appendChild(h('td', {rowSpan: total, style: 'font-weight: bold;'}, `Spellbook ${idx + 1}`));
+          if (pi === 0) {
+            if (two) tr.appendChild(h('td', {rowSpan: sideParts.length}, sd === 'B' ? 'Side B' : 'Side A'));
+            tr.appendChild(h('td', {rowSpan: sideParts.length, style: 'text-align: center;'},
+              h('input', {type: 'checkbox', checked: !!row['dual' + sd], title: 'Split this side into power 1 and power 2',
+                onchange: e => ctx.set(`sb.rows.${row.id}.dual${sd}`, e.target.checked)})));
+          }
+          if (anyDual) tr.appendChild(h('td', {}, sideParts.length > 1 ? `Power ${pi + 1}` : ''));
+          sideCells(tr, row, sfx);
+          if (first) {
+            if (d.rows.length > 6) {
+              tr.appendChild(h('td', {rowSpan: total},
+                h('button', {onclick: async () => {
+                  const confirmed = await ctx.confirm('Are you sure you want to delete this spellbook?', 'Yes - delete', 'No - cancel');
+                  if (confirmed) ctx.deleteRow('sb.rows', row.id);
+                }}, 'Delete')
+              ));
+            } else {
+              tr.appendChild(h('td', {rowSpan: total}));
+            }
+          }
+          first = false;
+          trs.push(tr);
+        });
+      });
+      if (grouped) trs[trs.length - 1].style.borderBottom = '3px solid #000';
+      trs.forEach(tr => tbody.appendChild(tr));
     });
     table.appendChild(tbody);
     tableDiv.appendChild(table);

@@ -1590,7 +1590,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
     # ---- Simple Update: fixed numbers pushed straight to the build (no ticker) ----
     # Built factions read their fixed numbers from GET /designer/api/live/<ACR>/values.
     # Each push bumps "rev"; a game pins the rev it started with (?rev=N) so replays never change.
-    SIMPLE_UPDATE_FIELDS = {'qty', 'cost', 'effect', 'costB', 'effectB', 'power', 'aeStart', 'awakenPower', 'dice', 'pains', 'kills', 'num'}
+    SIMPLE_UPDATE_FIELDS = {'qty', 'cost', 'effect', 'costB', 'effectB', 'cost2', 'effect2', 'costB2', 'effectB2', 'power', 'aeStart', 'awakenPower', 'dice', 'pains', 'kills', 'num'}
 
     @staticmethod
     def simple_update_path(section, row_id, field):
@@ -2055,7 +2055,10 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             ]},
             "sb": {"twoSided": False, "rows": [
                 {"id": self.new_id(), "name": "", "type": None, "cost": 0, "hasEffect": False, "effect": None, "text": "",
-                 "nameB": "", "typeB": None, "costB": 0, "hasEffectB": False, "effectB": None, "textB": ""} for _ in range(6)
+                 "nameB": "", "typeB": None, "costB": 0, "hasEffectB": False, "effectB": None, "textB": "",
+                 "dual": False, "name2": "", "type2": None, "cost2": 0, "hasEffect2": False, "effect2": None, "text2": "",
+                 "dualB": False, "nameB2": "", "typeB2": None, "costB2": 0, "hasEffectB2": False, "effectB2": None,
+                 "textB2": ""} for _ in range(6)
             ]},
             # Each table starts with one blank row (same as Rules.newDesign in www/rules.js)
             "region": {"rows": [{"id": self.new_id(), "name": "", "image": None, "restrictions": "", "adjacency": ""}]},

@@ -41,6 +41,10 @@ REQUEST: {id, type:"extract", fid, faction, data:{target, index, image, images, 
                      Never touch the other side's fields. Whenever you replace the "sb" section, keep
                      "twoSided" and every existing field of the side you are not filling exactly as
                      they are (read the design first and copy them over).
+  DUAL POWERS: when one spellbook (or one side of a 2 sided spellbook) shows TWO separate powers,
+                     set dual true (side B: dualB true) and put the first power in the normal fields
+                     and the second power in the ...2 fields (name2, type2, cost2, hasEffect2, effect2,
+                     text2; side B: nameB2, typeB2, costB2, hasEffectB2, effectB2, textB2).
   target "menus"  -> no image. "Recommend menu design": read the WHOLE design (ufa, ae, setup,
                      units incl. abilityText, sb, sbr, region, tokens, custom) and write suggested
                      menus.rows (see MENUS). Replace the whole "menus" section.
