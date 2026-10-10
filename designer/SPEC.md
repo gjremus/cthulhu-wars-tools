@@ -161,7 +161,7 @@ After every applied op:
 **MENU:**
 ```json
 {"id","name":"","section":null,"item":null,      // section ∈ ae|ufa|setup|units|sbr|sb|region|tokens|custom ; item = row id (null for ufa)
- "prompted":null,                                 // Own | 1 Enemy | All enemies (turn order) | All enemies (at the same time) | All players (at the same time)
+ "prompted":null,                                 // Own | 1 Enemy | All enemies (turn order) | All enemies (at the same time) | All players (at the same time) | Any faction on their turn
  "title":"","hasSubtitle":false,"subtitle":"","button":"",
  "cancel":false,"skip":false,"done":false,"multiSelect":false,   // multiSelect: pick one, the menu returns with the remaining options until Done (needs done:true)
  "repeat":false,"repeatCount":"",                // repeat: the menu is asked again a set number of times (repeatCount: number, placeholder or rule, e.g. "3", "[Power]", "until moves run out")

@@ -1281,7 +1281,7 @@
         placeholder: itemOptions.length === 0 ? 'No items available' : '-- Select --'
       }));
 
-      menuDiv.appendChild(selectField('Faction prompted', menu.prompted, ['Own', '1 Enemy', 'All enemies (turn order)', 'All enemies (at the same time)', 'All players (at the same time)'], val => ctx.set(`menus.rows.${menu.id}.prompted`, val)));
+      menuDiv.appendChild(selectField('Faction prompted', menu.prompted, ['Own', '1 Enemy', 'All enemies (turn order)', 'All enemies (at the same time)', 'All players (at the same time)', 'Any faction on their turn'], val => ctx.set(`menus.rows.${menu.id}.prompted`, val)));
 
       const placeholderHint = 'Placeholders: [Faction], [Region], [Unit], [Power], [Doom], [Enemy], [Spellbook], [Number] (for Pick a number menus)';
       menuDiv.appendChild(textField('Menu Title', menu.title, val => ctx.set(`menus.rows.${menu.id}.title`, val), {hint: placeholderHint}));

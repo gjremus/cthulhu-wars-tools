@@ -95,6 +95,8 @@ subtitle, one button per choice, optional Cancel/Skip/Done). Schema: MENU in SPE
      "are you sure?" before something costly or permanent. infoOnly true for a message with just
      an OK button (no choice). prompted "All enemies (at the same time)" / "All players (at the
      same time)" when players choose secretly and together, not in turn order.
+     prompted "Any faction on their turn" when ANY player (not just the owner) may use it during
+     their own turn (e.g. a shared action any faction can take).
   3. Chains: when one choice leads to another (pick enemy -> enemy picks units), set
      leadsToNext true, next = the next menu's id, nextTrigger = what causes it. Give every menu a
      fresh 8-character id first so you can link them.
