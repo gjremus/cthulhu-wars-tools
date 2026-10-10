@@ -602,6 +602,12 @@
       } else {
         overlay.appendChild(content);
       }
+      // Read only: the picture viewers keep only Done, so no button is shown that can't change anything
+      if (this.isReadOnly()) {
+        overlay.querySelectorAll('button').forEach(b => {
+          if (b.textContent.trim() !== 'Done') b.style.display = 'none';
+        });
+      }
 
       const closeBtn = document.createElement('button');
       closeBtn.textContent = 'Close';
