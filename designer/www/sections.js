@@ -636,31 +636,63 @@
 
       // Spellbook for iGOO / Elder God neutral units
       if (neutral && (unit.type === 'Great Old One' || unit.type === 'Elder God')) {
-        // Initialize spellbook if missing (for backward compatibility)
+        // Default spellbook structure in memory if missing (backward compatibility)
+        // Don't save it until user actually changes something
         const sb = unit.spellbook || {enabled: false, requirement: {text: '', hasNum: false, num: null}, book: {name: '', type: null, cost: 0, hasEffect: false, effect: null, text: ''}};
-        if (!unit.spellbook) ctx.set(`units.rows.${unit.id}.spellbook`, sb);
 
         unitDiv.appendChild(checkboxField('Spellbook', sb.enabled, val => {
-          ctx.set(`units.rows.${unit.id}.spellbook.enabled`, val);
+          // Initialize structure on first write if needed
+          if (!unit.spellbook) {
+            ctx.set(`units.rows.${unit.id}.spellbook`, {enabled: val, requirement: {text: '', hasNum: false, num: null}, book: {name: '', type: null, cost: 0, hasEffect: false, effect: null, text: ''}});
+          } else {
+            ctx.set(`units.rows.${unit.id}.spellbook.enabled`, val);
+          }
         }));
 
         if (sb.enabled) {
           const sbDiv = h('div', {style: 'margin: 20px 0; padding: 16px; border: 1px solid #666; background: #1a1a1a;'});
 
-          // Spellbook Requirement
+          // Spellbook Requirement - match faction editor labels exactly
           sbDiv.appendChild(h('h4', {style: 'margin: 0 0 12px 0;'}, 'Spellbook Requirement'));
-          sbDiv.appendChild(textField('Requirement Text', sb.requirement.text, val => ctx.set(`units.rows.${unit.id}.spellbook.requirement.text`, val), {rows: 3}));
-          sbDiv.appendChild(checkboxField('Includes Fixed Numeric Cost or Effect?', sb.requirement.hasNum, val => ctx.set(`units.rows.${unit.id}.spellbook.requirement.hasNum`, val)));
-          sbDiv.appendChild(numberField('Fixed Numeric Cost or Effect', sb.requirement.num, val => ctx.set(`units.rows.${unit.id}.spellbook.requirement.num`, val), {greyed: !sb.requirement.hasNum}));
+          sbDiv.appendChild(textField('Spellbook Requirement Text', sb.requirement.text, val => {
+            if (!unit.spellbook) ctx.set(`units.rows.${unit.id}.spellbook`, sb);
+            ctx.set(`units.rows.${unit.id}.spellbook.requirement.text`, val);
+          }, {rows: 3}));
+          sbDiv.appendChild(checkboxField('Includes Fixed Numeric Cost or Effect?', sb.requirement.hasNum, val => {
+            if (!unit.spellbook) ctx.set(`units.rows.${unit.id}.spellbook`, sb);
+            ctx.set(`units.rows.${unit.id}.spellbook.requirement.hasNum`, val);
+          }));
+          sbDiv.appendChild(numberField('Fixed Numeric Cost or Effect', sb.requirement.num, val => {
+            if (!unit.spellbook) ctx.set(`units.rows.${unit.id}.spellbook`, sb);
+            ctx.set(`units.rows.${unit.id}.spellbook.requirement.num`, val);
+          }, {greyed: !sb.requirement.hasNum}));
 
-          // Spellbook
+          // Spellbook - match faction editor labels exactly
           sbDiv.appendChild(h('h4', {style: 'margin: 20px 0 12px 0;'}, 'Spellbook'));
-          sbDiv.appendChild(textField('Name', sb.book.name, val => ctx.set(`units.rows.${unit.id}.spellbook.book.name`, val)));
-          sbDiv.appendChild(selectField('Type', sb.book.type, window.Rules.SB_TYPES, val => ctx.set(`units.rows.${unit.id}.spellbook.book.type`, val)));
-          sbDiv.appendChild(numberField('Cost', sb.book.cost, val => ctx.set(`units.rows.${unit.id}.spellbook.book.cost`, val), {min: 0}));
-          sbDiv.appendChild(checkboxField('Includes Fixed Numeric Effect?', sb.book.hasEffect, val => ctx.set(`units.rows.${unit.id}.spellbook.book.hasEffect`, val)));
-          sbDiv.appendChild(numberField('Fixed Numeric Effect', sb.book.effect, val => ctx.set(`units.rows.${unit.id}.spellbook.book.effect`, val), {greyed: !sb.book.hasEffect}));
-          sbDiv.appendChild(textField('Text', sb.book.text, val => ctx.set(`units.rows.${unit.id}.spellbook.book.text`, val), {rows: 4}));
+          sbDiv.appendChild(textField('Name', sb.book.name, val => {
+            if (!unit.spellbook) ctx.set(`units.rows.${unit.id}.spellbook`, sb);
+            ctx.set(`units.rows.${unit.id}.spellbook.book.name`, val);
+          }));
+          sbDiv.appendChild(selectField('Type', sb.book.type, window.Rules.SB_TYPES, val => {
+            if (!unit.spellbook) ctx.set(`units.rows.${unit.id}.spellbook`, sb);
+            ctx.set(`units.rows.${unit.id}.spellbook.book.type`, val);
+          }));
+          sbDiv.appendChild(numberField('Cost', sb.book.cost, val => {
+            if (!unit.spellbook) ctx.set(`units.rows.${unit.id}.spellbook`, sb);
+            ctx.set(`units.rows.${unit.id}.spellbook.book.cost`, val);
+          }, {min: 0}));
+          sbDiv.appendChild(checkboxField('Includes Fixed Numeric Effect?', sb.book.hasEffect, val => {
+            if (!unit.spellbook) ctx.set(`units.rows.${unit.id}.spellbook`, sb);
+            ctx.set(`units.rows.${unit.id}.spellbook.book.hasEffect`, val);
+          }));
+          sbDiv.appendChild(numberField('Fixed Numeric Effect', sb.book.effect, val => {
+            if (!unit.spellbook) ctx.set(`units.rows.${unit.id}.spellbook`, sb);
+            ctx.set(`units.rows.${unit.id}.spellbook.book.effect`, val);
+          }, {greyed: !sb.book.hasEffect}));
+          sbDiv.appendChild(textField('Text', sb.book.text, val => {
+            if (!unit.spellbook) ctx.set(`units.rows.${unit.id}.spellbook`, sb);
+            ctx.set(`units.rows.${unit.id}.spellbook.book.text`, val);
+          }, {rows: 4}));
 
           unitDiv.appendChild(sbDiv);
         }

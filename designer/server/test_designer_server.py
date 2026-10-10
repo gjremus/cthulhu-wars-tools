@@ -908,6 +908,49 @@ class UnitSpellbookTest(DesignerServerTest):
         }, token=token, expect_error=True)
         self.assertIn('error', bad)
 
+    def test_unit_spellbook_backward_compat(self):
+        """Test that old units without spellbook field work correctly."""
+        token = self.register_user("olduser", "oldpass")
+
+        # Create a unit
+        unit = self.request('POST', '/units', {'name': 'Old GOO'}, token=token)
+        uid = unit['id']
+        row_id = unit['design']['units']['rows'][0]['id']
+
+        # Manually remove spellbook field to simulate old data
+        import json
+        from pathlib import Path
+        unit_file = self.data_dir / 'units' / uid / 'unit.json'
+        unit_data = json.loads(unit_file.read_text())
+        del unit_data['design']['units']['rows'][0]['spellbook']
+        unit_file.write_text(json.dumps(unit_data, indent=2))
+
+        # Read it back - should not have spellbook
+        old_unit = self.request('GET', f'/units/{uid}', token=token)
+        self.assertNotIn('spellbook', old_unit['design']['units']['rows'][0])
+
+        # Now enable spellbook - should set the whole structure
+        self.request('POST', f'/units/{uid}/patch', {
+            'ops': [{'op': 'set', 'path': f'units.rows.{row_id}.spellbook', 'value': {
+                'enabled': True,
+                'requirement': {'text': '', 'hasNum': False, 'num': None},
+                'book': {'name': '', 'type': None, 'cost': 0, 'hasEffect': False, 'effect': None, 'text': ''}
+            }}]
+        }, token=token)
+
+        # Verify structure exists now
+        updated_unit = self.request('GET', f'/units/{uid}', token=token)
+        self.assertIn('spellbook', updated_unit['design']['units']['rows'][0])
+        self.assertTrue(updated_unit['design']['units']['rows'][0]['spellbook']['enabled'])
+
+        # Now update a nested field
+        self.request('POST', f'/units/{uid}/patch', {
+            'ops': [{'op': 'set', 'path': f'units.rows.{row_id}.spellbook.book.name', 'value': 'Test Power'}]
+        }, token=token)
+
+        final_unit = self.request('GET', f'/units/{uid}', token=token)
+        self.assertEqual(final_unit['design']['units']['rows'][0]['spellbook']['book']['name'], 'Test Power')
+
 
 if __name__ == '__main__':
     unittest.main()

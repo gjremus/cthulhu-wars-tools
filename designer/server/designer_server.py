@@ -664,10 +664,11 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             for op in ops:
                 path = op.get('path', '') if isinstance(op, dict) else ''
                 # One unit only: no added or deleted rows, and only that unit's fields (or the custom logic box)
-                # Allow nested spellbook fields: units.rows.<id>.spellbook.enabled, units.rows.<id>.spellbook.requirement.text, etc.
+                # Allow nested spellbook fields: units.rows.<id>.spellbook (the whole object), .spellbook.enabled, .spellbook.requirement.text, etc.
                 ok = op.get('op') == 'set' and (
                     path == 'units.customLogic' or
                     re.fullmatch(r'units\.rows\.' + re.escape(row_id) + r'\.[A-Za-z0-9]+', path) or
+                    re.fullmatch(r'units\.rows\.' + re.escape(row_id) + r'\.spellbook', path) or
                     re.fullmatch(r'units\.rows\.' + re.escape(row_id) + r'\.spellbook\.[A-Za-z0-9]+', path) or
                     re.fullmatch(r'units\.rows\.' + re.escape(row_id) + r'\.spellbook\.(requirement|book)\.[A-Za-z0-9]+', path))
                 if not ok:
