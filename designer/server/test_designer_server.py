@@ -951,6 +951,58 @@ class UnitSpellbookTest(DesignerServerTest):
         final_unit = self.request('GET', f'/units/{uid}', token=token)
         self.assertEqual(final_unit['design']['units']['rows'][0]['spellbook']['book']['name'], 'Test Power')
 
+    def test_unit_spellbook_field_order_bug(self):
+        """Test the specific bug: requirement text filled BEFORE name gets lost."""
+        token = self.register_user("buguser", "bugpass")
+
+        # Create unit and remove spellbook (simulate old data)
+        unit = self.request('POST', '/units', {'name': 'Bug GOO'}, token=token)
+        uid = unit['id']
+        row_id = unit['design']['units']['rows'][0]['id']
+
+        import json
+        from pathlib import Path
+        unit_file = self.data_dir / 'units' / uid / 'unit.json'
+        unit_data = json.loads(unit_file.read_text())
+        del unit_data['design']['units']['rows'][0]['spellbook']
+        unit_file.write_text(json.dumps(unit_data, indent=2))
+
+        # Enable spellbook
+        self.request('POST', f'/units/{uid}/patch', {
+            'ops': [{'op': 'set', 'path': f'units.rows.{row_id}.spellbook', 'value': {
+                'enabled': True,
+                'requirement': {'text': '', 'hasNum': False, 'num': None},
+                'book': {'name': '', 'type': None, 'cost': 0, 'hasEffect': False, 'effect': None, 'text': ''}
+            }}]
+        }, token=token)
+
+        # Fill requirement text FIRST (simulating the bug scenario)
+        self.request('POST', f'/units/{uid}/patch', {
+            'ops': [{'op': 'set', 'path': f'units.rows.{row_id}.spellbook', 'value': {
+                'enabled': True,
+                'requirement': {'text': 'Have Hagarg in play', 'hasNum': False, 'num': None},
+                'book': {'name': '', 'type': None, 'cost': 0, 'hasEffect': False, 'effect': None, 'text': ''}
+            }}]
+        }, token=token)
+
+        # Then fill name SECOND
+        self.request('POST', f'/units/{uid}/patch', {
+            'ops': [{'op': 'set', 'path': f'units.rows.{row_id}.spellbook', 'value': {
+                'enabled': True,
+                'requirement': {'text': 'Have Hagarg in play', 'hasNum': False, 'num': None},
+                'book': {'name': 'Laziness', 'type': None, 'cost': 0, 'hasEffect': False, 'effect': None, 'text': ''}
+            }}]
+        }, token=token)
+
+        # Verify BOTH are saved
+        final = self.request('GET', f'/units/{uid}', token=token)
+        sb = final['design']['units']['rows'][0]['spellbook']
+
+        self.assertEqual(sb['requirement']['text'], 'Have Hagarg in play',
+                         'Requirement text should be preserved when name is filled after')
+        self.assertEqual(sb['book']['name'], 'Laziness',
+                         'Name should be saved correctly')
+
 
 if __name__ == '__main__':
     unittest.main()
