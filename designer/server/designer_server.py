@@ -61,6 +61,21 @@ def get_client_ip(handler, headers: Dict[str, str]) -> str:
     return client
 
 
+def number_terminal_entries(log: Dict) -> bool:
+    """Give every terminal-log row a fixed sequence number "n": oldest is 1, new rows count up.
+    nextN is kept so numbers are never reused after old rows are trimmed. Returns True if anything changed."""
+    entries = log.setdefault("entries", [])
+    missing = [e for e in entries if not isinstance(e.get("n"), int)]
+    if not missing:
+        return False
+    nxt = max([log.get("nextN", 1)] + [e["n"] + 1 for e in entries if isinstance(e.get("n"), int)])
+    for e in sorted(missing, key=lambda e: e.get("at", 0)):
+        e["n"] = nxt
+        nxt += 1
+    log["nextN"] = nxt
+    return True
+
+
 class FactionDesignerHandler(BaseHTTPRequestHandler):
     server_version = "CWODesigner/1.0"
 
@@ -1247,7 +1262,11 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         elif endpoint == 'image-usage':
             self.handle_admin_image_usage()
         elif endpoint == 'terminal-log':
-            log = load_json(self.server.data_dir / "terminal-log.json") or {"entries": []}
+            with TERMINAL_LOCK:
+                path = self.server.data_dir / "terminal-log.json"
+                log = load_json(path) or {"entries": []}
+                if number_terminal_entries(log):
+                    atomic_write(path, log)
             self.send_json({"entries": sorted(log.get("entries", []), key=lambda e: e.get("at", 0), reverse=True)})
         else:
             self.send_error_json("Unknown admin endpoint", 404)
@@ -1931,6 +1950,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             path = self.server.data_dir / "terminal-log.json"
             log = load_json(path) or {"entries": []}
             log.setdefault("entries", []).append(entry)
+            number_terminal_entries(log)
             log["entries"] = log["entries"][-2000:]
             atomic_write(path, log)
         return entry
