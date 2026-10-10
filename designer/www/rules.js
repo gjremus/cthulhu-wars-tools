@@ -8,7 +8,7 @@
                       'Building', 'Custom Gate'];
 
   // Stand-alone (neutral) units from My Units: no Cultists, Buildings or Gates, which belong to a faction
-  const NEUTRAL_UNIT_TYPES = ['Monster', 'Terror', 'Great Old One', 'Elder God'];
+  const NEUTRAL_UNIT_TYPES = ['Cultist', 'Monster', 'Terror', 'Great Old One', 'Elder God'];
 
   const COST_TYPES = ['Fixed', 'Variable', 'Awakening'];
 
