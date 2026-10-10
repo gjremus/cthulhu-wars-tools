@@ -202,6 +202,7 @@
       resultsCalc: '',
       relatedSb: [],
       relatedSbNames: [],
+      hasAbility: false,
       abilityName: '',
       abilityText: '',
       spellbook: {
@@ -339,6 +340,12 @@
     return eq(a, b);
   }
 
+  // Does this unit have a special ability? Its own box wins; older units without one count as
+  // having one when they already have an ability name or text.
+  function unitHasAbility(u) {
+    return u && u.hasAbility != null ? !!u.hasAbility : !!(u && (u.abilityName || u.abilityText));
+  }
+
   function isRowComplete(row, rowType) {
     if (rowType === 'ae') {
       if (row.kind === 'fixed') {
@@ -360,6 +367,7 @@
       if (row.combatType === 'Variable Dice' && !row.diceCalc) return false;
       if (row.combatType === 'Fixed Results' && (row.pains == null || row.kills == null)) return false;
       if (row.combatType === 'Variable Results' && !row.resultsCalc) return false;
+      if (unitHasAbility(row) && (!row.abilityName || !row.abilityText)) return false;
       return true;
     } else if (rowType === 'sbr') {
       if (!row.text) return false;
@@ -819,6 +827,7 @@
     fixedNumbers,
     sbTwo,
     sbAnyTwo,
+    unitHasAbility,
     describeSectionDiff,
     newId
   };

@@ -631,8 +631,13 @@
         unitDiv.appendChild(relatedDiv);
       }
 
-      unitDiv.appendChild(textField('Special Ability Name', unit.abilityName, val => ctx.set(`units.rows.${unit.id}.abilityName`, val)));
-      unitDiv.appendChild(textField('Special Ability Text', unit.abilityText, val => ctx.set(`units.rows.${unit.id}.abilityText`, val), {rows: 4}));
+      // Special ability: name and text only show (and are only required) when the box is ticked
+      const hasAbility = window.Rules.unitHasAbility(unit);
+      unitDiv.appendChild(checkboxField('Special Ability', hasAbility, val => ctx.set(`units.rows.${unit.id}.hasAbility`, val)));
+      if (hasAbility) {
+        unitDiv.appendChild(textField('Special Ability Name', unit.abilityName, val => ctx.set(`units.rows.${unit.id}.abilityName`, val)));
+        unitDiv.appendChild(textField('Special Ability Text', unit.abilityText, val => ctx.set(`units.rows.${unit.id}.abilityText`, val), {rows: 4}));
+      }
 
       // Spellbook for iGOO / Elder God neutral units
       if (neutral && (unit.type === 'Great Old One' || unit.type === 'Elder God')) {
@@ -910,7 +915,7 @@
     if (unit.costType === 'Fixed' && unit.cost != null) fields.push(`Cost: ${unit.cost}`);
     if (unit.combatType === 'Fixed Dice' && unit.dice != null) fields.push(`Combat: ${unit.dice} dice`);
     if (unit.combatType === 'Fixed Results') fields.push(`Combat: ${unit.pains || 0} pains, ${unit.kills || 0} kills`);
-    if (unit.abilityName) fields.push(`${unit.abilityName}: ${unit.abilityText || ''}`);
+    if (window.Rules.unitHasAbility(unit) && unit.abilityName) fields.push(`${unit.abilityName}: ${unit.abilityText || ''}`);
 
     fields.forEach(f => {
       previewDiv.appendChild(h('div', {style: 'margin: 8px 0; font-size: 14px;'}, f));

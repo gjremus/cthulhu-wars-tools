@@ -2320,6 +2320,7 @@
       const missingFields = [];
       if (row.name) readyFields.push('Name'); else missingFields.push('Name');
       if (row.type) readyFields.push('Type'); else missingFields.push('Type');
+      if (Rules.unitHasAbility(row) && (!row.abilityName || !row.abilityText)) missingFields.push('Special Ability');
       if (row.cost !== undefined && row.cost !== null) readyFields.push('Cost');
       if (row.combat) readyFields.push('Combat');
       summaryDiv.innerHTML = `
@@ -2329,7 +2330,7 @@
       `;
       this.root.appendChild(summaryDiv);
 
-      const isReady = row.name && row.type;
+      const isReady = missingFields.length === 0;
 
       if (build.status !== 'built') {
         const executeBtn = document.createElement('button');
