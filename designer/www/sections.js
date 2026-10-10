@@ -632,54 +632,112 @@
     }}, 'Add unit'));
   }
 
+  // In-game box (map pixels, Earth unitScale 1.0) each unit type is drawn in, from the type's
+  // default unit in CthulhuWarsSolo.scala: [x offset, y offset, width, height] from the unit's spot.
+  const UNIT_MAP_BOX = {
+    'Cultist':       [-17, -54, 40, 59],    // gc-acolyte
+    'Monster':       [-35, -75, 70, 85],    // n-dimensional-shambler
+    'Terror':        [-48, -109, 95, 116],  // n-hound-of-tindalos
+    'Great Old One': [-52, -112, 105, 122], // n-cthugha
+    'Elder God':     [-64, -210, 128, 210], // bb-bastet
+    'Building':      [-39, -90, 78, 110],   // an-cathedral
+    'Custom Gate':   [-38, -38, 76, 76]     // gate
+  };
+
   function openUnitMapViewer(unit, ctx, defaultArt) {
     const ref = ctx.reference || {};
     const mapData = ref.earthMap3W || {url: '', w: 1791, h: 894, southPacific: {x: 540, y: 830}};
+    const box = UNIT_MAP_BOX[unit.type] || UNIT_MAP_BOX['Cultist'];
+    const MARGIN = 12;   // the game leaves 12 map pixels round the board
 
     let scale = unit.mapScale || 1.0;
-    const canvas = h('canvas', {width: mapData.w, height: mapData.h});
+    const canvas = h('canvas', {style: 'display: block; margin: 0 auto;'});
     const canvasCtx = canvas.getContext('2d');
 
     const mapImg = new Image();
-    mapImg.crossOrigin = 'anonymous';
     mapImg.src = mapData.url;
 
     const unitImg = new Image();
-    unitImg.crossOrigin = 'anonymous';
     const displayImage = unit.mapImage || (defaultArt ? defaultArt.url : null);
     if (displayImage) {
       unitImg.src = displayImage.startsWith('http') ? displayImage : ctx.imgUrl(displayImage);
     }
 
-    function draw() {
-      canvasCtx.clearRect(0, 0, mapData.w, mapData.h);
-      if (mapImg.complete) {
-        canvasCtx.drawImage(mapImg, 0, 0);
-      }
-      if (unitImg.complete && unitImg.src) {
-        const w = unitImg.width * scale;
-        const h = unitImg.height * scale;
-        const x = mapData.southPacific.x - w / 2;
-        const y = mapData.southPacific.y - h / 2;
+    // Tint like the game's getTintedAsset: "color" fill, then cut back to the art's own shape
+    // (drawn on a canvas of its own, so the map underneath is never coloured)
+    function unitArt() {
+      const color = ctx.design.meta && ctx.design.meta.color;
+      if (!color) return unitImg;
+      const c = document.createElement('canvas');
+      c.width = unitImg.naturalWidth;
+      c.height = unitImg.naturalHeight;
+      const g = c.getContext('2d');
+      g.drawImage(unitImg, 0, 0);
+      g.globalCompositeOperation = 'color';
+      g.fillStyle = color;
+      g.fillRect(0, 0, c.width, c.height);
+      g.globalCompositeOperation = 'destination-in';
+      g.drawImage(unitImg, 0, 0);
+      return c;
+    }
 
-        if (ctx.design.meta && ctx.design.meta.color) {
-          canvasCtx.save();
-          canvasCtx.globalCompositeOperation = 'source-over';
-          canvasCtx.drawImage(unitImg, x, y, w, h);
-          canvasCtx.globalCompositeOperation = 'source-atop';
-          canvasCtx.fillStyle = ctx.design.meta.color;
-          canvasCtx.fillRect(x, y, w, h);
-          canvasCtx.restore();
+    // Fit the board to the screen the way the game does: wide screens get the map as is,
+    // tall (phone) screens get it turned a quarter turn with the units kept upright
+    let horizontal = true, k = 1;
+    function layout() {
+      if (!canvas.isConnected) { window.removeEventListener('resize', layout); return; }
+      const availW = Math.max(200, window.innerWidth - 40);
+      const availH = Math.max(200, window.innerHeight - 40 - buttons.offsetHeight - 80);
+      horizontal = availH <= availW;
+      const boardW = (horizontal ? mapData.w : mapData.h) + 2 * MARGIN;
+      const boardH = (horizontal ? mapData.h : mapData.w) + 2 * MARGIN;
+      k = Math.min(availW / boardW, availH / boardH);
+      const dpr = window.devicePixelRatio || 1;
+      canvas.style.width = Math.floor(boardW * k) + 'px';
+      canvas.style.height = Math.floor(boardH * k) + 'px';
+      canvas.width = Math.floor(boardW * k * dpr);
+      canvas.height = Math.floor(boardH * k * dpr);
+      draw();
+    }
+
+    function draw() {
+      const dpr = window.devicePixelRatio || 1;
+      canvasCtx.setTransform(1, 0, 0, 1, 0, 0);
+      canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+      canvasCtx.setTransform(k * dpr, 0, 0, k * dpr, 0, 0);
+      canvasCtx.translate(MARGIN, MARGIN);
+      if (mapImg.complete && mapImg.naturalWidth) {
+        if (horizontal) {
+          canvasCtx.drawImage(mapImg, 0, 0);
         } else {
-          canvasCtx.drawImage(unitImg, x, y, w, h);
+          canvasCtx.save();
+          canvasCtx.translate(mapData.h, 0);
+          canvasCtx.rotate(Math.PI / 2);
+          canvasCtx.drawImage(mapImg, 0, 0);
+          canvasCtx.restore();
         }
+      }
+      if (unitImg.complete && unitImg.naturalWidth) {
+        // Same spot as the game's gateXY: turned boards move (x, y) to (map height - y, x)
+        const sp = mapData.southPacific;
+        const px = horizontal ? sp.x : mapData.h - sp.y;
+        const py = horizontal ? sp.y : sp.x;
+        // Grow/Shrink scale the type's box about the unit's spot, like the game's scaledProto;
+        // the art fills the box (keeping its shape), centred and standing on the box's bottom edge
+        const bw = box[2] * scale, bh = box[3] * scale;
+        const bx = px + box[0] * scale, by = py + box[1] * scale;
+        const fit = Math.min(bw / unitImg.naturalWidth, bh / unitImg.naturalHeight);
+        const w = unitImg.naturalWidth * fit, ht = unitImg.naturalHeight * fit;
+        canvasCtx.drawImage(unitArt(), bx + (bw - w) / 2, by + bh - ht, w, ht);
       }
     }
 
     mapImg.onload = draw;
     unitImg.onload = draw;
+    window.addEventListener('resize', layout);
+    const close = () => { window.removeEventListener('resize', layout); ctx.closeOverlay(); };
 
-    const buttons = h('div', {className: 'sx-overlay-buttons'},
+    const buttons = h('div', {className: 'sx-overlay-buttons', style: 'position: static; margin-bottom: 10px;'},
       h('button', {className: 'sx-btn', onclick: () => {
         scale *= 1.025;
         draw();
@@ -704,12 +762,13 @@
       }}, 'Replace'),
       h('button', {className: 'sx-btn', onclick: () => {
         ctx.set(`units.rows.${unit.id}.mapScale`, scale);
-        ctx.closeOverlay();
+        close();
       }}, 'Done')
     );
 
     const content = h('div', {}, buttons, canvas);
     ctx.openOverlay(content);
+    layout();
   }
 
   function openUnitSilhouetteViewer(unit, ctx) {

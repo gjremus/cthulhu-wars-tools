@@ -150,7 +150,7 @@ After every applied op:
 **UNIT:**
 ```json
 {"id","type":null,                // Cultist|Monster|Terror|Great Old One|Elder God|Building|Custom Gate
- "name":"", "mapImage":null, "mapScale":1.0,      // mapImage null = use the type's default art; mapScale changes by ×1.025 / ÷1.025
+ "name":"", "mapImage":null, "mapScale":1.0,      // mapImage null = use the type's default art; mapScale changes by ×1.025 / ÷1.025; mapScale is relative to the type's in-game box (Earth map px: Cultist 40×59, Monster 70×85, Terror 95×116, GOO 105×122, Elder God 128×210, Building 78×110, Custom Gate 76×76), art fitted inside it keeping its shape; the preview fits the board to the screen and turns it a quarter turn on tall screens like the game
  "silhouette":null, "qty":null,                   // 1..20
  "costType":null,                                 // Fixed|Variable|Awakening
  "cost":null, "costCalc":"", "awakenReq":"", "awakenPower":null, "awakenRegion":"",
