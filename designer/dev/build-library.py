@@ -5,6 +5,7 @@ game.json  -> pictures copied from the homebrew build's solo/webp/images/
 drive.json -> pictures from the owner's Drive "Neutral Units" folder, shrunk to
               256px PNGs with sips. Drive files that are online-only can't be read;
               they are skipped and listed, so just rerun once the folder is offline.
+              Or pass a local copy of the folder: build-library.py "/path/to/Neutral Units"
 Only entries whose picture made it into www/library/ are listed in library.json.
 """
 import json, shutil, subprocess, sys
@@ -16,6 +17,8 @@ OUT = HERE / "www" / "library"
 GAME_IMAGES = Path.home() / "Claude-Projects/cw-homebrew-wt/solo/webp/images"
 DRIVE = Path.home() / ("Library/CloudStorage/GoogleDrive-gremus@salesforce.com/My Drive/"
                        "Personal/Games/Cthulhu Wars/Neutral Units")
+if len(sys.argv) > 1:
+    DRIVE = Path(sys.argv[1])
 ORDER = ["Cultist", "Monster", "Terror", "GOO", "Elder God"]
 
 
