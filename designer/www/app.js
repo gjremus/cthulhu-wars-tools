@@ -36,6 +36,14 @@
     }
 
     startRouter() {
+      // Admin console "view" link: #/admin-view/<admin token>/<fid>. The token is kept for this tab only
+      // and taken out of the address bar straight away.
+      const av = window.location.hash.match(/^#\/admin-view\/([^/]+)\/([^/]+)/);
+      if (av) {
+        sessionStorage.setItem('cw_designer_admin_view', av[1]);
+        history.replaceState(null, '', `#/faction/${av[2]}`);
+      }
+      this.state.adminView = sessionStorage.getItem('cw_designer_admin_view');
       window.addEventListener('hashchange', () => this.route());
       this.route();
     }
@@ -44,7 +52,15 @@
       const hash = window.location.hash.slice(1) || '/';
       const [path, ...rest] = hash.split('/').filter(Boolean);
 
-      if (!this.state.token && path !== 'register') {
+      if (this.state.adminView) {
+        // Admin view only ever shows one faction, read only
+        if (path === 'faction' && rest[0]) {
+          const screen = rest.slice(1).join('/');
+          if (screen) this.renderScreen(rest[0], screen); else this.loadFaction(rest[0]);
+        } else {
+          this.root.innerHTML = '<p style="padding:20px;">Admin view: close this tab to go back to the admin console.</p>';
+        }
+      } else if (!this.state.token && path !== 'register') {
         this.renderLogin();
       } else if (path === 'register') {
         this.renderRegister();
@@ -134,7 +150,9 @@
     }
 
     async loadFaction(fid) {
-      const data = await this.api('GET', `/factions/${fid}`);
+      const data = this.state.adminView
+        ? await this.api('GET', `/admin/${this.state.adminView}/view-faction/${fid}`)
+        : await this.api('GET', `/factions/${fid}`);
       this.state.currentFaction = data;
       this.state.builtDesign = data.builtDesign;
       // Only draw the main page if the user is still on it (a slow load must not cover a section they opened since)
@@ -162,7 +180,9 @@
       const div = document.createElement('div');
       div.className = 'read-only-banner';
       div.style.cssText = 'border: 1px solid #000; background: #fde68a; color: #222; padding: 8px 12px; margin: 10px 0; border-radius: 4px;';
-      div.textContent = `Read only: ${f.ownerName || f.owner} shared this design with you. You can look at everything, but you can't change it.`;
+      div.textContent = f.adminView
+        ? `Admin view (read only): designed by ${f.ownerName || f.owner}. You can look at everything, but nothing can be changed here.`
+        : `Read only: ${f.ownerName || f.owner} shared this design with you. You can look at everything, but you can't change it.`;
       return div;
     }
 

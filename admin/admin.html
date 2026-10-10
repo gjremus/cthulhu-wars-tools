@@ -3558,7 +3558,8 @@ function renderDesignerList() {
           const cb = sel ? `<input type="checkbox" class="designer-faction-cb" data-fid="${esc(faction.id)}" ${checkedF.has(faction.id) ? 'checked' : ''} />` : '';
           return `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;margin-bottom:4px;">
             ${cb}
-            <span style="flex:1;"><b>${esc(faction.name)}</b> (${esc(faction.acronym)}) · ${versionLabel}${liveLabel} · ${esc(buildStatus)}</span>
+            <span style="flex:1;cursor:pointer;" title="Open this design read only" onclick="viewDesignerFaction('${esc(faction.id)}')"><b style="text-decoration:underline;">${esc(faction.name)}</b> (${esc(faction.acronym)}) · ${versionLabel}${liveLabel} · ${esc(buildStatus)}</span>
+            <button class="small" onclick="viewDesignerFaction('${esc(faction.id)}')">View</button>
             <button class="small danger" onclick="deleteSingleDesignerFaction('${esc(faction.id)}', '${esc(faction.name).replace(/'/g, "\\'")}')">Delete</button>
           </div>`;
         }).join('') +
@@ -3574,6 +3575,11 @@ function renderDesignerList() {
       ${factionsHtml}
     </div>`;
   }).join('');
+}
+
+// Opens the design in the faction designer, read only, in a new tab
+function viewDesignerFaction(fid) {
+  window.open(`${SERVER}/designer/#/admin-view/${encodeURIComponent(TOKEN)}/${encodeURIComponent(fid)}`, '_blank');
 }
 
 function filterDesignerList() {

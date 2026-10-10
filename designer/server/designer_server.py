@@ -1242,6 +1242,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         elif endpoint == 'factions' and len(parts) >= 7:
             fid = parts[6]
             self.handle_admin_get_faction(fid)
+        elif endpoint == 'view-faction' and len(parts) >= 7:
+            self.handle_admin_view_faction(parts[6])
         elif endpoint == 'image-usage':
             self.handle_admin_image_usage()
         elif endpoint == 'terminal-log':
@@ -1673,6 +1675,21 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             return
 
         self.send_json(faction)
+
+    def handle_admin_view_faction(self, fid: str):
+        """GET admin/view-faction/<fid> -- same shape the designer page gets, always read only"""
+        faction = self.load_faction(fid)
+        if not faction:
+            self.send_error_json("Faction not found", 404)
+            return
+
+        response = dict(faction)
+        response["readOnly"] = True
+        response["adminView"] = True
+        response["ownerName"] = self.display_name(faction["owner"])
+        response["builtDesign"] = self.built_design_with_overrides(fid, faction)
+        response["liveValues"] = self.load_live_values(fid)
+        self.send_json(response)
 
     def handle_admin_patch_faction(self, fid: str):
         """POST admin/factions/<fid>/patch"""
