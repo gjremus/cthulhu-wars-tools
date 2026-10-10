@@ -834,5 +834,80 @@ class AdminTest(DesignerServerTest):
         self.assertEqual(self._live(acr)['values'], {})
 
 
+class UnitSpellbookTest(DesignerServerTest):
+    """Test spellbook feature for iGOO/Elder God neutral units."""
+
+    def test_unit_spellbook_crud(self):
+        """Test creating, reading, updating a unit with spellbook data."""
+        token = self.register_user("sbuser", "sbpass")
+
+        # Create a neutral unit
+        unit = self.request('POST', '/units', {'name': 'Test GOO'}, token=token)
+        uid = unit['id']
+        row_id = unit['design']['units']['rows'][0]['id']
+
+        # Verify spellbook structure exists
+        self.assertIn('spellbook', unit['design']['units']['rows'][0])
+        sb = unit['design']['units']['rows'][0]['spellbook']
+        self.assertFalse(sb['enabled'])
+        self.assertEqual(sb['requirement']['text'], '')
+        self.assertFalse(sb['requirement']['hasNum'])
+        self.assertIsNone(sb['requirement']['num'])
+        self.assertEqual(sb['book']['name'], '')
+        self.assertIsNone(sb['book']['type'])
+        self.assertEqual(sb['book']['cost'], 0)
+
+        # Enable spellbook
+        self.request('POST', f'/units/{uid}/patch', {
+            'ops': [{'op': 'set', 'path': f'units.rows.{row_id}.spellbook.enabled', 'value': True}]
+        }, token=token)
+
+        # Set requirement text
+        self.request('POST', f'/units/{uid}/patch', {
+            'ops': [{'op': 'set', 'path': f'units.rows.{row_id}.spellbook.requirement.text', 'value': 'Control 3 gates'}]
+        }, token=token)
+
+        # Set requirement hasNum and num
+        self.request('POST', f'/units/{uid}/patch', {
+            'ops': [
+                {'op': 'set', 'path': f'units.rows.{row_id}.spellbook.requirement.hasNum', 'value': True},
+                {'op': 'set', 'path': f'units.rows.{row_id}.spellbook.requirement.num', 'value': 3}
+            ]
+        }, token=token)
+
+        # Set spellbook fields
+        self.request('POST', f'/units/{uid}/patch', {
+            'ops': [
+                {'op': 'set', 'path': f'units.rows.{row_id}.spellbook.book.name', 'value': 'Cosmic Power'},
+                {'op': 'set', 'path': f'units.rows.{row_id}.spellbook.book.type', 'value': 'Ongoing'},
+                {'op': 'set', 'path': f'units.rows.{row_id}.spellbook.book.cost', 'value': 2},
+                {'op': 'set', 'path': f'units.rows.{row_id}.spellbook.book.hasEffect', 'value': True},
+                {'op': 'set', 'path': f'units.rows.{row_id}.spellbook.book.effect', 'value': 5},
+                {'op': 'set', 'path': f'units.rows.{row_id}.spellbook.book.text', 'value': 'Gain +2 Power per turn'}
+            ]
+        }, token=token)
+
+        # Read back and verify
+        unit = self.request('GET', f'/units/{uid}', token=token)
+        sb = unit['design']['units']['rows'][0]['spellbook']
+
+        self.assertTrue(sb['enabled'])
+        self.assertEqual(sb['requirement']['text'], 'Control 3 gates')
+        self.assertTrue(sb['requirement']['hasNum'])
+        self.assertEqual(sb['requirement']['num'], 3)
+        self.assertEqual(sb['book']['name'], 'Cosmic Power')
+        self.assertEqual(sb['book']['type'], 'Ongoing')
+        self.assertEqual(sb['book']['cost'], 2)
+        self.assertTrue(sb['book']['hasEffect'])
+        self.assertEqual(sb['book']['effect'], 5)
+        self.assertEqual(sb['book']['text'], 'Gain +2 Power per turn')
+
+        # Test that invalid paths are rejected
+        bad = self.request('POST', f'/units/{uid}/patch', {
+            'ops': [{'op': 'set', 'path': f'units.rows.{row_id}.invalid.path', 'value': 'x'}]
+        }, token=token, expect_error=True)
+        self.assertIn('error', bad)
+
+
 if __name__ == '__main__':
     unittest.main()

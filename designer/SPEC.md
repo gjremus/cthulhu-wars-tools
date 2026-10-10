@@ -42,7 +42,7 @@ users.json                 {"users": {"<lc username>": {"username","salt","hash"
 sessions.json              {"<token>": {"user":"<lc>","expires":<epoch>}}       (30-day expiry, pruned on write)
 factions/<fid>/faction.json   the live record (see §3)
 factions/<fid>/v/<n>.json     frozen design snapshot of version n
-units/<uid>/unit.json         a neutral unit (not tied to any faction): {id, owner, created, updated, design:{meta:{color:null}, units:{rows:[ONE blank unit row without relatedSb/relatedSbNames], customLogic}}}. No versions; saved in place. Owner-only.
+units/<uid>/unit.json         a neutral unit (not tied to any faction): {id, owner, created, updated, design:{meta:{color:null}, units:{rows:[ONE blank unit row without relatedSb/relatedSbNames; includes optional spellbook:{enabled,requirement,book} for Great Old One/Elder God types], customLogic}}}. No versions; saved in place. Owner-only.
 images/<sha256>.<webp|png|jpg>
 requests.json              {"requests":[ ... see §6 ... ]}
 audit.log                  one line per admin action / request change
@@ -221,7 +221,7 @@ User auth: `Authorization: Bearer <token>`. `sendBeacon` calls may put `"token"`
 | GET `/designer/api/units` | → `{units:[{id,name,type,created,updated}]}` (own neutral units only) |
 | POST `/designer/api/units` | `{name}` (1-60 chars) → full unit record |
 | GET `/designer/api/units/<uid>` | owner only → full unit record |
-| POST `/designer/api/units/<uid>/patch` | owner only, `{ops}`; only `set` on `units.customLogic` or `units.rows.<rowId>.<field>` → `{updated}`. Anything else is 400. |
+| POST `/designer/api/units/<uid>/patch` | owner only, `{ops}`; only `set` on `units.customLogic` or `units.rows.<rowId>.<field>` (including nested spellbook fields: `.spellbook.enabled`, `.spellbook.requirement.<field>`, `.spellbook.book.<field>`) → `{updated}`. Anything else is 400. |
 | GET `/designer/api/live/<ACR>/values?rev=N` | public, no login → `{acronym, liveVersion, rev, latestRev, values}` (Simple Update values for the live build, see §6) |
 
 **Patch ops.** `path` is a dot path inside `design`. Array rows are addressed by row id, e.g. `units.rows.<rowId>.name` or `sbImages.each.3`.

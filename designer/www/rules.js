@@ -203,7 +203,12 @@
       relatedSb: [],
       relatedSbNames: [],
       abilityName: '',
-      abilityText: ''
+      abilityText: '',
+      spellbook: {
+        enabled: false,
+        requirement: {text: '', hasNum: false, num: null},
+        book: {name: '', type: null, cost: 0, hasEffect: false, effect: null, text: ''}
+      }
     };
   }
 

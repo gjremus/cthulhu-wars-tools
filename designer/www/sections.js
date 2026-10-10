@@ -634,6 +634,38 @@
       unitDiv.appendChild(textField('Special Ability Name', unit.abilityName, val => ctx.set(`units.rows.${unit.id}.abilityName`, val)));
       unitDiv.appendChild(textField('Special Ability Text', unit.abilityText, val => ctx.set(`units.rows.${unit.id}.abilityText`, val), {rows: 4}));
 
+      // Spellbook for iGOO / Elder God neutral units
+      if (neutral && (unit.type === 'Great Old One' || unit.type === 'Elder God')) {
+        // Initialize spellbook if missing (for backward compatibility)
+        const sb = unit.spellbook || {enabled: false, requirement: {text: '', hasNum: false, num: null}, book: {name: '', type: null, cost: 0, hasEffect: false, effect: null, text: ''}};
+        if (!unit.spellbook) ctx.set(`units.rows.${unit.id}.spellbook`, sb);
+
+        unitDiv.appendChild(checkboxField('Spellbook', sb.enabled, val => {
+          ctx.set(`units.rows.${unit.id}.spellbook.enabled`, val);
+        }));
+
+        if (sb.enabled) {
+          const sbDiv = h('div', {style: 'margin: 20px 0; padding: 16px; border: 1px solid #666; background: #1a1a1a;'});
+
+          // Spellbook Requirement
+          sbDiv.appendChild(h('h4', {style: 'margin: 0 0 12px 0;'}, 'Spellbook Requirement'));
+          sbDiv.appendChild(textField('Requirement Text', sb.requirement.text, val => ctx.set(`units.rows.${unit.id}.spellbook.requirement.text`, val), {rows: 3}));
+          sbDiv.appendChild(checkboxField('Includes Fixed Numeric Cost or Effect?', sb.requirement.hasNum, val => ctx.set(`units.rows.${unit.id}.spellbook.requirement.hasNum`, val)));
+          sbDiv.appendChild(numberField('Fixed Numeric Cost or Effect', sb.requirement.num, val => ctx.set(`units.rows.${unit.id}.spellbook.requirement.num`, val), {greyed: !sb.requirement.hasNum}));
+
+          // Spellbook
+          sbDiv.appendChild(h('h4', {style: 'margin: 20px 0 12px 0;'}, 'Spellbook'));
+          sbDiv.appendChild(textField('Name', sb.book.name, val => ctx.set(`units.rows.${unit.id}.spellbook.book.name`, val)));
+          sbDiv.appendChild(selectField('Type', sb.book.type, window.Rules.SB_TYPES, val => ctx.set(`units.rows.${unit.id}.spellbook.book.type`, val)));
+          sbDiv.appendChild(numberField('Cost', sb.book.cost, val => ctx.set(`units.rows.${unit.id}.spellbook.book.cost`, val), {min: 0}));
+          sbDiv.appendChild(checkboxField('Includes Fixed Numeric Effect?', sb.book.hasEffect, val => ctx.set(`units.rows.${unit.id}.spellbook.book.hasEffect`, val)));
+          sbDiv.appendChild(numberField('Fixed Numeric Effect', sb.book.effect, val => ctx.set(`units.rows.${unit.id}.spellbook.book.effect`, val), {greyed: !sb.book.hasEffect}));
+          sbDiv.appendChild(textField('Text', sb.book.text, val => ctx.set(`units.rows.${unit.id}.spellbook.book.text`, val), {rows: 4}));
+
+          unitDiv.appendChild(sbDiv);
+        }
+      }
+
       if (idx >= 3 && !neutral) {
         unitDiv.appendChild(h('button', {className: 'sx-btn', onclick: async () => {
           const confirmed = await ctx.confirm('Are you sure you want to delete this unit?', 'Yes - delete', 'No - cancel');

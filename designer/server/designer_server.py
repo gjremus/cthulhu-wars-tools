@@ -664,9 +664,12 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             for op in ops:
                 path = op.get('path', '') if isinstance(op, dict) else ''
                 # One unit only: no added or deleted rows, and only that unit's fields (or the custom logic box)
+                # Allow nested spellbook fields: units.rows.<id>.spellbook.enabled, units.rows.<id>.spellbook.requirement.text, etc.
                 ok = op.get('op') == 'set' and (
                     path == 'units.customLogic' or
-                    re.fullmatch(r'units\.rows\.' + re.escape(row_id) + r'\.[A-Za-z0-9]+', path))
+                    re.fullmatch(r'units\.rows\.' + re.escape(row_id) + r'\.[A-Za-z0-9]+', path) or
+                    re.fullmatch(r'units\.rows\.' + re.escape(row_id) + r'\.spellbook\.[A-Za-z0-9]+', path) or
+                    re.fullmatch(r'units\.rows\.' + re.escape(row_id) + r'\.spellbook\.(requirement|book)\.[A-Za-z0-9]+', path))
                 if not ok:
                     self.send_error_json("Invalid change for a unit")
                     return
@@ -2307,7 +2310,12 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             "relatedSb": [],
             "relatedSbNames": [],
             "abilityName": "",
-            "abilityText": ""
+            "abilityText": "",
+            "spellbook": {
+                "enabled": False,
+                "requirement": {"text": "", "hasNum": False, "num": None},
+                "book": {"name": "", "type": None, "cost": 0, "hasEffect": False, "effect": None, "text": ""}
+            }
         }
 
     def new_id(self) -> str:
