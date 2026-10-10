@@ -398,7 +398,8 @@
     // Doc: leave out factions with pre-set start regions; start with the first one that has a choice
     const fixedNames = new Set((ref.fixedStartFactions || []).map(f => f.name));
     const placementOrder = (ref.placementOrder || []).filter(f => !fixedNames.has(f.name));
-    const followsOptions = placementOrder.map((f, i) => ({value: String(i + 1), label: `${i + 1}. ${f.name}`}));
+    const followsOptions = [{value: '0', label: '0. Base Factions'}]
+      .concat(placementOrder.map((f, i) => ({value: String(i + 1), label: `${i + 1}. ${f.name}`})));
     constraintsDiv.appendChild(selectField('Follows faction', d.constraints.follows, followsOptions, val => ctx.set('setup.constraints.follows', val), {
       placeholder: '-- Select --'
     }));
