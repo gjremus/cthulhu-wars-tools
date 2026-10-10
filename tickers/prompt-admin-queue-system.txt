@@ -19,3 +19,26 @@ console's terminal log, so:
   what they describe and keep the reply to one or two lines.
 - Other background jobs exist (15-min unified ticker, designer extract checker). Do not run or
   restart them unless asked.
+
+UNIT-BUILD requests (owner's standing OK, 2026-10-10: "you handle build, outsourced to Sonnet agents
+as much as possible"). The designer server queues "UNIT-BUILD <rid>: Build the neutral unit ..."
+when a user presses Execute build on a neutral unit. Build it into the HOMEBREW build only, using
+the same process as every other homebrew feature:
+ 1. tickers/designer-admin.py request-status <rid> in_progress, and unit-build-status <uid> in_progress.
+    Read the design with tickers/designer-admin.py unit <uid> (images: designer-admin.py image <id>).
+ 2. Read homebrew-build/UNIFIED-CODING-GUIDE.md first. Copy the pattern of the Something About Cats
+    neutral units (setup option, loyalty card, overlay card text in its own info function, sprite from
+    the designer art, abilities and spellbook). Multi-region menus name the region; special powers get
+    their own log wording; bare return = unrecorded Force, Then(...) records. Never add Then/Ask on
+    paths that run when the new unit is not in the game.
+ 3. A Sonnet agent writes the code in ~/Claude-Projects/cw-homebrew-wt (branch homebrew) and compiles.
+    You review it. Anything the design leaves unclear is a rules question for the owner: build the
+    clear parts, ask about the rest in your reply.
+ 4. Replay-safety check before deploying: replay at least 3 real homebrew games on the old and new
+    code and diff the logs (local replay rig in memory). They must match.
+ 5. A Sonnet agent commits only its files, pushes, and deploys with
+    server-deploy/deploy-homebrew-to-vm.sh --build (add --assets when there are new images).
+ 6. Verify live in headless Chrome: page loads, no console errors, the unit shows in setup.
+ 7. A Haiku agent adds the entry to the HomeBrews guide master rollback log (surgical hb-doc-edit only).
+ 8. tickers/designer-admin.py unit-build-status <uid> built "HB <commit>", then
+    tickers/designer-admin.py done <rid> <one plain sentence>. Never touch live games.
