@@ -159,6 +159,43 @@
       if (window.location.hash.replace(/\/$/, '') === `#/faction/${fid}`) this.renderMainDesign();
     }
 
+    ordinal(n) {
+      const t = n % 100, u = n % 10;
+      if (t >= 11 && t <= 13) return n + 'th';
+      return n + (u === 1 ? 'st' : u === 2 ? 'nd' : u === 3 ? 'rd' : 'th');
+    }
+
+    // Extraction status under the extract buttons: "Extraction status: 2nd in queue", hidden when nothing is queued
+    showExtractStatus(position) {
+      const el = this.extractStatusEl;
+      if (!el) return;
+      el.textContent = position ? `Extraction status: ${this.ordinal(position)} in queue` : '';
+      el.style.display = position ? '' : 'none';
+    }
+
+    async refreshExtractStatus(fid) {
+      if (!this.extractStatusEl || !document.body.contains(this.extractStatusEl)) return;
+      try {
+        const data = this.state.adminView
+          ? await this.api('GET', `/admin/${this.state.adminView}/view-faction/${fid}`).then(d => ({position: d.extractQueue}))
+          : await this.api('GET', `/factions/${fid}/extract-queue`);
+        this.showExtractStatus(data.position);
+      } catch (e) { /* keep the last status */ }
+    }
+
+    // Re-check every 20 seconds while the main page is showing, so the place counts down
+    startExtractStatusPoll(fid) {
+      if (this.extractStatusTimer) clearInterval(this.extractStatusTimer);
+      this.extractStatusTimer = setInterval(() => {
+        if (!this.extractStatusEl || !document.body.contains(this.extractStatusEl)) {
+          clearInterval(this.extractStatusTimer);
+          this.extractStatusTimer = null;
+          return;
+        }
+        this.refreshExtractStatus(fid);
+      }, 20000);
+    }
+
     // A faction shared with this user as read only (owner set it up from the admin console)
     isReadOnly() {
       return !!(this.state.currentFaction && this.state.currentFaction.readOnly);
@@ -205,7 +242,9 @@
     }
 
     async createRequest(fid, type, text, data) {
-      return await this.api('POST', `/factions/${fid}/request`, {type, text, data});
+      const r = await this.api('POST', `/factions/${fid}/request`, {type, text, data});
+      if (type === 'extract') this.refreshExtractStatus(fid);
+      return r;
     }
 
     async getRequests(fid) {
@@ -874,6 +913,15 @@
         extractChoice('Extract text', 7, false);
         extractChoice('Extract text + images', 30, true);
         cardSection.appendChild(extractRow);
+
+        // One extraction status line for the whole faction; blank unless one of its images is queued
+        const extractStatus = document.createElement('div');
+        extractStatus.className = 'extract-status';
+        extractStatus.style.cssText = 'margin-top: 8px; font-size: 0.9em; font-weight: bold;';
+        cardSection.appendChild(extractStatus);
+        this.extractStatusEl = extractStatus;
+        this.showExtractStatus(faction.extractQueue);
+        this.startExtractStatusPoll(faction.id);
       } else {
         const uploadBtn = document.createElement('button');
         uploadBtn.textContent = 'Upload faction card image';

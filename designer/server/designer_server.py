@@ -189,6 +189,9 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 elif len(parts) == 6 and parts[5] == 'requests':
                     self.handle_get_faction_requests(fid)
                     return
+                elif len(parts) == 6 and parts[5] == 'extract-queue':
+                    self.handle_get_extract_queue(fid)
+                    return
 
         # Admin endpoints
         m = re.fullmatch(r'/designer/api/live/([A-Za-z0-9]{2,3})/values', path)
@@ -559,7 +562,34 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             response["ownerName"] = self.display_name(faction["owner"])
         response["builtDesign"] = self.built_design_with_overrides(fid, faction)
         response["liveValues"] = self.load_live_values(fid)
+        response["extractQueue"] = self.extract_queue_position(fid)
         self.send_json(response)
+
+    def extract_queue_position(self, fid: str) -> Optional[int]:
+        """Place (1 = next) of this faction's oldest waiting extract in the shared extract queue,
+        or None when it has nothing waiting. The checker works through open extracts oldest first."""
+        requests = (load_json(self.server.data_dir / "requests.json") or {}).get("requests", [])
+        queue = sorted((r for r in requests if r.get("type") == "extract" and r.get("status") == "open"),
+                       key=lambda r: r.get("created", 0))
+        for i, r in enumerate(queue):
+            if r.get("fid") == fid:
+                return i + 1
+        return None
+
+    def handle_get_extract_queue(self, fid: str):
+        """GET /designer/api/factions/<fid>/extract-queue -> {position} (null when nothing waiting)"""
+        username = self.verify_session()
+        if not username:
+            self.send_error_json("Unauthorized", 401)
+            return
+        faction = self.load_faction(fid)
+        if not faction:
+            self.send_error_json("Faction not found", 404)
+            return
+        if faction["owner"] != username and username not in faction.get("viewers", []):
+            self.send_error_json("Forbidden", 403)
+            return
+        self.send_json({"position": self.extract_queue_position(fid)})
 
     def handle_patch_faction(self, fid: str):
         """POST /designer/api/factions/<fid>/patch"""
@@ -1708,6 +1738,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         response["ownerName"] = self.display_name(faction["owner"])
         response["builtDesign"] = self.built_design_with_overrides(fid, faction)
         response["liveValues"] = self.load_live_values(fid)
+        response["extractQueue"] = self.extract_queue_position(fid)
         self.send_json(response)
 
     def handle_admin_patch_faction(self, fid: str):
