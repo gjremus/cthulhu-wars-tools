@@ -142,6 +142,17 @@
           skip: false,
           done: false,
           multiSelect: false,
+          repeat: false,
+          repeatCount: '',
+          numberPick: false,
+          numberMin: '',
+          numberMax: '',
+          greyedOptions: false,
+          greyedReason: '',
+          infoOnly: false,
+          confirm: false,
+          confirmText: '',
+          showPicked: false,
           leadsToNext: false,
           next: null,
           nextTrigger: ''
@@ -210,6 +221,17 @@
         skip: false,
         done: false,
         multiSelect: false,
+        repeat: false,
+        repeatCount: '',
+        numberPick: false,
+        numberMin: '',
+        numberMax: '',
+        greyedOptions: false,
+        greyedReason: '',
+        infoOnly: false,
+        confirm: false,
+        confirmText: '',
+        showPicked: false,
         leadsToNext: false,
         next: null,
         nextTrigger: ''
@@ -273,7 +295,7 @@
   }
 
   function isRowEmpty(row, blankRow) {
-    // Fields added later (e.g. menu done/multiSelect) count as their default on older rows
+    // Fields added later (e.g. menu done/multiSelect/repeat) count as their default on older rows
     const a = normalizeForComparison(Object.assign({}, blankRow, row));
     const b = normalizeForComparison(blankRow);
     return eq(a, b);

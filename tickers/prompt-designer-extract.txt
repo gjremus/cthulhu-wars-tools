@@ -76,6 +76,15 @@ subtitle, one button per choice, optional Cancel/Skip/Done). Schema: MENU in SPE
      time ("any number of", "up to N", "one or more"): after each pick the menu comes back with
      the options that are left, until the player clicks Done. done true alone = a Done button
      that ends the choice without the repeat.
+     showPicked true on multi select menus where seeing what is already picked helps.
+     repeat true + repeatCount when the same menu is asked again a set number of times without a
+     Done button ("save 3 units", "move until moves run out"). numberPick true + numberMin /
+     numberMax when the player picks a number ("spend 0 to [Power] Power"); use [Number] in the
+     button text. greyedOptions true + greyedReason when some options are shown but cannot be
+     picked ("needs a Gate"). confirm true + confirmText when the rules or house style ask for an
+     "are you sure?" before something costly or permanent. infoOnly true for a message with just
+     an OK button (no choice). prompted "All enemies (at the same time)" / "All players (at the
+     same time)" when players choose secretly and together, not in turn order.
   3. Chains: when one choice leads to another (pick enemy -> enemy picks units), set
      leadsToNext true, next = the next menu's id, nextTrigger = what causes it. Give every menu a
      fresh 8-character id first so you can link them.

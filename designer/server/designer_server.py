@@ -2063,7 +2063,10 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                                  "effects": "", "hasNum": False, "num": None}]},
             "menus": {"rows": [{"id": self.new_id(), "name": "", "section": None, "item": None, "prompted": None,
                                 "title": "", "hasSubtitle": False, "subtitle": "", "button": "", "cancel": False,
-                                "skip": False, "done": False, "multiSelect": False, "leadsToNext": False, "next": None, "nextTrigger": ""}]}
+                                "skip": False, "done": False, "multiSelect": False, "repeat": False, "repeatCount": "",
+                                "numberPick": False, "numberMin": "", "numberMax": "", "greyedOptions": False,
+                                "greyedReason": "", "infoOnly": False, "confirm": False, "confirmText": "",
+                                "showPicked": False, "leadsToNext": False, "next": None, "nextTrigger": ""}]}
         }
 
     def blank_unit(self) -> Dict:

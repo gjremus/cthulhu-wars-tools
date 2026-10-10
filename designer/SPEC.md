@@ -155,9 +155,15 @@ After every applied op:
 **MENU:**
 ```json
 {"id","name":"","section":null,"item":null,      // section ∈ ae|ufa|setup|units|sbr|sb|region|tokens|custom ; item = row id (null for ufa)
- "prompted":null,                                 // Own | 1 Enemy | All enemies (turn order)
+ "prompted":null,                                 // Own | 1 Enemy | All enemies (turn order) | All enemies (at the same time) | All players (at the same time)
  "title":"","hasSubtitle":false,"subtitle":"","button":"",
  "cancel":false,"skip":false,"done":false,"multiSelect":false,   // multiSelect: pick one, the menu returns with the remaining options until Done (needs done:true)
+ "repeat":false,"repeatCount":"",                // repeat: the menu is asked again a set number of times (repeatCount: number, placeholder or rule, e.g. "3", "[Power]", "until moves run out")
+ "numberPick":false,"numberMin":"","numberMax":"",  // numberPick: player picks a number in a range instead of a list (min/max: number or placeholder)
+ "greyedOptions":false,"greyedReason":"",        // greyedOptions: options that can't be picked are shown greyed out with this reason
+ "infoOnly":false,                                // infoOnly: just the title/subtitle text and an OK button, no choice
+ "confirm":false,"confirmText":"",               // confirm: a "Are you sure?" step (confirmText) before the choice is locked in
+ "showPicked":false,                              // showPicked: multi select menus show a "Picked so far" line above the remaining options
  "leadsToNext":false,"next":null,"nextTrigger":""}
 ```
 

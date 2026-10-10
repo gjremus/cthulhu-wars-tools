@@ -1238,9 +1238,9 @@
         placeholder: itemOptions.length === 0 ? 'No items available' : '-- Select --'
       }));
 
-      menuDiv.appendChild(selectField('Faction prompted', menu.prompted, ['Own', '1 Enemy', 'All enemies (turn order)'], val => ctx.set(`menus.rows.${menu.id}.prompted`, val)));
+      menuDiv.appendChild(selectField('Faction prompted', menu.prompted, ['Own', '1 Enemy', 'All enemies (turn order)', 'All enemies (at the same time)', 'All players (at the same time)'], val => ctx.set(`menus.rows.${menu.id}.prompted`, val)));
 
-      const placeholderHint = 'Placeholders: [Faction], [Region], [Unit], [Power], [Doom], [Enemy], [Spellbook]';
+      const placeholderHint = 'Placeholders: [Faction], [Region], [Unit], [Power], [Doom], [Enemy], [Spellbook], [Number] (for Pick a number menus)';
       menuDiv.appendChild(textField('Menu Title', menu.title, val => ctx.set(`menus.rows.${menu.id}.title`, val), {hint: placeholderHint}));
 
       menuDiv.appendChild(checkboxField('Menu Subtitle', menu.hasSubtitle, val => ctx.set(`menus.rows.${menu.id}.hasSubtitle`, val)));
@@ -1249,15 +1249,53 @@
       menuDiv.appendChild(textField('Button Text', menu.button, val => ctx.set(`menus.rows.${menu.id}.button`, val), {hint: placeholderHint}));
 
       menuDiv.appendChild(checkboxField('Cancel Button', menu.cancel, val => ctx.set(`menus.rows.${menu.id}.cancel`, val)));
-      menuDiv.appendChild(checkboxField('Skip Button', menu.skip, val => ctx.set(`menus.rows.${menu.id}.skip`, val)));
+      menuDiv.appendChild(checkboxField('Skip Button', menu.skip, val => ctx.set(`menus.rows.${menu.id}.skip`, val), {greyed: !!menu.infoOnly}));
       menuDiv.appendChild(checkboxField('Done Button', !!menu.done, val => {
         // Multi select needs a Done button to finish, so turning Done off also turns multi select off
-        if (!val && menu.multiSelect) ctx.set(`menus.rows.${menu.id}.multiSelect`, false);
+        if (!val && menu.multiSelect) {
+          ctx.set(`menus.rows.${menu.id}.multiSelect`, false);
+          if (menu.showPicked) ctx.set(`menus.rows.${menu.id}.showPicked`, false);
+        }
         ctx.set(`menus.rows.${menu.id}.done`, val);
-      }));
+      }, {greyed: !!menu.infoOnly}));
       menuDiv.appendChild(checkboxField('Multi select (pick one option, the menu comes back with the options that are left so more can be picked, until Done is clicked)', !!menu.multiSelect, val => {
         if (val && !menu.done) ctx.set(`menus.rows.${menu.id}.done`, true);
+        if (!val && menu.showPicked) ctx.set(`menus.rows.${menu.id}.showPicked`, false);
         ctx.set(`menus.rows.${menu.id}.multiSelect`, val);
+      }, {greyed: !!menu.infoOnly}));
+
+      const set = (field, val) => ctx.set(`menus.rows.${menu.id}.${field}`, val);
+      const info = !!menu.infoOnly;
+
+      menuDiv.appendChild(checkboxField('Picked so far (multi select menus show what has been picked above the remaining options)', !!menu.showPicked,
+        val => set('showPicked', val), {greyed: !menu.multiSelect || info}));
+
+      menuDiv.appendChild(checkboxField('Repeat a set number of times (the menu is asked again, e.g. once per unit saved or until moves run out)', !!menu.repeat,
+        val => set('repeat', val), {greyed: info}));
+      menuDiv.appendChild(textField('How many times', menu.repeatCount, val => set('repeatCount', val),
+        {greyed: !menu.repeat || info, hint: 'A number, a placeholder like [Power], or a rule like "until all moves are used"'}));
+
+      menuDiv.appendChild(checkboxField('Pick a number (the player picks a number from a range instead of a list of buttons)', !!menu.numberPick,
+        val => set('numberPick', val), {greyed: info}));
+      menuDiv.appendChild(textField('Lowest number', menu.numberMin, val => set('numberMin', val), {greyed: !menu.numberPick || info, hint: 'A number or a placeholder like [Power]'}));
+      menuDiv.appendChild(textField('Highest number', menu.numberMax, val => set('numberMax', val), {greyed: !menu.numberPick || info, hint: 'A number or a placeholder like [Power]'}));
+
+      menuDiv.appendChild(checkboxField('Show options that cannot be picked, greyed out with a reason', !!menu.greyedOptions,
+        val => set('greyedOptions', val), {greyed: info}));
+      menuDiv.appendChild(textField('Reason shown', menu.greyedReason, val => set('greyedReason', val),
+        {greyed: !menu.greyedOptions || info, hint: 'e.g. "needs a Gate" or "not enough Power"'}));
+
+      menuDiv.appendChild(checkboxField('Confirm step (ask "are you sure?" before the choice is locked in)', !!menu.confirm, val => set('confirm', val), {greyed: info}));
+      menuDiv.appendChild(textField('Confirm question', menu.confirmText, val => set('confirmText', val),
+        {greyed: !menu.confirm || info, hint: placeholderHint}));
+
+      // Info only: no choice at all, so the choice settings above are greyed out and turned off
+      menuDiv.appendChild(checkboxField('Info only (just the title and subtitle text with an OK button, no choice)', info, val => {
+        if (val) {
+          ['multiSelect', 'showPicked', 'repeat', 'numberPick', 'greyedOptions', 'confirm', 'done', 'skip']
+            .forEach(f => { if (menu[f]) set(f, false); });
+        }
+        set('infoOnly', val);
       }));
 
       menuDiv.appendChild(checkboxField('Can lead to another Menu prompt', menu.leadsToNext, val => ctx.set(`menus.rows.${menu.id}.leadsToNext`, val)));
@@ -1319,22 +1357,43 @@
       previewDiv.appendChild(h('div', {style: 'text-align: center; margin-bottom: 12px; font-size: 14px; color: #ccc;'}, substitute(menu.subtitle)));
     }
 
-    if (menu.button) {
+    const note = text => previewDiv.appendChild(h('div', {style: 'text-align: center; margin: 10px 0; font-size: 13px; color: #ccc; font-style: italic;'}, text));
+    const info = !!menu.infoOnly;
+
+    if (!info && menu.multiSelect && menu.showPicked) {
+      previewDiv.appendChild(h('div', {style: 'text-align: center; margin-bottom: 10px; font-size: 13px; color: #ddd;'},
+        `Picked so far: ${gcPreview.units[1] || 'Deep One'}`));
+    }
+
+    if (!info && menu.numberPick) {
+      const lo = substitute(menu.numberMin) || '0';
+      const hi = substitute(menu.numberMax) || '?';
+      const nums = /^\d+$/.test(lo) && /^\d+$/.test(hi) && +hi - +lo <= 12
+        ? Array.from({length: +hi - +lo + 1}, (_, i) => String(+lo + i)) : [lo, '...', hi];
+      nums.forEach(n => previewDiv.appendChild(h('div', {className: 'sx-menu-preview-option', style: `border-left-color: ${factionColor};`},
+        menu.button ? substitute(menu.button).replace(/\[Number\]/g, n) : n)));
+    } else if (!info && menu.button) {
       previewDiv.appendChild(h('div', {
         className: 'sx-menu-preview-option',
         style: `border-left-color: ${factionColor};`
       }, substitute(menu.button)));
     }
 
-    if (menu.multiSelect) {
-      previewDiv.appendChild(h('div', {style: 'text-align: center; margin: 10px 0; font-size: 13px; color: #ccc; font-style: italic;'},
-        'Multi select: after each pick this menu comes back with the remaining options, until Done is clicked.'));
+    if (!info && menu.greyedOptions) {
+      previewDiv.appendChild(h('div', {className: 'sx-menu-preview-option', style: 'border-left-color: #666; opacity: 0.45; cursor: default;'},
+        `${substitute(menu.button).replace(/\[Number\]/g, /^\d+$/.test(substitute(menu.numberMax)) ? String(+substitute(menu.numberMax) + 1) : '?') || 'Option'} (${substitute(menu.greyedReason) || 'cannot be picked'})`));
     }
 
+    if (!info && menu.multiSelect) note('Multi select: after each pick this menu comes back with the remaining options, until Done is clicked.');
+    if (!info && menu.repeat) note(`Repeats: this menu is asked ${substitute(menu.repeatCount) || 'a set number of'} times.`);
+    if (!info && menu.confirm) note(`After the pick: "${substitute(menu.confirmText) || 'Are you sure?'}" with Yes / No.`);
+    if ((menu.prompted || '').includes('at the same time')) note(`${menu.prompted}: everyone answers this menu at once, and nobody sees the others' picks until all have answered.`);
+
     const buttons = [];
+    if (info) buttons.push(h('div', {className: 'sx-menu-preview-btn'}, 'OK'));
     if (menu.cancel) buttons.push(h('div', {className: 'sx-menu-preview-btn'}, 'Cancel'));
-    if (menu.skip) buttons.push(h('div', {className: 'sx-menu-preview-btn'}, 'Skip'));
-    if (menu.done || menu.multiSelect) buttons.push(h('div', {className: 'sx-menu-preview-btn'}, 'Done'));
+    if (!info && menu.skip) buttons.push(h('div', {className: 'sx-menu-preview-btn'}, 'Skip'));
+    if (!info && (menu.done || menu.multiSelect)) buttons.push(h('div', {className: 'sx-menu-preview-btn'}, 'Done'));
 
     if (buttons.length > 0) {
       previewDiv.appendChild(h('div', {className: 'sx-menu-preview-buttons'}, ...buttons));
