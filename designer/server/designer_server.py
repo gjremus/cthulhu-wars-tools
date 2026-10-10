@@ -565,19 +565,26 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         response["extractQueue"] = self.extract_queue_position(fid)
         self.send_json(response)
 
-    def extract_queue_position(self, fid: str) -> Optional[int]:
-        """Place (1 = next) of this faction's oldest waiting extract in the shared extract queue,
-        or None when it has nothing waiting. The checker works through open extracts oldest first."""
+    def extract_queue_position(self, fid: str) -> Optional[Dict]:
+        """Extraction status of this faction's oldest open extract, or None when it has nothing open.
+        {state: "waiting"} = the checker has not picked it up yet; {state: "queued", position: N} = picked
+        up, N-th of the open extracts not yet started (oldest first); {state: "in_process"} = being worked on.
+        The checker's designer-admin.py marks pickedUp (list-extract) and startedAt (faction <fid>)."""
         requests = (load_json(self.server.data_dir / "requests.json") or {}).get("requests", [])
         queue = sorted((r for r in requests if r.get("type") == "extract" and r.get("status") == "open"),
                        key=lambda r: r.get("created", 0))
-        for i, r in enumerate(queue):
-            if r.get("fid") == fid:
-                return i + 1
-        return None
+        mine = next((r for r in queue if r.get("fid") == fid), None)
+        if not mine:
+            return None
+        if mine.get("startedAt"):
+            return {"state": "in_process"}
+        if not mine.get("pickedUp"):
+            return {"state": "waiting"}
+        waiting = [r for r in queue if not r.get("startedAt")]
+        return {"state": "queued", "position": waiting.index(mine) + 1}
 
     def handle_get_extract_queue(self, fid: str):
-        """GET /designer/api/factions/<fid>/extract-queue -> {position} (null when nothing waiting)"""
+        """GET /designer/api/factions/<fid>/extract-queue -> {status} (null when nothing open)"""
         username = self.verify_session()
         if not username:
             self.send_error_json("Unauthorized", 401)
@@ -589,7 +596,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         if faction["owner"] != username and username not in faction.get("viewers", []):
             self.send_error_json("Forbidden", 403)
             return
-        self.send_json({"position": self.extract_queue_position(fid)})
+        self.send_json({"status": self.extract_queue_position(fid)})
 
     def handle_patch_faction(self, fid: str):
         """POST /designer/api/factions/<fid>/patch"""
@@ -1592,6 +1599,24 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             return
 
         status = body.get('status')
+        mark = body.get('mark')
+        if mark in ('picked', 'started'):
+            # Extraction status steps; the request stays open so the checker still lists it
+            field = 'pickedUp' if mark == 'picked' else 'startedAt'
+            with WRITE_LOCK:
+                requests_file = self.server.data_dir / "requests.json"
+                requests_data = load_json(requests_file) or {"requests": []}
+                request = next((r for r in requests_data.get("requests", []) if r.get("id") == rid), None)
+                if not request:
+                    self.send_error_json("Request not found", 404)
+                    return
+                if not request.get(field):
+                    request[field] = int(time.time())
+                    if mark == 'started' and not request.get('pickedUp'):
+                        request['pickedUp'] = request[field]
+                    atomic_write(requests_file, requests_data)
+            self.send_json(request)
+            return
         valid_statuses = ['open', 'notified', 'in_progress', 'done', 'cancelled']
         if status not in valid_statuses:
             self.send_error_json(f"Invalid status. Must be one of: {', '.join(valid_statuses)}")

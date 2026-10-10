@@ -98,7 +98,27 @@ def list_extract():
                 save(ATTEMPTS_FILE, attempts)
             continue
         keep.append(r)
+    # Designer page "Extraction status": listed by the checker = picked up (no longer "waiting")
+    for r in keep:
+        if not r.get('pickedUp'):
+            try:
+                api(f"requests/{r['id']}", {'mark': 'picked'})
+            except (Exception, SystemExit) as e:  # api() exits on HTTP errors; never break the listing
+                print(f"WARN: could not mark {r['id']} picked up: {e}", file=sys.stderr)
     print(json.dumps(keep, indent=2))
+
+
+def mark_started(fid):
+    """Reading a faction to extract it = the designer page shows "in process" for its oldest open extract."""
+    try:
+        reqs = [r for r in api('requests?status=open').get('requests', [])
+                if r.get('type') == 'extract' and r.get('fid') == fid]
+        if reqs:
+            oldest = min(reqs, key=lambda r: r.get('created', 0))
+            if not oldest.get('startedAt'):
+                api(f"requests/{oldest['id']}", {'mark': 'started'})
+    except (Exception, SystemExit) as e:
+        print(f"WARN: could not mark {fid} in process: {e}", file=sys.stderr)
 
 
 def image(image_id):
@@ -270,6 +290,7 @@ def main():
     if cmd == 'list-extract':
         list_extract()
     elif cmd == 'faction' and len(args) == 1:
+        mark_started(args[0])
         print(json.dumps(api(f'factions/{args[0]}'), indent=2))
     elif cmd == 'image' and len(args) == 1:
         image(args[0])

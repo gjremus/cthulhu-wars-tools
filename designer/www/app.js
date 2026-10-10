@@ -51,6 +51,8 @@
     route() {
       const hash = window.location.hash.slice(1) || '/';
       const [path, ...rest] = hash.split('/').filter(Boolean);
+      // Opening any other section clears a shown "complete" extraction status back to n/a
+      if (!(path === 'faction' && rest[0] && rest.length === 1)) this.extractComplete = null;
 
       if (this.state.adminView) {
         // Admin view only ever shows one faction, read only
@@ -165,21 +167,37 @@
       return n + (u === 1 ? 'st' : u === 2 ? 'nd' : u === 3 ? 'rd' : 'th');
     }
 
-    // Extraction status under the extract buttons: "Extraction status: 2nd in queue", hidden when nothing is queued
-    showExtractStatus(position) {
+    // Extraction status under the extract buttons: n/a -> waiting to be picked up -> Nth in queue ->
+    // in process -> complete. "Complete" shows once a request this page saw finishes, and clears back
+    // to n/a when the user opens another section (see route()).
+    showExtractStatus(fid, status) {
       const el = this.extractStatusEl;
       if (!el) return;
-      el.textContent = position ? `Extraction status: ${this.ordinal(position)} in queue` : '';
-      el.style.display = position ? '' : 'none';
+      this.extractActive = this.extractActive || {};
+      let text;
+      if (status) {
+        this.extractActive[fid] = true;
+        if (this.extractComplete === fid) this.extractComplete = null;
+        text = status.state === 'in_process' ? 'in process'
+             : status.state === 'queued' ? `${this.ordinal(status.position)} in queue`
+             : 'waiting to be picked up';
+      } else {
+        if (this.extractActive[fid]) {
+          delete this.extractActive[fid];
+          this.extractComplete = fid;
+        }
+        text = this.extractComplete === fid ? 'complete' : 'n/a';
+      }
+      el.textContent = `Extraction status: ${text}`;
     }
 
     async refreshExtractStatus(fid) {
       if (!this.extractStatusEl || !document.body.contains(this.extractStatusEl)) return;
       try {
         const data = this.state.adminView
-          ? await this.api('GET', `/admin/${this.state.adminView}/view-faction/${fid}`).then(d => ({position: d.extractQueue}))
+          ? await this.api('GET', `/admin/${this.state.adminView}/view-faction/${fid}`).then(d => ({status: d.extractQueue}))
           : await this.api('GET', `/factions/${fid}/extract-queue`);
-        this.showExtractStatus(data.position);
+        this.showExtractStatus(fid, data.status);
       } catch (e) { /* keep the last status */ }
     }
 
@@ -914,13 +932,13 @@
         extractChoice('Extract text + images', 30, true);
         cardSection.appendChild(extractRow);
 
-        // One extraction status line for the whole faction; blank unless one of its images is queued
+        // One extraction status line for the whole faction (n/a when nothing is queued)
         const extractStatus = document.createElement('div');
         extractStatus.className = 'extract-status';
         extractStatus.style.cssText = 'margin-top: 8px; font-size: 0.9em; font-weight: bold;';
         cardSection.appendChild(extractStatus);
         this.extractStatusEl = extractStatus;
-        this.showExtractStatus(faction.extractQueue);
+        this.showExtractStatus(faction.id, faction.extractQueue);
         this.startExtractStatusPoll(faction.id);
       } else {
         const uploadBtn = document.createElement('button');
