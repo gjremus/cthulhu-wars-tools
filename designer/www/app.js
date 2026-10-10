@@ -374,6 +374,158 @@
       return `/designer/img/${id}`;
     }
 
+    // CW / Necro library picker
+    async pickLibraryImage() {
+      if (this.isReadOnly()) return null;
+
+      return new Promise(async (resolve) => {
+        // Load library.json once and cache
+        if (!this.libraryCache) {
+          try {
+            const resp = await fetch('/designer/library/library.json');
+            if (!resp.ok) throw new Error('Failed to load library');
+            this.libraryCache = await resp.json();
+          } catch (err) {
+            console.error('Library load error:', err);
+            this.showSaveIndicator('error', 'Failed to load library: ' + err.message);
+            setTimeout(() => this.hideSaveIndicator(), 3000);
+            resolve(null);
+            return;
+          }
+        }
+
+        const library = this.libraryCache;
+
+        // Own layer above #overlay, so the map viewer underneath stays open
+        const layer = document.createElement('div');
+        layer.className = 'library-picker';
+        const close = () => layer.remove();
+
+        // Group by type
+        const sections = {
+          'Cultist': [],
+          'Monster': [],
+          'Terror': [],
+          'GOO': [],
+          'Elder God': []
+        };
+
+        library.forEach(item => {
+          if (sections[item.type]) sections[item.type].push(item);
+        });
+
+        // Sort each section alphabetically by name, then faction
+        Object.keys(sections).forEach(key => {
+          sections[key].sort((a, b) => {
+            if (a.name !== b.name) return a.name.localeCompare(b.name);
+            return (a.faction || '').localeCompare(b.faction || '');
+          });
+        });
+
+        // Build overlay content
+        const content = document.createElement('div');
+        content.style.cssText = 'background: #111; padding: 20px; max-width: 1100px; margin: 0 auto;';
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'sx-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.style.marginBottom = '20px';
+        cancelBtn.onclick = () => {
+          close();
+          resolve(null);
+        };
+        content.appendChild(cancelBtn);
+
+        const sectionTitles = {
+          'Cultist': 'Cultists',
+          'Monster': 'Monsters',
+          'Terror': 'Terrors',
+          'GOO': 'GOOs / iGOOs',
+          'Elder God': 'Elder Gods'
+        };
+
+        ['Cultist', 'Monster', 'Terror', 'GOO', 'Elder God'].forEach(type => {
+          const items = sections[type];
+          if (items.length === 0) return;
+
+          const heading = document.createElement('h3');
+          heading.textContent = sectionTitles[type];
+          heading.style.cssText = 'margin: 20px 0 10px 0; color: #eee;';
+          content.appendChild(heading);
+
+          const grid = document.createElement('div');
+          grid.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 12px; margin-bottom: 20px;';
+
+          items.forEach(item => {
+            const tile = document.createElement('div');
+            tile.style.cssText = 'display: flex; flex-direction: column; align-items: center; cursor: pointer;';
+
+            const img = document.createElement('img');
+            img.src = `/designer/library/${item.file}`;
+            img.loading = 'lazy';
+            img.style.cssText = 'width: 100%; height: 80px; object-fit: contain; border: 1px solid #666; background: #222;';
+
+            const nameDiv = document.createElement('div');
+            nameDiv.textContent = item.name;
+            nameDiv.style.cssText = 'font-size: 12px; margin-top: 4px; text-align: center; color: #eee;';
+
+            const factionDiv = document.createElement('div');
+            if (item.faction && item.faction !== 'Neutral') {
+              factionDiv.textContent = item.faction;
+              factionDiv.style.cssText = 'font-size: 10px; color: #aaa; text-align: center;';
+            }
+
+            tile.onclick = async () => {
+              try {
+                this.showSaveIndicator('saving', 'Uploading image...');
+
+                // Fetch the file as a blob
+                const resp = await fetch(`/designer/library/${item.file}`);
+                if (!resp.ok) throw new Error('Failed to fetch image');
+                const blob = await resp.blob();
+
+                // Upload to server
+                const uploadResp = await fetch('/designer/api/images', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${this.state.token}`,
+                    'Content-Type': blob.type || (item.file.endsWith('.webp') ? 'image/webp' : 'image/png')
+                  },
+                  body: blob
+                });
+
+                if (!uploadResp.ok) {
+                  const err = await uploadResp.json().catch(() => ({error: 'Upload failed'}));
+                  throw new Error(err.error);
+                }
+
+                const data = await uploadResp.json();
+                this.showSaveIndicator('saved', 'Image uploaded');
+                setTimeout(() => this.hideSaveIndicator(), 2000);
+                close();
+                resolve(data.id);
+              } catch (err) {
+                console.error('Library image upload error:', err);
+                this.showSaveIndicator('error', 'Upload failed: ' + err.message);
+                setTimeout(() => this.hideSaveIndicator(), 3000);
+                resolve(null);
+              }
+            };
+
+            tile.appendChild(img);
+            tile.appendChild(nameDiv);
+            if (factionDiv.textContent) tile.appendChild(factionDiv);
+            grid.appendChild(tile);
+          });
+
+          content.appendChild(grid);
+        });
+
+        layer.appendChild(content);
+        document.body.appendChild(layer);
+      });
+    }
+
     // Autosave
     // kind 'unit' = a neutral unit from My Units (fid is then its unit id)
     scheduleSave(fid, path, value, kind = 'faction') {
@@ -1579,6 +1731,7 @@
           if (!typing) ctx.rerender();
         },
         uploadImage: (kind) => this.uploadImage(kind),
+        pickLibraryImage: () => this.pickLibraryImage(),
         imgUrl: (id) => this.imgUrl(id),
         confirm: (msg, yes, no) => this.confirm(msg, yes, no),
         rerender: () => {
@@ -1662,6 +1815,7 @@
           ctx.rerender();
         },
         uploadImage: (kind) => this.uploadImage(kind),
+        pickLibraryImage: () => this.pickLibraryImage(),
         imgUrl: (id) => this.imgUrl(id),
         confirm: (msg, yes, no) => this.confirm(msg, yes, no),
         createRequest: (type, text, data) => this.isReadOnly() ? Promise.resolve(null) : this.createRequest(faction.id, type, text, data),

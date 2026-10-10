@@ -1,0 +1,610 @@
+[
+ {
+  "name": "Amelia Azevedo",
+  "type": "Cultist",
+  "faction": "Neutral",
+  "file": "n-amelia-azevedo.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Amelia_Azevedo",
+  "source": "unit-images/n-amelia-azevedo.png"
+ },
+ {
+  "name": "Asenath Waite",
+  "type": "Cultist",
+  "faction": "Neutral",
+  "file": "n-asenath-waite.png",
+  "wiki": null,
+  "source": "unit-images/n-asenath-waite.png"
+ },
+ {
+  "name": "Bellatrix",
+  "type": "Cultist",
+  "faction": "Neutral",
+  "file": "n-bellatrix.png",
+  "wiki": null,
+  "source": "unit-images/n-bellatrix.png"
+ },
+ {
+  "name": "Bernice Kuchler",
+  "type": "Cultist",
+  "faction": "Neutral",
+  "file": "n-bernice-kuchler.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Bernice_Kuchler",
+  "source": "unit-images/n-bernice-kuchler.png"
+ },
+ {
+  "name": "Cindrew Putorius",
+  "type": "Cultist",
+  "faction": "Neutral",
+  "file": "n-cindrew-putorius.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Cindrew_Putorius",
+  "source": "unit-images/n-cindrew-putorius.png"
+ },
+ {
+  "name": "Cissy Salem",
+  "type": "Cultist",
+  "faction": "Neutral",
+  "file": "n-cissy-salem.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Cissy_Salem",
+  "source": "unit-images/n-cissy-salem.png"
+ },
+ {
+  "name": "Crawford Tillinghast",
+  "type": "Cultist",
+  "faction": "Neutral",
+  "file": "n-crawford-tillinghast.png",
+  "wiki": null,
+  "source": "unit-images/n-crawford-tillinghast.png"
+ },
+ {
+  "name": "Doctor Hunter",
+  "type": "Cultist",
+  "faction": "Neutral",
+  "file": "n-doctor-hunter.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Doctor_Hunter",
+  "source": "unit-images/n-doctor-hunter.png"
+ },
+ {
+  "name": "Dorothy Hall",
+  "type": "Cultist",
+  "faction": "Neutral",
+  "file": "n-dorothy-hall.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Dorothy_Hall",
+  "source": "unit-images/n-dorothy-hall.png"
+ },
+ {
+  "name": "Ermengarde Stubbs",
+  "type": "Cultist",
+  "faction": "Neutral",
+  "file": "n-ermengarde-stubbs.png",
+  "wiki": null,
+  "source": "unit-images/n-ermengarde-stubbs.png"
+ },
+ {
+  "name": "Hannah Hazard",
+  "type": "Cultist",
+  "faction": "Neutral",
+  "file": "n-hannah-hazard.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Hannah_Hazard",
+  "source": "unit-images/n-hannah-hazard.png"
+ },
+ {
+  "name": "Herbert West",
+  "type": "Cultist",
+  "faction": "Neutral",
+  "file": "n-herbert-west.png",
+  "wiki": null,
+  "source": "unit-images/n-herbert-west.png"
+ },
+ {
+  "name": "John Dark",
+  "type": "Cultist",
+  "faction": "Neutral",
+  "file": "n-john-dark.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/John_Dark",
+  "source": "unit-images/n-john-dark.png"
+ },
+ {
+  "name": "Joseph Curwen",
+  "type": "Cultist",
+  "faction": "Neutral",
+  "file": "n-joseph-curwen.png",
+  "wiki": null,
+  "source": "unit-images/n-joseph-curwen.png"
+ },
+ {
+  "name": "Keziah Mason",
+  "type": "Cultist",
+  "faction": "Neutral",
+  "file": "n-keziah-mason.png",
+  "wiki": null,
+  "source": "unit-images/n-keziah-mason.png"
+ },
+ {
+  "name": "Magdalene",
+  "type": "Cultist",
+  "faction": "Neutral",
+  "file": "n-magdalene.png",
+  "wiki": null,
+  "source": "unit-images/n-magdalene.png"
+ },
+ {
+  "name": "Moose Kowalski",
+  "type": "Cultist",
+  "faction": "Neutral",
+  "file": "n-moose-kowalski.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Moose_Kowalski",
+  "source": "unit-images/n-moose-kowalski.png"
+ },
+ {
+  "name": "Naomi Johnson",
+  "type": "Cultist",
+  "faction": "Neutral",
+  "file": "n-naomi-johnson.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Naomi_Johnson",
+  "source": "unit-images/n-naomi-johnson.png"
+ },
+ {
+  "name": "Penrod Wallenstein",
+  "type": "Cultist",
+  "faction": "Neutral",
+  "file": "n-penrod-wallenstein.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Penrod_Wallenstein",
+  "source": "unit-images/n-penrod-wallenstein.png"
+ },
+ {
+  "name": "Professor Maxwell",
+  "type": "Cultist",
+  "faction": "Neutral",
+  "file": "n-professor-maxwell.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Professor_Maxwell",
+  "source": "unit-images/n-professor-maxwell.png"
+ },
+ {
+  "name": "Secutor",
+  "type": "Cultist",
+  "faction": "Neutral",
+  "file": "n-secutor.png",
+  "wiki": null,
+  "source": "unit-images/n-secutor.png"
+ },
+ {
+  "name": "Tarang",
+  "type": "Cultist",
+  "faction": "Neutral",
+  "file": "n-tarang.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Tarang",
+  "source": "unit-images/n-tarang.png"
+ },
+ {
+  "name": "The Prophetess",
+  "type": "Cultist",
+  "faction": "Neutral",
+  "file": "n-the-prophetess.png",
+  "wiki": null,
+  "source": "unit-images/n-the-prophetess.png"
+ },
+ {
+  "name": "Victor Steele",
+  "type": "Cultist",
+  "faction": "Neutral",
+  "file": "n-victor-steele.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Victor_Steele",
+  "source": "unit-images/n-victor-steele.png"
+ },
+ {
+  "name": "Asteroid Cat",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-asteroid-cat.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Asteroid_Cat",
+  "source": "Something About Cats/images/asteroid-cat.png"
+ },
+ {
+  "name": "Cat from Mercury",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-cat-from-mercury.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Cat_from_Mercury",
+  "source": "Something About Cats/images/cat-from-mercury.png"
+ },
+ {
+  "name": "Cat from Venus",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-cat-from-venus.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Cat_from_Venus",
+  "source": "Something About Cats/images/cat-from-venus.png"
+ },
+ {
+  "name": "Cendiary",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-cendiary.png",
+  "wiki": null,
+  "source": "unit-images/n-cendiary.png"
+ },
+ {
+  "name": "Elemental",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-elemental.png",
+  "wiki": null,
+  "source": "unit-images/n-elemental.png"
+ },
+ {
+  "name": "Eradicators",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-eradicators.png",
+  "wiki": null,
+  "source": "unit-images/n-eradicators.png"
+ },
+ {
+  "name": "Gadarene",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-gadarene.png",
+  "wiki": null,
+  "source": "unit-images/n-gadarene.png"
+ },
+ {
+  "name": "Hellhound",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-hellhound.png",
+  "wiki": null,
+  "source": "unit-images/n-hellhound.png"
+ },
+ {
+  "name": "Hellmother",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-hellmother.png",
+  "wiki": null,
+  "source": "unit-images/n-hellmother.png"
+ },
+ {
+  "name": "Hortator",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-hortator.png",
+  "wiki": null,
+  "source": "unit-images/n-hortator.png"
+ },
+ {
+  "name": "Larva",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-larva.png",
+  "wiki": null,
+  "source": "unit-images/n-larva.png"
+ },
+ {
+  "name": "Mandrake",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-mandrake.png",
+  "wiki": null,
+  "source": "unit-images/n-mandrake.png"
+ },
+ {
+  "name": "Nuckelavee",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-nuckelavee.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Nuckelavee",
+  "source": "unit-images/n-nuckelavee.png"
+ },
+ {
+  "name": "Philter",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-philter.png",
+  "wiki": null,
+  "source": "unit-images/n-philter.png"
+ },
+ {
+  "name": "Pitpipo",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-pitpipo.png",
+  "wiki": null,
+  "source": "unit-images/n-pitpipo.png"
+ },
+ {
+  "name": "Raparee",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-raparee.png",
+  "wiki": null,
+  "source": "unit-images/n-raparee.png"
+ },
+ {
+  "name": "Tardigrade",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-tardigrade.png",
+  "wiki": null,
+  "source": "unit-images/n-tardigrade.png"
+ },
+ {
+  "name": "The Dark Demon",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-the-dark-demon.png",
+  "wiki": null,
+  "source": "unit-images/n-the-dark-demon.png"
+ },
+ {
+  "name": "The Eidolon",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-the-eidolon.png",
+  "wiki": null,
+  "source": "unit-images/n-the-eidolon.png"
+ },
+ {
+  "name": "Thunder King",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-thunder-king.png",
+  "wiki": null,
+  "source": "unit-images/n-thunder-king.png"
+ },
+ {
+  "name": "Wamp",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-wamp.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Wamp",
+  "source": "unit-images/n-wamp.png"
+ },
+ {
+  "name": "Cacodemon",
+  "type": "Terror",
+  "faction": "Neutral",
+  "file": "n-cacodemon.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Cacodemon",
+  "source": "unit-images/n-cacodemon.png"
+ },
+ {
+  "name": "Cat from Neptune",
+  "type": "Terror",
+  "faction": "Neutral",
+  "file": "n-cat-from-neptune.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Cat_from_Neptune",
+  "source": "Something About Cats/images/cat-from-neptune.png"
+ },
+ {
+  "name": "Catoblepas",
+  "type": "Terror",
+  "faction": "Neutral",
+  "file": "n-catoblepas.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Catoblepas",
+  "source": "unit-images/n-catoblepas.png"
+ },
+ {
+  "name": "Worms of Ghroth",
+  "type": "Terror",
+  "faction": "Neutral",
+  "file": "n-worms-of-ghroth.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Worms_of_Ghroth",
+  "source": "unit-images/n-worms-of-ghroth.png"
+ },
+ {
+  "name": "Argus",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-argus.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Argus",
+  "source": "unit-images/n-argus.png"
+ },
+ {
+  "name": "Asmod",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-asmod.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Asmod",
+  "source": "unit-images/n-asmod.png"
+ },
+ {
+  "name": "Chaugnar Faugn",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-chaugnar-faugn.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Chaugnar_Faugn",
+  "source": "unit-images/n-chaugnar-faugn.png"
+ },
+ {
+  "name": "Chthon",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-chthon.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Chthon",
+  "source": "unit-images/n-chthon.png"
+ },
+ {
+  "name": "Cthulhu the Harbinger",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-cthulhu-the-harbinger.png",
+  "wiki": null,
+  "source": "unit-images/n-cthulhu-the-harbinger.png"
+ },
+ {
+  "name": "Dire Azathoth",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-dire-azathoth.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Dire_Azathoth",
+  "source": "unit-images/n-dire-azathoth.png"
+ },
+ {
+  "name": "Dire Cthulhu",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-dire-cthulhu.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Dire_Cthulhu",
+  "source": "unit-images/n-dire-cthulhu.png"
+ },
+ {
+  "name": "Eihort",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-eihort.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Eihort",
+  "source": "unit-images/n-eihort.png"
+ },
+ {
+  "name": "Geryon",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-geryon.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Geryon",
+  "source": "unit-images/n-geryon.png"
+ },
+ {
+  "name": "Gobogeg",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-gobogeg.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Gobogeg",
+  "source": "unit-images/n-gobogeg.png"
+ },
+ {
+  "name": "Hagarg Ryonis",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-hagarg-ryonis.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Hagarg_Ryonis",
+  "source": "Something About Cats/images/hagarg-ryonis.png"
+ },
+ {
+  "name": "Humbaba",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-humbaba.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Humbaba",
+  "source": "unit-images/n-humbaba.png"
+ },
+ {
+  "name": "Jabootu",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-jabootu.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Jabootu",
+  "source": "unit-images/n-jabootu.png"
+ },
+ {
+  "name": "Lady of Disease",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-lady-of-disease.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Lady_of_Disease",
+  "source": "unit-images/n-lady-of-disease.png"
+ },
+ {
+  "name": "Mad God",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-mad-god.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Mad_God",
+  "source": "unit-images/n-mad-god.png"
+ },
+ {
+  "name": "Magna Mater",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-magna-mater.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Magna_Mater",
+  "source": "unit-images/n-magna-mater.png"
+ },
+ {
+  "name": "Orobas",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-orobas.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Orobas",
+  "source": "unit-images/n-orobas.png"
+ },
+ {
+  "name": "Procrustes",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-procrustes.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Procrustes",
+  "source": "unit-images/n-procrustes.png"
+ },
+ {
+  "name": "Pulgasaur",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-pulgasaur.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Pulgasaur",
+  "source": "unit-images/n-pulgasaur.png"
+ },
+ {
+  "name": "Scylla",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-scylla.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Scylla",
+  "source": "unit-images/n-scylla.png"
+ },
+ {
+  "name": "Stheno",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-stheno.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Stheno",
+  "source": "unit-images/n-stheno.png"
+ },
+ {
+  "name": "Stroma",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-stroma.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Stroma",
+  "source": "unit-images/n-stroma.png"
+ },
+ {
+  "name": "Sun God",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-sun-god.png",
+  "wiki": null,
+  "source": "unit-images/n-sun-god.png"
+ },
+ {
+  "name": "Tarasque",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-tarasque.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Tarasque",
+  "source": "unit-images/n-tarasque.png"
+ },
+ {
+  "name": "The Haunter of the Dark",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-the-haunter-of-the-dark.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/The_Haunter_of_the_Dark",
+  "source": "unit-images/n-the-haunter-of-the-dark.png"
+ },
+ {
+  "name": "The Risen One",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-the-risen-one.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/The_Risen_One",
+  "source": "unit-images/n-the-risen-one.png"
+ },
+ {
+  "name": "Nodens",
+  "type": "Elder God",
+  "faction": "Neutral",
+  "file": "n-nodens.png",
+  "wiki": "https://cthulhuwars.fandom.com/wiki/Nodens",
+  "source": "unit-images/n-nodens.png"
+ }
+]

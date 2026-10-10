@@ -552,6 +552,18 @@
           }
         }, 'Click to upload');
         silDiv.appendChild(uploadBtn);
+        const libraryBtn = h('button', {
+          className: 'sx-btn',
+          style: 'display: block; margin-top: 8px; font-size: 12px; padding: 4px 8px;',
+          onclick: async () => {
+            const id = await ctx.pickLibraryImage();
+            if (id) {
+              ctx.set(`units.rows.${unit.id}.silhouette`, id);
+              ctx.rerender();
+            }
+          }
+        }, 'CW / Necro');
+        silDiv.appendChild(libraryBtn);
       }
       unitDiv.appendChild(silDiv);
 
@@ -767,6 +779,13 @@
           unitImg.src = ctx.imgUrl(id);
         }
       }}, 'Replace'),
+      h('button', {className: 'sx-btn', onclick: async () => {
+        const id = await ctx.pickLibraryImage();
+        if (id) {
+          ctx.set(`units.rows.${unit.id}.mapImage`, id);
+          unitImg.src = ctx.imgUrl(id);
+        }
+      }}, 'CW / Necro'),
       h('button', {className: 'sx-btn', onclick: () => {
         ctx.set(`units.rows.${unit.id}.mapScale`, scale);
         close();
@@ -811,6 +830,14 @@
           ctx.rerender();
         }
       }}, 'Replace'),
+      h('button', {className: 'sx-btn', onclick: async () => {
+        const id = await ctx.pickLibraryImage();
+        if (id) {
+          ctx.set(`units.rows.${unit.id}.silhouette`, id);
+          ctx.closeOverlay();
+          ctx.rerender();
+        }
+      }}, 'CW / Necro'),
       h('button', {className: 'sx-btn', onclick: () => ctx.closeOverlay()}, 'Done')
     );
 

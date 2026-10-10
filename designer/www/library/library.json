@@ -1,0 +1,824 @@
+[
+ {
+  "name": "Acolyte",
+  "type": "Cultist",
+  "faction": "Black Goat",
+  "file": "bg-acolyte.webp"
+ },
+ {
+  "name": "Acolyte",
+  "type": "Cultist",
+  "faction": "Bubastis",
+  "file": "bb-acolyte.webp"
+ },
+ {
+  "name": "Acolyte",
+  "type": "Cultist",
+  "faction": "Colour Out of Space",
+  "file": "cs-acolyte.webp"
+ },
+ {
+  "name": "Acolyte",
+  "type": "Cultist",
+  "faction": "Crawling Chaos",
+  "file": "cc-acolyte.webp"
+ },
+ {
+  "name": "Acolyte",
+  "type": "Cultist",
+  "faction": "Daemon Sultan",
+  "file": "ds-acolyte.webp"
+ },
+ {
+  "name": "Acolyte",
+  "type": "Cultist",
+  "faction": "Defilers Court",
+  "file": "dc-acolyte.webp"
+ },
+ {
+  "name": "Acolyte",
+  "type": "Cultist",
+  "faction": "Faceless Blight",
+  "file": "fbe-acolyte.webp"
+ },
+ {
+  "name": "Acolyte",
+  "type": "Cultist",
+  "faction": "Firstborn",
+  "file": "fb-acolyte.webp"
+ },
+ {
+  "name": "Acolyte",
+  "type": "Cultist",
+  "faction": "Great Cthulhu",
+  "file": "gc-acolyte.webp"
+ },
+ {
+  "name": "Acolyte",
+  "type": "Cultist",
+  "faction": "Opener of the Way",
+  "file": "ow-acolyte.webp"
+ },
+ {
+  "name": "Acolyte",
+  "type": "Cultist",
+  "faction": "Sleeper",
+  "file": "sl-acolyte.webp"
+ },
+ {
+  "name": "Acolyte",
+  "type": "Cultist",
+  "faction": "Tcho-Tcho",
+  "file": "tt-acolyte.webp"
+ },
+ {
+  "name": "Acolyte",
+  "type": "Cultist",
+  "faction": "The Ancients",
+  "file": "an-acolyte.webp"
+ },
+ {
+  "name": "Acolyte",
+  "type": "Cultist",
+  "faction": "Tombstalker",
+  "file": "ts-acolyte.webp"
+ },
+ {
+  "name": "Acolyte",
+  "type": "Cultist",
+  "faction": "Windwalker",
+  "file": "ww-acolyte.webp"
+ },
+ {
+  "name": "Acolyte",
+  "type": "Cultist",
+  "faction": "Yellow Sign",
+  "file": "ys-acolyte.webp"
+ },
+ {
+  "name": "Cadavolyte",
+  "type": "Cultist",
+  "faction": "The Burrowers Beneath",
+  "file": "tb-cadavolyte.webp"
+ },
+ {
+  "name": "Demon Larvae",
+  "type": "Cultist",
+  "faction": "The Invasion",
+  "file": "ti-larvae.webp"
+ },
+ {
+  "name": "High Priest",
+  "type": "Cultist",
+  "faction": "Black Goat",
+  "file": "bg-high-priest.webp"
+ },
+ {
+  "name": "High Priest",
+  "type": "Cultist",
+  "faction": "Colour Out of Space",
+  "file": "cs-high-priest.webp"
+ },
+ {
+  "name": "High Priest",
+  "type": "Cultist",
+  "faction": "Crawling Chaos",
+  "file": "cc-high-priest.webp"
+ },
+ {
+  "name": "High Priest",
+  "type": "Cultist",
+  "faction": "Daemon Sultan",
+  "file": "ds-high-priest.webp"
+ },
+ {
+  "name": "High Priest",
+  "type": "Cultist",
+  "faction": "Firstborn",
+  "file": "fb-high-priest.webp"
+ },
+ {
+  "name": "High Priest",
+  "type": "Cultist",
+  "faction": "Great Cthulhu",
+  "file": "gc-high-priest.webp"
+ },
+ {
+  "name": "High Priest",
+  "type": "Cultist",
+  "faction": "Opener of the Way",
+  "file": "ow-high-priest.webp"
+ },
+ {
+  "name": "High Priest",
+  "type": "Cultist",
+  "faction": "Sleeper",
+  "file": "sl-high-priest.webp"
+ },
+ {
+  "name": "High Priest",
+  "type": "Cultist",
+  "faction": "Tcho-Tcho",
+  "file": "tt-high-priest.webp"
+ },
+ {
+  "name": "High Priest",
+  "type": "Cultist",
+  "faction": "The Ancients",
+  "file": "an-high-priest.webp"
+ },
+ {
+  "name": "High Priest",
+  "type": "Cultist",
+  "faction": "Tombstalker",
+  "file": "ts-high-priest.webp"
+ },
+ {
+  "name": "High Priest",
+  "type": "Cultist",
+  "faction": "Windwalker",
+  "file": "ww-high-priest.webp"
+ },
+ {
+  "name": "High Priest",
+  "type": "Cultist",
+  "faction": "Yellow Sign",
+  "file": "ys-high-priest.webp"
+ },
+ {
+  "name": "Lavinia Whateley",
+  "type": "Cultist",
+  "faction": "Neutral",
+  "file": "n-lavinia-whateley-dunwich.webp"
+ },
+ {
+  "name": "Tentacle",
+  "type": "Cultist",
+  "faction": "The Burrowers Beneath",
+  "file": "tb-high-priest.webp"
+ },
+ {
+  "name": "Wilbur Whateley",
+  "type": "Cultist",
+  "faction": "Neutral",
+  "file": "n-wilbur-whateley.webp"
+ },
+ {
+  "name": "Wizard Whateley",
+  "type": "Cultist",
+  "faction": "Neutral",
+  "file": "n-wizard-whateley.webp"
+ },
+ {
+  "name": "Abomination",
+  "type": "Monster",
+  "faction": "Opener of the Way",
+  "file": "ow-abomination.webp"
+ },
+ {
+  "name": "Byakhee",
+  "type": "Monster",
+  "faction": "Yellow Sign",
+  "file": "ys-byakhee.webp"
+ },
+ {
+  "name": "Cat from Mars",
+  "type": "Monster",
+  "faction": "Bubastis",
+  "file": "bb-cat-from-mars.webp"
+ },
+ {
+  "name": "Cat from Saturn",
+  "type": "Monster",
+  "faction": "Bubastis",
+  "file": "bb-cat-from-saturn.webp"
+ },
+ {
+  "name": "Cat from Uranus",
+  "type": "Monster",
+  "faction": "Bubastis",
+  "file": "bb-cat-from-uranus.webp"
+ },
+ {
+  "name": "Chthonian",
+  "type": "Monster",
+  "faction": "The Burrowers Beneath",
+  "file": "tb-chthonian.webp"
+ },
+ {
+  "name": "Dark Young",
+  "type": "Monster",
+  "faction": "Black Goat",
+  "file": "bg-dark-young.webp"
+ },
+ {
+  "name": "Deep One",
+  "type": "Monster",
+  "faction": "Great Cthulhu",
+  "file": "gc-deep-one.webp"
+ },
+ {
+  "name": "Deep Tendril",
+  "type": "Monster",
+  "faction": "Tombstalker",
+  "file": "ts-tendril.webp"
+ },
+ {
+  "name": "Desiccated",
+  "type": "Monster",
+  "faction": "Firstborn",
+  "file": "fb-desiccated.webp"
+ },
+ {
+  "name": "Dimensional Shambler",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-dimensional-shambler.webp"
+ },
+ {
+  "name": "Earth Cat",
+  "type": "Monster",
+  "faction": "Bubastis",
+  "file": "bb-earth-cat.webp"
+ },
+ {
+  "name": "Effervescent Excrescence",
+  "type": "Monster",
+  "faction": "Colour Out of Space",
+  "file": "cs-effervescent-excrescence.webp"
+ },
+ {
+  "name": "Elder Thing",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-elder-thing.webp"
+ },
+ {
+  "name": "Fiend",
+  "type": "Monster",
+  "faction": "The Invasion",
+  "file": "ti-fiend.webp"
+ },
+ {
+  "name": "Filth",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-filth.webp"
+ },
+ {
+  "name": "Flying Polyp",
+  "type": "Monster",
+  "faction": "Crawling Chaos",
+  "file": "cc-flying-polyp.webp"
+ },
+ {
+  "name": "Formless Spawn",
+  "type": "Monster",
+  "faction": "Sleeper",
+  "file": "sl-formless-spawn.webp"
+ },
+ {
+  "name": "Fungal Thrall",
+  "type": "Monster",
+  "faction": "Faceless Blight",
+  "file": "fbe-fungal-thrall.webp"
+ },
+ {
+  "name": "Fungi from Yuggoth",
+  "type": "Monster",
+  "faction": "Black Goat",
+  "file": "bg-fungi.webp"
+ },
+ {
+  "name": "Ghast",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-ghast.webp"
+ },
+ {
+  "name": "Ghoul",
+  "type": "Monster",
+  "faction": "Black Goat",
+  "file": "bg-ghoul.webp"
+ },
+ {
+  "name": "Giant Blind Albino Penguins",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-giant-blind-albino-penguins.webp"
+ },
+ {
+  "name": "Gnoph-Keh",
+  "type": "Monster",
+  "faction": "Windwalker",
+  "file": "ww-gnoph-keh.webp"
+ },
+ {
+  "name": "Gnorri",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-gnorri.webp"
+ },
+ {
+  "name": "Gryllus",
+  "type": "Monster",
+  "faction": "The Invasion",
+  "file": "ti-gryllus.webp"
+ },
+ {
+  "name": "Gug",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-gug.webp"
+ },
+ {
+  "name": "Hunting Horror",
+  "type": "Monster",
+  "faction": "Crawling Chaos",
+  "file": "cc-hunting-horror.webp"
+ },
+ {
+  "name": "Insects from Shaggai",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-insects-from-shaggai.webp"
+ },
+ {
+  "name": "Larva Antithesis",
+  "type": "Monster",
+  "faction": "Daemon Sultan",
+  "file": "ds-larva-antithesis.webp"
+ },
+ {
+  "name": "Larva Synthesis",
+  "type": "Monster",
+  "faction": "Daemon Sultan",
+  "file": "ds-larva-synthesis.webp"
+ },
+ {
+  "name": "Larva Thesis",
+  "type": "Monster",
+  "faction": "Daemon Sultan",
+  "file": "ds-larva-thesis.webp"
+ },
+ {
+  "name": "Leng Spider",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-leng-spider.webp"
+ },
+ {
+  "name": "Meteorite",
+  "type": "Monster",
+  "faction": "Colour Out of Space",
+  "file": "cs-meteorite.webp"
+ },
+ {
+  "name": "Moonbeast",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-moonbeast.webp"
+ },
+ {
+  "name": "Mutant",
+  "type": "Monster",
+  "faction": "Opener of the Way",
+  "file": "ow-mutant.webp"
+ },
+ {
+  "name": "Nightgaunt",
+  "type": "Monster",
+  "faction": "Crawling Chaos",
+  "file": "cc-nightgaunt.webp"
+ },
+ {
+  "name": "Proto-Shoggoth",
+  "type": "Monster",
+  "faction": "Tcho-Tcho",
+  "file": "tt-proto-shoggoth.webp"
+ },
+ {
+  "name": "Reanimated",
+  "type": "Monster",
+  "faction": "The Ancients",
+  "file": "an-reanimated.webp"
+ },
+ {
+  "name": "Revenant of K'Naa",
+  "type": "Monster",
+  "faction": "Firstborn",
+  "file": "fb-revenant.webp"
+ },
+ {
+  "name": "Satyr",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-satyr.webp"
+ },
+ {
+  "name": "Serpent Man",
+  "type": "Monster",
+  "faction": "Sleeper",
+  "file": "sl-serpent-man.webp"
+ },
+ {
+  "name": "Servitor of the Outer Gods",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-servitor-of-the-outer-gods.webp"
+ },
+ {
+  "name": "Shantak",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-shantak.webp"
+ },
+ {
+  "name": "Shoggoth",
+  "type": "Monster",
+  "faction": "Great Cthulhu",
+  "file": "gc-shoggoth.webp"
+ },
+ {
+  "name": "Spawn of Yog-Sothoth",
+  "type": "Monster",
+  "faction": "Opener of the Way",
+  "file": "ow-spawn-of-yog-sothoth.webp"
+ },
+ {
+  "name": "Star Vampire",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-star-vampire.webp"
+ },
+ {
+  "name": "Starspawn",
+  "type": "Monster",
+  "faction": "Great Cthulhu",
+  "file": "gc-starspawn.webp"
+ },
+ {
+  "name": "Tomb-Herd",
+  "type": "Monster",
+  "faction": "Tombstalker",
+  "file": "ts-tomb-herd.webp"
+ },
+ {
+  "name": "Un-Man",
+  "type": "Monster",
+  "faction": "The Ancients",
+  "file": "an-un-man.webp"
+ },
+ {
+  "name": "Undead",
+  "type": "Monster",
+  "faction": "Yellow Sign",
+  "file": "ys-undead.webp"
+ },
+ {
+  "name": "Voonith",
+  "type": "Monster",
+  "faction": "Neutral",
+  "file": "n-voonith.webp"
+ },
+ {
+  "name": "Wendigo",
+  "type": "Monster",
+  "faction": "Windwalker",
+  "file": "ww-wendigo.webp"
+ },
+ {
+  "name": "Wizard",
+  "type": "Monster",
+  "faction": "Sleeper",
+  "file": "sl-wizard.webp"
+ },
+ {
+  "name": "Brown Jenkin",
+  "type": "Terror",
+  "faction": "Neutral",
+  "file": "n-brown-jenkin.webp"
+ },
+ {
+  "name": "Dhole",
+  "type": "Terror",
+  "faction": "Neutral",
+  "file": "n-dhole.webp"
+ },
+ {
+  "name": "Elder Shoggoth",
+  "type": "Terror",
+  "faction": "Neutral",
+  "file": "n-elder-shoggoth.webp"
+ },
+ {
+  "name": "Great Race of Yith",
+  "type": "Terror",
+  "faction": "Neutral",
+  "file": "n-great-race-of-yith.webp"
+ },
+ {
+  "name": "Hound of Tindalos",
+  "type": "Terror",
+  "faction": "Neutral",
+  "file": "n-hound-of-tindalos.webp"
+ },
+ {
+  "name": "Junior Whateley",
+  "type": "Terror",
+  "faction": "Neutral",
+  "file": "n-junior-whateley.webp"
+ },
+ {
+  "name": "Luminous Globule",
+  "type": "Terror",
+  "faction": "Colour Out of Space",
+  "file": "cs-luminous-globule.webp"
+ },
+ {
+  "name": "Quachil Uttaus",
+  "type": "Terror",
+  "faction": "Neutral",
+  "file": "n-quachil-uttaus.webp"
+ },
+ {
+  "name": "The Shadow Pharaoh",
+  "type": "Terror",
+  "faction": "Neutral",
+  "file": "n-the-shadow-pharaoh.webp"
+ },
+ {
+  "name": "Yothan",
+  "type": "Terror",
+  "faction": "The Ancients",
+  "file": "an-yothan.webp"
+ },
+ {
+  "name": "Abhoth",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-abhoth.webp"
+ },
+ {
+  "name": "Atlach-Nacha",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-atlach-nacha.webp"
+ },
+ {
+  "name": "Avatar Antithesis",
+  "type": "GOO",
+  "faction": "Daemon Sultan",
+  "file": "ds-avatar-antithesis.webp"
+ },
+ {
+  "name": "Avatar Synthesis",
+  "type": "GOO",
+  "faction": "Daemon Sultan",
+  "file": "ds-avatar-synthesis.webp"
+ },
+ {
+  "name": "Avatar Thesis",
+  "type": "GOO",
+  "faction": "Daemon Sultan",
+  "file": "ds-avatar-thesis.webp"
+ },
+ {
+  "name": "Azathoth",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-azathoth.webp"
+ },
+ {
+  "name": "Baphomet",
+  "type": "GOO",
+  "faction": "The Invasion",
+  "file": "ti-baphomet.webp"
+ },
+ {
+  "name": "Bokrug",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-bokrug.webp"
+ },
+ {
+  "name": "Byagoona",
+  "type": "GOO",
+  "faction": "Faceless Blight",
+  "file": "fbe-byagoona.webp"
+ },
+ {
+  "name": "Byatis",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-byatis.webp"
+ },
+ {
+  "name": "Cthugha",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-cthugha.webp"
+ },
+ {
+  "name": "Cthulhu",
+  "type": "GOO",
+  "faction": "Great Cthulhu",
+  "file": "gc-cthulhu.webp"
+ },
+ {
+  "name": "Daoloth",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-daoloth.webp"
+ },
+ {
+  "name": "Dire Yog-Sothoth",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-dire-yog-sothoth.webp"
+ },
+ {
+  "name": "Father Dagon",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-father-dagon.webp"
+ },
+ {
+  "name": "Ghatanothoa",
+  "type": "GOO",
+  "faction": "Firstborn",
+  "file": "fb-ghatanothoa.webp"
+ },
+ {
+  "name": "Ghatanothoa",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-ghatanothoa.webp"
+ },
+ {
+  "name": "Gla'aki",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-glaaki-igoo.webp"
+ },
+ {
+  "name": "Gla'aki",
+  "type": "GOO",
+  "faction": "Tombstalker",
+  "file": "ts-glaaki.webp"
+ },
+ {
+  "name": "Hastur",
+  "type": "GOO",
+  "faction": "Yellow Sign",
+  "file": "ys-hastur.webp"
+ },
+ {
+  "name": "Ithaqua",
+  "type": "GOO",
+  "faction": "Windwalker",
+  "file": "ww-ithaqua.webp"
+ },
+ {
+  "name": "King in Yellow",
+  "type": "GOO",
+  "faction": "Yellow Sign",
+  "file": "ys-king-in-yellow.webp"
+ },
+ {
+  "name": "Mother Hydra",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-mother-hydra.webp"
+ },
+ {
+  "name": "Nyarlathotep",
+  "type": "GOO",
+  "faction": "Crawling Chaos",
+  "file": "cc-nyarly.webp"
+ },
+ {
+  "name": "Nyogtha",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-nyogtha.webp"
+ },
+ {
+  "name": "Rhan Tegoth",
+  "type": "GOO",
+  "faction": "Windwalker",
+  "file": "ww-rhan-tegoth.webp"
+ },
+ {
+  "name": "Shub-Niggurath",
+  "type": "GOO",
+  "faction": "Black Goat",
+  "file": "bg-shub.webp"
+ },
+ {
+  "name": "Shudde M'ell (Head)",
+  "type": "GOO",
+  "faction": "The Burrowers Beneath",
+  "file": "tb-shudde-mell-head.webp"
+ },
+ {
+  "name": "Shudde M'ell (Segment)",
+  "type": "GOO",
+  "faction": "The Burrowers Beneath",
+  "file": "tb-shudde-mell-segment.webp"
+ },
+ {
+  "name": "The Bloated Woman",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-the-bloated-woman.webp"
+ },
+ {
+  "name": "Tsathoggua",
+  "type": "GOO",
+  "faction": "Sleeper",
+  "file": "sl-tsathoggua.webp"
+ },
+ {
+  "name": "Tulzscha",
+  "type": "GOO",
+  "faction": "Colour Out of Space",
+  "file": "cs-tulzscha.webp"
+ },
+ {
+  "name": "Tulzscha",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-tulzscha.webp"
+ },
+ {
+  "name": "Ubbo-Sathla",
+  "type": "GOO",
+  "faction": "Tcho-Tcho",
+  "file": "tt-ubbo-sathla.webp"
+ },
+ {
+  "name": "Y'Golonac",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-ygolonac.webp"
+ },
+ {
+  "name": "Yig",
+  "type": "GOO",
+  "faction": "Neutral",
+  "file": "n-yig.webp"
+ },
+ {
+  "name": "Yog-Sothoth",
+  "type": "GOO",
+  "faction": "Opener of the Way",
+  "file": "ow-yog-sothoth.webp"
+ },
+ {
+  "name": "Bastet",
+  "type": "Elder God",
+  "faction": "Bubastis",
+  "file": "bb-bastet.webp"
+ }
+]
