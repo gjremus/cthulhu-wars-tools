@@ -800,23 +800,36 @@
 
   function renderSB(container, ctx) {
     const d = ctx.design.sb;
-    const two = !!d.twoSided;
-
-    // 2 sided: every spellbook gets a side A and a side B, each with its own name, type, cost, effect and text
-    container.appendChild(checkboxField('2 sided (each spellbook has a side A and a side B)', two, val => {
-      if (val && !ctx.design.sbImagesB) ctx.set('sbImagesB', {mode: null, all: null, each: [null, null, null, null, null, null]});
+    const R = window.Rules;
+    // 2 sided: a spellbook gets a side A and a side B, each with its own name, type, cost, effect and text.
+    // "All 2 sided" sets every spellbook; each spellbook's own box can then flip it back to 1 sided.
+    const two = R.sbAnyTwo(d);
+    const allTwo = d.rows.length > 0 && d.rows.every(r => R.sbTwo(d, r));
+    const ensureSideBImages = () => {
+      if (!ctx.design.sbImagesB) ctx.set('sbImagesB', {mode: null, all: null, each: [null, null, null, null, null, null]});
+    };
+    container.appendChild(checkboxField('All 2 sided (every spellbook has a side A and a side B)', allTwo, val => {
+      if (val) ensureSideBImages();
       ctx.set('sb.twoSided', val);
+      d.rows.forEach(r => ctx.set(`sb.rows.${r.id}.twoSided`, val));
     }));
+    const setRowTwo = (row, val) => {
+      // Pin every spellbook's current setting first, so changing "All 2 sided" below can't flip the others
+      d.rows.forEach(r => { if (r.twoSided == null) ctx.set(`sb.rows.${r.id}.twoSided`, R.sbTwo(d, r)); });
+      if (val) ensureSideBImages();
+      ctx.set(`sb.rows.${row.id}.twoSided`, val);
+      ctx.set('sb.twoSided', d.rows.every(r => R.sbTwo(d, r)));
+    };
 
     const tableDiv = h('div', {className: 'sx-table'});
     const table = h('table', {});
-    const sides = two ? ['', 'B'] : [''];
+    const rowSides = r => R.sbTwo(d, r) ? ['', 'B'] : [''];
     // Dual powers: a side split into power 1 and power 2, each with its own name, type, cost, effect and text
-    const anyDual = d.rows.some(r => sides.some(sd => r['dual' + sd]));
-    const grouped = two || anyDual;
+    const anyDual = d.rows.some(r => rowSides(r).some(sd => r['dual' + sd]));
+    const grouped = true;  // the Spellbook column holds each spellbook's own "2 sided" box
     table.appendChild(h('thead', {},
       h('tr', {},
-        grouped ? h('th', {style: 'width: 90px;'}, 'Spellbook') : null,
+        grouped ? h('th', {style: 'width: 100px;'}, 'Spellbook') : null,
         two ? h('th', {style: 'width: 60px;'}, 'Side') : null,
         h('th', {style: 'width: 70px;'}, 'Dual powers?'),
         anyDual ? h('th', {style: 'width: 60px;'}, 'Power') : null,
@@ -874,6 +887,7 @@
     const tbody = h('tbody', {});
     d.rows.forEach((row, idx) => {
       // sfx per table row: '' side A (or only side), 'B' side B, then '2' / 'B2' for power 2 of a dual powers side
+      const sides = rowSides(row);
       const parts = sides.map(sd => row['dual' + sd] ? [sd, sd + '2'] : [sd]);
       const total = parts.reduce((n, p) => n + p.length, 0);
       let first = true;
@@ -882,9 +896,14 @@
         const sd = sides[si];
         sideParts.forEach((sfx, pi) => {
           const tr = h('tr', {});
-          if (first && grouped) tr.appendChild(h('td', {rowSpan: total, style: 'font-weight: bold;'}, `Spellbook ${idx + 1}`));
+          if (first && grouped) tr.appendChild(h('td', {rowSpan: total},
+            h('div', {style: 'font-weight: bold;'}, `Spellbook ${idx + 1}`),
+            h('label', {style: 'display: block; margin-top: 4px; font-size: 0.9em; white-space: nowrap;'},
+              h('input', {type: 'checkbox', checked: R.sbTwo(d, row), title: 'Give this spellbook a side A and a side B',
+                onchange: e => setRowTwo(row, e.target.checked)}),
+              ' 2 sided')));
           if (pi === 0) {
-            if (two) tr.appendChild(h('td', {rowSpan: sideParts.length}, sd === 'B' ? 'Side B' : 'Side A'));
+            if (two) tr.appendChild(h('td', {rowSpan: sideParts.length}, sides.length < 2 ? '1 sided' : sd === 'B' ? 'Side B' : 'Side A'));
             tr.appendChild(h('td', {rowSpan: sideParts.length, style: 'text-align: center;'},
               h('input', {type: 'checkbox', checked: !!row['dual' + sd], title: 'Split this side into power 1 and power 2',
                 onchange: e => ctx.set(`sb.rows.${row.id}.dual${sd}`, e.target.checked)})));
@@ -1267,7 +1286,7 @@
         itemOptions = ctx.design.sbr.rows.filter(r => r.text).map(r => ({value: r.id, label: r.text}));
       } else if (menu.section === 'sb') {
         itemOptions = ctx.design.sb.rows.filter(s => s.name).map(s => ({value: s.id,
-          label: ctx.design.sb.twoSided && s.nameB ? `${s.name} / ${s.nameB}` : s.name}));
+          label: window.Rules.sbTwo(ctx.design.sb, s) && s.nameB ? `${s.name} / ${s.nameB}` : s.name}));
       } else if (menu.section === 'region') {
         itemOptions = ctx.design.region.rows.filter(r => r.name).map(r => ({value: r.id, label: r.name}));
       } else if (menu.section === 'tokens') {

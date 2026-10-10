@@ -91,7 +91,8 @@
         rows: Array(6).fill(null).map(() => ({id: newId(), text: '', hasNum: false, num: null}))
       },
       sb: {
-        twoSided: false,   // 2 sided: every spellbook has a side A (the fields below) and a side B (the ...B fields)
+        twoSided: false,   // "All 2 sided": every spellbook has a side A (the fields below) and a side B (the ...B fields).
+                           // Each row's own twoSided overrides it; a row without one follows this setting.
         rows: Array(6).fill(null).map(() => ({
           id: newId(),
           name: '',
@@ -311,6 +312,15 @@
     return eq(a, b);
   }
 
+  // Is this spellbook 2 sided? Its own box wins; older rows without one follow "All 2 sided".
+  function sbTwo(sb, row) {
+    return row && row.twoSided != null ? !!row.twoSided : !!(sb && sb.twoSided);
+  }
+
+  function sbAnyTwo(sb) {
+    return !!(sb && sb.rows && sb.rows.some(r => sbTwo(sb, r)));
+  }
+
   function isRowEmpty(row, blankRow) {
     // Fields added later (e.g. menu done/multiSelect/repeat) count as their default on older rows
     const a = normalizeForComparison(Object.assign({}, blankRow, row));
@@ -416,10 +426,12 @@
     }
 
     if (key === 'sb') {
-      const done = r => isRowComplete(r, 'sb') && (!d.twoSided || isRowComplete(r, 'sbB'));
+      const done = r => isRowComplete(r, 'sb') && (!sbTwo(d, r) || isRowComplete(r, 'sbB'));
       const completeRows = d.rows.filter(done);
       if (completeRows.length < 6) return 'Incomplete';
-      const partialRows = d.rows.filter(r => !done(r) && !isRowEmpty(r, blankRow('sb.rows')));
+      // Ticking a blank spellbook's "2 sided" box alone doesn't make it a part-filled spellbook
+      const contentOnly = r => { const c = Object.assign({}, r); delete c.twoSided; return c; };
+      const partialRows = d.rows.filter(r => !done(r) && !isRowEmpty(contentOnly(r), blankRow('sb.rows')));
       if (partialRows.length > 0) return 'Incomplete';
       return 'Complete';
     }
@@ -647,7 +659,7 @@
         // Extra parts: power 2 of a dual powers side, and side B (and its power 2) of a 2 sided spellbook
         const extra = [];
         if (row.dual) extra.push(['2', ' (power 2)']);
-        if (design.sb.twoSided) {
+        if (sbTwo(design.sb, row)) {
           extra.push(['B', ' (side B)']);
           if (row.dualB) extra.push(['B2', ' (side B, power 2)']);
         }
@@ -747,13 +759,23 @@
       const newSbs = neu.rows.filter(s => s.name).map(s => s.name);
       const added = newSbs.filter(n => !oldSbs.includes(n));
       const removed = oldSbs.filter(n => !newSbs.includes(n));
-      if (!!old.twoSided !== !!neu.twoSided) parts.push(neu.twoSided ? 'spellbooks made 2 sided' : 'spellbooks made 1 sided');
+      // 2 sided changes: all at once ("All 2 sided") or one spellbook at a time
+      const flipped = neu.rows.filter(r => {
+        const o = old.rows.find(x => x.id === r.id);
+        return o && sbTwo(old, o) !== sbTwo(neu, r);
+      });
+      if (flipped.length && flipped.length === neu.rows.length && new Set(flipped.map(r => sbTwo(neu, r))).size === 1) {
+        parts.push(sbTwo(neu, flipped[0]) ? 'spellbooks made 2 sided' : 'spellbooks made 1 sided');
+      } else {
+        flipped.forEach(r => parts.push('spellbook "' + (r.name || 'unnamed') + '" made ' + (sbTwo(neu, r) ? '2 sided' : '1 sided')));
+      }
       added.forEach(n => parts.push('new spellbook "' + n + '"'));
       removed.forEach(n => parts.push('removed spellbook "' + n + '"'));
       newSbs.forEach(name => {
         const oldS = old.rows.find(s => s.name === name);
         const newS = neu.rows.find(s => s.name === name);
-        if (oldS && newS && !eq(oldS, newS)) {
+        const noSide = r => { const c = Object.assign({}, r); delete c.twoSided; return c; };  // reported above
+        if (oldS && newS && !eq(noSide(oldS), noSide(newS))) {
           parts.push('"' + name + '" changed');
         }
       });
@@ -783,6 +805,8 @@
     status,
     buildReady,
     fixedNumbers,
+    sbTwo,
+    sbAnyTwo,
     describeSectionDiff,
     newId
   };

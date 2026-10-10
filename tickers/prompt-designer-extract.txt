@@ -35,11 +35,13 @@ REQUEST: {id, type:"extract", fid, faction, data:{target, index, image, images, 
   target "sbEachAll" -> six separate spellbook images, data.each = [6 image ids] in order.
                      Image k fills sb.rows[k] (k = 0-5). Open each one with the image command.
                      Send all six rows in ONE replaceSection of "sb".
-  2 SIDED SPELLBOOKS (data.side is "A" or "B", only when the design's sb.twoSided is true):
+  2 SIDED SPELLBOOKS (data.side is "A" or "B", only when at least one spellbook is 2 sided; a row is
+                     2 sided when its own "twoSided" is true, or when it has no "twoSided" and
+                     sb.twoSided ("All 2 sided") is true. Fill side B only for 2 sided rows):
                      side "A" fills the plain fields (name, type, cost, hasEffect, effect, text);
                      side "B" fills ONLY the B fields (nameB, typeB, costB, hasEffectB, effectB, textB).
                      Never touch the other side's fields. Whenever you replace the "sb" section, keep
-                     "twoSided" and every existing field of the side you are not filling exactly as
+                     sb.twoSided, every row's "twoSided" and every existing field of the side you are not filling exactly as
                      they are (read the design first and copy them over).
   DUAL POWERS: when one spellbook (or one side of a 2 sided spellbook) shows TWO separate powers,
                      set dual true (side B: dualB true) and put the first power in the normal fields

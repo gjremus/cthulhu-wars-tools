@@ -130,6 +130,8 @@ After every applied op:
   "units": {"rows": [ UNIT, UNIT, UNIT ]},          // starts with 3 blank rows
   "sbr": {"multiText":"", "rows": [ 6 × {"id","text":"","hasNum":false,"num":null} ]},
   "sb":  {"twoSided":false,                         // 2 sided: each spellbook has side A (plain fields) and side B (...B fields)
+                                                    // shown as "All 2 sided"; each row's own "twoSided" overrides it (row without one
+                                                    // follows sb.twoSided). The page keeps sb.twoSided = every row 2 sided.
           "rows": [ 6 × {"id","name":"","type":null,"cost":0,"hasEffect":false,"effect":null,"text":"",
                          "nameB":"","typeB":null,"costB":0,"hasEffectB":false,"effectB":null,"textB":"",
                          "dual":false, + name2,type2,cost2,hasEffect2,effect2,text2,      // dual powers on side A: power 2 fields

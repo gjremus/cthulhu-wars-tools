@@ -1015,8 +1015,8 @@
       sbTitle.textContent = 'Spellbook Images';
       sbSection.appendChild(sbTitle);
 
-      if (design.sb && design.sb.twoSided) {
-        // 2 sided spellbooks: one set of images for each side
+      if (Rules.sbAnyTwo(design.sb)) {
+        // 2 sided spellbooks (any of them): one set of images for each side
         ['sbImages', 'sbImagesB'].forEach(key => {
           const sub = document.createElement('h4');
           sub.textContent = key === 'sbImagesB' ? 'Side B' : 'Side A';
@@ -1118,8 +1118,8 @@
       const sideB = key === 'sbImagesB';
       if (!design[key]) design[key] = {mode: null, all: null, each: [null, null, null, null, null, null]};
       const sbImages = design[key];
-      const sideName = sideB ? ' (side B)' : (design.sb && design.sb.twoSided ? ' (side A)' : '');
-      const sideData = sideB ? {side: 'B'} : (design.sb && design.sb.twoSided ? {side: 'A'} : {});
+      const sideName = sideB ? ' (side B)' : (Rules.sbAnyTwo(design.sb) ? ' (side A)' : '');
+      const sideData = sideB ? {side: 'B'} : (Rules.sbAnyTwo(design.sb) ? {side: 'A'} : {});
 
       if (!sbImages.mode) {
         const btn1 = document.createElement('button');
