@@ -140,6 +140,8 @@
           button: '',
           cancel: false,
           skip: false,
+          done: false,
+          multiSelect: false,
           leadsToNext: false,
           next: null,
           nextTrigger: ''
@@ -206,6 +208,8 @@
         button: '',
         cancel: false,
         skip: false,
+        done: false,
+        multiSelect: false,
         leadsToNext: false,
         next: null,
         nextTrigger: ''
@@ -269,7 +273,8 @@
   }
 
   function isRowEmpty(row, blankRow) {
-    const a = normalizeForComparison(row);
+    // Fields added later (e.g. menu done/multiSelect) count as their default on older rows
+    const a = normalizeForComparison(Object.assign({}, blankRow, row));
     const b = normalizeForComparison(blankRow);
     return eq(a, b);
   }

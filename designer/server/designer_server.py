@@ -726,6 +726,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                     continue
                 if k == 'skip' and v is False:
                     continue
+                if k in ('done', 'multiSelect') and v is False:
+                    continue
                 if k == 'leadsToNext' and v is False:
                     continue
                 return False
@@ -2024,7 +2026,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                                  "effects": "", "hasNum": False, "num": None}]},
             "menus": {"rows": [{"id": self.new_id(), "name": "", "section": None, "item": None, "prompted": None,
                                 "title": "", "hasSubtitle": False, "subtitle": "", "button": "", "cancel": False,
-                                "skip": False, "leadsToNext": False, "next": None, "nextTrigger": ""}]}
+                                "skip": False, "done": False, "multiSelect": False, "leadsToNext": False, "next": None, "nextTrigger": ""}]}
         }
 
     def blank_unit(self) -> Dict:

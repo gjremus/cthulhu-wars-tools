@@ -60,7 +60,7 @@ PICTURES (card requests with data.images true only):
      --knockout so the background inside the ring becomes see-through too.
 
 MENUS (target "menus" only). A menu = one prompt a player sees in the game (title, optional
-subtitle, one button per choice, optional Cancel/Skip). Schema: MENU in SPEC.md section 5.
+subtitle, one button per choice, optional Cancel/Skip/Done). Schema: MENU in SPEC.md section 5.
   1. Go through every ability text: Unique Faction Ability, each spellbook, each unit's ability,
      Additional Elements, tokens, custom items, regions. Every point where a player must CHOOSE
      something (whether to use it, which unit, which area, which enemy, how many, which option)
@@ -72,6 +72,10 @@ subtitle, one button per choice, optional Cancel/Skip). Schema: MENU in SPEC.md 
      [Enemy] [Spellbook]; subtitle = extra rule reminder if useful (hasSubtitle true); button =
      text of each choice button, with placeholders (e.g. "[Unit] in [Region]"); cancel true when
      the player may back out before paying; skip true for optional "may" abilities.
+     multiSelect true (and done true) when the player may pick SEVERAL of the options one at a
+     time ("any number of", "up to N", "one or more"): after each pick the menu comes back with
+     the options that are left, until the player clicks Done. done true alone = a Done button
+     that ends the choice without the repeat.
   3. Chains: when one choice leads to another (pick enemy -> enemy picks units), set
      leadsToNext true, next = the next menu's id, nextTrigger = what causes it. Give every menu a
      fresh 8-character id first so you can link them.

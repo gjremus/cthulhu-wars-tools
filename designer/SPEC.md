@@ -157,7 +157,8 @@ After every applied op:
 {"id","name":"","section":null,"item":null,      // section ∈ ae|ufa|setup|units|sbr|sb|region|tokens|custom ; item = row id (null for ufa)
  "prompted":null,                                 // Own | 1 Enemy | All enemies (turn order)
  "title":"","hasSubtitle":false,"subtitle":"","button":"",
- "cancel":false,"skip":false,"leadsToNext":false,"next":null,"nextTrigger":""}
+ "cancel":false,"skip":false,"done":false,"multiSelect":false,   // multiSelect: pick one, the menu returns with the remaining options until Done (needs done:true)
+ "leadsToNext":false,"next":null,"nextTrigger":""}
 ```
 
 ## 6. Requests (ticker / owner queue) — `requests.json`

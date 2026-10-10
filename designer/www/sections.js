@@ -1249,6 +1249,15 @@
 
       menuDiv.appendChild(checkboxField('Cancel Button', menu.cancel, val => ctx.set(`menus.rows.${menu.id}.cancel`, val)));
       menuDiv.appendChild(checkboxField('Skip Button', menu.skip, val => ctx.set(`menus.rows.${menu.id}.skip`, val)));
+      menuDiv.appendChild(checkboxField('Done Button', !!menu.done, val => {
+        // Multi select needs a Done button to finish, so turning Done off also turns multi select off
+        if (!val && menu.multiSelect) ctx.set(`menus.rows.${menu.id}.multiSelect`, false);
+        ctx.set(`menus.rows.${menu.id}.done`, val);
+      }));
+      menuDiv.appendChild(checkboxField('Multi select (pick one option, the menu comes back with the options that are left so more can be picked, until Done is clicked)', !!menu.multiSelect, val => {
+        if (val && !menu.done) ctx.set(`menus.rows.${menu.id}.done`, true);
+        ctx.set(`menus.rows.${menu.id}.multiSelect`, val);
+      }));
 
       menuDiv.appendChild(checkboxField('Can lead to another Menu prompt', menu.leadsToNext, val => ctx.set(`menus.rows.${menu.id}.leadsToNext`, val)));
 
@@ -1316,9 +1325,15 @@
       }, substitute(menu.button)));
     }
 
+    if (menu.multiSelect) {
+      previewDiv.appendChild(h('div', {style: 'text-align: center; margin: 10px 0; font-size: 13px; color: #ccc; font-style: italic;'},
+        'Multi select: after each pick this menu comes back with the remaining options, until Done is clicked.'));
+    }
+
     const buttons = [];
     if (menu.cancel) buttons.push(h('div', {className: 'sx-menu-preview-btn'}, 'Cancel'));
     if (menu.skip) buttons.push(h('div', {className: 'sx-menu-preview-btn'}, 'Skip'));
+    if (menu.done || menu.multiSelect) buttons.push(h('div', {className: 'sx-menu-preview-btn'}, 'Done'));
 
     if (buttons.length > 0) {
       previewDiv.appendChild(h('div', {className: 'sx-menu-preview-buttons'}, ...buttons));
