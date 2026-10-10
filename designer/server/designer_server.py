@@ -2062,7 +2062,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
 
     def new_design(self) -> Dict:
         """Create a blank design with defaults."""
-        return {
+        design = {
             "meta": {"color": None},
             "card": {"image": None, "glyph": None},
             "sbImages": {"mode": None, "all": None, "each": [None]*6},
@@ -2129,6 +2129,10 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                                 "greyedReason": "", "infoOnly": False, "confirm": False, "confirmText": "",
                                 "showPicked": False, "leadsToNext": False, "next": None, "nextTrigger": ""}]}
         }
+        # Every design section ends with a free "Any custom logic or rules" box
+        for key in ("ae", "ufa", "setup", "units", "sbr", "sb", "region", "tokens", "custom"):
+            design[key]["customLogic"] = ""
+        return design
 
     def blank_unit(self) -> Dict:
         """Create a blank unit row."""

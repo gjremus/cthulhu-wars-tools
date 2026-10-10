@@ -36,7 +36,7 @@
   }
 
   function newDesign() {
-    return {
+    const design = {
       meta: {color: null},
       card: {image: null, glyph: null},
       sbImages: {mode: null, all: null, each: [null, null, null, null, null, null]},
@@ -171,6 +171,9 @@
         }]
       }
     };
+    // Every design section ends with a free "Any custom logic or rules" box
+    BUILD_SECTIONS.forEach(key => { design[key].customLogic = ''; });
+    return design;
   }
 
   function blankUnit() {

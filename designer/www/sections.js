@@ -1491,6 +1491,14 @@
     const renderer = renderers[key];
     if (renderer) {
       renderer(container, ctx);
+      // Free box at the bottom of every design section (not Menu Design)
+      if (window.Rules.BUILD_SECTIONS.includes(key)) {
+        const sec = ctx.design[key] || {};
+        container.appendChild(textField('Any custom logic or rules', sec.customLogic,
+          val => ctx.set(key + '.customLogic', val),
+          {rows: 8, greyed: key === 'ae' && !sec.enabled,
+           hint: 'Anything about this section that the fields above cannot say: special timing, exceptions, interactions, edge cases'}));
+      }
     } else {
       container.appendChild(h('p', {}, 'Section not implemented: ' + key));
     }

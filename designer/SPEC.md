@@ -108,6 +108,7 @@ After every applied op:
 - Every table row has a stable `"id"` (8 random chars), created by the client when the row is added.
 - Image fields hold an image id string or `null`.
 - Numbers are integers or `null` (empty). Booleans are `true/false`.
+- Every design section (ae, ufa, setup, units, sbr, sb, region, tokens, custom — not menus) also has `"customLogic": ""`, the free "Any custom logic or rules" box at the bottom of the section. Optional; never needed for Complete.
 - Defaults below are what a brand-new faction contains. Default values do **not** count as content when deciding "empty" vs "edited" (§8).
 ```json
 {
