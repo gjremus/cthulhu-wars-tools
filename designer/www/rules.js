@@ -7,6 +7,9 @@
   const UNIT_TYPES = ['Cultist', 'Monster', 'Terror', 'Great Old One', 'Elder God',
                       'Building', 'Custom Gate'];
 
+  // Stand-alone (neutral) units from My Units: no Cultists, Buildings or Gates, which belong to a faction
+  const NEUTRAL_UNIT_TYPES = ['Monster', 'Terror', 'Great Old One', 'Elder God'];
+
   const COST_TYPES = ['Fixed', 'Variable', 'Awakening'];
 
   const COMBAT_TYPES = ['Fixed Dice', 'Variable Dice', 'Fixed Results', 'Variable Results', 'N/A'];
@@ -798,6 +801,7 @@
   window.Rules = {
     SECTIONS,
     BUILD_SECTIONS,
+    NEUTRAL_UNIT_TYPES,
     SB_TYPES,
     UNIT_TYPES,
     COST_TYPES,

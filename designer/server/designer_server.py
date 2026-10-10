@@ -193,6 +193,15 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                     self.handle_get_extract_queue(fid)
                     return
 
+        # Neutral units (stand-alone, not part of any faction)
+        if path == '/designer/api/units':
+            self.handle_list_units()
+            return
+        m = re.fullmatch(r'/designer/api/units/([A-Za-z0-9_-]+)', path)
+        if m:
+            self.handle_get_unit(m.group(1))
+            return
+
         # Admin endpoints
         m = re.fullmatch(r'/designer/api/live/([A-Za-z0-9]{2,3})/values', path)
         if m:
@@ -229,6 +238,15 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         # Faction endpoints
         if path == '/designer/api/factions':
             self.handle_create_faction()
+            return
+
+        # Neutral unit endpoints
+        if path == '/designer/api/units':
+            self.handle_create_unit()
+            return
+        m = re.fullmatch(r'/designer/api/units/([A-Za-z0-9_-]+)/patch', path)
+        if m:
+            self.handle_patch_unit(m.group(1))
             return
 
         if path.startswith('/designer/api/factions/'):
@@ -538,6 +556,124 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             atomic_write(v_file, faction["design"])
 
         self.send_json(faction)
+
+    # ── Neutral units ─────────────────────────────────────────────────────────────
+    # Stored apart from factions in data/units/<uid>/unit.json. The design is shaped like a faction
+    # design cut down to one unit ({"meta", "units": {"rows": [UNIT], "customLogic"}}), so the same
+    # Units form edits it. No versions: changes save in place.
+
+    def units_dir(self) -> Path:
+        return self.server.data_dir / "units"
+
+    def load_unit(self, uid: str) -> Optional[Dict]:
+        f = self.units_dir() / uid / "unit.json"
+        return load_json(f) if f.exists() else None
+
+    def iter_units(self):
+        d = self.units_dir()
+        if d.exists():
+            for u_dir in d.iterdir():
+                f = u_dir / "unit.json"
+                if u_dir.is_dir() and f.exists():
+                    yield u_dir, load_json(f)
+
+    def new_neutral_design(self) -> Dict:
+        row = self.blank_unit()
+        row.pop("relatedSb", None)       # spellbooks belong to a faction
+        row.pop("relatedSbNames", None)
+        return {"meta": {"color": None}, "units": {"rows": [row], "customLogic": ""}}
+
+    def unit_summary(self, unit: Dict) -> Dict:
+        row = (unit.get("design", {}).get("units", {}).get("rows") or [{}])[0]
+        return {"id": unit["id"], "name": row.get("name") or "", "type": row.get("type"),
+                "created": unit["created"], "updated": unit["updated"]}
+
+    def handle_list_units(self):
+        """GET /designer/api/units"""
+        username = self.verify_session()
+        if not username:
+            self.send_error_json("Unauthorized", 401)
+            return
+        units = [self.unit_summary(u) for _, u in self.iter_units() if u.get("owner") == username]
+        units.sort(key=lambda u: u["updated"], reverse=True)
+        self.send_json({"units": units})
+
+    def handle_create_unit(self):
+        """POST /designer/api/units {name}"""
+        username = self.verify_session()
+        if not username:
+            self.send_error_json("Unauthorized", 401)
+            return
+        body = self.read_json_body()
+        if body is None:
+            return
+        name = str(body.get('name', '')).strip()
+        if not name or len(name) > 60:
+            self.send_error_json("Unit name must be 1-60 characters")
+            return
+        now = int(time.time())
+        design = self.new_neutral_design()
+        design["units"]["rows"][0]["name"] = name
+        with WRITE_LOCK:
+            uid = self.new_id()
+            while (self.units_dir() / uid).exists() or not re.fullmatch(r'[A-Za-z0-9_-]+', uid):
+                uid = self.new_id()
+            unit = {"id": uid, "owner": username, "created": now, "updated": now, "design": design}
+            (self.units_dir() / uid).mkdir(parents=True, exist_ok=True)
+            atomic_write(self.units_dir() / uid / "unit.json", unit)
+        self.send_json(unit)
+
+    def handle_get_unit(self, uid: str):
+        """GET /designer/api/units/<uid>"""
+        username = self.verify_session()
+        if not username:
+            self.send_error_json("Unauthorized", 401)
+            return
+        unit = self.load_unit(uid)
+        if not unit:
+            self.send_error_json("Unit not found", 404)
+            return
+        if unit.get("owner") != username:
+            self.send_error_json("Forbidden", 403)
+            return
+        self.send_json(unit)
+
+    def handle_patch_unit(self, uid: str):
+        """POST /designer/api/units/<uid>/patch {ops: [{op: "set", path, value}]}"""
+        username = self.verify_session()
+        if not username:
+            self.send_error_json("Unauthorized", 401)
+            return
+        body = self.read_json_body()
+        if body is None:
+            return
+        ops = body.get('ops', [])
+        if not isinstance(ops, list):
+            self.send_error_json("ops must be an array")
+            return
+        with WRITE_LOCK:
+            unit = self.load_unit(uid)
+            if not unit:
+                self.send_error_json("Unit not found", 404)
+                return
+            if unit.get("owner") != username:
+                self.send_error_json("Forbidden", 403)
+                return
+            design = unit["design"]
+            row_id = design["units"]["rows"][0]["id"]
+            for op in ops:
+                path = op.get('path', '') if isinstance(op, dict) else ''
+                # One unit only: no added or deleted rows, and only that unit's fields (or the custom logic box)
+                ok = op.get('op') == 'set' and (
+                    path == 'units.customLogic' or
+                    re.fullmatch(r'units\.rows\.' + re.escape(row_id) + r'\.[A-Za-z0-9]+', path))
+                if not ok:
+                    self.send_error_json("Invalid change for a unit")
+                    return
+                self.set_path_value(design, path, op.get('value'))
+            unit["updated"] = int(time.time())
+            atomic_write(self.units_dir() / uid / "unit.json", unit)
+        self.send_json({"updated": unit["updated"]})
 
     def handle_get_faction(self, fid: str):
         """GET /designer/api/factions/<fid>"""
@@ -1388,7 +1524,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 "created": user["created"],
                 "lastLogin": user.get("lastLogin"),
                 "imageBytes": user.get("imageBytes", 0),
-                "factions": user_factions
+                "factions": user_factions,
+                "units": [self.unit_summary(u) for _, u in self.iter_units() if u.get("owner") == username]
             })
 
         result.sort(key=lambda u: u["lastLogin"] or 0, reverse=True)
@@ -1467,6 +1604,12 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                                     shutil.rmtree(fid_dir)
                                     deleted_fids.add(fid_dir.name)
 
+                    # ...and their neutral units
+                    for u_dir, unit in list(self.iter_units()):
+                        if unit.get("owner") == username_lc:
+                            import shutil
+                            shutil.rmtree(u_dir)
+
                     # Remove user
                     del users[username_lc]
 
@@ -1503,6 +1646,10 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                     for v_file in v_dir.iterdir():
                         if v_file.suffix == '.json':
                             self.collect_images_from_json(load_json(v_file), referenced)
+
+        # Neutral units keep their images too
+        for _, unit in self.iter_units():
+            self.collect_images_from_json(unit, referenced)
 
         # Delete unreferenced images and update user quotas
         users_file = self.server.data_dir / "users.json"
@@ -1549,10 +1696,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         """Get images referenced by a user's factions."""
         user_images = set()
 
-        if not factions_dir.exists():
-            return user_images
-
-        for fid_dir in factions_dir.iterdir():
+        for fid_dir in (factions_dir.iterdir() if factions_dir.exists() else []):
             if not fid_dir.is_dir():
                 continue
             faction_file = fid_dir / "faction.json"
@@ -1572,6 +1716,10 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 for v_file in v_dir.iterdir():
                     if v_file.suffix == '.json':
                         self.collect_images_from_json(load_json(v_file), user_images)
+
+        for _, unit in self.iter_units():
+            if unit.get("owner") == username:
+                self.collect_images_from_json(unit, user_images)
 
         return user_images
 

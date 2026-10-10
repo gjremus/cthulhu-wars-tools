@@ -68,6 +68,8 @@
         this.renderRegister();
       } else if (path === 'factions') {
         this.renderFactionList();
+      } else if (path === 'unit' && rest[0]) {
+        this.renderUnitScreen(rest[0]);
       } else if (path === 'faction') {
         const fid = rest[0];
         const screen = rest.slice(1).join('/');
@@ -373,10 +375,11 @@
     }
 
     // Autosave
-    scheduleSave(fid, path, value) {
+    // kind 'unit' = a neutral unit from My Units (fid is then its unit id)
+    scheduleSave(fid, path, value, kind = 'faction') {
       if (this.isReadOnly()) return;
-      const key = `${fid}:${path}`;
-      this.saveQueue.set(key, {fid, path, value});
+      const key = `${kind}:${fid}:${path}`;
+      this.saveQueue.set(key, {fid, path, value, kind});
 
       clearTimeout(this.saveTimer);
       this.saveTimer = setTimeout(() => this.flushSaves(), 600);
@@ -390,17 +393,20 @@
       const saves = Array.from(this.saveQueue.values());
       this.saveQueue.clear();
 
-      // Group by fid
+      // Group by faction (or unit)
       const byFid = {};
-      for (const {fid, path, value} of saves) {
-        if (!byFid[fid]) byFid[fid] = [];
-        byFid[fid].push({op: 'set', path, value});
+      for (const {fid, path, value, kind} of saves) {
+        const g = `${kind}:${fid}`;
+        if (!byFid[g]) byFid[g] = [];
+        byFid[g].push({op: 'set', path, value});
       }
 
       // Send patches
-      for (const [fid, ops] of Object.entries(byFid)) {
+      for (const [g, ops] of Object.entries(byFid)) {
+        const [kind, fid] = g.split(':');
         try {
-          await this.patch(fid, ops);
+          if (kind === 'unit') await this.api('POST', `/units/${fid}/patch`, {ops});
+          else await this.patch(fid, ops);
           this.showSaveIndicator('saved', 'All changes saved');
           setTimeout(() => this.hideSaveIndicator(), 2000);
         } catch (err) {
@@ -409,7 +415,7 @@
           // Retry after delay
           setTimeout(() => {
             for (const op of ops) {
-              this.saveQueue.set(`${fid}:${op.path}`, {fid, path: op.path, value: op.value});
+              this.saveQueue.set(`${kind}:${fid}:${op.path}`, {fid, path: op.path, value: op.value, kind});
             }
             this.flushSaves();
           }, 5000);
@@ -634,7 +640,10 @@
       this.root.innerHTML = '<div class="spinner"></div>';
 
       try {
-        const factions = await this.loadFactionList();
+        const [factions, units] = await Promise.all([
+          this.loadFactionList(),
+          this.api('GET', '/units').then(d => d.units)
+        ]);
 
         this.root.innerHTML = '';
 
@@ -645,7 +654,7 @@
         header.style.marginBottom = '20px';
 
         const title = document.createElement('h1');
-        title.textContent = 'My Factions';
+        title.textContent = 'My Customs';
         header.appendChild(title);
 
         const logoutBtn = document.createElement('button');
@@ -654,6 +663,11 @@
         header.appendChild(logoutBtn);
 
         this.root.appendChild(header);
+
+        const factionsTitle = document.createElement('h2');
+        factionsTitle.textContent = 'My Factions';
+        factionsTitle.style.marginBottom = '12px';
+        this.root.appendChild(factionsTitle);
 
         const createBtn = document.createElement('button');
         createBtn.className = 'primary';
@@ -727,6 +741,47 @@
             by.className = 'status';
             by.textContent = `Designed by ${faction.ownerName || faction.owner}`;
             card.appendChild(by);
+            grid.appendChild(card);
+          }
+          this.root.appendChild(grid);
+        }
+
+        // Neutral units, kept apart from any faction
+        const unitsTitle = document.createElement('h2');
+        unitsTitle.textContent = 'My Units';
+        unitsTitle.style.margin = '30px 0 12px';
+        this.root.appendChild(unitsTitle);
+
+        const createUnitBtn = document.createElement('button');
+        createUnitBtn.className = 'primary';
+        createUnitBtn.textContent = 'Create New Unit';
+        createUnitBtn.style.marginBottom = '20px';
+        createUnitBtn.onclick = () => this.showCreateUnitDialog();
+        this.root.appendChild(createUnitBtn);
+
+        if (units.length === 0) {
+          const p = document.createElement('p');
+          p.textContent = 'No units yet. Create one to get started.';
+          p.style.color = '#888';
+          this.root.appendChild(p);
+        } else {
+          const grid = document.createElement('div');
+          grid.className = 'faction-grid';
+          for (const unit of units) {
+            const card = document.createElement('div');
+            card.className = 'faction-card';
+            card.onclick = () => { window.location.hash = `#/unit/${unit.id}`; };
+            const name = document.createElement('h3');
+            name.textContent = unit.name || 'Unnamed unit';
+            card.appendChild(name);
+            const type = document.createElement('div');
+            type.className = 'status';
+            type.textContent = `Type: ${unit.type || 'not chosen'}`;
+            card.appendChild(type);
+            const updated = document.createElement('div');
+            updated.className = 'status';
+            updated.textContent = `Updated: ${new Date(unit.updated * 1000).toLocaleDateString()}`;
+            card.appendChild(updated);
             grid.appendChild(card);
           }
           this.root.appendChild(grid);
@@ -1414,6 +1469,129 @@
         const hash = window.location.hash;
         setTimeout(() => { if (window.location.hash === hash) this.root.appendChild(bottom); }, 400);
       }
+    }
+
+    showCreateUnitDialog() {
+      const overlay = document.createElement('div');
+      overlay.className = 'confirm-overlay';
+
+      const dialog = document.createElement('div');
+      dialog.className = 'confirm-dialog';
+      dialog.style.maxWidth = '600px';
+
+      const title = document.createElement('h2');
+      title.textContent = 'Create New Unit';
+      title.style.marginBottom = '20px';
+      dialog.appendChild(title);
+
+      const nameGroup = document.createElement('div');
+      nameGroup.className = 'form-group';
+      const nameLabel = document.createElement('label');
+      nameLabel.textContent = 'Unit Name';
+      const nameInput = document.createElement('input');
+      nameInput.type = 'text';
+      nameInput.maxLength = 60;
+      nameInput.style.width = '100%';
+      nameGroup.appendChild(nameLabel);
+      nameGroup.appendChild(nameInput);
+      dialog.appendChild(nameGroup);
+
+      const buttons = document.createElement('div');
+      buttons.className = 'buttons';
+
+      const createBtn = document.createElement('button');
+      createBtn.className = 'primary';
+      createBtn.textContent = 'Create';
+      createBtn.disabled = true;
+      nameInput.addEventListener('input', () => { createBtn.disabled = !nameInput.value.trim(); });
+
+      createBtn.onclick = async () => {
+        try {
+          createBtn.disabled = true;
+          const unit = await this.api('POST', '/units', {name: nameInput.value.trim()});
+          overlay.remove();
+          window.location.hash = `#/unit/${unit.id}`;
+        } catch (err) {
+          createBtn.disabled = false;
+          this.showError(dialog, err.message);
+        }
+      };
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.onclick = () => overlay.remove();
+
+      buttons.appendChild(createBtn);
+      buttons.appendChild(cancelBtn);
+      dialog.appendChild(buttons);
+
+      overlay.appendChild(dialog);
+      document.body.appendChild(overlay);
+      nameInput.focus();
+    }
+
+    // A neutral unit from My Units: the faction Units form, one unit only, nothing tied to a faction
+    async renderUnitScreen(uid) {
+      this.root.innerHTML = '<div class="spinner"></div>';
+      // A neutral unit is always the user's own, so nothing from a faction opened before may make it read only
+      this.state.currentFaction = null;
+      let unit;
+      try {
+        unit = await this.api('GET', `/units/${uid}`);
+      } catch (err) {
+        this.root.innerHTML = `<p style="color: #f87171;">Error loading unit: ${err.message}</p>`;
+        return;
+      }
+      if (window.location.hash.replace(/\/$/, '') !== `#/unit/${uid}`) return;
+      const design = unit.design;
+
+      this.root.innerHTML = '';
+      const title = document.createElement('h1');
+      title.className = 'faction-title';
+      title.textContent = design.units.rows[0].name || 'Unit';
+      this.root.appendChild(title);
+
+      const container = document.createElement('div');
+      this.root.appendChild(container);
+
+      const backBtn = document.createElement('button');
+      backBtn.textContent = 'Back to My Customs';
+      backBtn.style.marginTop = '20px';
+      backBtn.onclick = async () => {
+        await this.flushSaves();
+        window.location.hash = '#/factions';
+      };
+      this.root.appendChild(backBtn);
+
+      const ctx = {
+        design,
+        neutral: true,
+        reference: this.state.reference,
+        set: (path, value) => {
+          this.setDesignValue(design, path, value);
+          this.scheduleSave(uid, path, value, 'unit');
+          if (/\.name$/.test(path)) title.textContent = value || 'Unit';
+          // Same redraw rule as faction sections: not while typing in a text or number box
+          const ev = window.event;
+          const t = ev && ev.target;
+          const typing = ev && ev.type === 'input' && t &&
+            (t.tagName === 'TEXTAREA' || (t.tagName === 'INPUT' && /^(text|number|search|email|url)$/.test(t.type)));
+          if (!typing) ctx.rerender();
+        },
+        uploadImage: (kind) => this.uploadImage(kind),
+        imgUrl: (id) => this.imgUrl(id),
+        confirm: (msg, yes, no) => this.confirm(msg, yes, no),
+        rerender: () => {
+          const y = window.scrollY;
+          container.innerHTML = '';
+          Sections.render('units', container, ctx);
+          window.scrollTo(0, y);
+        },
+        openOverlay: (content) => this.openOverlay(content),
+        closeOverlay: () => this.closeOverlay()
+      };
+
+      Sections.render('units', container, ctx);
     }
 
     renderSectionScreen(key) {

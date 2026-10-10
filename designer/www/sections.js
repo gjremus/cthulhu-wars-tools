@@ -495,14 +495,18 @@
   function renderUnits(container, ctx) {
     const d = ctx.design.units;
     const ref = ctx.reference || {};
+    // ctx.neutral: a stand-alone unit from My Units. One unit only, and nothing that belongs to a
+    // faction (cultists, buildings, gates, its spellbooks, adding or deleting units).
+    const neutral = !!ctx.neutral;
     const sbRows = ctx.design.sb ? ctx.design.sb.rows : [];
-    const sbStatus = window.Rules.status('sb', ctx.design);
+    const sbStatus = neutral ? null : window.Rules.status('sb', ctx.design);
+    const unitTypes = neutral ? window.Rules.NEUTRAL_UNIT_TYPES : window.Rules.UNIT_TYPES;
 
-    d.rows.forEach((unit, idx) => {
+    d.rows.slice(0, neutral ? 1 : d.rows.length).forEach((unit, idx) => {
       const unitDiv = h('div', {style: 'margin-bottom: 40px; padding: 16px; border: 2px solid #444;'});
-      unitDiv.appendChild(h('h3', {}, `Unit ${idx + 1}`));
+      if (!neutral) unitDiv.appendChild(h('h3', {}, `Unit ${idx + 1}`));
 
-      unitDiv.appendChild(selectField('Type', unit.type, window.Rules.UNIT_TYPES, val => {
+      unitDiv.appendChild(selectField('Type', unit.type, unitTypes, val => {
         ctx.set(`units.rows.${unit.id}.type`, val);
       }));
 
@@ -587,36 +591,38 @@
       }
 
       // Related Spellbooks
-      const sbOptions = sbRows.filter(s => s.name).map(s => ({value: s.id, label: s.name}));
-      const relatedDiv = h('div', {className: 'sx-field' + (sbOptions.length === 0 || (unit.relatedSbNames.length > 0 && sbStatus !== 'Complete') ? ' sx-greyed' : '')});
-      relatedDiv.appendChild(h('label', {}, 'Related Spellbooks'));
+      if (!neutral) {
+        const sbOptions = sbRows.filter(s => s.name).map(s => ({value: s.id, label: s.name}));
+        const relatedDiv = h('div', {className: 'sx-field' + (sbOptions.length === 0 || (unit.relatedSbNames.length > 0 && sbStatus !== 'Complete') ? ' sx-greyed' : '')});
+        relatedDiv.appendChild(h('label', {}, 'Related Spellbooks'));
 
-      if (sbOptions.length === 0) {
-        relatedDiv.appendChild(h('div', {}, 'None Defined Yet'));
-      } else {
-        sbOptions.forEach(opt => {
-          const checked = unit.relatedSb.includes(opt.value);
-          relatedDiv.appendChild(h('label', {style: 'display: block; margin: 4px 0;'},
-            h('input', {
-              type: 'checkbox',
-              checked,
-              onchange: e => {
-                const newVal = e.target.checked
-                  ? [...unit.relatedSb, opt.value]
-                  : unit.relatedSb.filter(id => id !== opt.value);
-                ctx.set(`units.rows.${unit.id}.relatedSb`, newVal);
-              }
-            }),
-            ' ' + opt.label
-          ));
-        });
+        if (sbOptions.length === 0) {
+          relatedDiv.appendChild(h('div', {}, 'None Defined Yet'));
+        } else {
+          sbOptions.forEach(opt => {
+            const checked = unit.relatedSb.includes(opt.value);
+            relatedDiv.appendChild(h('label', {style: 'display: block; margin: 4px 0;'},
+              h('input', {
+                type: 'checkbox',
+                checked,
+                onchange: e => {
+                  const newVal = e.target.checked
+                    ? [...unit.relatedSb, opt.value]
+                    : unit.relatedSb.filter(id => id !== opt.value);
+                  ctx.set(`units.rows.${unit.id}.relatedSb`, newVal);
+                }
+              }),
+              ' ' + opt.label
+            ));
+          });
+        }
+        unitDiv.appendChild(relatedDiv);
       }
-      unitDiv.appendChild(relatedDiv);
 
       unitDiv.appendChild(textField('Special Ability Name', unit.abilityName, val => ctx.set(`units.rows.${unit.id}.abilityName`, val)));
       unitDiv.appendChild(textField('Special Ability Text', unit.abilityText, val => ctx.set(`units.rows.${unit.id}.abilityText`, val), {rows: 4}));
 
-      if (idx >= 3) {
+      if (idx >= 3 && !neutral) {
         unitDiv.appendChild(h('button', {className: 'sx-btn', onclick: async () => {
           const confirmed = await ctx.confirm('Are you sure you want to delete this unit?', 'Yes - delete', 'No - cancel');
           if (confirmed) ctx.deleteRow('units.rows', unit.id);
@@ -626,6 +632,7 @@
       container.appendChild(unitDiv);
     });
 
+    if (neutral) return;
     container.appendChild(h('button', {className: 'sx-btn', onclick: () => {
       const newUnit = window.Rules.blankRow('units.rows');
       ctx.addRow('units.rows', newUnit);
