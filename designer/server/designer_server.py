@@ -1469,10 +1469,30 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             requests.append(request)
             requests_data["requests"] = requests
             atomic_write(requests_file, requests_data)
-            # Add terminal entry for admin console
-            self.add_terminal_entry("design build", self.display_name(username),
-                                    text or f"{req_type} request for unit {unit_name}",
-                                    "Waiting to be picked up.", ref=req_id)
+
+            # For unit builds, try to write to console queue
+            if req_type == "build":
+                queue_written = False
+                try:
+                    clean_name = unit_name.replace('\n', ' ').replace('[', '').replace(']', '')
+                    timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+                    display_user = self.display_name(username)
+                    queue_line = f"[{timestamp}] UNIT-BUILD {req_id}: Build the neutral unit \"{clean_name}\" designed by {display_user} into the homebrew build (designer unit id {uid}).\n"
+                    with open(self.server.console_queue_path, 'a') as f:
+                        f.write(queue_line)
+                    queue_written = True
+                except OSError:
+                    pass
+
+                if queue_written:
+                    request["status"] = "notified"
+                    requests_data["requests"] = requests
+                    atomic_write(requests_file, requests_data)
+                else:
+                    # Fallback: add terminal entry for admin console
+                    self.add_terminal_entry("design build", self.display_name(username),
+                                            text or f"{req_type} request for unit {unit_name}",
+                                            "Waiting to be picked up.", ref=req_id)
 
             # Update unit build status
             unit["build"] = unit.get("build", {
@@ -1537,6 +1557,9 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             self.handle_admin_get_faction(fid)
         elif endpoint == 'view-faction' and len(parts) >= 7:
             self.handle_admin_view_faction(parts[6])
+        elif endpoint == 'units' and len(parts) >= 7:
+            uid = parts[6]
+            self.handle_admin_get_unit(uid)
         elif endpoint == 'image-usage':
             self.handle_admin_image_usage()
         elif endpoint == 'terminal-log':
@@ -1587,6 +1610,16 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                     self.handle_admin_live_game_versions(fid)
                 elif action == 'viewers':
                     self.handle_admin_viewers(fid)
+                else:
+                    self.send_error_json("Unknown admin endpoint", 404)
+            else:
+                self.send_error_json("Invalid admin path", 400)
+        elif endpoint == 'units' and len(parts) >= 7:
+            uid = parts[6]
+            if len(parts) >= 8:
+                action = parts[7]
+                if action == 'build-status':
+                    self.handle_admin_unit_build_status(uid)
                 else:
                     self.send_error_json("Unknown admin endpoint", 404)
             else:
@@ -2152,6 +2185,61 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             "diskFreeBytes": stat.free
         })
 
+    def handle_admin_get_unit(self, uid: str):
+        """GET admin/units/<uid>"""
+        unit = self.load_unit(uid)
+        if not unit:
+            self.send_error_json("Unit not found", 404)
+            return
+        self.send_json(unit)
+
+    def handle_admin_unit_build_status(self, uid: str):
+        """POST admin/units/<uid>/build-status"""
+        body = self.read_json_body()
+        if not body:
+            return
+
+        status = body.get('status')
+        version = body.get('version')
+
+        valid_statuses = ['in_progress', 'built', 'none']
+        if status not in valid_statuses:
+            self.send_error_json(f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
+            return
+
+        with WRITE_LOCK:
+            unit = self.load_unit(uid)
+            if not unit:
+                self.send_error_json("Unit not found", 404)
+                return
+
+            build = unit.setdefault("build", {
+                "status": "none",
+                "liveVersion": None,
+                "requestedAt": None,
+                "builtAt": None,
+                "history": []
+            })
+
+            build["status"] = status
+
+            if status == 'built' and version:
+                build["liveVersion"] = version
+                build["builtAt"] = int(time.time())
+
+                # Add to history if not already there
+                if not any(h.get("version") == version for h in build.get("history", [])):
+                    build.setdefault("history", []).append({
+                        "version": version,
+                        "builtAt": build["builtAt"]
+                    })
+
+            unit["updated"] = int(time.time())
+            unit_file = self.units_dir() / uid / "unit.json"
+            atomic_write(unit_file, unit)
+
+        self.send_json({"ok": True})
+
     # ── Helpers ──────────────────────────────────────────────────────────────────
 
     # ---- Read-only sharing, admin import, Claude terminal log ----
@@ -2432,6 +2520,7 @@ def main():
     parser.add_argument('--host', default='127.0.0.1', help='Host to bind to')
     parser.add_argument('--token-hash-file', required=True, help='Admin token hash file')
     parser.add_argument('--reference', default='', help='Path to reference.json')
+    parser.add_argument('--console-queue', default='/tmp/claude-prompts.log', help='Console queue file path')
 
     args = parser.parse_args()
 
@@ -2453,6 +2542,7 @@ def main():
     server.data_dir = data_dir
     server.admin_token_hash_file = Path(args.token_hash_file)
     server.reserved_acronyms = reserved
+    server.console_queue_path = Path(args.console_queue)
 
     print(f"CW Faction Designer Server running on {args.host}:{args.port}", file=sys.stderr)
     print(f"Data directory: {data_dir}", file=sys.stderr)

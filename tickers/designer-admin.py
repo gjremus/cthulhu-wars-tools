@@ -6,6 +6,7 @@ Reads the owner admin token from its file so it never has to appear in a prompt.
 
   designer-admin.py list-extract            open extract requests (JSON array; [] if none)
   designer-admin.py faction <fid>           full faction record (JSON)
+  designer-admin.py unit <uid>              full unit record (JSON)
   designer-admin.py image <imageId>         download image, convert to PNG, print local path
   designer-admin.py patch <fid> <ops.json>  POST {"ops": [...]} from the file to admin patch
   designer-admin.py done <rid> [summary...] mark request done; the summary (one or two plain
@@ -17,6 +18,10 @@ Reads the owner admin token from its file so it never has to appear in a prompt.
   designer-admin.py tlog-summary <id> <summaryFile>
                                             set that row's summary from a file
   designer-admin.py handoff <rid> <reason>  queue request for the Sonnet fallback
+  designer-admin.py unit-build-status <uid> <status> [version]
+                                            set unit build status (status: in_progress, built, none)
+  designer-admin.py request-status <rid> <status>
+                                            set request status
   designer-admin.py grid <imageId> [x y w h]
                                             copy with labelled pixel grid (or a zoomed area of it)
                                             so you can read off crop coordinates; prints path
@@ -292,6 +297,8 @@ def main():
     elif cmd == 'faction' and len(args) == 1:
         mark_started(args[0])
         print(json.dumps(api(f'factions/{args[0]}'), indent=2))
+    elif cmd == 'unit' and len(args) == 1:
+        print(json.dumps(api(f'units/{args[0]}'), indent=2))
     elif cmd == 'image' and len(args) == 1:
         image(args[0])
     elif cmd == 'patch' and len(args) == 2:
@@ -314,6 +321,13 @@ def main():
         api(f'terminal-log/{args[0]}', {'summary': summary})
     elif cmd == 'handoff' and len(args) >= 2:
         handoff(args[0], ' '.join(args[1:]))
+    elif cmd == 'unit-build-status' and len(args) in (2, 3):
+        body = {'status': args[1]}
+        if len(args) == 3:
+            body['version'] = args[2]
+        print(json.dumps(api(f'units/{args[0]}/build-status', body)))
+    elif cmd == 'request-status' and len(args) == 2:
+        print(json.dumps(api(f'requests/{args[0]}', {'status': args[1]})))
     elif cmd == 'grid' and len(args) in (1, 5):
         need_pil()
         grid(args[0], ints(args[1:]) if len(args) == 5 else None)

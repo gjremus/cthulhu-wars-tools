@@ -134,13 +134,16 @@ def main():
         return
 
     # Build requests: notify once, then they move to "notified"
+    # Unit builds that are still "open" are handled (already notified ones skip)
     for req in requests:
         if req['type'] != 'build' or req['id'] in seen_ids:
             continue
-        faction = req.get('faction', 'Unknown')
+        if req.get('kind') == 'unit' and req.get('status') != 'open':
+            continue
+        name = req.get('faction') or req.get('unit_name', 'Unknown')
         user = req.get('user', 'unknown')
-        title = "Faction design ready"
-        message = f"Prompt Claude to execute the build for {faction} ({user})"
+        title = "Unit design ready" if req.get('kind') == 'unit' else "Faction design ready"
+        message = f"Prompt Claude to execute the build for {name} ({user})"
         send_notification(title, message)
 
         alert_line = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {title}: {message}"
@@ -149,7 +152,7 @@ def main():
         mark_notified(token, req['id'])
         seen_ids.add(req['id'])
         save_state(seen_ids)
-        print(f"[build] {faction} — notified owner")
+        print(f"[build] {name} — notified owner")
 
     # Ticker requests stay queued until the ticker marks them done, so a
     # crashed tick is retried. Only rewrite the file when the list changes.

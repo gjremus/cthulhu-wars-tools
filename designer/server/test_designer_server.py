@@ -46,13 +46,15 @@ class DesignerServerTest(unittest.TestCase):
 
         # Start server
         server_path = Path(__file__).parent / "designer_server.py"
+        cls.console_queue = cls.data_dir / 'console-queue.log'
         cls.server_proc = Popen([
             sys.executable,
             str(server_path),
             '--data', str(cls.data_dir),
             '--port', str(cls.port),
             '--host', '127.0.0.1',
-            '--token-hash-file', str(cls.admin_token_file)
+            '--token-hash-file', str(cls.admin_token_file),
+            '--console-queue', str(cls.console_queue)
         ], stdout=PIPE, stderr=PIPE)
 
         # Wait for server to start
@@ -734,7 +736,7 @@ class UnitRequestTest(DesignerServerTest):
         self.assertIn('id', req)
         self.assertEqual(req['type'], 'build')
         self.assertEqual(req['kind'], 'unit')
-        self.assertEqual(req['status'], 'open')
+        self.assertEqual(req['status'], 'notified')
         self.assertEqual(req['uid'], uid)
         self.assertEqual(req['unit_name'], 'Test Monster')
 
@@ -744,6 +746,14 @@ class UnitRequestTest(DesignerServerTest):
         with open(requests_file) as f:
             requests_data = json.load(f)
         self.assertEqual(len([r for r in requests_data['requests'] if r['uid'] == uid]), 1)
+
+        # Verify console queue was written
+        self.assertTrue(self.console_queue.exists())
+        with open(self.console_queue) as f:
+            queue_content = f.read()
+        self.assertIn('UNIT-BUILD', queue_content)
+        self.assertIn(req['id'], queue_content)
+        self.assertIn('Test Monster', queue_content)
 
         # Verify unit build status was updated
         unit_updated = self.request('GET', f'/units/{uid}', token=token)
@@ -1044,6 +1054,161 @@ class UnitSpellbookTest(DesignerServerTest):
                          'Requirement text should be preserved when name is filled after')
         self.assertEqual(sb['book']['name'], 'Laziness',
                          'Name should be saved correctly')
+
+
+class UnitBuildTest(DesignerServerTest):
+    """Tests for unit build request console queue and admin endpoints."""
+
+    def test_unit_build_writes_to_queue(self):
+        """Unit build request writes to console queue and sets status to notified."""
+        token = self.register_user(f'user{secrets.token_hex(4)}')
+
+        # Create a unit
+        unit_resp = self.request('POST', '/units', {'name': 'Test Monster'}, token=token)
+        uid = unit_resp['id']
+
+        # Create a build request
+        build_resp = self.request('POST', f'/units/{uid}/request', {
+            'type': 'build',
+            'text': 'Please build this'
+        }, token=token)
+
+        self.assertEqual(build_resp['type'], 'build')
+        self.assertEqual(build_resp['kind'], 'unit')
+        self.assertEqual(build_resp['status'], 'notified')
+
+        # Check that the queue file was written
+        self.assertTrue(self.console_queue.exists())
+        with open(self.console_queue, 'r') as f:
+            content = f.read()
+            self.assertIn('UNIT-BUILD', content)
+            self.assertIn(build_resp['id'], content)
+            self.assertIn('Test Monster', content)
+            self.assertIn(uid, content)
+
+    def test_unit_build_queue_failure_fallback(self):
+        """Failed console queue write falls back to open status with terminal entry."""
+        token = self.register_user(f'user{secrets.token_hex(4)}')
+
+        # Stop the server to restart with invalid queue path
+        self.server_proc.terminate()
+        self.server_proc.wait(timeout=5)
+
+        # Restart with a queue path that doesn't exist (directory that doesn't exist)
+        server_path = Path(__file__).parent / "designer_server.py"
+        self.server_proc = Popen([
+            sys.executable,
+            str(server_path),
+            '--data', str(self.data_dir),
+            '--port', str(self.port),
+            '--host', '127.0.0.1',
+            '--token-hash-file', str(self.admin_token_file),
+            '--console-queue', str(self.data_dir / 'nonexistent' / 'queue.log')
+        ], stdout=PIPE, stderr=PIPE)
+
+        # Wait for server to restart
+        for _ in range(50):
+            try:
+                urlopen(f"{self.base_url}/health", timeout=1)
+                break
+            except Exception:
+                time.sleep(0.1)
+
+        # Create a unit
+        unit_resp = self.request('POST', '/units', {'name': 'Fallback Monster'}, token=token)
+        uid = unit_resp['id']
+
+        # Create a build request
+        build_resp = self.request('POST', f'/units/{uid}/request', {
+            'type': 'build',
+            'text': 'Please build this'
+        }, token=token)
+
+        # Should fall back to "open" status since queue write failed
+        self.assertEqual(build_resp['status'], 'open')
+
+        # Restart server with correct queue path for subsequent tests
+        self.server_proc.terminate()
+        self.server_proc.wait(timeout=5)
+        self.server_proc = Popen([
+            sys.executable,
+            str(server_path),
+            '--data', str(self.data_dir),
+            '--port', str(self.port),
+            '--host', '127.0.0.1',
+            '--token-hash-file', str(self.admin_token_file),
+            '--console-queue', str(self.console_queue)
+        ], stdout=PIPE, stderr=PIPE)
+
+        for _ in range(50):
+            try:
+                urlopen(f"{self.base_url}/health", timeout=1)
+                break
+            except Exception:
+                time.sleep(0.1)
+
+    def test_admin_get_unit(self):
+        """Admin can get a unit by ID."""
+        token = self.register_user(f'user{secrets.token_hex(4)}')
+
+        # Create a unit
+        unit_resp = self.request('POST', '/units', {'name': 'Admin Test Unit'}, token=token)
+        uid = unit_resp['id']
+
+        # Get via admin endpoint
+        admin_url = f"{self.base_url}/admin/{self.admin_token}/units/{uid}"
+        req = Request(admin_url, method='GET')
+        with urlopen(req) as resp:
+            unit = json.loads(resp.read().decode())
+
+        self.assertEqual(unit['id'], uid)
+        self.assertIn('design', unit)
+
+        # Test 404 for non-existent unit
+        admin_url_404 = f"{self.base_url}/admin/{self.admin_token}/units/nonexistent"
+        req = Request(admin_url_404, method='GET')
+        try:
+            urlopen(req)
+            self.fail("Should have raised HTTPError")
+        except HTTPError as e:
+            self.assertEqual(e.code, 404)
+
+    def test_admin_unit_build_status(self):
+        """Admin can update unit build status."""
+        token = self.register_user(f'user{secrets.token_hex(4)}')
+
+        # Create a unit
+        unit_resp = self.request('POST', '/units', {'name': 'Build Status Test'}, token=token)
+        uid = unit_resp['id']
+
+        # Set status to in_progress
+        admin_url = f"{self.base_url}/admin/{self.admin_token}/units/{uid}/build-status"
+        req = Request(admin_url, data=json.dumps({
+            'status': 'in_progress'
+        }).encode(), headers={'Content-Type': 'application/json'}, method='POST')
+        with urlopen(req) as resp:
+            result = json.loads(resp.read().decode())
+
+        self.assertEqual(result['ok'], True)
+
+        # Verify status changed
+        unit = self.request('GET', f'/units/{uid}', token=token)
+        self.assertEqual(unit['build']['status'], 'in_progress')
+
+        # Set status to built with version
+        req = Request(admin_url, data=json.dumps({
+            'status': 'built',
+            'version': 'v2.150'
+        }).encode(), headers={'Content-Type': 'application/json'}, method='POST')
+        urlopen(req)
+
+        # Verify status and version
+        unit = self.request('GET', f'/units/{uid}', token=token)
+        self.assertEqual(unit['build']['status'], 'built')
+        self.assertEqual(unit['build']['liveVersion'], 'v2.150')
+        self.assertIsNotNone(unit['build']['builtAt'])
+        self.assertEqual(len(unit['build']['history']), 1)
+        self.assertEqual(unit['build']['history'][0]['version'], 'v2.150')
 
 
 if __name__ == '__main__':

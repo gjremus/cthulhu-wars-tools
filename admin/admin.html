@@ -3469,10 +3469,14 @@ function loadDesignerBanners() {
       }
       const html = [];
       buildReqs.forEach(req => {
-        html.push(`<div class="designer-banner">▶ Design complete and ready to execute build for <b>${esc(req.faction)}</b></div>`);
+        if (req.kind === 'unit') {
+          html.push(`<div class="designer-banner">▶ Neutral unit build sent to the Claude console — <b>${esc(req.unit_name)}</b></div>`);
+        } else {
+          html.push(`<div class="designer-banner">▶ Design complete and ready to execute build for <b>${esc(req.faction)}</b></div>`);
+        }
       });
       simpleUpdateReqs.forEach(req => {
-        html.push(`<div class="designer-banner">⚙ Faction Simple Update Requested to Ticker — <b>${esc(req.faction)}</b></div>`);
+        html.push(`<div class="designer-banner">⚙ Faction Simple Update Requested to Ticker — <b>${esc(req.faction || req.unit_name)}</b></div>`);
       });
       bannersDiv.innerHTML = html.join('');
     })
