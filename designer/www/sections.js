@@ -847,8 +847,9 @@
     function sideCells(tr, row, sfx) {
       const f = name => `sb.rows.${row.id}.${name}${sfx}`;
       const v = name => row[name + sfx];
+      // Name and Text boxes at least 3x their old phone width (about 51px and 38px)
       tr.appendChild(h('td', {},
-        h('input', {type: 'text', value: v('name') || '', oninput: e => ctx.set(f('name'), e.target.value)})
+        h('input', {type: 'text', value: v('name') || '', style: 'min-width: 155px;', oninput: e => ctx.set(f('name'), e.target.value)})
       ));
 
       tr.appendChild(h('td', {},
@@ -880,7 +881,7 @@
       ));
 
       tr.appendChild(h('td', {},
-        h('textarea', {value: v('text') || '', rows: 3, oninput: e => ctx.set(f('text'), e.target.value)})
+        h('textarea', {value: v('text') || '', rows: 3, style: 'min-width: 160px;', oninput: e => ctx.set(f('text'), e.target.value)})
       ));
     }
 
@@ -898,10 +899,11 @@
           const tr = h('tr', {});
           if (first && grouped) tr.appendChild(h('td', {rowSpan: total},
             h('div', {style: 'font-weight: bold;'}, `Spellbook ${idx + 1}`),
-            h('label', {style: 'display: block; margin-top: 4px; font-size: 0.9em; white-space: nowrap;'},
+            // Label on the left; the checkbox keeps its own size (the table's 100% input width pushed it into the next column)
+            h('label', {style: 'display: flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 0.9em; white-space: nowrap;'},
+              '2 sided',
               h('input', {type: 'checkbox', checked: R.sbTwo(d, row), title: 'Give this spellbook a side A and a side B',
-                onchange: e => setRowTwo(row, e.target.checked)}),
-              ' 2 sided')));
+                style: 'width: auto; margin: 0;', onchange: e => setRowTwo(row, e.target.checked)}))));
           if (pi === 0) {
             if (two) tr.appendChild(h('td', {rowSpan: sideParts.length}, sides.length < 2 ? '1 sided' : sd === 'B' ? 'Side B' : 'Side A'));
             tr.appendChild(h('td', {rowSpan: sideParts.length, style: 'text-align: center;'},
