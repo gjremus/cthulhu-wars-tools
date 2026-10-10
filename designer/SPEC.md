@@ -114,6 +114,7 @@ After every applied op:
   "meta":  {"color": null},                       // optional faction colour "#rrggbb" (used to tint unit art); added by us — doc says "if defined"
   "card":  {"image": null, "glyph": null},        // faction card image; faction glyph (symbol) image
   "sbImages": {"mode": null, "all": null, "each": [null,null,null,null,null,null]},  // mode: null | "all" | "each"
+  "sbImagesB": {"mode": null, "all": null, "each": [null,null,null,null,null,null]}, // side B images when sb.twoSided
   "ae": {"enabled": false, "name": "", "acronym": "",
          "rows": [ {"id","sign":"+","kind":"fixed","qty":null,"calc":"","desc":""} ]},
   "ufa": {"name":"", "phase":null, "type":null, "hasCost":false, "cost":null, "hasEffect":false, "effect":null, "text":""},
@@ -128,7 +129,9 @@ After every applied op:
             "power": 8, "aeStart": 0},
   "units": {"rows": [ UNIT, UNIT, UNIT ]},          // starts with 3 blank rows
   "sbr": {"multiText":"", "rows": [ 6 × {"id","text":"","hasNum":false,"num":null} ]},
-  "sb":  {"rows": [ 6 × {"id","name":"","type":null,"cost":0,"hasEffect":false,"effect":null,"text":""} ]},
+  "sb":  {"twoSided":false,                         // 2 sided: each spellbook has side A (plain fields) and side B (...B fields)
+          "rows": [ 6 × {"id","name":"","type":null,"cost":0,"hasEffect":false,"effect":null,"text":"",
+                         "nameB":"","typeB":null,"costB":0,"hasEffectB":false,"effectB":null,"textB":""} ]},
   "region": {"rows": [ {"id","name":"","image":null,"restrictions":"","adjacency":""} ]},
   "tokens": {"rows": [ {"id","name":"","qty":null,"image":null,"placement":"","effects":"","hasEffect":false,"effect":null} ]},
   "custom": {"rows": [ {"id","name":"","image":null,"placement":"","usage":"","effects":"","hasNum":false,"num":null} ]},

@@ -621,7 +621,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             return False
 
         section = parts[0]
-        valid_sections = ['ae', 'ufa', 'setup', 'units', 'sbr', 'sb', 'region', 'tokens', 'custom', 'menus', 'card', 'sbImages', 'meta']
+        valid_sections = ['ae', 'ufa', 'setup', 'units', 'sbr', 'sb', 'region', 'tokens', 'custom', 'menus', 'card', 'sbImages', 'sbImagesB', 'meta']
         if section not in valid_sections:
             self.send_error_json(f"Unknown section: {section}")
             return False
@@ -1590,7 +1590,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
     # ---- Simple Update: fixed numbers pushed straight to the build (no ticker) ----
     # Built factions read their fixed numbers from GET /designer/api/live/<ACR>/values.
     # Each push bumps "rev"; a game pins the rev it started with (?rev=N) so replays never change.
-    SIMPLE_UPDATE_FIELDS = {'qty', 'cost', 'effect', 'power', 'aeStart', 'awakenPower', 'dice', 'pains', 'kills', 'num'}
+    SIMPLE_UPDATE_FIELDS = {'qty', 'cost', 'effect', 'costB', 'effectB', 'power', 'aeStart', 'awakenPower', 'dice', 'pains', 'kills', 'num'}
 
     @staticmethod
     def simple_update_path(section, row_id, field):
@@ -2010,6 +2010,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             "meta": {"color": None},
             "card": {"image": None, "glyph": None},
             "sbImages": {"mode": None, "all": None, "each": [None]*6},
+            "sbImagesB": {"mode": None, "all": None, "each": [None]*6},
             "ae": {
                 "enabled": False,
                 "name": "",
@@ -2052,8 +2053,9 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             "sbr": {"multiText": "", "rows": [
                 {"id": self.new_id(), "text": "", "hasNum": False, "num": None} for _ in range(6)
             ]},
-            "sb": {"rows": [
-                {"id": self.new_id(), "name": "", "type": None, "cost": 0, "hasEffect": False, "effect": None, "text": ""} for _ in range(6)
+            "sb": {"twoSided": False, "rows": [
+                {"id": self.new_id(), "name": "", "type": None, "cost": 0, "hasEffect": False, "effect": None, "text": "",
+                 "nameB": "", "typeB": None, "costB": 0, "hasEffectB": False, "effectB": None, "textB": ""} for _ in range(6)
             ]},
             # Each table starts with one blank row (same as Rules.newDesign in www/rules.js)
             "region": {"rows": [{"id": self.new_id(), "name": "", "image": None, "restrictions": "", "adjacency": ""}]},

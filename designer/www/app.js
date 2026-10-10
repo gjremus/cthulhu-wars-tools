@@ -949,7 +949,19 @@
       sbTitle.textContent = 'Spellbook Images';
       sbSection.appendChild(sbTitle);
 
-      this.renderSpellbookImages(faction, sbSection);
+      if (design.sb && design.sb.twoSided) {
+        // 2 sided spellbooks: one set of images for each side
+        ['sbImages', 'sbImagesB'].forEach(key => {
+          const sub = document.createElement('h4');
+          sub.textContent = key === 'sbImagesB' ? 'Side B' : 'Side A';
+          sbSection.appendChild(sub);
+          const box = document.createElement('div');
+          sbSection.appendChild(box);
+          this.renderSpellbookImages(faction, box, key);
+        });
+      } else {
+        this.renderSpellbookImages(faction, sbSection);
+      }
 
       imagesSection.appendChild(sbSection);
       this.root.appendChild(imagesSection);
@@ -1034,9 +1046,14 @@
       this.lockReadOnly(this.root);
     }
 
-    renderSpellbookImages(faction, container) {
+    // key = 'sbImages' (side A, or the only side) or 'sbImagesB' (side B of 2 sided spellbooks)
+    renderSpellbookImages(faction, container, key = 'sbImages') {
       const design = faction.design;
-      const sbImages = design.sbImages;
+      const sideB = key === 'sbImagesB';
+      if (!design[key]) design[key] = {mode: null, all: null, each: [null, null, null, null, null, null]};
+      const sbImages = design[key];
+      const sideName = sideB ? ' (side B)' : (design.sb && design.sb.twoSided ? ' (side A)' : '');
+      const sideData = sideB ? {side: 'B'} : (design.sb && design.sb.twoSided ? {side: 'A'} : {});
 
       if (!sbImages.mode) {
         const btn1 = document.createElement('button');
@@ -1044,8 +1061,8 @@
         btn1.onclick = async () => {
           const imageId = await this.uploadImage('card');
           if (imageId) {
-            this.scheduleSave(faction.id, 'sbImages.mode', 'all');
-            this.scheduleSave(faction.id, 'sbImages.all', imageId);
+            this.scheduleSave(faction.id, key + '.mode', 'all');
+            this.scheduleSave(faction.id, key + '.all', imageId);
             sbImages.mode = 'all';
             sbImages.all = imageId;
             this.renderMainDesign();
@@ -1057,7 +1074,7 @@
         btn2.textContent = 'Upload 1 at a time';
         btn2.style.marginLeft = '10px';
         btn2.onclick = () => {
-          this.scheduleSave(faction.id, 'sbImages.mode', 'each');
+          this.scheduleSave(faction.id, key + '.mode', 'each');
           sbImages.mode = 'each';
           this.renderMainDesign();
         };
@@ -1083,7 +1100,7 @@
           replaceBtn.onclick = async () => {
             const imageId = await this.uploadImage('card');
             if (imageId) {
-              this.scheduleSave(faction.id, 'sbImages.all', imageId);
+              this.scheduleSave(faction.id, key + '.all', imageId);
               sbImages.all = imageId;
               this.renderMainDesign();
             }
@@ -1098,8 +1115,8 @@
             await this.createRequest(
               faction.id,
               'extract',
-              `Extract spellbook text for ${faction.name}`,
-              {target: 'sbAll', image: sbImages.all}
+              `Extract spellbook text${sideName} for ${faction.name}`,
+              Object.assign({target: 'sbAll', image: sbImages.all}, sideData)
             );
             alert('Extract requested.');
           };
@@ -1110,8 +1127,8 @@
           deleteBtn.textContent = 'Delete';
           deleteBtn.style.marginLeft = '5px';
           deleteBtn.onclick = () => {
-            this.scheduleSave(faction.id, 'sbImages.mode', null);
-            this.scheduleSave(faction.id, 'sbImages.all', null);
+            this.scheduleSave(faction.id, key + '.mode', null);
+            this.scheduleSave(faction.id, key + '.all', null);
             sbImages.mode = null;
             sbImages.all = null;
             this.renderMainDesign();
@@ -1126,9 +1143,9 @@
         deleteAllBtn.textContent = 'Delete all 6, to replace with 1 image for all 6';
         deleteAllBtn.style.marginBottom = '15px';
         deleteAllBtn.onclick = () => {
-          this.scheduleSave(faction.id, 'sbImages.mode', null);
+          this.scheduleSave(faction.id, key + '.mode', null);
           for (let i = 0; i < 6; i++) {
-            this.scheduleSave(faction.id, `sbImages.each.${i}`, null);
+            this.scheduleSave(faction.id, `${key}.each.${i}`, null);
           }
           sbImages.mode = null;
           sbImages.each = [null, null, null, null, null, null];
@@ -1144,7 +1161,7 @@
           slot.className = 'image-slot';
 
           const label = document.createElement('div');
-          label.textContent = `Spellbook ${i + 1}`;
+          label.textContent = `Spellbook ${i + 1}${sideName}`;
           label.style.fontWeight = 'bold';
           label.style.marginBottom = '10px';
           slot.appendChild(label);
@@ -1162,7 +1179,7 @@
             replaceBtn.onclick = async () => {
               const imageId = await this.uploadImage('card');
               if (imageId) {
-                this.scheduleSave(faction.id, `sbImages.each.${i}`, imageId);
+                this.scheduleSave(faction.id, `${key}.each.${i}`, imageId);
                 sbImages.each[i] = imageId;
                 this.renderMainDesign();
               }
@@ -1177,8 +1194,8 @@
               await this.createRequest(
                 faction.id,
                 'extract',
-                `Extract spellbook ${i + 1} for ${faction.name}`,
-                {target: 'sbEach', index: i, image: sbImages.each[i]}
+                `Extract spellbook ${i + 1}${sideName} for ${faction.name}`,
+                Object.assign({target: 'sbEach', index: i, image: sbImages.each[i]}, sideData)
               );
               alert('Extract requested.');
             };
@@ -1189,7 +1206,7 @@
             deleteBtn.textContent = 'Delete';
             deleteBtn.style.marginLeft = '5px';
             deleteBtn.onclick = () => {
-              this.scheduleSave(faction.id, `sbImages.each.${i}`, null);
+              this.scheduleSave(faction.id, `${key}.each.${i}`, null);
               sbImages.each[i] = null;
               this.renderMainDesign();
             };
@@ -1203,7 +1220,7 @@
             uploadBtn.onclick = async () => {
               const imageId = await this.uploadImage('card');
               if (imageId) {
-                this.scheduleSave(faction.id, `sbImages.each.${i}`, imageId);
+                this.scheduleSave(faction.id, `${key}.each.${i}`, imageId);
                 sbImages.each[i] = imageId;
                 this.renderMainDesign();
               }
@@ -1229,13 +1246,13 @@
           est.textContent = `about ${SB_ALL_EXTRACT_MINUTES} min`;
           allBtn.onclick = async () => {
             if (!Rules.isEmpty('sb', design)) {
-              const ok = await this.confirm('Extract will overwrite all 6 spellbooks. Are you sure?', 'Yes - Extract', 'Cancel');
+              const ok = await this.confirm(`Extract will overwrite all 6 spellbooks${sideName}. Are you sure?`, 'Yes - Extract', 'Cancel');
               if (!ok) return;
             }
             allBtn.disabled = true;
             try {
-              await this.createRequest(faction.id, 'extract', `Extract all spellbooks text for ${faction.name}`,
-                {target: 'sbEachAll', each: sbImages.each.slice()});
+              await this.createRequest(faction.id, 'extract', `Extract all spellbooks text${sideName} for ${faction.name}`,
+                Object.assign({target: 'sbEachAll', each: sbImages.each.slice()}, sideData));
               alert(`Extract requested. All 6 spellbooks will be filled in for you in about ${SB_ALL_EXTRACT_MINUTES} minutes.`);
             } catch (err) {
               alert('Extract request failed: ' + err.message);

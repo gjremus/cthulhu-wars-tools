@@ -800,11 +800,20 @@
 
   function renderSB(container, ctx) {
     const d = ctx.design.sb;
+    const two = !!d.twoSided;
+
+    // 2 sided: every spellbook gets a side A and a side B, each with its own name, type, cost, effect and text
+    container.appendChild(checkboxField('2 sided (each spellbook has a side A and a side B)', two, val => {
+      if (val && !ctx.design.sbImagesB) ctx.set('sbImagesB', {mode: null, all: null, each: [null, null, null, null, null, null]});
+      ctx.set('sb.twoSided', val);
+    }));
 
     const tableDiv = h('div', {className: 'sx-table'});
     const table = h('table', {});
     table.appendChild(h('thead', {},
       h('tr', {},
+        two ? h('th', {style: 'width: 90px;'}, 'Spellbook') : null,
+        two ? h('th', {style: 'width: 60px;'}, 'Side') : null,
         h('th', {}, 'Name'),
         h('th', {}, 'Type'),
         h('th', {style: 'width: 100px;'}, 'Cost'),
@@ -815,16 +824,16 @@
       )
     ));
 
-    const tbody = h('tbody', {});
-    d.rows.forEach((row, idx) => {
-      const tr = h('tr', {});
-
+    // One side's cells. sfx = '' for side A (or the only side), 'B' for side B
+    function sideCells(tr, row, sfx) {
+      const f = name => `sb.rows.${row.id}.${name}${sfx}`;
+      const v = name => row[name + sfx];
       tr.appendChild(h('td', {},
-        h('input', {type: 'text', value: row.name || '', oninput: e => ctx.set(`sb.rows.${row.id}.name`, e.target.value)})
+        h('input', {type: 'text', value: v('name') || '', oninput: e => ctx.set(f('name'), e.target.value)})
       ));
 
       tr.appendChild(h('td', {},
-        h('select', {value: row.type || '', onchange: e => ctx.set(`sb.rows.${row.id}.type`, e.target.value || null)},
+        h('select', {value: v('type') || '', onchange: e => ctx.set(f('type'), e.target.value || null)},
           h('option', {value: ''}, '-- Select --'),
           window.Rules.SB_TYPES.map(t => h('option', {value: t}, t))
         )
@@ -833,40 +842,58 @@
       tr.appendChild(h('td', {},
         h('input', {
           type: 'number',
-          value: row.cost != null ? row.cost : 0,
-          oninput: e => ctx.set(`sb.rows.${row.id}.cost`, e.target.value ? parseInt(e.target.value) : 0)
+          value: v('cost') != null ? v('cost') : 0,
+          oninput: e => ctx.set(f('cost'), e.target.value ? parseInt(e.target.value) : 0)
         })
       ));
 
       tr.appendChild(h('td', {},
-        h('input', {type: 'checkbox', checked: row.hasEffect, onchange: e => ctx.set(`sb.rows.${row.id}.hasEffect`, e.target.checked)})
+        h('input', {type: 'checkbox', checked: !!v('hasEffect'), onchange: e => ctx.set(f('hasEffect'), e.target.checked)})
       ));
 
       tr.appendChild(h('td', {},
         h('input', {
           type: 'number',
-          value: row.effect != null ? row.effect : '',
-          disabled: !row.hasEffect,
-          oninput: e => ctx.set(`sb.rows.${row.id}.effect`, e.target.value ? parseInt(e.target.value) : null)
+          value: v('effect') != null ? v('effect') : '',
+          disabled: !v('hasEffect'),
+          oninput: e => ctx.set(f('effect'), e.target.value ? parseInt(e.target.value) : null)
         })
       ));
 
       tr.appendChild(h('td', {},
-        h('textarea', {value: row.text || '', rows: 3, oninput: e => ctx.set(`sb.rows.${row.id}.text`, e.target.value)})
+        h('textarea', {value: v('text') || '', rows: 3, oninput: e => ctx.set(f('text'), e.target.value)})
       ));
+    }
+
+    const tbody = h('tbody', {});
+    d.rows.forEach((row, idx) => {
+      const tr = h('tr', {});
+      const span = two ? {rowSpan: 2} : {};
+      if (two) {
+        tr.appendChild(h('td', Object.assign({style: 'font-weight: bold;'}, span), `Spellbook ${idx + 1}`));
+        tr.appendChild(h('td', {}, 'Side A'));
+      }
+      sideCells(tr, row, '');
 
       if (d.rows.length > 6) {
-        tr.appendChild(h('td', {},
+        tr.appendChild(h('td', span,
           h('button', {onclick: async () => {
             const confirmed = await ctx.confirm('Are you sure you want to delete this spellbook?', 'Yes - delete', 'No - cancel');
             if (confirmed) ctx.deleteRow('sb.rows', row.id);
           }}, 'Delete')
         ));
       } else {
-        tr.appendChild(h('td', {}));
+        tr.appendChild(h('td', span));
       }
 
       tbody.appendChild(tr);
+
+      if (two) {
+        const trB = h('tr', {style: 'border-bottom: 3px solid #000;'});
+        trB.appendChild(h('td', {}, 'Side B'));
+        sideCells(trB, row, 'B');
+        tbody.appendChild(trB);
+      }
     });
     table.appendChild(tbody);
     tableDiv.appendChild(table);
@@ -1224,7 +1251,8 @@
       } else if (menu.section === 'sbr') {
         itemOptions = ctx.design.sbr.rows.filter(r => r.text).map(r => ({value: r.id, label: r.text}));
       } else if (menu.section === 'sb') {
-        itemOptions = ctx.design.sb.rows.filter(s => s.name).map(s => ({value: s.id, label: s.name}));
+        itemOptions = ctx.design.sb.rows.filter(s => s.name).map(s => ({value: s.id,
+          label: ctx.design.sb.twoSided && s.nameB ? `${s.name} / ${s.nameB}` : s.name}));
       } else if (menu.section === 'region') {
         itemOptions = ctx.design.region.rows.filter(r => r.name).map(r => ({value: r.id, label: r.name}));
       } else if (menu.section === 'tokens') {

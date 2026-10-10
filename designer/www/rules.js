@@ -40,6 +40,7 @@
       meta: {color: null},
       card: {image: null, glyph: null},
       sbImages: {mode: null, all: null, each: [null, null, null, null, null, null]},
+      sbImagesB: {mode: null, all: null, each: [null, null, null, null, null, null]},   // side B of 2 sided spellbooks
       ae: {
         enabled: false,
         name: '',
@@ -90,6 +91,7 @@
         rows: Array(6).fill(null).map(() => ({id: newId(), text: '', hasNum: false, num: null}))
       },
       sb: {
+        twoSided: false,   // 2 sided: every spellbook has a side A (the fields below) and a side B (the ...B fields)
         rows: Array(6).fill(null).map(() => ({
           id: newId(),
           name: '',
@@ -97,7 +99,13 @@
           cost: 0,
           hasEffect: false,
           effect: null,
-          text: ''
+          text: '',
+          nameB: '',
+          typeB: null,
+          costB: 0,
+          hasEffectB: false,
+          effectB: null,
+          textB: ''
         }))
       },
       region: {
@@ -199,7 +207,8 @@
     } else if (tablePath === 'sbr.rows') {
       return {id: newId(), text: '', hasNum: false, num: null};
     } else if (tablePath === 'sb.rows') {
-      return {id: newId(), name: '', type: null, cost: 0, hasEffect: false, effect: null, text: ''};
+      return {id: newId(), name: '', type: null, cost: 0, hasEffect: false, effect: null, text: '',
+        nameB: '', typeB: null, costB: 0, hasEffectB: false, effectB: null, textB: ''};
     } else if (tablePath === 'region.rows') {
       return {id: newId(), name: '', image: null, restrictions: '', adjacency: ''};
     } else if (tablePath === 'tokens.rows') {
@@ -289,7 +298,10 @@
 
   function isEmpty(key, design) {
     const defaults = newDesign();
-    const a = normalizeForComparison(stripBlankRows(key, design[key]));
+    // Settings added later (e.g. sb.twoSided) count as their default on older designs
+    const sec = design[key] && typeof design[key] === 'object' && !Array.isArray(design[key])
+      ? Object.assign({}, defaults[key], design[key]) : design[key];
+    const a = normalizeForComparison(stripBlankRows(key, sec));
     const b = normalizeForComparison(stripBlankRows(key, defaults[key]));
     return eq(a, b);
   }
@@ -330,6 +342,11 @@
     } else if (rowType === 'sb') {
       if (!row.name || !row.type || !row.text) return false;
       if (row.hasEffect && row.effect == null) return false;
+      return true;
+    } else if (rowType === 'sbB') {
+      // Side B of a 2 sided spellbook: same rules as side A
+      if (!row.nameB || !row.typeB || !row.textB) return false;
+      if (row.hasEffectB && row.effectB == null) return false;
       return true;
     } else if (rowType === 'region') {
       return row.name && row.image && row.restrictions && row.adjacency;
@@ -397,9 +414,10 @@
     }
 
     if (key === 'sb') {
-      const completeRows = d.rows.filter(r => isRowComplete(r, 'sb'));
+      const done = r => isRowComplete(r, 'sb') && (!d.twoSided || isRowComplete(r, 'sbB'));
+      const completeRows = d.rows.filter(done);
       if (completeRows.length < 6) return 'Incomplete';
-      const partialRows = d.rows.filter(r => !isRowComplete(r, 'sb') && !isRowEmpty(r, blankRow('sb.rows')));
+      const partialRows = d.rows.filter(r => !done(r) && !isRowEmpty(r, blankRow('sb.rows')));
       if (partialRows.length > 0) return 'Incomplete';
       return 'Complete';
     }
@@ -624,6 +642,14 @@
             value: row.effect
           });
         }
+        if (design.sb.twoSided && row.nameB) {
+          if (row.costB != null) {
+            numbers.push({section: 'sb', sectionTitle: 'Spellbooks', rowId: row.id, field: 'costB', name: row.nameB + ' (side B) cost', value: row.costB});
+          }
+          if (row.hasEffectB && row.effectB != null) {
+            numbers.push({section: 'sb', sectionTitle: 'Spellbooks', rowId: row.id, field: 'effectB', name: row.nameB + ' (side B) effect', value: row.effectB});
+          }
+        }
       });
     }
 
@@ -710,6 +736,7 @@
       const newSbs = neu.rows.filter(s => s.name).map(s => s.name);
       const added = newSbs.filter(n => !oldSbs.includes(n));
       const removed = oldSbs.filter(n => !newSbs.includes(n));
+      if (!!old.twoSided !== !!neu.twoSided) parts.push(neu.twoSided ? 'spellbooks made 2 sided' : 'spellbooks made 1 sided');
       added.forEach(n => parts.push('new spellbook "' + n + '"'));
       removed.forEach(n => parts.push('removed spellbook "' + n + '"'));
       newSbs.forEach(name => {
