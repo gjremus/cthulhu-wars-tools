@@ -709,6 +709,48 @@ class RequestTest(DesignerServerTest):
         self.assertEqual(len(resp['requests']), 1)
 
 
+class UnitRequestTest(DesignerServerTest):
+    """Test unit build request management."""
+
+    def test_unit_build_request(self):
+        """Create a build request for a neutral unit."""
+        token = self.register_user(f'unituser{secrets.token_hex(4)}')
+
+        # Create a neutral unit
+        unit = self.request('POST', '/units', {'name': 'Test Monster'}, token=token)
+        uid = unit['id']
+
+        # Verify unit has build field
+        self.assertIn('build', unit)
+        self.assertEqual(unit['build']['status'], 'none')
+
+        # Create build request
+        req = self.request('POST', f'/units/{uid}/request', {
+            'type': 'build',
+            'text': 'Ready to build unit',
+            'data': {}
+        }, token=token)
+
+        self.assertIn('id', req)
+        self.assertEqual(req['type'], 'build')
+        self.assertEqual(req['kind'], 'unit')
+        self.assertEqual(req['status'], 'open')
+        self.assertEqual(req['uid'], uid)
+        self.assertEqual(req['unit_name'], 'Test Monster')
+
+        # Verify the request was written to requests.json
+        requests_file = self.data_dir / "requests.json"
+        self.assertTrue(requests_file.exists())
+        with open(requests_file) as f:
+            requests_data = json.load(f)
+        self.assertEqual(len([r for r in requests_data['requests'] if r['uid'] == uid]), 1)
+
+        # Verify unit build status was updated
+        unit_updated = self.request('GET', f'/units/{uid}', token=token)
+        self.assertEqual(unit_updated['build']['status'], 'requested')
+        self.assertIsNotNone(unit_updated['build']['requestedAt'])
+
+
 class AdminTest(DesignerServerTest):
     """Test admin endpoints."""
 

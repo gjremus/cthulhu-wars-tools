@@ -248,6 +248,10 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         if m:
             self.handle_patch_unit(m.group(1))
             return
+        m = re.fullmatch(r'/designer/api/units/([A-Za-z0-9_-]+)/request', path)
+        if m:
+            self.handle_create_unit_request(m.group(1))
+            return
 
         if path.startswith('/designer/api/factions/'):
             parts = path.split('/')
@@ -618,7 +622,14 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             uid = self.new_id()
             while (self.units_dir() / uid).exists() or not re.fullmatch(r'[A-Za-z0-9_-]+', uid):
                 uid = self.new_id()
-            unit = {"id": uid, "owner": username, "created": now, "updated": now, "design": design}
+            unit = {
+                "id": uid,
+                "owner": username,
+                "created": now,
+                "updated": now,
+                "design": design,
+                "build": {"status": "none", "liveVersion": None, "requestedAt": None, "builtAt": None}
+            }
             (self.units_dir() / uid).mkdir(parents=True, exist_ok=True)
             atomic_write(self.units_dir() / uid / "unit.json", unit)
         self.send_json(unit)
@@ -636,6 +647,9 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         if unit.get("owner") != username:
             self.send_error_json("Forbidden", 403)
             return
+        # Migrate old units without build field
+        if "build" not in unit:
+            unit["build"] = {"status": "none", "liveVersion": None, "requestedAt": None, "builtAt": None}
         self.send_json(unit)
 
     def handle_patch_unit(self, uid: str):
@@ -1385,6 +1399,93 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         faction_requests.sort(key=lambda r: r.get("created", 0), reverse=True)
 
         self.send_json({"requests": faction_requests})
+
+    def handle_create_unit_request(self, uid: str):
+        """POST /designer/api/units/<uid>/request"""
+        username = self.verify_session()
+        if not username:
+            self.send_error_json("Unauthorized", 401)
+            return
+
+        body = self.read_json_body()
+        if not body:
+            return
+
+        req_type = body.get('type')
+        text = body.get('text', '')
+        data = body.get('data', {})
+
+        valid_types = ['build']
+        if req_type not in valid_types:
+            self.send_error_json(f"Invalid request type. Must be one of: {', '.join(valid_types)}")
+            return
+
+        unit = self.load_unit(uid)
+        if not unit:
+            self.send_error_json("Unit not found", 404)
+            return
+
+        if unit["owner"] != username:
+            self.send_error_json("Forbidden", 403)
+            return
+
+        # Load requests
+        requests_file = self.server.data_dir / "requests.json"
+        requests_data = load_json(requests_file) or {"requests": []}
+        requests = requests_data.get("requests", [])
+
+        # Check for duplicate (same type + uid + data)
+        for existing in requests:
+            if (existing.get("type") == req_type and
+                existing.get("uid") == uid and
+                existing.get("status") == "open" and
+                existing.get("data") == data):
+                # Return existing
+                self.send_json(existing)
+                return
+
+        # Create new request
+        now = int(time.time())
+        req_id = f"r_{secrets.token_urlsafe(6)}"
+
+        row = (unit.get("design", {}).get("units", {}).get("rows") or [{}])[0]
+        unit_name = row.get("name") or "Unnamed Unit"
+
+        request = {
+            "id": req_id,
+            "type": req_type,
+            "uid": uid,
+            "kind": "unit",
+            "unit_name": unit_name,
+            "user": username,
+            "status": "open",
+            "created": now,
+            "updated": now,
+            "text": text,
+            "data": data
+        }
+
+        with WRITE_LOCK:
+            requests.append(request)
+            requests_data["requests"] = requests
+            atomic_write(requests_file, requests_data)
+            # Add terminal entry for admin console
+            self.add_terminal_entry("design build", self.display_name(username),
+                                    text or f"{req_type} request for unit {unit_name}",
+                                    "Waiting to be picked up.", ref=req_id)
+
+            # Update unit build status
+            unit["build"] = unit.get("build", {
+                "status": "none",
+                "liveVersion": None,
+                "requestedAt": None,
+                "builtAt": None
+            })
+            unit["build"]["status"] = "requested"
+            unit["build"]["requestedAt"] = now
+            atomic_write(self.units_dir() / uid / "unit.json", unit)
+
+        self.send_json(request)
 
     # ── Admin Endpoints ──────────────────────────────────────────────────────────
 

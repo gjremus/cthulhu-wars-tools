@@ -69,7 +69,13 @@
       } else if (path === 'factions') {
         this.renderFactionList();
       } else if (path === 'unit' && rest[0]) {
-        this.renderUnitScreen(rest[0]);
+        const uid = rest[0];
+        const screen = rest.slice(1).join('/');
+        if (!screen) {
+          this.renderUnitScreen(uid);
+        } else if (screen === 'build') {
+          this.renderUnitBuildScreen(uid);
+        }
       } else if (path === 'faction') {
         const fid = rest[0];
         const screen = rest.slice(1).join('/');
@@ -261,9 +267,10 @@
       await this.api('POST', `/factions/${fid}/close-session`);
     }
 
-    async createRequest(fid, type, text, data) {
-      const r = await this.api('POST', `/factions/${fid}/request`, {type, text, data});
-      if (type === 'extract') this.refreshExtractStatus(fid);
+    async createRequest(id, type, text, data, kind = 'faction') {
+      const endpoint = kind === 'unit' ? `/units/${id}/request` : `/factions/${id}/request`;
+      const r = await this.api('POST', endpoint, {type, text, data});
+      if (type === 'extract' && kind === 'faction') this.refreshExtractStatus(id);
       return r;
     }
 
@@ -1585,6 +1592,25 @@
       return '<span class="status-not-ready">Not Ready</span>';
     }
 
+    getBuildStatusLabelForUnit(unit) {
+      const build = unit.build || {status: 'none'};
+      if (build.status === 'built') {
+        return '<span class="status-built">Built</span>';
+      }
+      if (build.status === 'in_progress') {
+        return '<span class="status-in-progress">Build in progress</span>';
+      }
+      if (build.status === 'requested') {
+        return '<span class="status-requested">Build Requested</span>';
+      }
+      // Check if unit is ready: needs name and type at minimum
+      const row = (unit.design.units && unit.design.units.rows && unit.design.units.rows[0]) || {};
+      if (row.name && row.type) {
+        return '<span class="status-ready">Ready</span>';
+      }
+      return '<span class="status-not-ready">Not Ready</span>';
+    }
+
     renderScreen(fid, screen) {
       if (!this.state.currentFaction || this.state.currentFaction.id !== fid) {
         this.loadFaction(fid).then(() => this.renderScreen(fid, screen));
@@ -1714,6 +1740,16 @@
         window.location.hash = '#/factions';
       };
       this.root.appendChild(backBtn);
+
+      // Build button
+      const buildBtn = document.createElement('button');
+      buildBtn.textContent = 'Build';
+      buildBtn.style.marginTop = '10px';
+      buildBtn.style.marginLeft = '10px';
+      buildBtn.onclick = () => {
+        window.location.hash = `#/unit/${uid}/build`;
+      };
+      this.root.appendChild(buildBtn);
 
       const ctx = {
         design,
@@ -2076,6 +2112,91 @@
         };
         this.root.appendChild(updateBtn);
       }
+    }
+
+    async renderUnitBuildScreen(uid) {
+      this.root.innerHTML = '<div class="spinner"></div>';
+      let unit;
+      try {
+        unit = await this.api('GET', `/units/${uid}`);
+      } catch (err) {
+        this.root.innerHTML = `<p style="color: #f87171;">Error loading unit: ${err.message}</p>`;
+        return;
+      }
+      if (window.location.hash.replace(/\/$/, '') !== `#/unit/${uid}/build`) return;
+      const design = unit.design;
+      const row = (design.units && design.units.rows && design.units.rows[0]) || {};
+      const build = unit.build || {status: 'none'};
+
+      this.root.innerHTML = '';
+
+      const backBtn = document.createElement('button');
+      backBtn.textContent = 'Back to Unit';
+      backBtn.onclick = () => {
+        window.location.hash = `#/unit/${uid}`;
+      };
+      this.root.appendChild(backBtn);
+
+      const title = document.createElement('h2');
+      title.textContent = 'Build';
+      title.style.marginTop = '20px';
+      this.root.appendChild(title);
+
+      const statusDiv = document.createElement('div');
+      statusDiv.style.marginBottom = '20px';
+      statusDiv.innerHTML = `<strong>Status:</strong> ${this.getBuildStatusLabelForUnit(unit)}`;
+      this.root.appendChild(statusDiv);
+
+      const summaryDiv = document.createElement('div');
+      summaryDiv.style.marginBottom = '20px';
+      const readyFields = [];
+      const missingFields = [];
+      if (row.name) readyFields.push('Name'); else missingFields.push('Name');
+      if (row.type) readyFields.push('Type'); else missingFields.push('Type');
+      if (row.cost !== undefined && row.cost !== null) readyFields.push('Cost');
+      if (row.combat) readyFields.push('Combat');
+      summaryDiv.innerHTML = `
+        <p><strong>Unit Name:</strong> ${row.name || 'Not set'}</p>
+        <p><strong>Unit Type:</strong> ${row.type || 'Not set'}</p>
+        <p><strong>Ready to build:</strong> ${missingFields.length === 0 ? 'Yes' : 'No (missing: ' + missingFields.join(', ') + ')'}</p>
+      `;
+      this.root.appendChild(summaryDiv);
+
+      const isReady = row.name && row.type;
+
+      if (build.status !== 'built') {
+        const executeBtn = document.createElement('button');
+        executeBtn.className = 'primary';
+        executeBtn.textContent = 'Execute build';
+        executeBtn.disabled = !isReady || build.status === 'requested' || build.status === 'in_progress';
+        executeBtn.style.marginTop = '20px';
+        executeBtn.onclick = async () => {
+          try {
+            await this.createRequest(
+              uid,
+              'build',
+              `Design complete and ready to execute build for unit ${row.name}`,
+              {},
+              'unit'
+            );
+            alert('Build requested. Check the admin console.');
+            unit.build = unit.build || {};
+            unit.build.status = 'requested';
+            this.renderUnitBuildScreen(uid);
+          } catch (err) {
+            alert('Build request failed: ' + err.message);
+          }
+        };
+        this.root.appendChild(executeBtn);
+      }
+
+      const exitBtn = document.createElement('button');
+      exitBtn.textContent = 'Back to Unit';
+      exitBtn.style.marginTop = '20px';
+      exitBtn.onclick = () => {
+        window.location.hash = `#/unit/${uid}`;
+      };
+      this.root.appendChild(exitBtn);
     }
 
     renderSimpleUpdateScreen() {
