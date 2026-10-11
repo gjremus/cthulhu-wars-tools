@@ -7,8 +7,11 @@ Reads the owner admin token from its file so it never has to appear in a prompt.
   designer-admin.py list-extract            open extract requests (JSON array; [] if none)
   designer-admin.py faction <fid>           full faction record (JSON)
   designer-admin.py unit <uid>              full unit record (JSON)
+  designer-admin.py map <mid>               full map record (JSON)
   designer-admin.py image <imageId>         download image, convert to PNG, print local path
-  designer-admin.py patch <fid> <ops.json>  POST {"ops": [...]} from the file to admin patch
+  designer-admin.py patch <fid> <ops.json>  POST {"ops": [...]} from the file to admin patch (faction)
+  designer-admin.py map-patch <mid> <ops.json>
+                                            POST {"ops": [...]} from the file to admin map patch
   designer-admin.py done <rid> [summary...] mark request done; the summary (one or two plain
                                             sentences on what you did) goes into the admin
                                             console's Claude terminal log
@@ -19,16 +22,19 @@ Reads the owner admin token from its file so it never has to appear in a prompt.
                                             set that row's summary from a file
   designer-admin.py handoff <rid> <reason>  queue request for the Sonnet fallback
   designer-admin.py build-status <fid> <status> [version]
+                                            set faction build status
   designer-admin.py unit-build-status <uid> <status> [version]
-                                            set faction / unit build status (status: requested,
-                                            in_progress, needs_answers, built, none). Setting a
-                                            build request in_progress/done also updates it:
-                                            done while not built = needs_answers if any Claude
-                                            questions are left, otherwise none
+                                            set unit build status
+  designer-admin.py map-build-status <mid> <status> [version]
+                                            set map build status (status: requested, in_progress,
+                                            needs_answers, built, none). Setting a build request
+                                            in_progress/done also updates it: done while not built
+                                            = needs_answers if any Claude questions are left,
+                                            otherwise none
   designer-admin.py request-status <rid> <status>
                                             set request status
   designer-admin.py qa <id> [section]       print claudeQA (whole or one section) as JSON; id may be
-                                            faction or unit id
+                                            faction, unit, or map id
   designer-admin.py questions <id> <section> <file>
                                             set questions text from file ('-' = stdin; empty clears)
   designer-admin.py answers-clear <id> <section>
@@ -291,23 +297,24 @@ def ints(vals):
     return out
 
 
-def qa_get(fid_or_uid, section=None):
-    """Get claudeQA for a faction or unit. Try faction first, then unit."""
-    try:
-        entity = api(f'factions/{fid_or_uid}/qa')
-    except SystemExit:
+def qa_get(id_val, section=None):
+    """Get claudeQA for a faction, unit, or map. Try faction first, then unit, then map."""
+    tried = []
+    for kind in ['factions', 'units', 'maps']:
         try:
-            entity = api(f'units/{fid_or_uid}/qa')
-        except SystemExit:
-            sys.exit(f"ERROR: no faction or unit found with id {fid_or_uid}")
+            entity = api(f'{kind}/{id_val}/qa')
+            qa = entity.get('claudeQA', {})
+            if section:
+                qa = {section: qa.get(section, {})}
+            print(json.dumps(qa, indent=2))
+            return
+        except SystemExit as e:
+            tried.append(kind)
+            continue
+    sys.exit(f"ERROR: no faction, unit, or map found with id {id_val}")
 
-    qa = entity.get('claudeQA', {})
-    if section:
-        qa = {section: qa.get(section, {})}
-    print(json.dumps(qa, indent=2))
 
-
-def qa_set_questions(fid_or_uid, section, file_path):
+def qa_set_questions(id_val, section, file_path):
     """Set questions text from file."""
     if file_path == '-':
         text = sys.stdin.read()
@@ -318,30 +325,28 @@ def qa_set_questions(fid_or_uid, section, file_path):
         except OSError as e:
             sys.exit(f"ERROR: could not read file {file_path}: {e}")
 
-    # Try faction first, then unit
-    try:
-        result = api(f'factions/{fid_or_uid}/qa', {'section': section, 'questions': text})
-        print(json.dumps(result))
-    except SystemExit:
+    # Try faction first, then unit, then map
+    for kind in ['factions', 'units', 'maps']:
         try:
-            result = api(f'units/{fid_or_uid}/qa', {'section': section, 'questions': text})
+            result = api(f'{kind}/{id_val}/qa', {'section': section, 'questions': text})
             print(json.dumps(result))
+            return
         except SystemExit:
-            sys.exit(f"ERROR: no faction or unit found with id {fid_or_uid}")
+            continue
+    sys.exit(f"ERROR: no faction, unit, or map found with id {id_val}")
 
 
-def qa_clear_answers(fid_or_uid, section):
+def qa_clear_answers(id_val, section):
     """Clear the answers box."""
-    # Try faction first, then unit
-    try:
-        result = api(f'factions/{fid_or_uid}/qa', {'section': section, 'answers': ''})
-        print(json.dumps(result))
-    except SystemExit:
+    # Try faction first, then unit, then map
+    for kind in ['factions', 'units', 'maps']:
         try:
-            result = api(f'units/{fid_or_uid}/qa', {'section': section, 'answers': ''})
+            result = api(f'{kind}/{id_val}/qa', {'section': section, 'answers': ''})
             print(json.dumps(result))
+            return
         except SystemExit:
-            sys.exit(f"ERROR: no faction or unit found with id {fid_or_uid}")
+            continue
+    sys.exit(f"ERROR: no faction, unit, or map found with id {id_val}")
 
 
 def handoff(rid, reason):
@@ -363,6 +368,8 @@ def main():
         print(json.dumps(api(f'factions/{args[0]}'), indent=2))
     elif cmd == 'unit' and len(args) == 1:
         print(json.dumps(api(f'units/{args[0]}'), indent=2))
+    elif cmd == 'map' and len(args) == 1:
+        print(json.dumps(api(f'maps/{args[0]}'), indent=2))
     elif cmd == 'image' and len(args) == 1:
         image(args[0])
     elif cmd == 'patch' and len(args) == 2:
@@ -372,6 +379,13 @@ def main():
         if isinstance(ops, dict):
             ops = ops.get('ops', [])
         print(json.dumps(api(f'factions/{args[0]}/patch', {'ops': ops})))
+    elif cmd == 'map-patch' and len(args) == 2:
+        ops = load(args[1], None)
+        if ops is None:
+            sys.exit(f"ERROR: could not read JSON from {args[1]}")
+        if isinstance(ops, dict):
+            ops = ops.get('ops', [])
+        print(json.dumps(api(f'maps/{args[0]}/patch', {'ops': ops})))
     elif cmd == 'done' and len(args) >= 1:
         print(json.dumps(api(f'requests/{args[0]}', {'status': 'done'})))
         if len(args) > 1:
@@ -395,6 +409,11 @@ def main():
         if len(args) == 3:
             body['version'] = args[2]
         print(json.dumps(api(f'units/{args[0]}/build-status', body)))
+    elif cmd == 'map-build-status' and len(args) in (2, 3):
+        body = {'status': args[1]}
+        if len(args) == 3:
+            body['version'] = args[2]
+        print(json.dumps(api(f'maps/{args[0]}/build-status', body)))
     elif cmd == 'request-status' and len(args) == 2:
         print(json.dumps(api(f'requests/{args[0]}', {'status': args[1]})))
     elif cmd == 'qa' and len(args) in (1, 2):

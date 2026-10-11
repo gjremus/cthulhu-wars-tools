@@ -42,7 +42,10 @@ users.json                 {"users": {"<lc username>": {"username","salt","hash"
 sessions.json              {"<token>": {"user":"<lc>","expires":<epoch>}}       (30-day expiry, pruned on write)
 factions/<fid>/faction.json   the live record (see §3)
 factions/<fid>/v/<n>.json     frozen design snapshot of version n
-units/<uid>/unit.json         a neutral unit (not tied to any faction): {id, owner, created, updated, design:{meta:{color:null}, units:{rows:[ONE blank unit row without relatedSb/relatedSbNames; includes optional spellbook:{enabled,requirement,book} for Great Old One/Elder God types], customLogic}}}. No versions; saved in place. Owner-only.
+maps/<mid>/map.json           map record with same structure as factions (versions, session, build, claudeQA)
+maps/<mid>/v/<n>.json         frozen map design snapshot of version n
+units/<uid>/unit.json         a neutral unit (not tied to any faction): {id, owner, created, updated, current, maxVersion, versions, session, build, design:{meta:{color:null}, units:{rows:[ONE blank unit row without relatedSb/relatedSbNames; includes optional spellbook:{enabled,requirement,book} for Great Old One/Elder God types], customLogic}}}. Versions added 2026-10-11; old units migrated lazily on first load. Owner-only.
+units/<uid>/v/<n>.json        frozen unit design snapshot of version n
 images/<sha256>.<webp|png|jpg>
 requests.json              {"requests":[ ... see §6 ... ]}
 audit.log                  one line per admin action / request change
@@ -52,20 +55,25 @@ audit.log                  one line per admin action / request change
   - Identical uploads dedupe automatically.
   - Images are never deleted while any version snapshot or any faction references them. A deleted faction's images are garbage-collected by an admin "delete" (scan all faction files for references first).
 
-## 3. Faction record (`faction.json`)
+## 3. Faction / Map / Unit record structure
+Factions (`faction.json`), maps (`map.json`), and units (`unit.json`) all share the same versioning structure:
 ```json
 {
-  "id": "k3j2...", "owner": "<lc username>", "name": "Faction Name", "acronym": "XYZ",
+  "id": "k3j2...", "owner": "<lc username>", "name": "Faction/Map/Unit Name", "acronym": "XYZ" (factions only),
   "created": 1760000000, "updated": 1760000000,
   "current": 1,              // version number currently loaded/being edited
   "maxVersion": 1,           // highest version number ever allocated
   "versions": [ {"n":1,"from":null,"sections":[],"created":..,"deleted":false} ],
   "session": {"n":1,"sections":[],"last":1760000000},   // open edit session (see §4)
   "build": {"status":"none|requested|in_progress|built","liveVersion":null,"requestedAt":null,"builtAt":null,"history":[]},
-  "liveGameVersions": [],    // version numbers admin marked as used by a live game
+  "liveGameVersions": [],    // version numbers admin marked as used by a live game (factions/maps only)
+  "viewers": [],             // usernames with read-only access (factions/maps only; set by admin)
+  "claudeQA": {},            // Claude questions and answers per section (top-level, not in design)
   "design": { ... §5 ... }   // content of version `current`
 }
 ```
+
+Units had no versions before 2026-10-11; old units are migrated lazily on first GET (add current=1, maxVersion=1, versions=[{n:1,from:null,sections:[],created,deleted:false}], session={n:1,sections:[],last:updated}, and save the current design to v/1.json).
 
 ## 4. Version rules (implement exactly; unit-test each)
 "Edit" means one patch op (§7). Each op names a **section key** (`ae, ufa, setup, units, sbr, sb, region, tokens, custom, menus, card, sbImages, meta`).
@@ -109,8 +117,10 @@ After every applied op:
 - Every table row has a stable `"id"` (8 random chars), created by the client when the row is added.
 - Image fields hold an image id string or `null`.
 - Numbers are integers or `null` (empty). Booleans are `true/false`.
-- Every design section (ae, ufa, setup, units, sbr, sb, region, tokens, custom — not menus) also has `"customLogic": ""`, the free "Any custom logic or rules" box at the bottom of the section. Optional; never needed for Complete.
-- Defaults below are what a brand-new faction contains. Default values do **not** count as content when deciding "empty" vs "edited" (§8).
+- Every design section (ae, ufa, setup, units, sbr, sb, region, tokens, custom for factions; images, bitmaps, adjacency, units, tokens, sb, glyphs, abilities for maps — not menus) also has `"customLogic": ""`, the free "Any custom logic or rules" box at the bottom of the section. Optional; never needed for Complete.
+- Defaults below are what a brand-new faction/map/unit contains. Default values do **not** count as content when deciding "empty" vs "edited" (§8).
+
+### 5a. Faction design
 ```json
 {
   "meta":  {"color": null},                       // optional faction colour "#rrggbb" (used to tint unit art); added by us — doc says "if defined"
@@ -177,9 +187,59 @@ After every applied op:
  "leadsToNext":false,"next":null,"nextTrigger":""}
 ```
 
+### 5b. Map design
+```json
+{
+  "images": {
+    "images": [ {"id","label":"","imageId":null} ],
+    "layout": null,                              // null | "single" | "sideBySide" | "stacked" | "grid"
+    "gridColumns": 2,                            // for grid layout
+    "order": [],                                 // array of image ids in display order
+    "notes": "",
+    "regions": [ {"id","name":"","type":"land","glyphs":[],"customLogic":""} ]  // type: "land"|"sea"
+  },
+  "bitmaps": {
+    "items": [ {"id","imageId":null,"colors":{},"centroids":{}} ]
+                                                 // colors: {"#rrggbb": regionId}, centroids: {"regionId": [x,y]}
+  },
+  "adjacency": {
+    "cols": 32, "rows": 16,
+    "cells": [null, null, ...],                  // regionId or null for each cell (cols × rows)
+    "specialTypes": [ {"id","name":"","description":"","cost":null,"oneWay":false,"pairs":[ {"id","from":null,"to":null} ]} ]
+  },
+  "units": {
+    "wikiUrl": "",
+    "rows": [ UNIT, UNIT, ... ]                  // neutral units (no relatedSb field)
+  },
+  "tokens": {                                    // same as faction tokens
+    "rows": [ {"id","name":"","qty":null,"image":null,"placement":"","effects":"","hasEffect":false,"effect":null} ]
+  },
+  "sb": {                                        // same as faction spellbooks (requirements + books)
+    "multiText":"",
+    "rows": [ 6 × {"id","text":"","hasNum":false,"num":null} ],  // requirements
+    "books": [ {"id","name":"","type":null,"cost":0,"hasEffect":false,"effect":null,"text":""} ]
+  },
+  "glyphs": {
+    "rows": [ {"id","name":"","image":null,"description":""} ]
+  },
+  "abilities": {
+    "rows": [ {"id","name":"","when":null,"type":null,"cost":null,"who":"","text":""} ]
+                                                 // when: Setup|Gather Power|Action|Doom|Battle|Ongoing
+                                                 // type: Action|Ongoing|Battle|Pre-Battle|Post-Battle|Doom|Setup
+  }
+}
+```
+
+Each map section ends with `customLogic`. Map units are neutral (no relatedSb/relatedSbNames). Map spellbooks use the same structure as faction spellbooks (requirements multi-text, requirement rows, and book rows).
+
 ## 6. Requests (ticker / owner queue) — `requests.json`
 ```json
-{"id":"r_xxxxxxxx","type":"build|update|simple_update|extract|bug","fid":"..","faction":"Name","acronym":"XYZ","user":"<lc>",
+{"id":"r_xxxxxxxx","type":"build|update|simple_update|extract|bug",
+ "kind":"faction|unit|map",
+ "fid":"..","faction":"Name","acronym":"XYZ",  // for factions
+ "uid":"..","unitName":"...",                   // for units
+ "mid":"..","mapName":"...",                    // for maps
+ "user":"<lc>",
  "status":"open|notified|in_progress|done|cancelled","created":..,"updated":..,
  "text":"human-readable request text (exact wording below)",
  "data":{...}}
@@ -194,7 +254,14 @@ After every applied op:
 - **extract:** `data = {target: "card" | "sbAll" | "sbEach" | "sbEachAll" | "menus", index (0-5 for sbEach), image, images (card only: true = "Extract text + images"), each (sbEachAll: the 6 image ids)}`. When all 6 spellbooks are uploaded one at a time, an "Extract all spellbooks text" button (about 4 min) appears under the six slots and sends one `sbEachAll` request. The Menu Design section has a "Recommend menu design" button (estimate underneath) that sends `target: "menus"` (no image): the checker reads the whole design and replaces `menus.rows` with suggested menus for every player choice (confirm first if menus already have content). The card has two buttons, "Extract text" (about 7 min) and "Extract text + images" (about 30 min), each with its estimate shown underneath (measured end-to-end on a 5-unit card, 2026-10-09). `text = "Extract <target> text for <Faction>"`. With `images: true` a card extract also cuts out each unit's icon into `units.rows[].silhouette` and the faction glyph into `card.glyph` (overwriting existing ones, after a confirm). Under the two card buttons is one "Extraction status" line for the whole faction, based on its oldest open extract: "n/a" (nothing open), "waiting to be picked up" (no `pickedUp` yet), "Nth in queue" (picked up; N = place among open extracts not yet started, oldest first), "in process" (`startedAt` set), then "complete" once a request the page saw finishes; "complete" clears back to "n/a" when the user opens another section. The checker's `designer-admin.py` sets `pickedUp` when `list-extract` lists a request and `startedAt` when `faction <fid>` is read (admin POST `requests/<rid>` `{"mark":"picked"|"started"}`; the request stays open). The page gets `extractQueue` (`{state, position}` or null) on the faction GET / admin view-faction and re-checks every 20 s.
   - The ticker reads the image and writes sections through the admin design-write endpoint. Card → ae/ufa/setup/units/sbr (with unit `relatedSbNames`). SB images → sb rows.
   - The write overwrites existing values and goes through the version rules as a normal edit.
-- **bug:** `text = "Bug report for <Faction> (built v<liveVersion>): <description>"`. `data = {description}`.
+- **bug:** `text = "Bug report for <Faction/Unit/Map> (built v<liveVersion>): <description>"`. `data = {description}`. Map extracts: `data = {target: "regions" | "wiki", url (for wiki)}`.
+
+**Console queue entries:**
+- Faction build: `[ts] BUILD <rid>: Build the faction "<name>" designed by <user> into the homebrew build (designer faction id <fid>).`
+- Map build: `[ts] MAP-BUILD <rid>: Build the map "<name>" designed by <user> into the homebrew build (designer map id <mid>).`
+- Map extract: `[ts] MAP-EXTRACT <rid>: <user> asked to extract <region names and glyphs from the map images | units and other content from the wiki page <url>> for map "<name>" (designer map id <mid>).`
+- Unit bug: `[ts] UNIT-BUG <rid>: Bug report for unit "<name>" (designer unit id <uid>): <description>`
+- Map bug: `[ts] MAP-BUG <rid>: Bug report for map "<name>" (designer map id <mid>): <description>`
 
 Admin console banners use open/notified/in_progress `build` requests. Each one flashes:
 - "Design complete and ready to execute build for <Faction>"
@@ -221,7 +288,23 @@ User auth: `Authorization: Bearer <token>`. `sendBeacon` calls may put `"token"`
 | GET `/designer/api/units` | → `{units:[{id,name,type,created,updated}]}` (own neutral units only) |
 | POST `/designer/api/units` | `{name}` (1-60 chars) → full unit record |
 | GET `/designer/api/units/<uid>` | owner only → full unit record |
-| POST `/designer/api/units/<uid>/patch` | owner only, `{ops}`; only `set` on `units.customLogic` or `units.rows.<rowId>.<field>` (including nested spellbook fields: `.spellbook.enabled`, `.spellbook.requirement.<field>`, `.spellbook.book.<field>`) → `{updated}`. Anything else is 400. |
+| POST `/designer/api/units/<uid>/patch` | owner only, `{ops}` → `{current, maxVersion, versions, session, updated}`. Uses version rules like factions. |
+| POST `/designer/api/units/<uid>/close-session` | → `{}` |
+| POST `/designer/api/units/<uid>/rollback` | `{version}` → full unit |
+| POST `/designer/api/units/<uid>/delete-version` | `{version}` → full unit |
+| POST `/designer/api/units/<uid>/request` | `{type, text, data}` → request. Types: build, bug. |
+| POST `/designer/api/units/<uid>/answers` | `{answers}` → `{}` (submit Claude Q&A answers) |
+| GET `/designer/api/maps` | → `{maps:[{id,name,current,buildStatus,updated}]}` (own + shared read-only) |
+| POST `/designer/api/maps` | `{name}` → full map. Name ≥ 5 chars. Max 20 maps per user. |
+| GET `/designer/api/maps/<mid>` | → full map record + `builtDesign` |
+| POST `/designer/api/maps/<mid>/patch` | `{ops}` → `{current, maxVersion, versions, session, updated}` |
+| POST `/designer/api/maps/<mid>/close-session` | → `{}` |
+| POST `/designer/api/maps/<mid>/rollback` | `{version}` → full map |
+| POST `/designer/api/maps/<mid>/delete-version` | `{version}` → full map |
+| POST `/designer/api/maps/<mid>/request` | `{type, text, data}` → request. Types: build, extract, bug. |
+| GET `/designer/api/maps/<mid>/requests` | → that map's requests |
+| GET `/designer/api/maps/<mid>/extract-queue` | owner or viewer → `{status}` (same as factions) |
+| POST `/designer/api/maps/<mid>/answers` | `{answers}` → `{}` (submit Claude Q&A answers) |
 | GET `/designer/api/live/<ACR>/values?rev=N` | public, no login → `{acronym, liveVersion, rev, latestRev, values}` (Simple Update values for the live build, see §6) |
 
 **Patch ops.** `path` is a dot path inside `design`. Array rows are addressed by row id, e.g. `units.rows.<rowId>.name` or `sbImages.each.3`.
@@ -233,15 +316,32 @@ User auth: `Authorization: Bearer <token>`. `sendBeacon` calls may put `"token"`
 The section key = the first path segment. Unknown top-level sections are rejected. Value size limit: 20 000 characters per string.
 
 **Admin API.** The token is in the path: `/designer/api/admin/<TOKEN>/...`. The server compares `sha256(TOKEN)` with `/opt/cwo/designer/admin-token.sha256` in constant time. Wrong token → 404.
-- GET `users` → `{users:[{username, created, lastLogin, imageBytes, factions:[{id,name,acronym,current,buildStatus,liveVersion,updated}]}]}`
+- GET `users` → `{users:[{username, created, lastLogin, imageBytes, factions:[...], units:[...], maps:[...]}]}`
 - POST `reset-password` `{username}` → sets the password to `password`
-- POST `delete` `{users:[...], factions:[fid...]}` → deletes the factions (and users with ALL their factions), then garbage-collects unreferenced images
+- POST `delete` `{users:[...], factions:[fid...], units:[uid...], maps:[mid...]}` → deletes the entities (and users with ALL their designs), then garbage-collects unreferenced images
 - GET `requests?status=open,notified,in_progress` → `{requests:[...]}`
-- POST `requests/<rid>` `{status}` → updates the status
+- POST `requests/<rid>` `{status}` → updates the status; also POST `{mark:"picked"|"started"}` for extract status tracking
+- POST `terminal-log` `{type, user, id, prompt, summary}` → add terminal log entry
+- POST `terminal-log/<rid>` `{summary}` → update summary
 - GET `factions/<fid>` → full faction (any owner)
 - POST `factions/<fid>/patch` `{ops}` → same as the user patch (used by the ticker's Extract)
 - POST `factions/<fid>/build-status` `{status:"in_progress"|"built"|"none", version}` → for `built`: `liveVersion = version`, append to `build.history`, mark that version locked, set builtAt
 - POST `factions/<fid>/live-game-versions` `{versions:[...]}`
+- GET `factions/<fid>/qa` → `{claudeQA}`
+- POST `factions/<fid>/qa` `{section, questions?, answers?}` → set questions or answers
+- GET `view-faction/<fid>` → full faction (read-only admin view) + `{adminView:true, extractQueue}`
+- GET `units/<uid>` → full unit (any owner)
+- POST `units/<uid>/patch` `{ops}` → admin patch
+- POST `units/<uid>/build-status` `{status, version}` → set build status
+- GET `units/<uid>/qa` → `{claudeQA}`
+- POST `units/<uid>/qa` `{section, questions?, answers?}` → set questions or answers
+- GET `maps` → all maps summary
+- GET `maps/<mid>` → full map (any owner)
+- POST `maps/<mid>/patch` `{ops}` → admin patch
+- POST `maps/<mid>/build-status` `{status, version}` → set build status
+- GET `maps/<mid>/qa` → `{claudeQA}`
+- POST `maps/<mid>/qa` `{section, questions?, answers?}` → set questions or answers
+- GET `view-map/<mid>` → full map (read-only admin view) + `{adminView:true, extractQueue}`
 - GET `image-usage` → `{totalBytes, files, diskFreeBytes}` (for the admin page)
 - POST `images` (raw png/webp/jpeg body, same checks as the user upload, no user quota) → `{id, url}` (used by the extract checker to upload cut-out unit silhouettes and the faction glyph)
 

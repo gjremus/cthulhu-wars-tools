@@ -202,6 +202,24 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             self.handle_get_unit(m.group(1))
             return
 
+        # Maps
+        if path == '/designer/api/maps':
+            self.handle_list_maps()
+            return
+        if path.startswith('/designer/api/maps/'):
+            parts = path.split('/')
+            if len(parts) >= 5:
+                mid = parts[4]
+                if len(parts) == 5:
+                    self.handle_get_map(mid)
+                    return
+                elif len(parts) == 6 and parts[5] == 'requests':
+                    self.handle_get_map_requests(mid)
+                    return
+                elif len(parts) == 6 and parts[5] == 'extract-queue':
+                    self.handle_get_map_extract_queue(mid)
+                    return
+
         # Admin endpoints
         m = re.fullmatch(r'/designer/api/live/([A-Za-z0-9]{2,3})/values', path)
         if m:
@@ -252,6 +270,43 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         if m:
             self.handle_create_unit_request(m.group(1))
             return
+        m = re.fullmatch(r'/designer/api/units/([A-Za-z0-9_-]+)/rollback', path)
+        if m:
+            self.handle_rollback_unit(m.group(1))
+            return
+        m = re.fullmatch(r'/designer/api/units/([A-Za-z0-9_-]+)/delete-version', path)
+        if m:
+            self.handle_delete_unit_version(m.group(1))
+            return
+
+        # Map endpoints
+        if path == '/designer/api/maps':
+            self.handle_create_map()
+            return
+        if path.startswith('/designer/api/maps/'):
+            parts = path.split('/')
+            if len(parts) >= 5:
+                mid = parts[4]
+                if len(parts) == 6:
+                    action = parts[5]
+                    if action == 'patch':
+                        self.handle_patch_map(mid)
+                        return
+                    elif action == 'close-session':
+                        self.handle_close_map_session(mid)
+                        return
+                    elif action == 'rollback':
+                        self.handle_rollback_map(mid)
+                        return
+                    elif action == 'delete-version':
+                        self.handle_delete_map_version(mid)
+                        return
+                    elif action == 'request':
+                        self.handle_create_map_request(mid)
+                        return
+                    elif action == 'answers':
+                        self.handle_submit_map_answers(mid)
+                        return
 
         if path.startswith('/designer/api/factions/'):
             parts = path.split('/')
@@ -590,11 +645,104 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 if u_dir.is_dir() and f.exists():
                     yield u_dir, load_json(f)
 
+    def maps_dir(self) -> Path:
+        return self.server.data_dir / "maps"
+
+    def load_map(self, mid: str) -> Optional[Dict]:
+        f = self.maps_dir() / mid / "map.json"
+        return load_json(f) if f.exists() else None
+
+    def iter_maps(self):
+        d = self.maps_dir()
+        if d.exists():
+            for m_dir in d.iterdir():
+                f = m_dir / "map.json"
+                if m_dir.is_dir() and f.exists():
+                    yield m_dir, load_json(f)
+
     def new_neutral_design(self) -> Dict:
         row = self.blank_unit()
         row.pop("relatedSb", None)       # spellbooks belong to a faction
         row.pop("relatedSbNames", None)
         return {"meta": {"color": None}, "units": {"rows": [row], "customLogic": ""}}
+
+    def new_map_design(self) -> Dict:
+        """Create a blank map design with correct schema from task spec."""
+        return {
+            "images": {
+                "images": [],
+                "layout": None,
+                "gridColumns": 2,
+                "order": [],
+                "notes": "",
+                "regions": [],
+                "customLogic": ""
+            },
+            "bitmaps": {
+                "items": [],
+                "customLogic": ""
+            },
+            "adjacency": {
+                "cols": 32,
+                "rows": 16,
+                "cells": [],
+                "specialTypes": [],
+                "customLogic": ""
+            },
+            "units": {
+                "wikiUrl": "",
+                "rows": [],
+                "customLogic": ""
+            },
+            "tokens": {
+                "rows": [],
+                "customLogic": ""
+            },
+            "sb": {
+                "multiText": "",
+                "rows": [],
+                "books": [],
+                "customLogic": ""
+            },
+            "glyphs": {
+                "rows": [],
+                "customLogic": ""
+            },
+            "abilities": {
+                "rows": [],
+                "customLogic": ""
+            }
+        }
+
+    def blank_map_row(self, table_path: str) -> Dict:
+        """Create a blank row for a map table."""
+        row_id = self.new_id()
+        if table_path == "images.images":
+            return {"id": row_id, "label": "", "imageId": None}
+        elif table_path == "images.regions":
+            return {"id": row_id, "name": "", "type": "land", "glyphs": []}
+        elif table_path == "bitmaps.items":
+            return {"id": row_id, "imageId": None, "colors": {}, "centroids": {}}
+        elif table_path == "adjacency.specialTypes":
+            return {"id": row_id, "name": "", "description": "", "cost": None, "oneWay": False, "pairs": []}
+        elif table_path.startswith("adjacency.specialTypes.") and table_path.endswith(".pairs"):
+            return {"id": row_id, "from": None, "to": None}
+        elif table_path == "units.rows":
+            unit = self.blank_unit()
+            unit.pop("relatedSb", None)
+            unit.pop("relatedSbNames", None)
+            return unit
+        elif table_path == "tokens.rows":
+            return {"id": row_id, "name": "", "qty": None, "image": None, "placement": "", "effects": "", "hasEffect": False, "effect": None}
+        elif table_path == "sb.rows":
+            return {"id": row_id, "text": "", "hasNum": False, "num": None}
+        elif table_path == "sb.books":
+            return {"id": row_id, "name": "", "type": None, "cost": 0, "hasEffect": False, "effect": None, "text": ""}
+        elif table_path == "glyphs.rows":
+            return {"id": row_id, "name": "", "image": None, "description": ""}
+        elif table_path == "abilities.rows":
+            return {"id": row_id, "name": "", "when": None, "type": None, "cost": None, "who": "", "text": ""}
+        return {"id": row_id}
 
     def unit_summary(self, unit: Dict) -> Dict:
         row = (unit.get("design", {}).get("units", {}).get("rows") or [{}])[0]
@@ -660,6 +808,17 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         # Migrate old units without build field
         if "build" not in unit:
             unit["build"] = {"status": "none", "liveVersion": None, "requestedAt": None, "builtAt": None}
+        # Migrate to version system (lazy migration)
+        now = int(time.time())
+        if "current" not in unit:
+            unit["current"] = 1
+            unit["maxVersion"] = 1
+            unit["versions"] = [{"n": 1, "from": None, "sections": ["unit"], "created": unit.get("created", now), "deleted": False}]
+            unit["session"] = {"n": 1, "sections": [], "last": 0}
+            # Create v/ directory and save initial version
+            v_dir = self.units_dir() / uid / "v"
+            v_dir.mkdir(exist_ok=True)
+            atomic_write(v_dir / "1.json", unit["design"])
         # Add buildAttempted flag
         unit["buildAttempted"] = self.has_build_attempt(unit, uid, "unit")
         # Include claudeQA if it exists
@@ -688,8 +847,18 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             if unit.get("owner") != username:
                 self.send_error_json("Forbidden", 403)
                 return
+
+            # Ensure unit has version system
+            now = int(time.time())
+            if "current" not in unit:
+                unit["current"] = 1
+                unit["maxVersion"] = 1
+                unit["versions"] = [{"n": 1, "from": None, "sections": ["unit"], "created": unit.get("created", now), "deleted": False}]
+                unit["session"] = {"n": 1, "sections": [], "last": 0}
+
             design = unit["design"]
             row_id = design["units"]["rows"][0]["id"]
+
             for op in ops:
                 path = op.get('path', '') if isinstance(op, dict) else ''
                 # One unit only: no added or deleted rows, and only that unit's fields (or the custom logic box)
@@ -703,10 +872,917 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 if not ok:
                     self.send_error_json("Invalid change for a unit")
                     return
+
+                # Apply version logic (simplified for single-section unit)
+                section = "unit"
+                is_addition = self.is_unit_addition(unit, op)
+
+                current = unit["current"]
+                max_version = unit["maxVersion"]
+                live_version = unit.get("build", {}).get("liveVersion")
+                is_locked = current < max_version or current == live_version
+
+                session = unit["session"]
+                session_open = (
+                    session["n"] == current and
+                    time.time() - session["last"] < 600 and
+                    section in session["sections"]
+                )
+
+                if is_locked:
+                    self.create_new_unit_version(unit, section, uid)
+                elif is_addition:
+                    pass  # Apply in place
+                elif not session_open:
+                    self.create_new_unit_version(unit, section, uid)
+
                 self.set_path_value(design, path, op.get('value'))
-            unit["updated"] = int(time.time())
+
+                # Update session
+                session["last"] = now
+                if session["n"] == unit["current"]:
+                    if section not in session["sections"]:
+                        session["sections"].append(section)
+                else:
+                    session["n"] = unit["current"]
+                    session["sections"] = [section]
+
+                # Add section to current version's sections if not present
+                for v in unit["versions"]:
+                    if v["n"] == unit["current"]:
+                        if section not in v["sections"]:
+                            v["sections"].append(section)
+                        break
+
+            unit["updated"] = now
             atomic_write(self.units_dir() / uid / "unit.json", unit)
-        self.send_json({"updated": unit["updated"]})
+
+            # Always rewrite current version snapshot
+            v_dir = self.units_dir() / uid / "v"
+            v_dir.mkdir(exist_ok=True)
+            v_file = v_dir / f"{unit['current']}.json"
+            atomic_write(v_file, unit["design"])
+
+        self.send_json({
+            "current": unit["current"],
+            "maxVersion": unit["maxVersion"],
+            "versions": unit["versions"],
+            "session": unit["session"],
+            "updated": unit["updated"]
+        })
+
+    def is_unit_addition(self, unit: Dict, op: Dict) -> bool:
+        """Check if operation is an addition (empty→non-empty) for a unit."""
+        if op.get('op') != 'set':
+            return False
+        path = op.get('path', '')
+        value = op.get('value')
+        design = unit["design"]
+        current = self.get_path_value(design, path)
+        current_empty = current in ("", None, [])
+        value_empty = value in ("", None, [])
+        return current_empty and not value_empty
+
+    def create_new_unit_version(self, unit: Dict, section: str, uid: str):
+        """Create a new version and freeze the current one for a unit."""
+        current = unit["current"]
+        max_version = unit["maxVersion"]
+
+        # Freeze current version
+        v_dir = self.units_dir() / uid / "v"
+        v_dir.mkdir(exist_ok=True)
+        v_file = v_dir / f"{current}.json"
+        if not v_file.exists():
+            atomic_write(v_file, unit["design"])
+
+        # Create new version
+        new_n = max_version + 1
+        now = int(time.time())
+
+        unit["versions"].append({
+            "n": new_n,
+            "from": current,
+            "sections": [section],
+            "created": now,
+            "deleted": False
+        })
+
+        unit["current"] = new_n
+        unit["maxVersion"] = new_n
+        unit["session"] = {"n": new_n, "sections": [section], "last": now}
+
+    def handle_rollback_unit(self, uid: str):
+        """POST /designer/api/units/<uid>/rollback"""
+        username = self.verify_session()
+        if not username:
+            self.send_error_json("Unauthorized", 401)
+            return
+
+        body = self.read_json_body()
+        if not body:
+            return
+
+        version = body.get('version')
+        if not isinstance(version, int) or version < 1:
+            self.send_error_json("Invalid version")
+            return
+
+        with WRITE_LOCK:
+            unit = self.load_unit(uid)
+            if not unit:
+                self.send_error_json("Unit not found", 404)
+                return
+
+            if unit.get("owner") != username:
+                self.send_error_json("Forbidden", 403)
+                return
+
+            # Check version exists and not deleted
+            version_info = next((v for v in unit.get("versions", []) if v["n"] == version), None)
+            if not version_info or version_info.get("deleted"):
+                self.send_error_json("Version not found or deleted", 404)
+                return
+
+            # Save current snapshot
+            current = unit["current"]
+            v_dir = self.units_dir() / uid / "v"
+            v_dir.mkdir(exist_ok=True)
+            v_file = v_dir / f"{current}.json"
+            if not v_file.exists():
+                atomic_write(v_file, unit["design"])
+
+            # Load target version
+            target_file = v_dir / f"{version}.json"
+            if not target_file.exists():
+                self.send_error_json("Version snapshot not found", 404)
+                return
+
+            design = load_json(target_file)
+            unit["design"] = design
+            unit["current"] = version
+            unit["session"] = {"n": version, "sections": [], "last": 0}
+            unit["updated"] = int(time.time())
+
+            unit_file = self.units_dir() / uid / "unit.json"
+            atomic_write(unit_file, unit)
+
+        self.send_json(unit)
+
+    def handle_delete_unit_version(self, uid: str):
+        """POST /designer/api/units/<uid>/delete-version"""
+        username = self.verify_session()
+        if not username:
+            self.send_error_json("Unauthorized", 401)
+            return
+
+        body = self.read_json_body()
+        if not body:
+            return
+
+        version = body.get('version')
+        if not isinstance(version, int) or version < 1:
+            self.send_error_json("Invalid version")
+            return
+
+        with WRITE_LOCK:
+            unit = self.load_unit(uid)
+            if not unit:
+                self.send_error_json("Unit not found", 404)
+                return
+
+            if unit.get("owner") != username:
+                self.send_error_json("Forbidden", 403)
+                return
+
+            # Check constraints
+            if version == unit["current"]:
+                self.send_error_json("Cannot delete current version")
+                return
+
+            live_version = unit.get("build", {}).get("liveVersion")
+            if version == live_version:
+                self.send_error_json("Cannot delete live version")
+                return
+
+            # Check it's not the only non-deleted version
+            non_deleted = [v for v in unit.get("versions", []) if not v.get("deleted")]
+            if len(non_deleted) <= 1:
+                self.send_error_json("Cannot delete the only version")
+                return
+
+            # Mark deleted
+            for v in unit["versions"]:
+                if v["n"] == version:
+                    v["deleted"] = True
+                    v["sections"] = ["DELETED"]
+                    break
+
+            # Remove snapshot file
+            v_file = self.units_dir() / uid / "v" / f"{version}.json"
+            if v_file.exists():
+                v_file.unlink()
+
+            unit["updated"] = int(time.time())
+            unit_file = self.units_dir() / uid / "unit.json"
+            atomic_write(unit_file, unit)
+
+        self.send_json(unit)
+
+    # ── Map Management ───────────────────────────────────────────────────────────
+
+    def map_summary(self, map_obj: Dict) -> Dict:
+        return {
+            "id": map_obj["id"],
+            "name": map_obj["name"],
+            "created": map_obj["created"],
+            "updated": map_obj["updated"],
+            "current": map_obj["current"],
+            "buildStatus": map_obj.get("build", {}).get("status", "none")
+        }
+
+    def handle_list_maps(self):
+        """GET /designer/api/maps"""
+        username = self.verify_session()
+        if not username:
+            self.send_error_json("Unauthorized", 401)
+            return
+        maps = [self.map_summary(m) for _, m in self.iter_maps() if m.get("owner") == username]
+        maps.sort(key=lambda m: m["updated"], reverse=True)
+        self.send_json({"maps": maps})
+
+    def handle_create_map(self):
+        """POST /designer/api/maps {name}"""
+        username = self.verify_session()
+        if not username:
+            self.send_error_json("Unauthorized", 401)
+            return
+        body = self.read_json_body()
+        if body is None:
+            return
+        name = str(body.get('name', '')).strip()
+        if not name or len(name) > 60:
+            self.send_error_json("Map name must be 1-60 characters")
+            return
+
+        # Check user's map count
+        maps_dir = self.maps_dir()
+        maps_dir.mkdir(parents=True, exist_ok=True)
+        user_maps = sum(1 for _, m in self.iter_maps() if m.get("owner") == username)
+        if user_maps >= 20:
+            self.send_error_json("Maximum 20 maps per user")
+            return
+
+        now = int(time.time())
+        design = self.new_map_design()
+        design["meta"]["name"] = name
+
+        with WRITE_LOCK:
+            mid = self.new_id()
+            while (self.maps_dir() / mid).exists() or not re.fullmatch(r'[A-Za-z0-9_-]+', mid):
+                mid = self.new_id()
+            map_obj = {
+                "id": mid,
+                "owner": username,
+                "name": name,
+                "created": now,
+                "updated": now,
+                "current": 1,
+                "maxVersion": 1,
+                "versions": [{"n": 1, "from": None, "sections": [], "created": now, "deleted": False}],
+                "session": {"n": 1, "sections": [], "last": now},
+                "build": {"status": "none", "liveVersion": None, "requestedAt": None, "builtAt": None},
+                "design": design
+            }
+            map_dir = self.maps_dir() / mid
+            map_dir.mkdir(parents=True, exist_ok=True)
+            (map_dir / "v").mkdir(exist_ok=True)
+            atomic_write(map_dir / "map.json", map_obj)
+            atomic_write(map_dir / "v" / "1.json", design)
+        self.send_json(map_obj)
+
+    def handle_get_map(self, mid: str):
+        """GET /designer/api/maps/<mid>"""
+        username = self.verify_session()
+        if not username:
+            self.send_error_json("Unauthorized", 401)
+            return
+        map_obj = self.load_map(mid)
+        if not map_obj:
+            self.send_error_json("Map not found", 404)
+            return
+        if map_obj.get("owner") != username:
+            self.send_error_json("Forbidden", 403)
+            return
+        # Add buildAttempted flag
+        map_obj["buildAttempted"] = self.has_build_attempt(map_obj, mid, "map")
+        # Include claudeQA if it exists
+        if "claudeQA" not in map_obj:
+            map_obj["claudeQA"] = {}
+        self.send_json(map_obj)
+
+    def handle_patch_map(self, mid: str):
+        """POST /designer/api/maps/<mid>/patch"""
+        username = self.verify_session()
+        if not username:
+            self.send_error_json("Unauthorized", 401)
+            return
+
+        body = self.read_json_body()
+        if not body:
+            return
+
+        ops = body.get('ops', [])
+        if not isinstance(ops, list):
+            self.send_error_json("ops must be an array")
+            return
+
+        with WRITE_LOCK:
+            map_obj = self.load_map(mid)
+            if not map_obj:
+                self.send_error_json("Map not found", 404)
+                return
+
+            if map_obj["owner"] != username:
+                self.send_error_json("Forbidden", 403)
+                return
+
+            # Apply ops (similar to faction patch)
+            for op in ops:
+                if not self.apply_map_patch_op(map_obj, op, mid):
+                    return  # Error already sent
+
+            # Save map
+            map_obj["updated"] = int(time.time())
+            map_file = self.maps_dir() / mid / "map.json"
+            atomic_write(map_file, map_obj)
+
+            # Always rewrite current version snapshot
+            v_file = self.maps_dir() / mid / "v" / f"{map_obj['current']}.json"
+            atomic_write(v_file, map_obj["design"])
+
+        self.send_json({
+            "current": map_obj["current"],
+            "maxVersion": map_obj["maxVersion"],
+            "versions": map_obj["versions"],
+            "session": map_obj["session"],
+            "updated": map_obj["updated"]
+        })
+
+    def apply_map_patch_op(self, map_obj: Dict, op: Dict, mid: str) -> bool:
+        """Apply a single patch operation to a map. Return False on error."""
+        op_type = op.get('op')
+        path = op.get('path', '')
+
+        # Extract section key (first path segment)
+        parts = path.split('.')
+        if not parts:
+            self.send_error_json("Invalid path")
+            return False
+
+        section = parts[0]
+        valid_sections = ['images', 'bitmaps', 'adjacency', 'units', 'tokens', 'sb', 'glyphs', 'abilities']
+        if section not in valid_sections:
+            self.send_error_json(f"Unknown section: {section}")
+            return False
+
+        # Determine if this is an addition or change
+        is_addition = self.is_map_addition(map_obj, op)
+
+        # Check if version is locked
+        current = map_obj["current"]
+        max_version = map_obj["maxVersion"]
+        live_version = map_obj.get("build", {}).get("liveVersion")
+        is_locked = current < max_version or current == live_version
+
+        # Check open session
+        now = time.time()
+        session = map_obj["session"]
+        is_open_session = (
+            session["n"] == current and
+            now - session["last"] < 600 and
+            section in session["sections"]
+        )
+
+        # Decide: new version or in-place
+        if is_locked:
+            self.create_new_map_version(map_obj, section, mid)
+        elif is_addition:
+            pass  # Apply in place, add section to version
+        elif not is_open_session:
+            self.create_new_map_version(map_obj, section, mid)
+
+        # Apply the operation
+        if not self.apply_op_to_design(map_obj["design"], op):
+            return False
+
+        # Update session
+        session["last"] = int(now)
+        if session["n"] == map_obj["current"]:
+            if section not in session["sections"]:
+                session["sections"].append(section)
+        else:
+            session["n"] = map_obj["current"]
+            session["sections"] = [section]
+
+        # Add section to current version's sections if not present
+        for v in map_obj["versions"]:
+            if v["n"] == map_obj["current"]:
+                if section not in v["sections"]:
+                    v["sections"].append(section)
+                break
+
+        return True
+
+    def is_map_addition(self, map_obj: Dict, op: Dict) -> bool:
+        """Check if operation is an addition (empty→non-empty) for a map."""
+        op_type = op.get('op')
+        path = op.get('path', '')
+        design = map_obj["design"]
+
+        if op_type == 'addRow':
+            row = op.get('row', {})
+            return self.is_blank_map_row(row, path)
+
+        if op_type == 'deleteRow':
+            table_path = op.get('path', '')
+            row_id = op.get('id')
+            row = self.find_row(design, table_path, row_id)
+            if row:
+                return self.is_blank_map_row(row, table_path)
+            return True
+
+        if op_type == 'set':
+            value = op.get('value')
+            current = self.get_path_value(design, path)
+            current_empty = current in ("", None, [])
+            value_empty = value in ("", None, [])
+            return current_empty and not value_empty
+
+        return False
+
+    def is_blank_map_row(self, row: Dict, table_path: str) -> bool:
+        """Check if a map row is completely blank."""
+        for k, v in row.items():
+            if k == 'id':
+                continue
+            if v not in ("", None, [], False, 0):
+                return False
+        return True
+
+    def create_new_map_version(self, map_obj: Dict, section: str, mid: str):
+        """Create a new version and freeze the current one for a map."""
+        current = map_obj["current"]
+        max_version = map_obj["maxVersion"]
+
+        # Freeze current version
+        v_file = self.maps_dir() / mid / "v" / f"{current}.json"
+        if not v_file.exists():
+            atomic_write(v_file, map_obj["design"])
+
+        # Create new version
+        new_n = max_version + 1
+        now = int(time.time())
+
+        map_obj["versions"].append({
+            "n": new_n,
+            "from": current,
+            "sections": [section],
+            "created": now,
+            "deleted": False
+        })
+
+        map_obj["current"] = new_n
+        map_obj["maxVersion"] = new_n
+        map_obj["session"] = {"n": new_n, "sections": [section], "last": now}
+
+    def handle_close_map_session(self, mid: str):
+        """POST /designer/api/maps/<mid>/close-session"""
+        username = self.verify_session()
+        if not username:
+            self.send_error_json("Unauthorized", 401)
+            return
+
+        with WRITE_LOCK:
+            map_obj = self.load_map(mid)
+            if not map_obj:
+                self.send_error_json("Map not found", 404)
+                return
+
+            if map_obj["owner"] != username:
+                self.send_error_json("Forbidden", 403)
+                return
+
+            # Clear session by resetting last time to far past
+            map_obj["session"]["last"] = 0
+
+            map_file = self.maps_dir() / mid / "map.json"
+            atomic_write(map_file, map_obj)
+
+        self.send_json({})
+
+    def handle_rollback_map(self, mid: str):
+        """POST /designer/api/maps/<mid>/rollback"""
+        username = self.verify_session()
+        if not username:
+            self.send_error_json("Unauthorized", 401)
+            return
+
+        body = self.read_json_body()
+        if not body:
+            return
+
+        version = body.get('version')
+        if not isinstance(version, int) or version < 1:
+            self.send_error_json("Invalid version")
+            return
+
+        with WRITE_LOCK:
+            map_obj = self.load_map(mid)
+            if not map_obj:
+                self.send_error_json("Map not found", 404)
+                return
+
+            if map_obj["owner"] != username:
+                self.send_error_json("Forbidden", 403)
+                return
+
+            # Check version exists and not deleted
+            version_info = next((v for v in map_obj["versions"] if v["n"] == version), None)
+            if not version_info or version_info.get("deleted"):
+                self.send_error_json("Version not found or deleted", 404)
+                return
+
+            # Save current snapshot
+            current = map_obj["current"]
+            v_file = self.maps_dir() / mid / "v" / f"{current}.json"
+            if not v_file.exists():
+                atomic_write(v_file, map_obj["design"])
+
+            # Load target version
+            target_file = self.maps_dir() / mid / "v" / f"{version}.json"
+            if not target_file.exists():
+                self.send_error_json("Version snapshot not found", 404)
+                return
+
+            design = load_json(target_file)
+            map_obj["design"] = design
+            map_obj["current"] = version
+            map_obj["session"] = {"n": version, "sections": [], "last": 0}
+            map_obj["updated"] = int(time.time())
+
+            map_file = self.maps_dir() / mid / "map.json"
+            atomic_write(map_file, map_obj)
+
+        self.send_json(map_obj)
+
+    def handle_delete_map_version(self, mid: str):
+        """POST /designer/api/maps/<mid>/delete-version"""
+        username = self.verify_session()
+        if not username:
+            self.send_error_json("Unauthorized", 401)
+            return
+
+        body = self.read_json_body()
+        if not body:
+            return
+
+        version = body.get('version')
+        if not isinstance(version, int) or version < 1:
+            self.send_error_json("Invalid version")
+            return
+
+        with WRITE_LOCK:
+            map_obj = self.load_map(mid)
+            if not map_obj:
+                self.send_error_json("Map not found", 404)
+                return
+
+            if map_obj["owner"] != username:
+                self.send_error_json("Forbidden", 403)
+                return
+
+            # Check constraints
+            if version == map_obj["current"]:
+                self.send_error_json("Cannot delete current version")
+                return
+
+            live_version = map_obj.get("build", {}).get("liveVersion")
+            if version == live_version:
+                self.send_error_json("Cannot delete live version")
+                return
+
+            # Check it's not the only non-deleted version
+            non_deleted = [v for v in map_obj["versions"] if not v.get("deleted")]
+            if len(non_deleted) <= 1:
+                self.send_error_json("Cannot delete the only version")
+                return
+
+            # Mark deleted
+            for v in map_obj["versions"]:
+                if v["n"] == version:
+                    v["deleted"] = True
+                    v["sections"] = ["DELETED"]
+                    break
+
+            # Remove snapshot file
+            v_file = self.maps_dir() / mid / "v" / f"{version}.json"
+            if v_file.exists():
+                v_file.unlink()
+
+            map_obj["updated"] = int(time.time())
+            map_file = self.maps_dir() / mid / "map.json"
+            atomic_write(map_file, map_obj)
+
+        self.send_json(map_obj)
+
+    def handle_create_map_request(self, mid: str):
+        """POST /designer/api/maps/<mid>/request"""
+        username = self.verify_session()
+        if not username:
+            self.send_error_json("Unauthorized", 401)
+            return
+
+        body = self.read_json_body()
+        if not body:
+            return
+
+        req_type = body.get('type')
+        text = body.get('text', '')
+        data = body.get('data', {})
+
+        valid_types = ['build', 'extract', 'bug']
+        if req_type not in valid_types:
+            self.send_error_json(f"Invalid request type. Must be one of: {', '.join(valid_types)}")
+            return
+
+        map_obj = self.load_map(mid)
+        if not map_obj:
+            self.send_error_json("Map not found", 404)
+            return
+
+        if map_obj["owner"] != username:
+            self.send_error_json("Forbidden", 403)
+            return
+
+        # Load requests
+        requests_file = self.server.data_dir / "requests.json"
+        requests_data = load_json(requests_file) or {"requests": []}
+        requests = requests_data.get("requests", [])
+
+        # Check for duplicate
+        for existing in requests:
+            if (existing.get("type") == req_type and
+                existing.get("mid") == mid and
+                existing.get("status") in ("open", "notified") and
+                existing.get("data") == data):
+                self.send_json(existing)
+                return
+
+        # Create new request
+        now = int(time.time())
+        req_id = f"r_{secrets.token_urlsafe(6)}"
+
+        request = {
+            "id": req_id,
+            "type": req_type,
+            "kind": "map",
+            "mid": mid,
+            "mapName": map_obj["name"],
+            "user": username,
+            "status": "open",
+            "created": now,
+            "updated": now,
+            "text": text,
+            "data": data
+        }
+
+        with WRITE_LOCK:
+            requests.append(request)
+            requests_data["requests"] = requests
+            atomic_write(requests_file, requests_data)
+
+            # Write to console queue for build requests
+            if req_type == "build":
+                queue_written = False
+                try:
+                    clean_name = map_obj["name"].replace('\n', ' ').replace('[', '').replace(']', '')
+                    timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+                    display_user = self.display_name(username)
+                    queue_line = f"[{timestamp}] MAP-BUILD {req_id}: Build the map \"{clean_name}\" designed by {display_user} into the homebrew build (designer map id {mid}).\n"
+                    with open(self.server.console_queue_path, 'a') as f:
+                        f.write(queue_line)
+                    queue_written = True
+                except OSError:
+                    pass
+
+                if queue_written:
+                    request["status"] = "notified"
+                    atomic_write(requests_file, requests_data)
+
+                # Update build status
+                map_obj["build"] = map_obj.get("build", {
+                    "status": "none",
+                    "liveVersion": None,
+                    "requestedAt": None,
+                    "builtAt": None
+                })
+                map_obj["build"]["status"] = "requested"
+                map_obj["build"]["requestedAt"] = now
+                atomic_write(self.maps_dir() / mid / "map.json", map_obj)
+            elif req_type == "extract":
+                queue_written = False
+                try:
+                    clean_name = map_obj["name"].replace('\n', ' ').replace('[', '').replace(']', '')
+                    timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+                    display_user = self.display_name(username)
+                    queue_line = f"[{timestamp}] MAP-EXTRACT {req_id}: Extract map design details for \"{clean_name}\" designed by {display_user} (designer map id {mid}).\n"
+                    with open(self.server.console_queue_path, 'a') as f:
+                        f.write(queue_line)
+                    queue_written = True
+                except OSError:
+                    pass
+
+                if queue_written:
+                    request["status"] = "notified"
+                    atomic_write(requests_file, requests_data)
+            elif req_type == "bug":
+                queue_written = False
+                try:
+                    clean_name = map_obj["name"].replace('\n', ' ').replace('[', '').replace(']', '')
+                    timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+                    display_user = self.display_name(username)
+                    queue_line = f"[{timestamp}] MAP-BUG {req_id}: Bug report for map \"{clean_name}\" from {display_user} (designer map id {mid}).\n"
+                    with open(self.server.console_queue_path, 'a') as f:
+                        f.write(queue_line)
+                    queue_written = True
+                except OSError:
+                    pass
+
+                if queue_written:
+                    request["status"] = "notified"
+                    atomic_write(requests_file, requests_data)
+
+        self.send_json(request)
+
+    def handle_get_map_requests(self, mid: str):
+        """GET /designer/api/maps/<mid>/requests"""
+        username = self.verify_session()
+        if not username:
+            self.send_error_json("Unauthorized", 401)
+            return
+
+        map_obj = self.load_map(mid)
+        if not map_obj:
+            self.send_error_json("Map not found", 404)
+            return
+
+        if map_obj["owner"] != username:
+            self.send_error_json("Forbidden", 403)
+            return
+
+        requests_file = self.server.data_dir / "requests.json"
+        requests_data = load_json(requests_file) or {"requests": []}
+        requests = requests_data.get("requests", [])
+
+        map_requests = [r for r in requests if r.get("mid") == mid]
+        map_requests.sort(key=lambda r: r.get("created", 0), reverse=True)
+
+        self.send_json({"requests": map_requests})
+
+    def handle_get_map_extract_queue(self, mid: str):
+        """GET /designer/api/maps/<mid>/extract-queue"""
+        username = self.verify_session()
+        if not username:
+            self.send_error_json("Unauthorized", 401)
+            return
+        map_obj = self.load_map(mid)
+        if not map_obj:
+            self.send_error_json("Map not found", 404)
+            return
+        if map_obj["owner"] != username:
+            self.send_error_json("Forbidden", 403)
+            return
+        # Reuse extract_queue_position logic but for maps
+        self.send_json({"status": self.extract_queue_position_for_map(mid)})
+
+    def extract_queue_position_for_map(self, mid: str) -> Optional[Dict]:
+        """Extraction status for maps."""
+        requests = (load_json(self.server.data_dir / "requests.json") or {}).get("requests", [])
+        queue = sorted((r for r in requests if r.get("type") == "extract" and r.get("status") == "open" and r.get("kind") == "map"),
+                       key=lambda r: r.get("created", 0))
+        mine = next((r for r in queue if r.get("mid") == mid), None)
+        if not mine:
+            return None
+        if mine.get("startedAt"):
+            return {"state": "in_process"}
+        if not mine.get("pickedUp"):
+            return {"state": "waiting"}
+        waiting = [r for r in queue if not r.get("startedAt")]
+        return {"state": "queued", "position": waiting.index(mine) + 1}
+
+    def handle_submit_map_answers(self, mid: str):
+        """POST /designer/api/maps/<mid>/answers {section, text}"""
+        username = self.verify_session()
+        if not username:
+            self.send_error_json("Unauthorized", 401)
+            return
+
+        body = self.read_json_body()
+        if not body:
+            return
+
+        section = body.get('section', '').strip()
+        text = body.get('text', '').strip()
+
+        if not section:
+            self.send_error_json("section is required")
+            return
+
+        map_obj = self.load_map(mid)
+        if not map_obj:
+            self.send_error_json("Map not found", 404)
+            return
+        if map_obj.get("owner") != username:
+            self.send_error_json("Forbidden", 403)
+            return
+
+        # Find section label
+        section_titles = [
+            {'key': 'regions', 'title': 'Regions'},
+            {'key': 'tokens', 'title': 'Tokens'},
+            {'key': 'custom', 'title': 'Custom Elements'},
+            {'key': 'rules', 'title': 'Rules'}
+        ]
+        section_label = next((s['title'] for s in section_titles if s['key'] == section), section)
+
+        now = int(time.time())
+
+        with WRITE_LOCK:
+            # Save answers
+            if "claudeQA" not in map_obj:
+                map_obj["claudeQA"] = {}
+            if section not in map_obj["claudeQA"]:
+                map_obj["claudeQA"][section] = {"questions": "", "answers": "", "updated": 0}
+            map_obj["claudeQA"][section]["answers"] = text
+            map_obj["claudeQA"][section]["updated"] = now
+            map_obj["updated"] = now
+            build = map_obj.get("build") or {}
+            if build.get("status") == "needs_answers":
+                build["status"] = "requested"
+            atomic_write(self.maps_dir() / mid / "map.json", map_obj)
+
+            # Create request
+            requests_file = self.server.data_dir / "requests.json"
+            requests_data = load_json(requests_file) or {"requests": []}
+            requests = requests_data.get("requests", [])
+
+            # Check for duplicate
+            for existing in requests:
+                if (existing.get("type") == "answers" and
+                    existing.get("mid") == mid and
+                    existing.get("status") == "open" and
+                    existing.get("data", {}).get("section") == section and
+                    existing.get("text") == text):
+                    self.send_json(existing)
+                    return
+
+            req_id = f"r_{secrets.token_urlsafe(6)}"
+            request = {
+                "id": req_id,
+                "type": "answers",
+                "kind": "map",
+                "mid": mid,
+                "mapName": map_obj["name"],
+                "user": username,
+                "status": "open",
+                "created": now,
+                "updated": now,
+                "text": text,
+                "data": {"section": section}
+            }
+            requests.append(request)
+            requests_data["requests"] = requests
+            atomic_write(requests_file, requests_data)
+
+            # Write queue line to console queue file
+            queue_written = False
+            try:
+                clean_name = map_obj["name"].replace('\n', ' ').replace('[', '').replace(']', '')
+                timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+                display_user = self.display_name(username)
+                queue_line = f"[{timestamp}] DESIGN-ANSWERS {req_id}: {display_user} answered Claude's questions on the \"{section_label}\" section of map {clean_name} (designer map id {mid}, section {section}). Read the questions and answers with tickers/designer-admin.py qa {mid} {section}.\n"
+                with open(self.server.console_queue_path, 'a') as f:
+                    f.write(queue_line)
+                queue_written = True
+            except OSError:
+                pass
+
+            if queue_written:
+                request["status"] = "notified"
+                requests_data["requests"] = requests
+                atomic_write(requests_file, requests_data)
+
+        self.send_json(request)
 
     def sync_build_status(self, request: Dict, status: str):
         """Keep a design's build status in step with its build / answers request (caller holds
@@ -719,6 +1795,9 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         elif request.get("fid"):
             entity = self.load_faction(request["fid"])
             f = self.server.data_dir / "factions" / request["fid"] / "faction.json"
+        elif request.get("mid"):
+            entity = self.load_map(request["mid"])
+            f = self.maps_dir() / request["mid"] / "map.json"
         else:
             return
         if not entity:
@@ -737,8 +1816,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             entity["updated"] = int(time.time())
             atomic_write(f, entity)
 
-    def has_build_attempt(self, entity: Dict, fid_or_uid: str, entity_type: str) -> bool:
-        """Check if a faction or unit has had a build attempted."""
+    def has_build_attempt(self, entity: Dict, entity_id: str, entity_type: str) -> bool:
+        """Check if a faction, unit, or map has had a build attempted."""
         build = entity.get("build", {})
         # Check if build status is not "none"
         if build.get("status", "none") != "none":
@@ -754,8 +1833,13 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         requests_file = self.server.data_dir / "requests.json"
         requests_data = load_json(requests_file) or {"requests": []}
         requests = requests_data.get("requests", [])
-        key = "fid" if entity_type == "faction" else "uid"
-        if any(r.get(key) == fid_or_uid and r.get("type") in ("build", "update") for r in requests):
+        if entity_type == "faction":
+            key = "fid"
+        elif entity_type == "unit":
+            key = "uid"
+        else:  # map
+            key = "mid"
+        if any(r.get(key) == entity_id and r.get("type") in ("build", "update") for r in requests):
             return True
         return False
 
@@ -1642,7 +2726,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         text = body.get('text', '')
         data = body.get('data', {})
 
-        valid_types = ['build']
+        valid_types = ['build', 'bug']
         if req_type not in valid_types:
             self.send_error_json(f"Invalid request type. Must be one of: {', '.join(valid_types)}")
             return
@@ -1697,40 +2781,47 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             requests_data["requests"] = requests
             atomic_write(requests_file, requests_data)
 
-            # For unit builds, try to write to console queue
-            if req_type == "build":
-                queue_written = False
-                try:
-                    clean_name = unit_name.replace('\n', ' ').replace('[', '').replace(']', '')
-                    timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-                    display_user = self.display_name(username)
+            # Write to console queue
+            queue_written = False
+            try:
+                clean_name = unit_name.replace('\n', ' ').replace('[', '').replace(']', '')
+                timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+                display_user = self.display_name(username)
+                if req_type == "build":
                     queue_line = f"[{timestamp}] UNIT-BUILD {req_id}: Build the neutral unit \"{clean_name}\" designed by {display_user} into the homebrew build (designer unit id {uid}).\n"
+                elif req_type == "bug":
+                    queue_line = f"[{timestamp}] UNIT-BUG {req_id}: Bug report for unit \"{clean_name}\" from {display_user} (designer unit id {uid}).\n"
+                else:
+                    queue_line = None
+
+                if queue_line:
                     with open(self.server.console_queue_path, 'a') as f:
                         f.write(queue_line)
                     queue_written = True
-                except OSError:
-                    pass
+            except OSError:
+                pass
 
-                if queue_written:
-                    request["status"] = "notified"
-                    requests_data["requests"] = requests
-                    atomic_write(requests_file, requests_data)
-                else:
-                    # Fallback: add terminal entry for admin console
-                    self.add_terminal_entry("design build", self.display_name(username),
-                                            text or f"{req_type} request for unit {unit_name}",
-                                            "Waiting to be picked up.", ref=req_id)
+            if queue_written:
+                request["status"] = "notified"
+                requests_data["requests"] = requests
+                atomic_write(requests_file, requests_data)
+            elif req_type == "build":
+                # Fallback: add terminal entry for admin console
+                self.add_terminal_entry("unit build", self.display_name(username),
+                                        text or f"{req_type} request for unit {unit_name}",
+                                        "Waiting to be picked up.", ref=req_id)
 
-            # Update unit build status
-            unit["build"] = unit.get("build", {
-                "status": "none",
-                "liveVersion": None,
-                "requestedAt": None,
-                "builtAt": None
-            })
-            unit["build"]["status"] = "requested"
-            unit["build"]["requestedAt"] = now
-            atomic_write(self.units_dir() / uid / "unit.json", unit)
+            # Update unit build status (only for build requests)
+            if req_type == "build":
+                unit["build"] = unit.get("build", {
+                    "status": "none",
+                    "liveVersion": None,
+                    "requestedAt": None,
+                    "builtAt": None
+                })
+                unit["build"]["status"] = "requested"
+                unit["build"]["requestedAt"] = now
+                atomic_write(self.units_dir() / uid / "unit.json", unit)
 
         self.send_json(request)
 
@@ -1793,6 +2884,14 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 self.handle_admin_get_qa(uid, 'unit')
             else:
                 self.handle_admin_get_unit(uid)
+        elif endpoint == 'maps' and len(parts) >= 7:
+            mid = parts[6]
+            if len(parts) >= 8 and parts[7] == 'qa':
+                self.handle_admin_get_qa(mid, 'map')
+            else:
+                self.handle_admin_get_map(mid)
+        elif endpoint == 'view-map' and len(parts) >= 7:
+            self.handle_admin_view_map(parts[6])
         elif endpoint == 'image-usage':
             self.handle_admin_image_usage()
         elif endpoint == 'terminal-log':
@@ -1861,6 +2960,20 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                     self.send_error_json("Unknown admin endpoint", 404)
             else:
                 self.send_error_json("Invalid admin path", 400)
+        elif endpoint == 'maps' and len(parts) >= 7:
+            mid = parts[6]
+            if len(parts) >= 8:
+                action = parts[7]
+                if action == 'patch':
+                    self.handle_admin_patch_map(mid)
+                elif action == 'build-status':
+                    self.handle_admin_map_build_status(mid)
+                elif action == 'qa':
+                    self.handle_admin_post_qa(mid, 'map')
+                else:
+                    self.send_error_json("Unknown admin endpoint", 404)
+            else:
+                self.send_error_json("Invalid admin path", 400)
         else:
             self.send_error_json("Unknown admin endpoint", 404)
 
@@ -1900,7 +3013,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 "lastLogin": user.get("lastLogin"),
                 "imageBytes": user.get("imageBytes", 0),
                 "factions": user_factions,
-                "units": [self.unit_summary(u) for _, u in self.iter_units() if u.get("owner") == username]
+                "units": [self.unit_summary(u) for _, u in self.iter_units() if u.get("owner") == username],
+                "maps": [self.map_summary(m) for _, m in self.iter_maps() if m.get("owner") == username]
             })
 
         result.sort(key=lambda u: u["lastLogin"] or 0, reverse=True)
@@ -1943,6 +3057,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
 
         delete_users = body.get('users', [])
         delete_factions = body.get('factions', [])
+        delete_maps = body.get('maps', [])
 
         with WRITE_LOCK:
             # Delete factions
@@ -1958,7 +3073,17 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                     shutil.rmtree(faction_dir)
                     deleted_fids.add(fid)
 
-            # Delete users and their factions
+            # Delete maps
+            maps_dir = self.maps_dir()
+            for mid in delete_maps:
+                if not isinstance(mid, str) or not re.fullmatch(r'[A-Za-z0-9_-]+', mid):
+                    continue
+                map_dir = maps_dir / mid
+                if map_dir.exists():
+                    import shutil
+                    shutil.rmtree(map_dir)
+
+            # Delete users and their factions/units/maps
             users_file = self.server.data_dir / "users.json"
             users_data = load_json(users_file) or {"users": {}}
             users = users_data.get("users", {})
@@ -1984,6 +3109,12 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                         if unit.get("owner") == username_lc:
                             import shutil
                             shutil.rmtree(u_dir)
+
+                    # ...and their maps
+                    for m_dir, map_obj in list(self.iter_maps()):
+                        if map_obj.get("owner") == username_lc:
+                            import shutil
+                            shutil.rmtree(m_dir)
 
                     # Remove user
                     del users[username_lc]
@@ -2025,6 +3156,10 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         # Neutral units keep their images too
         for _, unit in self.iter_units():
             self.collect_images_from_json(unit, referenced)
+
+        # Maps keep their images too
+        for _, map_obj in self.iter_maps():
+            self.collect_images_from_json(map_obj, referenced)
 
         # Delete unreferenced images and update user quotas
         users_file = self.server.data_dir / "users.json"
@@ -2095,6 +3230,10 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         for _, unit in self.iter_units():
             if unit.get("owner") == username:
                 self.collect_images_from_json(unit, user_images)
+
+        for _, map_obj in self.iter_maps():
+            if map_obj.get("owner") == username:
+                self.collect_images_from_json(map_obj, user_images)
 
         return user_images
 
@@ -2478,16 +3617,124 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
 
         self.send_json({"ok": True})
 
+    def handle_admin_get_map(self, mid: str):
+        """GET admin/maps/<mid>"""
+        map_obj = self.load_map(mid)
+        if not map_obj:
+            self.send_error_json("Map not found", 404)
+            return
+        self.send_json(map_obj)
+
+    def handle_admin_view_map(self, mid: str):
+        """GET admin/view-map/<mid> -- same shape the designer page gets, always read only"""
+        map_obj = self.load_map(mid)
+        if not map_obj:
+            self.send_error_json("Map not found", 404)
+            return
+
+        response = dict(map_obj)
+        response["readOnly"] = True
+        response["adminView"] = True
+        response["ownerName"] = self.display_name(map_obj["owner"])
+        self.send_json(response)
+
+    def handle_admin_patch_map(self, mid: str):
+        """POST admin/maps/<mid>/patch"""
+        body = self.read_json_body()
+        if not body:
+            return
+
+        ops = body.get('ops', [])
+        if not isinstance(ops, list):
+            self.send_error_json("ops must be an array")
+            return
+
+        with WRITE_LOCK:
+            map_obj = self.load_map(mid)
+            if not map_obj:
+                self.send_error_json("Map not found", 404)
+                return
+
+            # Apply ops (same as user patch)
+            for op in ops:
+                if not self.apply_map_patch_op(map_obj, op, mid):
+                    return
+
+            map_obj["updated"] = int(time.time())
+            map_file = self.maps_dir() / mid / "map.json"
+            atomic_write(map_file, map_obj)
+
+            # Always rewrite current version snapshot
+            v_file = self.maps_dir() / mid / "v" / f"{map_obj['current']}.json"
+            atomic_write(v_file, map_obj["design"])
+
+        self.send_json({
+            "current": map_obj["current"],
+            "maxVersion": map_obj["maxVersion"],
+            "versions": map_obj["versions"],
+            "session": map_obj["session"],
+            "updated": map_obj["updated"]
+        })
+
+    def handle_admin_map_build_status(self, mid: str):
+        """POST admin/maps/<mid>/build-status"""
+        body = self.read_json_body()
+        if not body:
+            return
+
+        status = body.get('status')
+        version = body.get('version')
+
+        valid_statuses = ['requested', 'in_progress', 'needs_answers', 'built', 'none']
+        if status not in valid_statuses:
+            self.send_error_json(f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
+            return
+
+        with WRITE_LOCK:
+            map_obj = self.load_map(mid)
+            if not map_obj:
+                self.send_error_json("Map not found", 404)
+                return
+
+            build = map_obj.setdefault("build", {
+                "status": "none",
+                "liveVersion": None,
+                "requestedAt": None,
+                "builtAt": None,
+                "history": []
+            })
+
+            build["status"] = status
+
+            if status == 'built' and version:
+                build["liveVersion"] = version
+                build["builtAt"] = int(time.time())
+
+                # Add to history if not already there
+                if not any(h.get("version") == version for h in build.get("history", [])):
+                    build.setdefault("history", []).append({
+                        "version": version,
+                        "builtAt": build["builtAt"]
+                    })
+
+            map_obj["updated"] = int(time.time())
+            map_file = self.maps_dir() / mid / "map.json"
+            atomic_write(map_file, map_obj)
+
+        self.send_json({"ok": True})
+
     # ── Helpers ──────────────────────────────────────────────────────────────────
 
     # ---- Claude Q&A ----
 
-    def handle_admin_get_qa(self, fid_or_uid: str, entity_type: str):
-        """GET admin/factions/<fid>/qa or admin/units/<uid>/qa -> {claudeQA}"""
+    def handle_admin_get_qa(self, entity_id: str, entity_type: str):
+        """GET admin/factions/<fid>/qa or admin/units/<uid>/qa or admin/maps/<mid>/qa -> {claudeQA}"""
         if entity_type == "faction":
-            entity = self.load_faction(fid_or_uid)
-        else:
-            entity = self.load_unit(fid_or_uid)
+            entity = self.load_faction(entity_id)
+        elif entity_type == "unit":
+            entity = self.load_unit(entity_id)
+        else:  # map
+            entity = self.load_map(entity_id)
 
         if not entity:
             self.send_error_json(f"{entity_type.capitalize()} not found", 404)
@@ -2495,8 +3742,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
 
         self.send_json({"claudeQA": entity.get("claudeQA", {})})
 
-    def handle_admin_post_qa(self, fid_or_uid: str, entity_type: str):
-        """POST admin/factions/<fid>/qa or admin/units/<uid>/qa {section, questions?, answers?}
+    def handle_admin_post_qa(self, entity_id: str, entity_type: str):
+        """POST admin/factions/<fid>/qa or admin/units/<uid>/qa or admin/maps/<mid>/qa {section, questions?, answers?}
         Sets whichever fields are given (empty string clears)."""
         body = self.read_json_body()
         if body is None:
@@ -2508,17 +3755,23 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             return
 
         if entity_type == "faction":
-            entity = self.load_faction(fid_or_uid)
+            entity = self.load_faction(entity_id)
             if not entity:
                 self.send_error_json("Faction not found", 404)
                 return
-            entity_file = self.server.data_dir / "factions" / fid_or_uid / "faction.json"
-        else:
-            entity = self.load_unit(fid_or_uid)
+            entity_file = self.server.data_dir / "factions" / entity_id / "faction.json"
+        elif entity_type == "unit":
+            entity = self.load_unit(entity_id)
             if not entity:
                 self.send_error_json("Unit not found", 404)
                 return
-            entity_file = self.units_dir() / fid_or_uid / "unit.json"
+            entity_file = self.units_dir() / entity_id / "unit.json"
+        else:  # map
+            entity = self.load_map(entity_id)
+            if not entity:
+                self.send_error_json("Map not found", 404)
+                return
+            entity_file = self.maps_dir() / entity_id / "map.json"
 
         now = int(time.time())
 
@@ -2630,10 +3883,22 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
     @staticmethod
     def terminal_type(request: Dict) -> str:
         t = request.get("type")
+        kind = request.get("kind")
         if t == "extract":
+            if kind == "map":
+                return "map extraction"
             return "design menu" if request.get("data", {}).get("target") == "menus" else "design extraction"
         if t == "bug":
+            if kind == "map":
+                return "map bug fix"
+            elif kind == "unit":
+                return "unit bug fix"
             return "design bug fix"
+        if t == "build":
+            if kind == "map":
+                return "map build"
+            elif kind == "unit":
+                return "unit build"
         return "design build"   # build and update both change the built faction
 
     def add_terminal_entry(self, kind: str, user: str, prompt: str, summary: str, ref: Optional[str] = None) -> Dict:
