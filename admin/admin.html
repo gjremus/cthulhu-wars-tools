@@ -574,7 +574,7 @@
         <tbody id="claudelog-body"><tr><td colspan="7" style="border:1px solid #000;padding:6px;">Loading…</td></tr></tbody>
       </table>
       <p style="color:var(--text-muted);font-size:9pt;margin-top:8px;">
-        Est. cost = what the Claude run reported for that task, including its helpers. Console tasks and designer requests it ran are counted once, on the console row.
+        Est. cost = what the Claude run reported for that task, including its helpers. Older designer requests are estimated from the extract checker's run logs. A designer request run by a console task is counted once, on that console row (see its note).
       </p>
     </div>
   </div>
@@ -3503,17 +3503,24 @@ function loadClaudeLog() {
 }
 function renderClaudeLog() {
   const q = (document.getElementById('claudelog-search')?.value || '').trim().toLowerCase();
-  const rows = CLAUDE_LOG.filter(e => !q || [e.n, e.type, e.user, e.prompt, e.summary, e.cost].join(' ').toLowerCase().includes(q));
+  const rows = CLAUDE_LOG.filter(e => !q || [e.n, e.type, e.user, e.prompt, e.summary, e.cost, e.costNote].join(' ').toLowerCase().includes(q));
   const td = 'border:1px solid #000;padding:6px;vertical-align:top;';
   // Long prompts/summaries scroll inside their cell so a row stays readable on a phone
   const box = 'max-height:12em;overflow-y:auto;white-space:pre-wrap;word-break:break-word;';
   const when = t => { const d = new Date(t * 1000); return d.toLocaleDateString() + '<br>' + d.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}); };
-  const costStr = c => {
-    if (c == null || c === undefined) return '';
-    const num = Number(c);
-    if (num === 0) return '';
-    if (num < 0.005) return '&lt;$0.01';
-    return '$' + num.toFixed(2);
+  const costCell = (cost, note) => {
+    let str = '';
+    if (cost != null && cost !== undefined) {
+      const num = Number(cost);
+      if (num !== 0) {
+        str = num < 0.005 ? '&lt;$0.01' : '$' + num.toFixed(2);
+      }
+    }
+    if (note) {
+      if (str) str += '<br>';
+      str += '<span style="color:var(--text-muted);font-size:8pt;">' + esc(note) + '</span>';
+    }
+    return str;
   };
   document.getElementById('claudelog-body').innerHTML = rows.length ? rows.map(e => `<tr>
       <td style="${td}text-align:right;">${e.n || ''}</td>
@@ -3522,7 +3529,7 @@ function renderClaudeLog() {
       <td style="${td}">${esc(e.user || '')}</td>
       <td style="${td}"><div style="${box}">${esc(e.prompt || '')}</div></td>
       <td style="${td}"><div style="${box}">${esc(e.summary || '')}</div></td>
-      <td style="${td}text-align:right;">${costStr(e.cost)}</td>
+      <td style="${td}text-align:right;">${costCell(e.cost, e.costNote)}</td>
     </tr>`).join('') : `<tr><td colspan="7" style="${td}">No prompts logged yet.</td></tr>`;
 }
 

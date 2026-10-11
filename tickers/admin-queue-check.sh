@@ -57,6 +57,36 @@ take_lock() {   # $1 = lock dir; fails if a live process holds it
     echo $$ > "$1/pid"
 }
 
+# Backfill: for every done/<name>.jsonl that has no done/<name>.cost file, extract the result
+# cost and post it to row q_<name>. Skips .jsonl files whose job is still in running/.
+backfill_costs() {
+    for jsonl in "$Q"/done/*.jsonl(N); do
+        name="${jsonl:t:r}"
+        [[ -s "$Q/done/$name.cost" ]] && continue
+        [[ -s "$Q/running/$name" ]] && continue
+        cost=$(python3 - "$jsonl" 2>>"$LOG" <<'PY'
+import json, sys
+res = None
+for line in open(sys.argv[1], errors='replace'):
+    try:
+        e = json.loads(line)
+    except ValueError:
+        continue
+    if e.get('type') == 'result':
+        res = e
+if res:
+    print((res.get('total_cost_usd') or 0))
+PY
+)
+        if [[ -n "$cost" ]] && [[ "$cost" != "0" ]]; then
+            if python3 "$TICKERS/designer-admin.py" tlog-cost "q_$name" "$cost" 2>>"$LOG"; then
+                echo "$cost" > "$Q/done/$name.cost"
+                note "backfilled cost for $name: \$$cost"
+            fi
+        fi
+    done
+}
+
 # ---------------------------------------------------------------- worker
 if [[ "${1:-}" == "worker" ]]; then
     take_lock "$WORKER_LOCK" || exit 0
@@ -144,32 +174,7 @@ PY
         mv "$job" "$job.jsonl" "$job.reply" "$Q/done/" 2>/dev/null
         [[ -s "$job.cost" ]] && mv "$job.cost" "$Q/done/" 2>/dev/null
     done
-    # Backfill: for every done/<name>.jsonl that has no done/<name>.cost file, extract the result
-    # cost and post it to row q_<name>
-    for jsonl in "$Q"/done/*.jsonl(N); do
-        name="${jsonl:t:r}"
-        [[ -s "$Q/done/$name.cost" ]] && continue
-        cost=$(python3 - "$jsonl" <<'PY'
-import json, sys
-res = None
-for line in open(sys.argv[1], errors='replace'):
-    try:
-        e = json.loads(line)
-    except ValueError:
-        continue
-    if e.get('type') == 'result':
-        res = e
-if res:
-    print((res.get('total_cost_usd') or 0))
-PY
-)
-        if [[ -n "$cost" ]] && [[ "$cost" != "0" ]]; then
-            if python3 "$TICKERS/designer-admin.py" tlog-cost "q_$name" "$cost" 2>>"$LOG"; then
-                echo "$cost" > "$Q/done/$name.cost"
-                note "backfilled cost for $name: \$$cost"
-            fi
-        fi
-    done
+    backfill_costs
     exit 0
 fi
 
@@ -210,6 +215,8 @@ for i in range(1, len(parts), 2):
         tlog add "$name"
     done
 fi
+
+backfill_costs
 
 # Something waiting and nobody working on it -> start a worker in the background.
 waiting=( "$Q"/pending/*(N) "$Q"/running/*(N) )

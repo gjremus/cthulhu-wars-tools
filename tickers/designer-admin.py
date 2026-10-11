@@ -20,8 +20,9 @@ Reads the owner admin token from its file so it never has to appear in a prompt.
                                             extraction, design menu, design build, design bug fix)
   designer-admin.py tlog-summary <id> <summaryFile>
                                             set that row's summary from a file
-  designer-admin.py tlog-cost <id> <usd> [--add]
-                                            set (or add to) that row's cost in US dollars
+  designer-admin.py tlog-cost <id> <usd> [--add] [--note "<text>"]
+                                            set (or add to) that row's cost in US dollars; use '-'
+                                            for cost to skip cost update (note only)
   designer-admin.py handoff <rid> <reason>  queue request for the Sonnet fallback
   designer-admin.py build-status <fid> <status> [version]
                                             set faction build status
@@ -439,16 +440,29 @@ def main():
     elif cmd == 'tlog-summary' and len(args) == 2:
         summary = open(args[1], errors='replace').read().strip()
         api(f'terminal-log/{args[0]}', {'summary': summary})
-    elif cmd == 'tlog-cost' and len(args) in (2, 3):
-        try:
-            cost = float(args[1])
-        except ValueError:
-            sys.exit("ERROR: cost must be a number")
-        if cost < 0:
-            sys.exit("ERROR: cost must be non-negative")
-        body = {'cost': cost}
-        if len(args) == 3 and args[2] == '--add':
-            body['add'] = True
+    elif cmd == 'tlog-cost' and len(args) >= 2:
+        body = {}
+        cost_str = args[1]
+        if cost_str != '-':
+            try:
+                cost = float(cost_str)
+            except ValueError:
+                sys.exit("ERROR: cost must be a number or '-'")
+            if cost < 0:
+                sys.exit("ERROR: cost must be non-negative")
+            body['cost'] = cost
+        i = 2
+        while i < len(args):
+            if args[i] == '--add':
+                body['add'] = True
+                i += 1
+            elif args[i] == '--note' and i + 1 < len(args):
+                body['costNote'] = args[i + 1]
+                i += 2
+            else:
+                sys.exit(f"ERROR: unknown flag {args[i]}")
+        if not body:
+            sys.exit("ERROR: must provide cost or note")
         api(f'terminal-log/{args[0]}', body)
     elif cmd == 'handoff' and len(args) >= 2:
         handoff(args[0], ' '.join(args[1:]))

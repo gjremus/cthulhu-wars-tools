@@ -4090,7 +4090,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         return entry
 
     def update_terminal_entry(self, entry_id: str, summary: Optional[str] = None, only_if_default: bool = False,
-                              cost: Optional[float] = None, add_cost: bool = False) -> Optional[Dict]:
+                              cost: Optional[float] = None, add_cost: bool = False, cost_note: Optional[str] = None) -> Optional[Dict]:
         with TERMINAL_LOCK:
             path = self.server.data_dir / "terminal-log.json"
             log = load_json(path) or {"entries": []}
@@ -4105,13 +4105,18 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                     entry["cost"] = round(entry.get("cost", 0.0) + cost, 4)
                 else:
                     entry["cost"] = round(cost, 4)
+            if cost_note is not None:
+                if cost_note == "":
+                    entry.pop("costNote", None)
+                else:
+                    entry["costNote"] = str(cost_note)[:60]
             entry["updatedAt"] = int(time.time())
             atomic_write(path, log)
         return entry
 
     def handle_admin_terminal_log(self, entry_id: Optional[str]):
         """POST admin/terminal-log {type,user,prompt,summary,[id],[at]} adds a row;
-        POST admin/terminal-log/<id> {summary?,cost?,add?} updates that row."""
+        POST admin/terminal-log/<id> {summary?,cost?,add?,costNote?} updates that row."""
         body = self.read_json_body()
         if body is None:
             return
@@ -4119,11 +4124,15 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             summary = body.get('summary') if 'summary' in body else None
             cost = body.get('cost')
             add_cost = body.get('add', False)
+            cost_note = body.get('costNote') if 'costNote' in body else None
             if cost is not None:
                 if not isinstance(cost, (int, float)) or cost < 0:
                     self.send_error_json("cost must be a non-negative number", 400)
                     return
-            entry = self.update_terminal_entry(entry_id, summary=summary, cost=cost, add_cost=add_cost)
+            if cost_note is not None and not isinstance(cost_note, str):
+                self.send_error_json("costNote must be a string", 400)
+                return
+            entry = self.update_terminal_entry(entry_id, summary=summary, cost=cost, add_cost=add_cost, cost_note=cost_note)
             if not entry:
                 self.send_error_json("Entry not found", 404)
                 return

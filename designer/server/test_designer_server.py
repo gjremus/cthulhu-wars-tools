@@ -1693,6 +1693,50 @@ class BaseFactionTest(DesignerServerTest):
         self.assertEqual(updated['summary'], 'Built successfully')
         self.assertEqual(updated['cost'], 1.5)
 
+    def test_terminal_log_cost_note(self):
+        """Test costNote field."""
+        # Add entry
+        self.request('POST', f'/admin/{self.admin_token}/terminal-log', {
+            'type': 'design extraction',
+            'user': 'admin',
+            'prompt': 'Extract faction',
+            'summary': 'Done',
+            'id': 'test_note'
+        })
+
+        # Set note
+        updated = self.request('POST', f'/admin/{self.admin_token}/terminal-log/test_note', {
+            'costNote': 'in console row #55'
+        })
+        self.assertEqual(updated['costNote'], 'in console row #55')
+
+        # Update note
+        updated2 = self.request('POST', f'/admin/{self.admin_token}/terminal-log/test_note', {
+            'costNote': 'cancelled, never run'
+        })
+        self.assertEqual(updated2['costNote'], 'cancelled, never run')
+
+        # Clear note with empty string
+        updated3 = self.request('POST', f'/admin/{self.admin_token}/terminal-log/test_note', {
+            'costNote': ''
+        })
+        self.assertNotIn('costNote', updated3)
+
+        # Set cost and note together
+        updated4 = self.request('POST', f'/admin/{self.admin_token}/terminal-log/test_note', {
+            'cost': 0.5,
+            'costNote': 'estimated'
+        })
+        self.assertEqual(updated4['cost'], 0.5)
+        self.assertEqual(updated4['costNote'], 'estimated')
+
+        # Truncate long notes
+        long_note = 'x' * 100
+        updated5 = self.request('POST', f'/admin/{self.admin_token}/terminal-log/test_note', {
+            'costNote': long_note
+        })
+        self.assertEqual(len(updated5['costNote']), 60)
+
 
 if __name__ == '__main__':
     unittest.main()
