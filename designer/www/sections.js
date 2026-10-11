@@ -24,6 +24,9 @@
       .sx-field textarea { min-height: 80px; resize: vertical; }
       .sx-field input[type="checkbox"] { width: auto; margin-right: 8px; }
       .sx-field.sx-greyed { opacity: 0.4; pointer-events: none; }
+      .sx-missing { border: 2px solid #e53935 !important; }
+      .sx-img-thumb.sx-missing { border: 2px solid #e53935; }
+      input[type="checkbox"].sx-missing, input[type="radio"].sx-missing { outline: 2px solid #e53935; outline-offset: 2px; }
 
       .sx-table { border-collapse: collapse; margin: 16px 0; overflow-x: auto; display: block; }
       .sx-table table { border: 2px solid #000; width: 100%; min-width: 800px; }
@@ -158,10 +161,12 @@
     const greyed = opts.greyed || false;
     const hint = opts.hint || '';
     const rows = opts.rows || null;
+    const missing = opts.missing || false;
 
+    const inputClass = missing ? 'sx-missing' : '';
     const input = rows
-      ? h('textarea', {value: value || '', oninput: e => onChange(e.target.value), rows})
-      : h('input', {type: 'text', value: value || '', oninput: e => onChange(e.target.value)});
+      ? h('textarea', {className: inputClass, value: value || '', oninput: e => onChange(e.target.value), rows})
+      : h('input', {className: inputClass, type: 'text', value: value || '', oninput: e => onChange(e.target.value)});
 
     return h('div', {className: 'sx-field' + (greyed ? ' sx-greyed' : '')},
       h('label', {}, label, hint ? h('span', {className: 'sx-hint', title: hint}, 'ⓘ') : null),
@@ -173,9 +178,11 @@
     const greyed = opts.greyed || false;
     const min = opts.min != null ? opts.min : null;
     const max = opts.max != null ? opts.max : null;
+    const missing = opts.missing || false;
 
     const attrs = {
       type: 'number',
+      className: missing ? 'sx-missing' : '',
       value: value != null ? value : '',
       oninput: e => onChange(e.target.value ? parseInt(e.target.value) : null),
       inputmode: 'numeric'
@@ -192,10 +199,11 @@
   function selectField(label, value, options, onChange, opts = {}) {
     const greyed = opts.greyed || false;
     const placeholder = opts.placeholder || '';
+    const missing = opts.missing || false;
 
     return h('div', {className: 'sx-field' + (greyed ? ' sx-greyed' : '')},
       h('label', {}, label),
-      h('select', {value: value || '', onchange: e => onChange(e.target.value || null)},
+      h('select', {className: missing ? 'sx-missing' : '', value: value || '', onchange: e => onChange(e.target.value || null)},
         h('option', {value: ''}, placeholder || '-- Select --'),
         options.map(opt => {
           const val = typeof opt === 'string' ? opt : opt.value;
@@ -208,9 +216,10 @@
 
   function checkboxField(label, checked, onChange, opts = {}) {
     const greyed = opts.greyed || false;
+    const missing = opts.missing || false;
     return h('div', {className: 'sx-field' + (greyed ? ' sx-greyed' : '')},
       h('label', {},
-        h('input', {type: 'checkbox', checked, onchange: e => onChange(e.target.checked)}),
+        h('input', {className: missing ? 'sx-missing' : '', type: 'checkbox', checked, onchange: e => onChange(e.target.checked)}),
         label
       )
     );
@@ -219,8 +228,9 @@
   function imageField(label, imageId, ctx, onChange, opts = {}) {
     const greyed = opts.greyed || false;
     const size = opts.size || 'small';
+    const missing = opts.missing || false;
 
-    const thumbClass = 'sx-img-thumb' + (imageId ? '' : ' sx-empty');
+    const thumbClass = 'sx-img-thumb' + (imageId ? '' : ' sx-empty') + (missing ? ' sx-missing' : '');
     const thumb = imageId
       ? h('img', {src: ctx.imgUrl(imageId), className: thumbClass, onclick: () => openImageEditor(imageId, ctx, onChange, size)})
       : h('div', {className: thumbClass, onclick: async () => {
@@ -255,6 +265,8 @@
 
   function renderAE(container, ctx) {
     const d = ctx.design.ae;
+    const missing = window.Rules.missingFields('ae', ctx.design);
+    const isMissing = path => missing.includes(path);
 
     container.appendChild(checkboxField('Alternate resource economy', d.enabled, val => {
       ctx.set('ae.enabled', val);
@@ -262,8 +274,8 @@
 
     const greyed = !d.enabled;
 
-    container.appendChild(textField('Name', d.name, val => ctx.set('ae.name', val), {greyed}));
-    container.appendChild(textField('Acronym (single letter)', d.acronym, val => ctx.set('ae.acronym', val.substring(0, 1)), {greyed}));
+    container.appendChild(textField('Name', d.name, val => ctx.set('ae.name', val), {greyed, missing: isMissing('ae.name')}));
+    container.appendChild(textField('Acronym (single letter)', d.acronym, val => ctx.set('ae.acronym', val.substring(0, 1)), {greyed, missing: isMissing('ae.acronym')}));
 
     const tableDiv = h('div', {className: 'sx-table' + (greyed ? ' sx-greyed' : '')});
     const table = h('table', {});
@@ -290,7 +302,11 @@
       ));
 
       tr.appendChild(h('td', {},
-        h('select', {value: row.kind, onchange: e => ctx.set(`ae.rows.${row.id}.kind`, e.target.value)},
+        h('select', {
+          className: isMissing(`ae.rows.${row.id}.kind`) ? 'sx-missing' : '',
+          value: row.kind,
+          onchange: e => ctx.set(`ae.rows.${row.id}.kind`, e.target.value)
+        },
           h('option', {value: 'fixed'}, 'Fixed'),
           h('option', {value: 'variable'}, 'Variable')
         )
@@ -298,6 +314,7 @@
 
       tr.appendChild(h('td', {},
         h('input', {
+          className: isMissing(`ae.rows.${row.id}.qty`) ? 'sx-missing' : '',
           type: 'number',
           value: row.qty != null ? row.qty : '',
           disabled: row.kind === 'variable',
@@ -307,6 +324,7 @@
 
       tr.appendChild(h('td', {},
         h('input', {
+          className: isMissing(`ae.rows.${row.id}.calc`) ? 'sx-missing' : '',
           type: 'text',
           value: row.calc || '',
           disabled: row.kind === 'fixed',
@@ -316,6 +334,7 @@
 
       tr.appendChild(h('td', {},
         h('textarea', {
+          className: isMissing(`ae.rows.${row.id}.desc`) ? 'sx-missing' : '',
           value: row.desc || '',
           rows: 2,
           oninput: e => ctx.set(`ae.rows.${row.id}.desc`, e.target.value)
@@ -352,44 +371,50 @@
 
   function renderUFA(container, ctx) {
     const d = ctx.design.ufa;
+    const missing = window.Rules.missingFields('ufa', ctx.design);
+    const isMissing = path => missing.includes(path);
 
-    container.appendChild(textField('Name', d.name, val => ctx.set('ufa.name', val)));
+    container.appendChild(textField('Name', d.name, val => ctx.set('ufa.name', val), {missing: isMissing('ufa.name')}));
 
     container.appendChild(selectField('Phase', d.phase, [
       'Setup', 'Action', 'Gather Power', 'Player Order', 'Doom'
-    ], val => ctx.set('ufa.phase', val)));
+    ], val => ctx.set('ufa.phase', val), {missing: isMissing('ufa.phase')}));
 
-    container.appendChild(selectField('Type', d.type, window.Rules.SB_TYPES, val => ctx.set('ufa.type', val)));
+    container.appendChild(selectField('Type', d.type, window.Rules.SB_TYPES, val => ctx.set('ufa.type', val), {missing: isMissing('ufa.type')}));
 
     container.appendChild(checkboxField('Includes Fixed Numeric Cost?', d.hasCost, val => ctx.set('ufa.hasCost', val)));
-    container.appendChild(numberField('Fixed Numeric Cost', d.cost, val => ctx.set('ufa.cost', val), {greyed: !d.hasCost, min: 0}));
+    container.appendChild(numberField('Fixed Numeric Cost', d.cost, val => ctx.set('ufa.cost', val), {greyed: !d.hasCost, min: 0, missing: isMissing('ufa.cost')}));
 
     container.appendChild(checkboxField('Includes Fixed Numeric Effect?', d.hasEffect, val => ctx.set('ufa.hasEffect', val)));
-    container.appendChild(numberField('Fixed Numeric Effect', d.effect, val => ctx.set('ufa.effect', val), {greyed: !d.hasEffect, min: 0}));
+    container.appendChild(numberField('Fixed Numeric Effect', d.effect, val => ctx.set('ufa.effect', val), {greyed: !d.hasEffect, min: 0, missing: isMissing('ufa.effect')}));
 
     const textLen = 200;
-    container.appendChild(textField('Text', d.text, val => ctx.set('ufa.text', val), {rows: Math.max(3, Math.ceil(textLen / 45))}));
+    container.appendChild(textField('Text', d.text, val => ctx.set('ufa.text', val), {rows: Math.max(3, Math.ceil(textLen / 45)), missing: isMissing('ufa.text')}));
   }
 
   function renderSetup(container, ctx) {
     const d = ctx.design.setup;
     const ref = ctx.reference || {};
+    const missing = window.Rules.missingFields('setup', ctx.design);
+    const isMissing = path => missing.includes(path);
 
-    container.appendChild(textField('Text for faction card', d.text, val => ctx.set('setup.text', val), {rows: 4}));
+    container.appendChild(textField('Text for faction card', d.text, val => ctx.set('setup.text', val), {rows: 4, missing: isMissing('setup.text')}));
 
     container.appendChild(selectField('Location type', d.location, ['single', 'multi'], val => {
       ctx.set('setup.location', val);
-    }, {placeholder: '-- Select --'}));
+    }, {placeholder: '-- Select --', missing: isMissing('setup.location')}));
 
     const isSingle = d.location === 'single';
     const isMulti = d.location === 'multi';
 
     container.appendChild(selectField('Earth Region', d.earthRegion, ref.earth33Regions || [], val => ctx.set('setup.earthRegion', val), {
-      greyed: !isSingle
+      greyed: !isSingle,
+      missing: isMissing('setup.earthRegion')
     }));
 
     container.appendChild(selectField('Library Region', d.libraryRegion, ref.library33Regions || [], val => ctx.set('setup.libraryRegion', val), {
-      greyed: !isSingle
+      greyed: !isSingle,
+      missing: isMissing('setup.libraryRegion')
     }));
 
     const constraintsDiv = h('div', {style: isMulti ? '' : 'opacity: 0.4; pointer-events: none;'});
@@ -401,7 +426,8 @@
     const followsOptions = [{value: '0', label: '0. Base Factions'}]
       .concat(placementOrder.map((f, i) => ({value: String(i + 1), label: `${i + 1}. ${f.name}`})));
     constraintsDiv.appendChild(selectField('Follows faction', d.constraints.follows, followsOptions, val => ctx.set('setup.constraints.follows', val), {
-      placeholder: '-- Select --'
+      placeholder: '-- Select --',
+      missing: isMissing('setup.constraints.follows')
     }));
 
     constraintsDiv.appendChild(checkboxField('Water', d.constraints.water, val => ctx.set('setup.constraints.water', val)));
@@ -424,14 +450,15 @@
 
     container.appendChild(constraintsDiv);
 
+    const gateMissing = isMissing('setup.gate');
     container.appendChild(h('div', {className: 'sx-field'},
       h('label', {}, 'Gate'),
       h('label', {},
-        h('input', {type: 'radio', name: 'gate', checked: d.gate === true, onchange: () => ctx.set('setup.gate', true)}),
+        h('input', {className: gateMissing ? 'sx-missing' : '', type: 'radio', name: 'gate', checked: d.gate === true, onchange: () => ctx.set('setup.gate', true)}),
         ' Yes'
       ),
       h('label', {style: 'margin-left: 16px;'},
-        h('input', {type: 'radio', name: 'gate', checked: d.gate === false, onchange: () => ctx.set('setup.gate', false)}),
+        h('input', {className: gateMissing ? 'sx-missing' : '', type: 'radio', name: 'gate', checked: d.gate === false, onchange: () => ctx.set('setup.gate', false)}),
         ' No'
       )
     ));
@@ -456,11 +483,21 @@
       ));
 
       tr.appendChild(h('td', {},
-        h('input', {type: 'text', value: unit.name || '', oninput: e => ctx.set(`setup.units.${unit.id}.name`, e.target.value)})
+        h('input', {
+          className: isMissing(`setup.units.${unit.id}.name`) ? 'sx-missing' : '',
+          type: 'text',
+          value: unit.name || '',
+          oninput: e => ctx.set(`setup.units.${unit.id}.name`, e.target.value)
+        })
       ));
 
       tr.appendChild(h('td', {},
-        h('input', {type: 'number', value: unit.qty != null ? unit.qty : '', oninput: e => ctx.set(`setup.units.${unit.id}.qty`, e.target.value ? parseInt(e.target.value) : null)})
+        h('input', {
+          className: isMissing(`setup.units.${unit.id}.qty`) ? 'sx-missing' : '',
+          type: 'number',
+          value: unit.qty != null ? unit.qty : '',
+          oninput: e => ctx.set(`setup.units.${unit.id}.qty`, e.target.value ? parseInt(e.target.value) : null)
+        })
       ));
 
       if (idx > 0) {
@@ -485,11 +522,11 @@
       ctx.addRow('setup.units', newUnit);
     }}, 'Add unit'));
 
-    container.appendChild(numberField('Starting power', d.power, val => ctx.set('setup.power', val), {min: 0}));
+    container.appendChild(numberField('Starting power', d.power, val => ctx.set('setup.power', val), {min: 0, missing: isMissing('setup.power')}));
 
     const aeEnabled = ctx.design.ae && ctx.design.ae.enabled;
     const aeName = aeEnabled && ctx.design.ae.name ? ctx.design.ae.name : 'alternate economy';
-    container.appendChild(numberField('Starting ' + aeName, d.aeStart, val => ctx.set('setup.aeStart', val), {greyed: !aeEnabled, min: 0}));
+    container.appendChild(numberField('Starting ' + aeName, d.aeStart, val => ctx.set('setup.aeStart', val), {greyed: !aeEnabled, min: 0, missing: isMissing('setup.aeStart')}));
   }
 
   function renderUnits(container, ctx) {
@@ -501,6 +538,10 @@
     const sbRows = ctx.design.sb ? ctx.design.sb.rows : [];
     const sbStatus = neutral ? null : window.Rules.status('sb', ctx.design);
     const unitTypes = neutral ? window.Rules.NEUTRAL_UNIT_TYPES : window.Rules.UNIT_TYPES;
+    // Neutral units are ready with just a name, a type and (if ticked) the special ability
+    const missing = neutral ? window.Rules.missingFields('units', ctx.design)
+      .filter(p => /\.(name|type|abilityName|abilityText)$/.test(p)) : window.Rules.missingFields('units', ctx.design);
+    const isMissing = path => missing.includes(path);
 
     d.rows.slice(0, neutral ? 1 : d.rows.length).forEach((unit, idx) => {
       const unitDiv = h('div', {style: 'margin-bottom: 40px; padding: 16px; border: 2px solid #444;'});
@@ -508,9 +549,9 @@
 
       unitDiv.appendChild(selectField('Type', unit.type, unitTypes, val => {
         ctx.set(`units.rows.${unit.id}.type`, val);
-      }));
+      }, {missing: isMissing(`units.rows.${unit.id}.type`)}));
 
-      unitDiv.appendChild(textField('Name', unit.name, val => ctx.set(`units.rows.${unit.id}.name`, val)));
+      unitDiv.appendChild(textField('Name', unit.name, val => ctx.set(`units.rows.${unit.id}.name`, val), {missing: isMissing(`units.rows.${unit.id}.name`)}));
 
       // Map image
       const defaultArt = ref.defaultUnitArt || {};
@@ -534,18 +575,19 @@
       unitDiv.appendChild(mapImageDiv);
 
       // Silhouette
+      const silMissing = isMissing(`units.rows.${unit.id}.silhouette`);
       const silDiv = h('div', {className: 'sx-field'});
       silDiv.appendChild(h('label', {}, 'Silhouette'));
       if (unit.silhouette) {
         const thumb = h('img', {
           src: ctx.imgUrl(unit.silhouette),
-          className: 'sx-img-thumb',
+          className: 'sx-img-thumb' + (silMissing ? ' sx-missing' : ''),
           onclick: () => openUnitSilhouetteViewer(unit, ctx)
         });
         silDiv.appendChild(thumb);
       } else {
         const uploadBtn = h('div', {
-          className: 'sx-img-thumb sx-empty',
+          className: 'sx-img-thumb sx-empty' + (silMissing ? ' sx-missing' : ''),
           onclick: async () => {
             const id = await ctx.uploadImage('small');
             if (id) ctx.set(`units.rows.${unit.id}.silhouette`, id);
@@ -567,39 +609,39 @@
       }
       unitDiv.appendChild(silDiv);
 
-      unitDiv.appendChild(numberField('Quantity', unit.qty, val => ctx.set(`units.rows.${unit.id}.qty`, val), {min: 1, max: 20}));
+      unitDiv.appendChild(numberField('Quantity', unit.qty, val => ctx.set(`units.rows.${unit.id}.qty`, val), {min: 1, max: 20, missing: isMissing(`units.rows.${unit.id}.qty`)}));
 
       // Cost
       unitDiv.appendChild(selectField('Cost Type', unit.costType, window.Rules.COST_TYPES, val => {
         ctx.set(`units.rows.${unit.id}.costType`, val);
-      }));
+      }, {missing: isMissing(`units.rows.${unit.id}.costType`)}));
 
       if (unit.costType === 'Fixed') {
-        unitDiv.appendChild(numberField('Cost', unit.cost, val => ctx.set(`units.rows.${unit.id}.cost`, val), {min: 0}));
+        unitDiv.appendChild(numberField('Cost', unit.cost, val => ctx.set(`units.rows.${unit.id}.cost`, val), {min: 0, missing: isMissing(`units.rows.${unit.id}.cost`)}));
       } else if (unit.costType === 'Variable') {
-        unitDiv.appendChild(textField('Cost calculation', unit.costCalc, val => ctx.set(`units.rows.${unit.id}.costCalc`, val), {rows: 2}));
+        unitDiv.appendChild(textField('Cost calculation', unit.costCalc, val => ctx.set(`units.rows.${unit.id}.costCalc`, val), {rows: 2, missing: isMissing(`units.rows.${unit.id}.costCalc`)}));
       } else if (unit.costType === 'Awakening') {
-        unitDiv.appendChild(textField('Requirements/process', unit.awakenReq, val => ctx.set(`units.rows.${unit.id}.awakenReq`, val), {rows: 3}));
-        unitDiv.appendChild(numberField('Power cost', unit.awakenPower, val => ctx.set(`units.rows.${unit.id}.awakenPower`, val), {min: 0}));
-        unitDiv.appendChild(textField('Region placement', unit.awakenRegion, val => ctx.set(`units.rows.${unit.id}.awakenRegion`, val)));
+        unitDiv.appendChild(textField('Requirements/process', unit.awakenReq, val => ctx.set(`units.rows.${unit.id}.awakenReq`, val), {rows: 3, missing: isMissing(`units.rows.${unit.id}.awakenReq`)}));
+        unitDiv.appendChild(numberField('Power cost', unit.awakenPower, val => ctx.set(`units.rows.${unit.id}.awakenPower`, val), {min: 0, missing: isMissing(`units.rows.${unit.id}.awakenPower`)}));
+        unitDiv.appendChild(textField('Region placement', unit.awakenRegion, val => ctx.set(`units.rows.${unit.id}.awakenRegion`, val), {missing: isMissing(`units.rows.${unit.id}.awakenRegion`)}));
       }
 
       // Combat
       unitDiv.appendChild(selectField('Combat type', unit.combatType, window.Rules.COMBAT_TYPES, val => {
         ctx.set(`units.rows.${unit.id}.combatType`, val);
-      }));
+      }, {missing: isMissing(`units.rows.${unit.id}.combatType`)}));
 
       const combatGreyed = unit.combatType === 'N/A';
 
       if (unit.combatType === 'Fixed Dice') {
-        unitDiv.appendChild(numberField('Dice', unit.dice, val => ctx.set(`units.rows.${unit.id}.dice`, val), {min: 0}));
+        unitDiv.appendChild(numberField('Dice', unit.dice, val => ctx.set(`units.rows.${unit.id}.dice`, val), {min: 0, missing: isMissing(`units.rows.${unit.id}.dice`)}));
       } else if (unit.combatType === 'Variable Dice') {
-        unitDiv.appendChild(textField('Dice calculation', unit.diceCalc, val => ctx.set(`units.rows.${unit.id}.diceCalc`, val), {rows: 2}));
+        unitDiv.appendChild(textField('Dice calculation', unit.diceCalc, val => ctx.set(`units.rows.${unit.id}.diceCalc`, val), {rows: 2, missing: isMissing(`units.rows.${unit.id}.diceCalc`)}));
       } else if (unit.combatType === 'Fixed Results') {
-        unitDiv.appendChild(numberField('Pains', unit.pains, val => ctx.set(`units.rows.${unit.id}.pains`, val), {min: 0}));
-        unitDiv.appendChild(numberField('Kills', unit.kills, val => ctx.set(`units.rows.${unit.id}.kills`, val), {min: 0}));
+        unitDiv.appendChild(numberField('Pains', unit.pains, val => ctx.set(`units.rows.${unit.id}.pains`, val), {min: 0, missing: isMissing(`units.rows.${unit.id}.pains`)}));
+        unitDiv.appendChild(numberField('Kills', unit.kills, val => ctx.set(`units.rows.${unit.id}.kills`, val), {min: 0, missing: isMissing(`units.rows.${unit.id}.kills`)}));
       } else if (unit.combatType === 'Variable Results') {
-        unitDiv.appendChild(textField('Results calculation', unit.resultsCalc, val => ctx.set(`units.rows.${unit.id}.resultsCalc`, val), {rows: 2}));
+        unitDiv.appendChild(textField('Results calculation', unit.resultsCalc, val => ctx.set(`units.rows.${unit.id}.resultsCalc`, val), {rows: 2, missing: isMissing(`units.rows.${unit.id}.resultsCalc`)}));
       }
 
       // Related Spellbooks
@@ -635,8 +677,8 @@
       const hasAbility = window.Rules.unitHasAbility(unit);
       unitDiv.appendChild(checkboxField('Special Ability', hasAbility, val => ctx.set(`units.rows.${unit.id}.hasAbility`, val)));
       if (hasAbility) {
-        unitDiv.appendChild(textField('Special Ability Name', unit.abilityName, val => ctx.set(`units.rows.${unit.id}.abilityName`, val)));
-        unitDiv.appendChild(textField('Special Ability Text', unit.abilityText, val => ctx.set(`units.rows.${unit.id}.abilityText`, val), {rows: 4}));
+        unitDiv.appendChild(textField('Special Ability Name', unit.abilityName, val => ctx.set(`units.rows.${unit.id}.abilityName`, val), {missing: isMissing(`units.rows.${unit.id}.abilityName`)}));
+        unitDiv.appendChild(textField('Special Ability Text', unit.abilityText, val => ctx.set(`units.rows.${unit.id}.abilityText`, val), {rows: 4, missing: isMissing(`units.rows.${unit.id}.abilityText`)}));
       }
 
       // Spellbook for iGOO / Elder God neutral units
@@ -950,6 +992,8 @@
 
   function renderSBR(container, ctx) {
     const d = ctx.design.sbr;
+    const missing = window.Rules.missingFields('sbr', ctx.design);
+    const isMissing = path => missing.includes(path);
 
     container.appendChild(textField('Multi-requirement text', d.multiText, val => ctx.set('sbr.multiText', val), {rows: 3}));
 
@@ -968,7 +1012,12 @@
       const tr = h('tr', {});
 
       tr.appendChild(h('td', {},
-        h('textarea', {value: row.text || '', rows: 3, oninput: e => ctx.set(`sbr.rows.${row.id}.text`, e.target.value)})
+        h('textarea', {
+          className: isMissing(`sbr.rows.${row.id}.text`) ? 'sx-missing' : '',
+          value: row.text || '',
+          rows: 3,
+          oninput: e => ctx.set(`sbr.rows.${row.id}.text`, e.target.value)
+        })
       ));
 
       tr.appendChild(h('td', {},
@@ -977,6 +1026,7 @@
 
       tr.appendChild(h('td', {},
         h('input', {
+          className: isMissing(`sbr.rows.${row.id}.num`) ? 'sx-missing' : '',
           type: 'number',
           value: row.num != null ? row.num : '',
           disabled: !row.hasNum,
@@ -994,6 +1044,8 @@
   function renderSB(container, ctx) {
     const d = ctx.design.sb;
     const R = window.Rules;
+    const missing = R.missingFields('sb', ctx.design);
+    const isMissing = path => missing.includes(path);
     // 2 sided: a spellbook gets a side A and a side B, each with its own name, type, cost, effect and text.
     // "All 2 sided" sets every spellbook; each spellbook's own box can then flip it back to 1 sided.
     const two = R.sbAnyTwo(d);
@@ -1042,11 +1094,21 @@
       const v = name => row[name + sfx];
       // Name and Text boxes at least 3x their old phone width (about 51px and 38px)
       tr.appendChild(h('td', {},
-        h('input', {type: 'text', value: v('name') || '', style: 'min-width: 155px;', oninput: e => ctx.set(f('name'), e.target.value)})
+        h('input', {
+          className: isMissing(f('name')) ? 'sx-missing' : '',
+          type: 'text',
+          value: v('name') || '',
+          style: 'min-width: 155px;',
+          oninput: e => ctx.set(f('name'), e.target.value)
+        })
       ));
 
       tr.appendChild(h('td', {},
-        h('select', {value: v('type') || '', onchange: e => ctx.set(f('type'), e.target.value || null)},
+        h('select', {
+          className: isMissing(f('type')) ? 'sx-missing' : '',
+          value: v('type') || '',
+          onchange: e => ctx.set(f('type'), e.target.value || null)
+        },
           h('option', {value: ''}, '-- Select --'),
           window.Rules.SB_TYPES.map(t => h('option', {value: t}, t))
         )
@@ -1066,6 +1128,7 @@
 
       tr.appendChild(h('td', {},
         h('input', {
+          className: isMissing(f('effect')) ? 'sx-missing' : '',
           type: 'number',
           value: v('effect') != null ? v('effect') : '',
           disabled: !v('hasEffect'),
@@ -1074,7 +1137,13 @@
       ));
 
       tr.appendChild(h('td', {},
-        h('textarea', {value: v('text') || '', rows: 3, style: 'min-width: 160px;', oninput: e => ctx.set(f('text'), e.target.value)})
+        h('textarea', {
+          className: isMissing(f('text')) ? 'sx-missing' : '',
+          value: v('text') || '',
+          rows: 3,
+          style: 'min-width: 160px;',
+          oninput: e => ctx.set(f('text'), e.target.value)
+        })
       ));
     }
 
@@ -1136,6 +1205,8 @@
 
   function renderRegion(container, ctx) {
     const d = ctx.design.region;
+    const missing = window.Rules.missingFields('region', ctx.design);
+    const isMissing = path => missing.includes(path);
 
     const tableDiv = h('div', {className: 'sx-table'});
     const table = h('table', {});
@@ -1154,19 +1225,25 @@
       const tr = h('tr', {});
 
       tr.appendChild(h('td', {},
-        h('input', {type: 'text', value: row.name || '', oninput: e => ctx.set(`region.rows.${row.id}.name`, e.target.value)})
+        h('input', {
+          className: isMissing(`region.rows.${row.id}.name`) ? 'sx-missing' : '',
+          type: 'text',
+          value: row.name || '',
+          oninput: e => ctx.set(`region.rows.${row.id}.name`, e.target.value)
+        })
       ));
 
       const imgTd = h('td', {});
+      const imgMissing = isMissing(`region.rows.${row.id}.image`);
       if (row.image) {
         imgTd.appendChild(h('img', {
           src: ctx.imgUrl(row.image),
-          className: 'sx-img-thumb',
+          className: 'sx-img-thumb' + (imgMissing ? ' sx-missing' : ''),
           onclick: () => openImageEditor(row.image, ctx, id => ctx.set(`region.rows.${row.id}.image`, id), 'small')
         }));
       } else {
         imgTd.appendChild(h('div', {
-          className: 'sx-img-thumb sx-empty',
+          className: 'sx-img-thumb sx-empty' + (imgMissing ? ' sx-missing' : ''),
           onclick: async () => {
             const id = await ctx.uploadImage('small');
             if (id) ctx.set(`region.rows.${row.id}.image`, id);
@@ -1176,11 +1253,21 @@
       tr.appendChild(imgTd);
 
       tr.appendChild(h('td', {},
-        h('textarea', {value: row.restrictions || '', rows: 2, oninput: e => ctx.set(`region.rows.${row.id}.restrictions`, e.target.value)})
+        h('textarea', {
+          className: isMissing(`region.rows.${row.id}.restrictions`) ? 'sx-missing' : '',
+          value: row.restrictions || '',
+          rows: 2,
+          oninput: e => ctx.set(`region.rows.${row.id}.restrictions`, e.target.value)
+        })
       ));
 
       tr.appendChild(h('td', {},
-        h('textarea', {value: row.adjacency || '', rows: 2, oninput: e => ctx.set(`region.rows.${row.id}.adjacency`, e.target.value)})
+        h('textarea', {
+          className: isMissing(`region.rows.${row.id}.adjacency`) ? 'sx-missing' : '',
+          value: row.adjacency || '',
+          rows: 2,
+          oninput: e => ctx.set(`region.rows.${row.id}.adjacency`, e.target.value)
+        })
       ));
 
       if (idx === 0 && d.rows.length === 1) {
@@ -1218,6 +1305,8 @@
 
   function renderTokens(container, ctx) {
     const d = ctx.design.tokens;
+    const missing = window.Rules.missingFields('tokens', ctx.design);
+    const isMissing = path => missing.includes(path);
 
     const tableDiv = h('div', {className: 'sx-table'});
     const table = h('table', {});
@@ -1239,23 +1328,34 @@
       const tr = h('tr', {});
 
       tr.appendChild(h('td', {},
-        h('input', {type: 'text', value: row.name || '', oninput: e => ctx.set(`tokens.rows.${row.id}.name`, e.target.value)})
+        h('input', {
+          className: isMissing(`tokens.rows.${row.id}.name`) ? 'sx-missing' : '',
+          type: 'text',
+          value: row.name || '',
+          oninput: e => ctx.set(`tokens.rows.${row.id}.name`, e.target.value)
+        })
       ));
 
       tr.appendChild(h('td', {},
-        h('input', {type: 'number', value: row.qty != null ? row.qty : '', oninput: e => ctx.set(`tokens.rows.${row.id}.qty`, e.target.value ? parseInt(e.target.value) : null)})
+        h('input', {
+          className: isMissing(`tokens.rows.${row.id}.qty`) ? 'sx-missing' : '',
+          type: 'number',
+          value: row.qty != null ? row.qty : '',
+          oninput: e => ctx.set(`tokens.rows.${row.id}.qty`, e.target.value ? parseInt(e.target.value) : null)
+        })
       ));
 
       const imgTd = h('td', {});
+      const imgMissing = isMissing(`tokens.rows.${row.id}.image`);
       if (row.image) {
         imgTd.appendChild(h('img', {
           src: ctx.imgUrl(row.image),
-          className: 'sx-img-thumb',
+          className: 'sx-img-thumb' + (imgMissing ? ' sx-missing' : ''),
           onclick: () => openImageEditor(row.image, ctx, id => ctx.set(`tokens.rows.${row.id}.image`, id), 'small')
         }));
       } else {
         imgTd.appendChild(h('div', {
-          className: 'sx-img-thumb sx-empty',
+          className: 'sx-img-thumb sx-empty' + (imgMissing ? ' sx-missing' : ''),
           onclick: async () => {
             const id = await ctx.uploadImage('small');
             if (id) ctx.set(`tokens.rows.${row.id}.image`, id);
@@ -1265,11 +1365,21 @@
       tr.appendChild(imgTd);
 
       tr.appendChild(h('td', {},
-        h('textarea', {value: row.placement || '', rows: 2, oninput: e => ctx.set(`tokens.rows.${row.id}.placement`, e.target.value)})
+        h('textarea', {
+          className: isMissing(`tokens.rows.${row.id}.placement`) ? 'sx-missing' : '',
+          value: row.placement || '',
+          rows: 2,
+          oninput: e => ctx.set(`tokens.rows.${row.id}.placement`, e.target.value)
+        })
       ));
 
       tr.appendChild(h('td', {},
-        h('textarea', {value: row.effects || '', rows: 2, oninput: e => ctx.set(`tokens.rows.${row.id}.effects`, e.target.value)})
+        h('textarea', {
+          className: isMissing(`tokens.rows.${row.id}.effects`) ? 'sx-missing' : '',
+          value: row.effects || '',
+          rows: 2,
+          oninput: e => ctx.set(`tokens.rows.${row.id}.effects`, e.target.value)
+        })
       ));
 
       tr.appendChild(h('td', {},
@@ -1278,6 +1388,7 @@
 
       tr.appendChild(h('td', {},
         h('input', {
+          className: isMissing(`tokens.rows.${row.id}.effect`) ? 'sx-missing' : '',
           type: 'number',
           value: row.effect != null ? row.effect : '',
           disabled: !row.hasEffect,
@@ -1323,6 +1434,8 @@
 
   function renderCustom(container, ctx) {
     const d = ctx.design.custom;
+    const missing = window.Rules.missingFields('custom', ctx.design);
+    const isMissing = path => missing.includes(path);
 
     const tableDiv = h('div', {className: 'sx-table'});
     const table = h('table', {});
@@ -1344,19 +1457,25 @@
       const tr = h('tr', {});
 
       tr.appendChild(h('td', {},
-        h('input', {type: 'text', value: row.name || '', oninput: e => ctx.set(`custom.rows.${row.id}.name`, e.target.value)})
+        h('input', {
+          className: isMissing(`custom.rows.${row.id}.name`) ? 'sx-missing' : '',
+          type: 'text',
+          value: row.name || '',
+          oninput: e => ctx.set(`custom.rows.${row.id}.name`, e.target.value)
+        })
       ));
 
       const imgTd = h('td', {});
+      const imgMissing = isMissing(`custom.rows.${row.id}.image`);
       if (row.image) {
         imgTd.appendChild(h('img', {
           src: ctx.imgUrl(row.image),
-          className: 'sx-img-thumb',
+          className: 'sx-img-thumb' + (imgMissing ? ' sx-missing' : ''),
           onclick: () => openImageEditor(row.image, ctx, id => ctx.set(`custom.rows.${row.id}.image`, id), 'small')
         }));
       } else {
         imgTd.appendChild(h('div', {
-          className: 'sx-img-thumb sx-empty',
+          className: 'sx-img-thumb sx-empty' + (imgMissing ? ' sx-missing' : ''),
           onclick: async () => {
             const id = await ctx.uploadImage('small');
             if (id) ctx.set(`custom.rows.${row.id}.image`, id);
@@ -1366,15 +1485,30 @@
       tr.appendChild(imgTd);
 
       tr.appendChild(h('td', {},
-        h('textarea', {value: row.placement || '', rows: 2, oninput: e => ctx.set(`custom.rows.${row.id}.placement`, e.target.value)})
+        h('textarea', {
+          className: isMissing(`custom.rows.${row.id}.placement`) ? 'sx-missing' : '',
+          value: row.placement || '',
+          rows: 2,
+          oninput: e => ctx.set(`custom.rows.${row.id}.placement`, e.target.value)
+        })
       ));
 
       tr.appendChild(h('td', {},
-        h('textarea', {value: row.usage || '', rows: 2, oninput: e => ctx.set(`custom.rows.${row.id}.usage`, e.target.value)})
+        h('textarea', {
+          className: isMissing(`custom.rows.${row.id}.usage`) ? 'sx-missing' : '',
+          value: row.usage || '',
+          rows: 2,
+          oninput: e => ctx.set(`custom.rows.${row.id}.usage`, e.target.value)
+        })
       ));
 
       tr.appendChild(h('td', {},
-        h('textarea', {value: row.effects || '', rows: 2, oninput: e => ctx.set(`custom.rows.${row.id}.effects`, e.target.value)})
+        h('textarea', {
+          className: isMissing(`custom.rows.${row.id}.effects`) ? 'sx-missing' : '',
+          value: row.effects || '',
+          rows: 2,
+          oninput: e => ctx.set(`custom.rows.${row.id}.effects`, e.target.value)
+        })
       ));
 
       tr.appendChild(h('td', {},
@@ -1383,6 +1517,7 @@
 
       tr.appendChild(h('td', {},
         h('input', {
+          className: isMissing(`custom.rows.${row.id}.num`) ? 'sx-missing' : '',
           type: 'number',
           value: row.num != null ? row.num : '',
           disabled: !row.hasNum,

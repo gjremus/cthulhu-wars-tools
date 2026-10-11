@@ -209,6 +209,47 @@
       assert(ids.size === 100, 'all ids are unique');
     });
 
+    test('missingFields returns empty array for complete sections', () => {
+      const design = Rules.newDesign();
+      design.ufa.name = 'Test';
+      design.ufa.phase = 'Action';
+      design.ufa.type = 'Ongoing';
+      design.ufa.text = 'Text';
+      assertEqual(Rules.missingFields('ufa', design), [], 'complete UFA has no missing fields');
+    });
+
+    test('missingFields returns correct paths for incomplete UFA', () => {
+      const design = Rules.newDesign();
+      design.ufa.name = 'Test';
+      // missing phase, type, text
+      const missing = Rules.missingFields('ufa', design);
+      assert(missing.includes('ufa.phase'), 'includes phase');
+      assert(missing.includes('ufa.type'), 'includes type');
+      assert(missing.includes('ufa.text'), 'includes text');
+      assert(!missing.includes('ufa.name'), 'does not include name');
+    });
+
+    test('missingFields unit with abilityText but no abilityName', () => {
+      const design = Rules.newDesign();
+      const unit = design.units.rows[0];
+      unit.type = 'Building';
+      unit.name = 'The Screaming Wall';
+      unit.silhouette = 'img1';
+      unit.qty = 6;
+      unit.costType = 'Fixed';
+      unit.cost = 2;
+      unit.combatType = 'N/A';
+      // Delete hasAbility so it's undefined (matching Fleshmason case)
+      delete unit.hasAbility;
+      unit.abilityText = 'You may use the Create Gate Action...';
+      unit.abilityName = ''; // Empty - this should be flagged
+
+      const missing = Rules.missingFields('units', design);
+      const expectedPath = `units.rows.${unit.id}.abilityName`;
+      assert(missing.includes(expectedPath), `missing should include ${expectedPath}, but got ${JSON.stringify(missing)}`);
+      assertEqual(missing.length, 1, 'should only have one missing field');
+    });
+
     results.innerHTML += '<h2>All tests passed!</h2>';
   </script>
 </body>

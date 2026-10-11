@@ -1932,6 +1932,7 @@
           const typing = ev && ev.type === 'input' && t &&
             (t.tagName === 'TEXTAREA' || (t.tagName === 'INPUT' && /^(text|number|search|email|url)$/.test(t.type)));
           if (!typing) ctx.rerender();
+          else if (t.classList.contains('sx-missing')) t.classList.toggle('sx-missing', Rules.missingFields(path.split('.')[0], design).includes(path));
         },
         uploadImage: (kind) => this.uploadImage(kind),
         pickLibraryImage: () => this.pickLibraryImage(),
@@ -1988,6 +1989,7 @@
           const typing = ev && ev.type === 'input' && t &&
             (t.tagName === 'TEXTAREA' || (t.tagName === 'INPUT' && /^(text|number|search|email|url)$/.test(t.type)));
           if (!typing) ctx.rerender();
+          else if (t.classList.contains('sx-missing')) t.classList.toggle('sx-missing', Rules.missingFields(path.split('.')[0], design).includes(path));
         },
         addRow: (tablePath, row) => {
           if (this.isReadOnly()) return;
@@ -2158,6 +2160,114 @@
       this.root.appendChild(table);
     }
 
+    describeMissingFields(key, sectionTitle, missing, design) {
+      const parts = [];
+      const d = design[key];
+
+      // Helper to get user-friendly name for a row
+      const getRowName = (tablePath, rowId) => {
+        const table = tablePath.split('.').reduce((obj, prop) => obj && obj[prop], design);
+        if (!table) return null;
+        const row = table.find(r => r.id === rowId);
+        if (!row) return null;
+        return row.name || null;
+      };
+
+      // Group missing fields by row
+      const byRow = {};
+      missing.forEach(path => {
+        const match = path.match(/^([^.]+)\.(rows|units)\.([^.]+)\.(.+)$/);
+        if (match) {
+          const [, section, table, rowId, field] = match;
+          if (!byRow[rowId]) byRow[rowId] = {section, table, rowId, fields: []};
+          byRow[rowId].fields.push(field);
+        } else {
+          // Section-level field
+          if (!byRow['_root']) byRow['_root'] = {section: key, fields: []};
+          byRow['_root'].fields.push(path.replace(key + '.', ''));
+        }
+      });
+
+      // Generate descriptions
+      Object.values(byRow).forEach(group => {
+        if (group.section === '_root' || !group.rowId || group.rowId === '_root') {
+          // Section-level fields
+          const fieldLabels = {
+            'name': 'Name',
+            'acronym': 'Acronym',
+            'phase': 'Phase',
+            'type': 'Type',
+            'text': 'Text',
+            'location': 'Location type',
+            'earthRegion': 'Earth Region',
+            'libraryRegion': 'Library Region',
+            'constraints.follows': 'Follows faction',
+            'gate': 'Gate',
+            'power': 'Starting power',
+            'aeStart': 'Starting alternate economy'
+          };
+          group.fields.forEach(f => {
+            const label = fieldLabels[f] || f;
+            parts.push(`${label} is not set`);
+          });
+        } else {
+          // Row-level fields
+          const rows = design[group.section][group.table] || [];
+          const name = getRowName(`${group.section}.${group.table}`, group.rowId);
+          const fieldLabels = {
+            'abilityName': 'Special Ability Name',
+            'abilityText': 'Special Ability Text',
+            'name': 'Name',
+            'type': 'Type',
+            'silhouette': 'Silhouette',
+            'qty': 'Quantity',
+            'costType': 'Cost Type',
+            'cost': 'Cost',
+            'costCalc': 'Cost calculation',
+            'awakenReq': 'Requirements/process',
+            'awakenPower': 'Power cost',
+            'awakenRegion': 'Region placement',
+            'combatType': 'Combat type',
+            'dice': 'Dice',
+            'diceCalc': 'Dice calculation',
+            'pains': 'Pains',
+            'kills': 'Kills',
+            'resultsCalc': 'Results calculation',
+            'text': 'Text',
+            'typeB': 'Type (Side B)',
+            'nameB': 'Name (Side B)',
+            'textB': 'Text (Side B)',
+            'image': 'Image',
+            'restrictions': 'Unit Restrictions',
+            'adjacency': 'Adjacency',
+            'placement': 'Placement',
+            'effects': 'Effects',
+            'effect': 'Fixed Numeric Effect',
+            'usage': 'Usage',
+            'num': 'Fixed Numeric Cost or Effect',
+            'sign': 'Sign',
+            'kind': 'Fixed or Variable',
+            'calc': 'Calculation',
+            'desc': 'Description',
+            'effectB': 'Fixed Numeric Effect (Side B)',
+            'name2': 'Second power Name', 'type2': 'Second power Type', 'text2': 'Second power Text', 'effect2': 'Second power Effect',
+            'nameB2': 'Side B second power Name', 'typeB2': 'Side B second power Type', 'textB2': 'Side B second power Text', 'effectB2': 'Side B second power Effect'
+          };
+
+          const missingLabels = group.fields.map(f => fieldLabels[f] || f);
+          const rowLabel = name ? `"${name}"` : `row ${rows.findIndex(r => r.id === group.rowId) + 1}`;
+
+          if (missingLabels.length === 1) {
+            parts.push(`${rowLabel} needs ${missingLabels[0]}`);
+          } else {
+            parts.push(`${rowLabel} needs ${missingLabels.slice(0, -1).join(', ')} and ${missingLabels[missingLabels.length - 1]}`);
+          }
+        }
+      });
+
+      return parts.join('. ') + (parts.length > 0 ? '.' : '');
+    }
+
     renderBuildScreen() {
       const faction = this.state.currentFaction;
       const design = faction.design;
@@ -2194,16 +2304,29 @@
 
       const tbody = document.createElement('tbody');
 
+      const incompleteSections = [];
+
       for (const key of Rules.BUILD_SECTIONS) {
         const row = document.createElement('tr');
 
         const sectionCell = document.createElement('td');
         const sec = Rules.SECTIONS.find(s => s.key === key);
-        sectionCell.textContent = sec.title;
+        const st = Rules.status(key, design);
+
+        if (st === 'Incomplete') {
+          const link = document.createElement('a');
+          link.href = `#/faction/${faction.id}/section/${key}`;
+          link.textContent = sec.title;
+          link.style.color = '#60a5fa';
+          link.style.textDecoration = 'underline';
+          sectionCell.appendChild(link);
+          incompleteSections.push({key, title: sec.title});
+        } else {
+          sectionCell.textContent = sec.title;
+        }
         row.appendChild(sectionCell);
 
         const statusCell = document.createElement('td');
-        const st = Rules.status(key, design);
         statusCell.className = `status-${st.toLowerCase().replace('/', '')}`;
         statusCell.textContent = st;
         row.appendChild(statusCell);
@@ -2213,6 +2336,34 @@
 
       table.appendChild(tbody);
       this.root.appendChild(table);
+
+      // Add plain-language descriptions for incomplete sections
+      if (incompleteSections.length > 0) {
+        const missingDiv = document.createElement('div');
+        missingDiv.style.cssText = 'margin-top: 20px; padding: 16px; background: #2a2a2a; border: 1px solid #666; border-radius: 4px;';
+        const missingTitle = document.createElement('h3');
+        missingTitle.textContent = 'Missing fields';
+        missingTitle.style.marginTop = '0';
+        missingDiv.appendChild(missingTitle);
+
+        incompleteSections.forEach(sec => {
+          const missing = Rules.missingFields(sec.key, design);
+          if (missing.length === 0) return;
+
+          const desc = this.describeMissingFields(sec.key, sec.title, missing, design);
+          if (desc) {
+            const p = document.createElement('p');
+            const strong = document.createElement('strong');
+            strong.textContent = `${sec.title}: `;
+            p.appendChild(strong);
+            p.appendChild(document.createTextNode(desc));
+            p.style.margin = '8px 0';
+            missingDiv.appendChild(p);
+          }
+        });
+
+        this.root.appendChild(missingDiv);
+      }
 
       const versionInfo = document.createElement('div');
       versionInfo.style.marginTop = '20px';

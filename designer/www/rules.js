@@ -495,6 +495,199 @@
     });
   }
 
+  // Returns field paths (e.g. 'units.rows.<id>.abilityName') that are blocking the section.
+  // Returns [] when status is not 'Incomplete'.
+  function missingFields(key, design) {
+    const st = status(key, design);
+    if (st !== 'Incomplete') return [];
+
+    const missing = [];
+    const d = design[key];
+
+    if (key === 'ae') {
+      if (!d.name) missing.push('ae.name');
+      if (!d.acronym || d.acronym.length !== 1) missing.push('ae.acronym');
+      const completeRows = d.rows.filter(r => isRowComplete(r, 'ae'));
+      const partialRows = d.rows.filter(r => !isRowComplete(r, 'ae') && !isRowEmpty(r, blankRow('ae.rows')));
+      // If no complete rows and no partial rows, flag first blank row's fields
+      if (completeRows.length === 0 && partialRows.length === 0) {
+        const firstBlank = d.rows.find(r => isRowEmpty(r, blankRow('ae.rows')));
+        if (firstBlank) {
+          missing.push(`ae.rows.${firstBlank.id}.sign`, `ae.rows.${firstBlank.id}.kind`);
+          if (firstBlank.kind === 'fixed') {
+            missing.push(`ae.rows.${firstBlank.id}.qty`, `ae.rows.${firstBlank.id}.desc`);
+          } else {
+            missing.push(`ae.rows.${firstBlank.id}.calc`, `ae.rows.${firstBlank.id}.desc`);
+          }
+        }
+      }
+      // Always flag partial rows
+      partialRows.forEach(r => {
+        if (!r.sign) missing.push(`ae.rows.${r.id}.sign`);
+        if (!r.kind) missing.push(`ae.rows.${r.id}.kind`);
+        if (r.kind === 'fixed') {
+          if (r.qty == null) missing.push(`ae.rows.${r.id}.qty`);
+        } else {
+          if (!r.calc) missing.push(`ae.rows.${r.id}.calc`);
+        }
+        if (!r.desc) missing.push(`ae.rows.${r.id}.desc`);
+      });
+    }
+
+    if (key === 'ufa') {
+      if (!d.name) missing.push('ufa.name');
+      if (!d.phase) missing.push('ufa.phase');
+      if (!d.type) missing.push('ufa.type');
+      if (!d.text) missing.push('ufa.text');
+      if (d.hasCost && d.cost == null) missing.push('ufa.cost');
+      if (d.hasEffect && d.effect == null) missing.push('ufa.effect');
+    }
+
+    if (key === 'setup') {
+      if (!d.text) missing.push('setup.text');
+      if (!d.location) missing.push('setup.location');
+      if (d.location === 'single') {
+        if (!d.earthRegion) missing.push('setup.earthRegion');
+        if (!d.libraryRegion) missing.push('setup.libraryRegion');
+      }
+      if (d.location === 'multi' && !d.constraints.follows) missing.push('setup.constraints.follows');
+      if (d.gate == null) missing.push('setup.gate');
+      if (d.power == null) missing.push('setup.power');
+      const completeUnits = d.units.filter(u => isRowComplete(u, 'setupUnit'));
+      const partialUnits = d.units.filter(u => !isRowComplete(u, 'setupUnit') && !isRowEmpty(u, blankRow('setup.units')));
+      // If no complete units and no partial units, flag first blank unit
+      if (completeUnits.length === 0 && partialUnits.length === 0) {
+        const firstBlank = d.units.find(u => isRowEmpty(u, blankRow('setup.units')));
+        if (firstBlank) {
+          missing.push(`setup.units.${firstBlank.id}.name`, `setup.units.${firstBlank.id}.qty`);
+        }
+      }
+      // Always flag partial units
+      partialUnits.forEach(u => {
+        if (!u.name) missing.push(`setup.units.${u.id}.name`);
+        if (u.qty == null) missing.push(`setup.units.${u.id}.qty`);
+      });
+      const aeEnabled = design.ae && design.ae.enabled;
+      if (aeEnabled && d.aeStart == null) missing.push('setup.aeStart');
+    }
+
+    if (key === 'units') {
+      const completeUnits = d.rows.filter(u => isRowComplete(u, 'unit'));
+      const partialUnits = d.rows.filter(u => !isRowComplete(u, 'unit') && !isRowEmpty(u, blankUnit()));
+      // If no complete units and no partial units, flag first blank unit's fields
+      if (completeUnits.length === 0 && partialUnits.length === 0) {
+        const firstBlank = d.rows.find(u => isRowEmpty(u, blankUnit()));
+        if (firstBlank) {
+          missing.push(`units.rows.${firstBlank.id}.type`, `units.rows.${firstBlank.id}.name`,
+            `units.rows.${firstBlank.id}.silhouette`, `units.rows.${firstBlank.id}.qty`,
+            `units.rows.${firstBlank.id}.costType`, `units.rows.${firstBlank.id}.combatType`);
+        }
+      }
+      // Always flag partial units
+      partialUnits.forEach(u => {
+        if (!u.type) missing.push(`units.rows.${u.id}.type`);
+        if (!u.name) missing.push(`units.rows.${u.id}.name`);
+        if (!u.silhouette) missing.push(`units.rows.${u.id}.silhouette`);
+        if (u.qty == null || u.qty < 1 || u.qty > 20) missing.push(`units.rows.${u.id}.qty`);
+        if (!u.costType) missing.push(`units.rows.${u.id}.costType`);
+        if (u.costType === 'Fixed' && u.cost == null) missing.push(`units.rows.${u.id}.cost`);
+        if (u.costType === 'Variable' && !u.costCalc) missing.push(`units.rows.${u.id}.costCalc`);
+        if (u.costType === 'Awakening') {
+          if (!u.awakenReq) missing.push(`units.rows.${u.id}.awakenReq`);
+          if (u.awakenPower == null) missing.push(`units.rows.${u.id}.awakenPower`);
+          if (!u.awakenRegion) missing.push(`units.rows.${u.id}.awakenRegion`);
+        }
+        if (!u.combatType) missing.push(`units.rows.${u.id}.combatType`);
+        if (u.combatType === 'Fixed Dice' && u.dice == null) missing.push(`units.rows.${u.id}.dice`);
+        if (u.combatType === 'Variable Dice' && !u.diceCalc) missing.push(`units.rows.${u.id}.diceCalc`);
+        if (u.combatType === 'Fixed Results') {
+          if (u.pains == null) missing.push(`units.rows.${u.id}.pains`);
+          if (u.kills == null) missing.push(`units.rows.${u.id}.kills`);
+        }
+        if (u.combatType === 'Variable Results' && !u.resultsCalc) missing.push(`units.rows.${u.id}.resultsCalc`);
+        if (unitHasAbility(u)) {
+          if (!u.abilityName) missing.push(`units.rows.${u.id}.abilityName`);
+          if (!u.abilityText) missing.push(`units.rows.${u.id}.abilityText`);
+        }
+      });
+    }
+
+    if (key === 'sbr') {
+      d.rows.forEach(row => {
+        if (!row.text) missing.push(`sbr.rows.${row.id}.text`);
+        if (row.hasNum && row.num == null) missing.push(`sbr.rows.${row.id}.num`);
+      });
+    }
+
+    if (key === 'sb') {
+      const done = r => isRowComplete(r, 'sb') && (!sbTwo(d, r) || isRowComplete(r, 'sbB'));
+      const completeRows = d.rows.filter(done);
+      const contentOnly = r => { const c = Object.assign({}, r); delete c.twoSided; return c; };
+      const partialRows = d.rows.filter(r => !done(r) && !isRowEmpty(contentOnly(r), blankRow('sb.rows')));
+      // If < 6 complete, flag blank rows up to 6
+      if (completeRows.length < 6) {
+        const blanks = d.rows.filter(r => isRowEmpty(contentOnly(r), blankRow('sb.rows')));
+        const needed = Math.min(blanks.length, 6 - completeRows.length);
+        for (let i = 0; i < needed; i++) {
+          const r = blanks[i];
+          missing.push(`sb.rows.${r.id}.name`, `sb.rows.${r.id}.type`, `sb.rows.${r.id}.text`);
+        }
+      }
+      // Flag partial rows
+      partialRows.forEach(r => {
+        const sides = sbTwo(d, r) ? ['', 'B'] : [''];
+        sides.forEach(side => {
+          const parts = r['dual' + side] ? [side, side + '2'] : [side];
+          parts.forEach(sfx => {
+            if (!r['name' + sfx]) missing.push(`sb.rows.${r.id}.name${sfx}`);
+            if (!r['type' + sfx]) missing.push(`sb.rows.${r.id}.type${sfx}`);
+            if (!r['text' + sfx]) missing.push(`sb.rows.${r.id}.text${sfx}`);
+            if (r['hasEffect' + sfx] && r['effect' + sfx] == null) missing.push(`sb.rows.${r.id}.effect${sfx}`);
+          });
+        });
+      });
+    }
+
+    if (key === 'region') {
+      const completeRows = d.rows.filter(r => isRowComplete(r, 'region'));
+      const nonEmptyRows = d.rows.filter(r => !isRowEmpty(r, blankRow('region.rows')));
+      nonEmptyRows.forEach(r => {
+        if (!r.name) missing.push(`region.rows.${r.id}.name`);
+        if (!r.image) missing.push(`region.rows.${r.id}.image`);
+        if (!r.restrictions) missing.push(`region.rows.${r.id}.restrictions`);
+        if (!r.adjacency) missing.push(`region.rows.${r.id}.adjacency`);
+      });
+    }
+
+    if (key === 'tokens') {
+      const completeRows = d.rows.filter(r => isRowComplete(r, 'tokens'));
+      const nonEmptyRows = d.rows.filter(r => !isRowEmpty(r, blankRow('tokens.rows')));
+      nonEmptyRows.forEach(r => {
+        if (!r.name) missing.push(`tokens.rows.${r.id}.name`);
+        if (r.qty == null) missing.push(`tokens.rows.${r.id}.qty`);
+        if (!r.image) missing.push(`tokens.rows.${r.id}.image`);
+        if (!r.placement) missing.push(`tokens.rows.${r.id}.placement`);
+        if (!r.effects) missing.push(`tokens.rows.${r.id}.effects`);
+        if (r.hasEffect && r.effect == null) missing.push(`tokens.rows.${r.id}.effect`);
+      });
+    }
+
+    if (key === 'custom') {
+      const completeRows = d.rows.filter(r => isRowComplete(r, 'custom'));
+      const nonEmptyRows = d.rows.filter(r => !isRowEmpty(r, blankRow('custom.rows')));
+      nonEmptyRows.forEach(r => {
+        if (!r.name) missing.push(`custom.rows.${r.id}.name`);
+        if (!r.image) missing.push(`custom.rows.${r.id}.image`);
+        if (!r.placement) missing.push(`custom.rows.${r.id}.placement`);
+        if (!r.usage) missing.push(`custom.rows.${r.id}.usage`);
+        if (!r.effects) missing.push(`custom.rows.${r.id}.effects`);
+        if (r.hasNum && r.num == null) missing.push(`custom.rows.${r.id}.num`);
+      });
+    }
+
+    return missing;
+  }
+
   function fixedNumbers(design) {
     const numbers = [];
 
@@ -824,6 +1017,7 @@
     isEmpty,
     status,
     buildReady,
+    missingFields,
     fixedNumbers,
     sbTwo,
     sbAnyTwo,
