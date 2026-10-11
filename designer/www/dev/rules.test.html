@@ -229,7 +229,7 @@
       assert(!missing.includes('ufa.name'), 'does not include name');
     });
 
-    test('missingFields unit with abilityText but no abilityName', () => {
+    test('unit with abilityText but no abilityName is complete', () => {
       const design = Rules.newDesign();
       const unit = design.units.rows[0];
       unit.type = 'Building';
@@ -239,15 +239,34 @@
       unit.costType = 'Fixed';
       unit.cost = 2;
       unit.combatType = 'N/A';
-      // Delete hasAbility so it's undefined (matching Fleshmason case)
-      delete unit.hasAbility;
+      unit.hasAbility = true;
       unit.abilityText = 'You may use the Create Gate Action...';
-      unit.abilityName = ''; // Empty - this should be flagged
+      unit.abilityName = ''; // Empty - this should be OK now
 
       const missing = Rules.missingFields('units', design);
-      const expectedPath = `units.rows.${unit.id}.abilityName`;
-      assert(missing.includes(expectedPath), `missing should include ${expectedPath}, but got ${JSON.stringify(missing)}`);
-      assertEqual(missing.length, 1, 'should only have one missing field');
+      assertEqual(missing.length, 0, 'should have no missing fields');
+      assertEqual(Rules.status('units', design), 'Complete', 'unit should be complete');
+    });
+
+    test('unit with ability ticked but missing abilityText is incomplete', () => {
+      const design = Rules.newDesign();
+      const unit = design.units.rows[0];
+      unit.type = 'Monster';
+      unit.name = 'Test Monster';
+      unit.silhouette = 'img1';
+      unit.qty = 3;
+      unit.costType = 'Fixed';
+      unit.cost = 2;
+      unit.combatType = 'Fixed Dice';
+      unit.dice = 2;
+      unit.hasAbility = true;
+      unit.abilityName = 'Optional Name';
+      unit.abilityText = ''; // Missing text - should be incomplete
+
+      const missing = Rules.missingFields('units', design);
+      const expectedPath = `units.rows.${unit.id}.abilityText`;
+      assert(missing.includes(expectedPath), `missing should include ${expectedPath}`);
+      assertEqual(Rules.status('units', design), 'Incomplete', 'unit should be incomplete');
     });
 
     results.innerHTML += '<h2>All tests passed!</h2>';

@@ -274,6 +274,15 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                     elif action == 'request':
                         self.handle_create_request(fid)
                         return
+                    elif action == 'answers':
+                        self.handle_submit_answers(fid, 'faction')
+                        return
+
+        # Unit answers endpoint
+        m = re.fullmatch(r'/designer/api/units/([A-Za-z0-9_-]+)/answers', path)
+        if m:
+            self.handle_submit_answers(m.group(1), 'unit')
+            return
 
         # Admin endpoints
         if path.startswith('/designer/api/admin/'):
@@ -650,6 +659,11 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         # Migrate old units without build field
         if "build" not in unit:
             unit["build"] = {"status": "none", "liveVersion": None, "requestedAt": None, "builtAt": None}
+        # Add buildAttempted flag
+        unit["buildAttempted"] = self.has_build_attempt(unit, uid, "unit")
+        # Include claudeQA if it exists
+        if "claudeQA" not in unit:
+            unit["claudeQA"] = {}
         self.send_json(unit)
 
     def handle_patch_unit(self, uid: str):
@@ -693,6 +707,28 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             atomic_write(self.units_dir() / uid / "unit.json", unit)
         self.send_json({"updated": unit["updated"]})
 
+    def has_build_attempt(self, entity: Dict, fid_or_uid: str, entity_type: str) -> bool:
+        """Check if a faction or unit has had a build attempted."""
+        build = entity.get("build", {})
+        # Check if build status is not "none"
+        if build.get("status", "none") != "none":
+            return True
+        # Check if requestedAt is set
+        if build.get("requestedAt"):
+            return True
+        # Check if any claudeQA section has non-empty questions
+        claudeQA = entity.get("claudeQA", {})
+        if any(sec.get("questions") for sec in claudeQA.values()):
+            return True
+        # Check requests.json for build requests
+        requests_file = self.server.data_dir / "requests.json"
+        requests_data = load_json(requests_file) or {"requests": []}
+        requests = requests_data.get("requests", [])
+        key = "fid" if entity_type == "faction" else "uid"
+        if any(r.get(key) == fid_or_uid and r.get("type") in ("build", "update") for r in requests):
+            return True
+        return False
+
     def handle_get_faction(self, fid: str):
         """GET /designer/api/factions/<fid>"""
         username = self.verify_session()
@@ -717,6 +753,10 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         response["builtDesign"] = self.built_design_with_overrides(fid, faction)
         response["liveValues"] = self.load_live_values(fid)
         response["extractQueue"] = self.extract_queue_position(fid)
+        response["buildAttempted"] = self.has_build_attempt(faction, fid, "faction")
+        # Include claudeQA if it exists
+        if "claudeQA" not in response:
+            response["claudeQA"] = {}
         self.send_json(response)
 
     def extract_queue_position(self, fid: str) -> Optional[Dict]:
@@ -1313,7 +1353,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         text = body.get('text', '')
         data = body.get('data', {})
 
-        valid_types = ['build', 'update', 'simple_update', 'extract', 'bug']
+        valid_types = ['build', 'update', 'simple_update', 'extract', 'bug', 'answers']
         if req_type not in valid_types:
             self.send_error_json(f"Invalid request type. Must be one of: {', '.join(valid_types)}")
             return
@@ -1372,6 +1412,143 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             self.add_terminal_entry(self.terminal_type(request), self.display_name(username),
                                     text or f"{req_type} request for {faction['name']}",
                                     "Waiting to be picked up.", ref=req_id)
+
+            # Set build.requestedAt for build/update requests to enable buildAttempted flag
+            if req_type in ("build", "update"):
+                if "build" not in faction:
+                    faction["build"] = {"status": "none", "liveVersion": None, "requestedAt": None, "builtAt": None}
+                if not faction["build"].get("requestedAt"):
+                    faction["build"]["requestedAt"] = now
+                    faction_file = self.server.data_dir / "factions" / fid / "faction.json"
+                    atomic_write(faction_file, faction)
+
+        self.send_json(request)
+
+    def handle_submit_answers(self, fid_or_uid: str, entity_type: str):
+        """POST /designer/api/factions/<fid>/answers or /designer/api/units/<uid>/answers {section, text}"""
+        username = self.verify_session()
+        if not username:
+            self.send_error_json("Unauthorized", 401)
+            return
+
+        body = self.read_json_body()
+        if not body:
+            return
+
+        section = body.get('section', '').strip()
+        text = body.get('text', '').strip()
+
+        if not section:
+            self.send_error_json("section is required")
+            return
+
+        if entity_type == "faction":
+            entity = self.load_faction(fid_or_uid)
+            if not entity:
+                self.send_error_json("Faction not found", 404)
+                return
+            if entity["owner"] != username:
+                self.send_error_json("Forbidden", 403)
+                return
+            entity_name = entity["name"]
+            entity_file = self.server.data_dir / "factions" / fid_or_uid / "faction.json"
+        else:  # unit
+            entity = self.load_unit(fid_or_uid)
+            if not entity:
+                self.send_error_json("Unit not found", 404)
+                return
+            if entity.get("owner") != username:
+                self.send_error_json("Forbidden", 403)
+                return
+            row = (entity.get("design", {}).get("units", {}).get("rows") or [{}])[0]
+            entity_name = row.get("name") or "Unit"
+            entity_file = self.units_dir() / fid_or_uid / "unit.json"
+
+        # Find section label
+        section_titles = [
+            {'key': 'ae', 'title': 'Alternate economy'},
+            {'key': 'ufa', 'title': 'Unique faction ability'},
+            {'key': 'setup', 'title': 'Setup'},
+            {'key': 'units', 'title': 'Units'},
+            {'key': 'sbr', 'title': 'Spell Book Requirements'},
+            {'key': 'sb', 'title': 'Spellbooks'},
+            {'key': 'region', 'title': 'Faction region (ex. "the Moon")'},
+            {'key': 'tokens', 'title': 'Tokens (ex. "Craters")'},
+            {'key': 'custom', 'title': 'Other Custom (ex. "Cursed Tomes")'},
+            {'key': 'menus', 'title': 'Menu Design'},
+            {'key': 'unit', 'title': 'Unit'}
+        ]
+        section_label = next((s['title'] for s in section_titles if s['key'] == section), section)
+
+        now = int(time.time())
+
+        with WRITE_LOCK:
+            # Save answers
+            if "claudeQA" not in entity:
+                entity["claudeQA"] = {}
+            if section not in entity["claudeQA"]:
+                entity["claudeQA"][section] = {"questions": "", "answers": "", "updated": 0}
+            entity["claudeQA"][section]["answers"] = text
+            entity["claudeQA"][section]["updated"] = now
+            entity["updated"] = now
+            atomic_write(entity_file, entity)
+
+            # Create request
+            requests_file = self.server.data_dir / "requests.json"
+            requests_data = load_json(requests_file) or {"requests": []}
+            requests = requests_data.get("requests", [])
+
+            # Check for duplicate (same text, section, and entity)
+            key = "fid" if entity_type == "faction" else "uid"
+            for existing in requests:
+                if (existing.get("type") == "answers" and
+                    existing.get(key) == fid_or_uid and
+                    existing.get("status") == "open" and
+                    existing.get("data", {}).get("section") == section and
+                    existing.get("text") == text):
+                    # Return existing
+                    self.send_json(existing)
+                    return
+
+            req_id = f"r_{secrets.token_urlsafe(6)}"
+            request = {
+                "id": req_id,
+                "type": "answers",
+                key: fid_or_uid,
+                entity_type: entity_name,
+                "user": username,
+                "status": "open",
+                "created": now,
+                "updated": now,
+                "text": text,
+                "data": {"section": section}
+            }
+            requests.append(request)
+            requests_data["requests"] = requests
+            atomic_write(requests_file, requests_data)
+
+            # Write queue line to console queue file
+            queue_written = False
+            try:
+                clean_name = entity_name.replace('\n', ' ').replace('[', '').replace(']', '')
+                timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+                display_user = self.display_name(username)
+                queue_line = f"[{timestamp}] DESIGN-ANSWERS {req_id}: {display_user} answered Claude's questions on the \"{section_label}\" section of {clean_name} (designer {entity_type} id {fid_or_uid}, section {section}). Read the questions and answers with tickers/designer-admin.py qa {fid_or_uid} {section}.\n"
+                with open(self.server.console_queue_path, 'a') as f:
+                    f.write(queue_line)
+                queue_written = True
+            except OSError:
+                pass
+
+            if queue_written:
+                request["status"] = "notified"
+                requests_data["requests"] = requests
+                atomic_write(requests_file, requests_data)
+            else:
+                # Fallback: add terminal entry for admin console
+                self.add_terminal_entry("design answers", self.display_name(username),
+                                        f"Answered questions on {section_label} section",
+                                        "Waiting to be picked up.", ref=req_id)
 
         self.send_json(request)
 
@@ -1554,12 +1731,18 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             self.handle_admin_requests()
         elif endpoint == 'factions' and len(parts) >= 7:
             fid = parts[6]
-            self.handle_admin_get_faction(fid)
+            if len(parts) >= 8 and parts[7] == 'qa':
+                self.handle_admin_get_qa(fid, 'faction')
+            else:
+                self.handle_admin_get_faction(fid)
         elif endpoint == 'view-faction' and len(parts) >= 7:
             self.handle_admin_view_faction(parts[6])
         elif endpoint == 'units' and len(parts) >= 7:
             uid = parts[6]
-            self.handle_admin_get_unit(uid)
+            if len(parts) >= 8 and parts[7] == 'qa':
+                self.handle_admin_get_qa(uid, 'unit')
+            else:
+                self.handle_admin_get_unit(uid)
         elif endpoint == 'image-usage':
             self.handle_admin_image_usage()
         elif endpoint == 'terminal-log':
@@ -1610,6 +1793,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                     self.handle_admin_live_game_versions(fid)
                 elif action == 'viewers':
                     self.handle_admin_viewers(fid)
+                elif action == 'qa':
+                    self.handle_admin_post_qa(fid, 'faction')
                 else:
                     self.send_error_json("Unknown admin endpoint", 404)
             else:
@@ -1620,6 +1805,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 action = parts[7]
                 if action == 'build-status':
                     self.handle_admin_unit_build_status(uid)
+                elif action == 'qa':
+                    self.handle_admin_post_qa(uid, 'unit')
                 else:
                     self.send_error_json("Unknown admin endpoint", 404)
             else:
@@ -2241,6 +2428,66 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         self.send_json({"ok": True})
 
     # ── Helpers ──────────────────────────────────────────────────────────────────
+
+    # ---- Claude Q&A ----
+
+    def handle_admin_get_qa(self, fid_or_uid: str, entity_type: str):
+        """GET admin/factions/<fid>/qa or admin/units/<uid>/qa -> {claudeQA}"""
+        if entity_type == "faction":
+            entity = self.load_faction(fid_or_uid)
+        else:
+            entity = self.load_unit(fid_or_uid)
+
+        if not entity:
+            self.send_error_json(f"{entity_type.capitalize()} not found", 404)
+            return
+
+        self.send_json({"claudeQA": entity.get("claudeQA", {})})
+
+    def handle_admin_post_qa(self, fid_or_uid: str, entity_type: str):
+        """POST admin/factions/<fid>/qa or admin/units/<uid>/qa {section, questions?, answers?}
+        Sets whichever fields are given (empty string clears)."""
+        body = self.read_json_body()
+        if body is None:
+            return
+
+        section = body.get('section', '').strip()
+        if not section:
+            self.send_error_json("section is required")
+            return
+
+        if entity_type == "faction":
+            entity = self.load_faction(fid_or_uid)
+            if not entity:
+                self.send_error_json("Faction not found", 404)
+                return
+            entity_file = self.server.data_dir / "factions" / fid_or_uid / "faction.json"
+        else:
+            entity = self.load_unit(fid_or_uid)
+            if not entity:
+                self.send_error_json("Unit not found", 404)
+                return
+            entity_file = self.units_dir() / fid_or_uid / "unit.json"
+
+        now = int(time.time())
+
+        with WRITE_LOCK:
+            if "claudeQA" not in entity:
+                entity["claudeQA"] = {}
+            if section not in entity["claudeQA"]:
+                entity["claudeQA"][section] = {"questions": "", "answers": "", "updated": 0}
+
+            # Set whichever fields are provided
+            if "questions" in body:
+                entity["claudeQA"][section]["questions"] = body["questions"] or ""
+            if "answers" in body:
+                entity["claudeQA"][section]["answers"] = body["answers"] or ""
+
+            entity["claudeQA"][section]["updated"] = now
+            entity["updated"] = now
+            atomic_write(entity_file, entity)
+
+        self.send_json({"claudeQA": entity["claudeQA"]})
 
     # ---- Read-only sharing, admin import, Claude terminal log ----
 

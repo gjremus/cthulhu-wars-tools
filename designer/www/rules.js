@@ -367,7 +367,7 @@
       if (row.combatType === 'Variable Dice' && !row.diceCalc) return false;
       if (row.combatType === 'Fixed Results' && (row.pains == null || row.kills == null)) return false;
       if (row.combatType === 'Variable Results' && !row.resultsCalc) return false;
-      if (unitHasAbility(row) && (!row.abilityName || !row.abilityText)) return false;
+      if (unitHasAbility(row) && !row.abilityText) return false;
       return true;
     } else if (rowType === 'sbr') {
       if (!row.text) return false;
@@ -606,7 +606,6 @@
         }
         if (u.combatType === 'Variable Results' && !u.resultsCalc) missing.push(`units.rows.${u.id}.resultsCalc`);
         if (unitHasAbility(u)) {
-          if (!u.abilityName) missing.push(`units.rows.${u.id}.abilityName`);
           if (!u.abilityText) missing.push(`units.rows.${u.id}.abilityText`);
         }
       });

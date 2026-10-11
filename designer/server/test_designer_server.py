@@ -1211,5 +1211,217 @@ class UnitBuildTest(DesignerServerTest):
         self.assertEqual(unit['build']['history'][0]['version'], 'v2.150')
 
 
+class ClaudeQATest(DesignerServerTest):
+    """Test Claude Q&A functionality."""
+
+    def test_buildAttempted_flag_none(self):
+        """buildAttempted is False when build status is none and no requests exist."""
+        token = self.register_user(f'user{secrets.token_hex(4)}')
+        faction = self.create_faction(token)
+
+        resp = self.request('GET', f'/factions/{faction["id"]}', token=token)
+        self.assertFalse(resp['buildAttempted'])
+
+    def test_buildAttempted_flag_after_request(self):
+        """buildAttempted is True after a build request."""
+        token = self.register_user(f'user{secrets.token_hex(4)}')
+        faction = self.create_faction(token)
+
+        # Create build request
+        self.request('POST', f'/factions/{faction["id"]}/request', {
+            'type': 'build',
+            'text': 'Ready to build',
+            'data': {}
+        }, token=token)
+
+        # Check buildAttempted flag
+        resp = self.request('GET', f'/factions/{faction["id"]}', token=token)
+        self.assertTrue(resp['buildAttempted'])
+
+    def test_buildAttempted_flag_after_questions(self):
+        """buildAttempted is True when claudeQA has questions."""
+        token = self.register_user(f'user{secrets.token_hex(4)}')
+        faction = self.create_faction(token)
+        fid = faction['id']
+
+        # Set questions via admin endpoint
+        admin_url = f"{self.base_url}/admin/{self.admin_token}/factions/{fid}/qa"
+        req = Request(admin_url, data=json.dumps({
+            'section': 'ufa',
+            'questions': 'What does this ability do?'
+        }).encode(), headers={'Content-Type': 'application/json'}, method='POST')
+        urlopen(req)
+
+        # Check buildAttempted flag
+        resp = self.request('GET', f'/factions/{fid}', token=token)
+        self.assertTrue(resp['buildAttempted'])
+
+    def test_submit_answers_owner_only(self):
+        """Only the owner can submit answers."""
+        token1 = self.register_user(f'owner{secrets.token_hex(4)}')
+        token2 = self.register_user(f'other{secrets.token_hex(4)}')
+        faction = self.create_faction(token1)
+        fid = faction['id']
+
+        # Set questions
+        admin_url = f"{self.base_url}/admin/{self.admin_token}/factions/{fid}/qa"
+        req = Request(admin_url, data=json.dumps({
+            'section': 'ufa',
+            'questions': 'Question 1'
+        }).encode(), headers={'Content-Type': 'application/json'}, method='POST')
+        urlopen(req)
+
+        # Owner can submit
+        resp = self.request('POST', f'/factions/{fid}/answers', {
+            'section': 'ufa',
+            'text': 'Answer 1'
+        }, token=token1)
+        self.assertIn('id', resp)
+
+        # Other user cannot
+        try:
+            self.request('POST', f'/factions/{fid}/answers', {
+                'section': 'ufa',
+                'text': 'Answer 2'
+            }, token=token2)
+            self.fail("Should have raised HTTPError")
+        except HTTPError as e:
+            self.assertEqual(e.code, 403)
+
+    def test_submit_answers_creates_request(self):
+        """Submitting answers creates a request and writes to queue."""
+        token = self.register_user(f'user{secrets.token_hex(4)}')
+        faction = self.create_faction(token)
+        fid = faction['id']
+
+        # Set questions
+        admin_url = f"{self.base_url}/admin/{self.admin_token}/factions/{fid}/qa"
+        req = Request(admin_url, data=json.dumps({
+            'section': 'setup',
+            'questions': 'How many gates?'
+        }).encode(), headers={'Content-Type': 'application/json'}, method='POST')
+        urlopen(req)
+
+        # Submit answers
+        resp = self.request('POST', f'/factions/{fid}/answers', {
+            'section': 'setup',
+            'text': 'Two gates in the starting region.'
+        }, token=token)
+
+        self.assertEqual(resp['type'], 'answers')
+        self.assertEqual(resp['status'], 'notified')
+        self.assertEqual(resp['data']['section'], 'setup')
+
+        # Check console queue
+        self.assertTrue(self.console_queue.exists())
+        with open(self.console_queue, 'r') as f:
+            content = f.read()
+            self.assertIn('DESIGN-ANSWERS', content)
+            self.assertIn(resp['id'], content)
+            self.assertIn('setup', content)
+
+    def test_admin_get_qa(self):
+        """Admin can get claudeQA for faction and unit."""
+        token = self.register_user(f'user{secrets.token_hex(4)}')
+        faction = self.create_faction(token)
+        fid = faction['id']
+
+        # Set questions and answers
+        admin_url = f"{self.base_url}/admin/{self.admin_token}/factions/{fid}/qa"
+        req = Request(admin_url, data=json.dumps({
+            'section': 'units',
+            'questions': 'Q1',
+            'answers': 'A1'
+        }).encode(), headers={'Content-Type': 'application/json'}, method='POST')
+        urlopen(req)
+
+        # Get QA
+        req = Request(admin_url, method='GET')
+        with urlopen(req) as resp:
+            qa = json.loads(resp.read().decode())
+
+        self.assertIn('claudeQA', qa)
+        self.assertIn('units', qa['claudeQA'])
+        self.assertEqual(qa['claudeQA']['units']['questions'], 'Q1')
+        self.assertEqual(qa['claudeQA']['units']['answers'], 'A1')
+
+    def test_admin_clear_questions(self):
+        """Admin can clear questions by passing empty string."""
+        token = self.register_user(f'user{secrets.token_hex(4)}')
+        faction = self.create_faction(token)
+        fid = faction['id']
+
+        # Set questions
+        admin_url = f"{self.base_url}/admin/{self.admin_token}/factions/{fid}/qa"
+        req = Request(admin_url, data=json.dumps({
+            'section': 'sbr',
+            'questions': 'Old question'
+        }).encode(), headers={'Content-Type': 'application/json'}, method='POST')
+        urlopen(req)
+
+        # Clear questions
+        req = Request(admin_url, data=json.dumps({
+            'section': 'sbr',
+            'questions': ''
+        }).encode(), headers={'Content-Type': 'application/json'}, method='POST')
+        urlopen(req)
+
+        # Verify cleared
+        req = Request(admin_url, method='GET')
+        with urlopen(req) as resp:
+            qa = json.loads(resp.read().decode())
+        self.assertEqual(qa['claudeQA']['sbr']['questions'], '')
+
+    def test_unit_qa_workflow(self):
+        """Test Q&A workflow for neutral units."""
+        token = self.register_user(f'user{secrets.token_hex(4)}')
+        unit = self.request('POST', '/units', {'name': 'Test Unit'}, token=token)
+        uid = unit['id']
+
+        # Build request creates buildAttempted flag
+        self.request('POST', f'/units/{uid}/request', {
+            'type': 'build',
+            'text': 'Build this unit'
+        }, token=token)
+
+        unit_resp = self.request('GET', f'/units/{uid}', token=token)
+        self.assertTrue(unit_resp['buildAttempted'])
+
+        # Admin sets questions
+        admin_url = f"{self.base_url}/admin/{self.admin_token}/units/{uid}/qa"
+        req = Request(admin_url, data=json.dumps({
+            'section': 'unit',
+            'questions': 'What is the combat type?'
+        }).encode(), headers={'Content-Type': 'application/json'}, method='POST')
+        urlopen(req)
+
+        # User submits answers
+        ans_resp = self.request('POST', f'/units/{uid}/answers', {
+            'section': 'unit',
+            'text': 'Fixed Dice, 3 dice'
+        }, token=token)
+        self.assertEqual(ans_resp['type'], 'answers')
+
+        # Admin reads answers
+        req = Request(admin_url, method='GET')
+        with urlopen(req) as resp:
+            qa = json.loads(resp.read().decode())
+        self.assertEqual(qa['claudeQA']['unit']['questions'], 'What is the combat type?')
+        self.assertEqual(qa['claudeQA']['unit']['answers'], 'Fixed Dice, 3 dice')
+
+        # Admin clears answers
+        req = Request(admin_url, data=json.dumps({
+            'section': 'unit',
+            'answers': ''
+        }).encode(), headers={'Content-Type': 'application/json'}, method='POST')
+        urlopen(req)
+
+        # Verify cleared
+        req = Request(admin_url, method='GET')
+        with urlopen(req) as resp:
+            qa = json.loads(resp.read().decode())
+        self.assertEqual(qa['claudeQA']['unit']['answers'], '')
+
+
 if __name__ == '__main__':
     unittest.main()

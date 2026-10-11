@@ -540,7 +540,7 @@
     const unitTypes = neutral ? window.Rules.NEUTRAL_UNIT_TYPES : window.Rules.UNIT_TYPES;
     // Neutral units are ready with just a name, a type and (if ticked) the special ability
     const missing = neutral ? window.Rules.missingFields('units', ctx.design)
-      .filter(p => /\.(name|type|abilityName|abilityText)$/.test(p)) : window.Rules.missingFields('units', ctx.design);
+      .filter(p => /\.(name|type|abilityText)$/.test(p)) : window.Rules.missingFields('units', ctx.design);
     const isMissing = path => missing.includes(path);
 
     d.rows.slice(0, neutral ? 1 : d.rows.length).forEach((unit, idx) => {
@@ -673,11 +673,11 @@
         unitDiv.appendChild(relatedDiv);
       }
 
-      // Special ability: name and text only show (and are only required) when the box is ticked
+      // Special ability: name is optional, only text is required when the box is ticked
       const hasAbility = window.Rules.unitHasAbility(unit);
       unitDiv.appendChild(checkboxField('Special Ability', hasAbility, val => ctx.set(`units.rows.${unit.id}.hasAbility`, val)));
       if (hasAbility) {
-        unitDiv.appendChild(textField('Special Ability Name', unit.abilityName, val => ctx.set(`units.rows.${unit.id}.abilityName`, val), {missing: isMissing(`units.rows.${unit.id}.abilityName`)}));
+        unitDiv.appendChild(textField('Special Ability Name (optional)', unit.abilityName, val => ctx.set(`units.rows.${unit.id}.abilityName`, val)));
         unitDiv.appendChild(textField('Special Ability Text', unit.abilityText, val => ctx.set(`units.rows.${unit.id}.abilityText`, val), {rows: 4, missing: isMissing(`units.rows.${unit.id}.abilityText`)}));
       }
 
@@ -957,7 +957,9 @@
     if (unit.costType === 'Fixed' && unit.cost != null) fields.push(`Cost: ${unit.cost}`);
     if (unit.combatType === 'Fixed Dice' && unit.dice != null) fields.push(`Combat: ${unit.dice} dice`);
     if (unit.combatType === 'Fixed Results') fields.push(`Combat: ${unit.pains || 0} pains, ${unit.kills || 0} kills`);
-    if (window.Rules.unitHasAbility(unit) && unit.abilityName) fields.push(`${unit.abilityName}: ${unit.abilityText || ''}`);
+    if (window.Rules.unitHasAbility(unit) && unit.abilityText) {
+      fields.push(unit.abilityName ? `${unit.abilityName}: ${unit.abilityText}` : `Special Ability: ${unit.abilityText}`);
+    }
 
     fields.forEach(f => {
       previewDiv.appendChild(h('div', {style: 'margin: 8px 0; font-size: 14px;'}, f));
@@ -1826,6 +1828,53 @@
           val => ctx.set(key + '.customLogic', val),
           {rows: 8, greyed: key === 'ae' && !sec.enabled,
            hint: 'Anything about this section that the fields above cannot say: special timing, exceptions, interactions, edge cases'}));
+      }
+
+      // Claude Q&A boxes: hidden until a build has been attempted
+      const entity = ctx.faction || ctx.unit;
+      const entityType = ctx.faction ? 'factions' : 'units';
+      const sectionKey = ctx.neutral ? 'unit' : key;  // a neutral unit has one screen, keyed 'unit'
+      if (entity && entity.buildAttempted) {
+        entity.claudeQA = entity.claudeQA || {};
+        const qa = entity.claudeQA[sectionKey] || {questions: '', answers: ''};
+        const label = text => h('label', {style: 'display: block; font-weight: bold; margin-bottom: 8px;'}, text);
+        const boxStyle = 'width: 100%; padding: 8px; font-family: monospace; font-size: 13px; resize: vertical; box-sizing: border-box;';
+
+        const questionsBox = h('textarea', {readonly: true, placeholder: 'No questions from Claude on this section.',
+          style: boxStyle + ' height: 50vh; border: 1px solid #666; background: #1a1a1a; color: #aaa;'});
+        questionsBox.value = qa.questions || '';
+        container.appendChild(h('div', {style: 'margin-top: 40px;'}, label('Claude questions'), questionsBox));
+
+        if (!ctx.readOnly) {
+          const answersBox = h('textarea', {style: boxStyle + ' height: 35vh; border: 1px solid #888; background: #222; color: #eee;'});
+          answersBox.value = qa.answers || '';
+          const status = h('span', {style: 'margin-left: 12px; font-size: 14px;'});
+          const submitBtn = h('button', {className: 'sx-btn', style: 'margin-top: 12px;', disabled: !answersBox.value.trim(),
+            onclick: async () => {
+              const text = answersBox.value.trim();
+              submitBtn.disabled = true;
+              status.textContent = '';
+              try {
+                const response = await fetch(`/designer/api/${entityType}/${entity.id}/answers`, {
+                  method: 'POST',
+                  headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('cw_designer_token')}`},
+                  body: JSON.stringify({section: sectionKey, text})
+                });
+                if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || 'Failed to submit answers');
+                entity.claudeQA[sectionKey] = Object.assign({}, qa, {answers: text});
+                status.style.color = '#4ade80';
+                status.textContent = 'Sent to Claude.';
+              } catch (err) {
+                status.style.color = '#f87171';
+                status.textContent = 'Could not send: ' + err.message;
+              } finally {
+                submitBtn.disabled = !answersBox.value.trim();
+              }
+            }
+          }, 'Submit answers');
+          answersBox.oninput = () => { submitBtn.disabled = !answersBox.value.trim(); };
+          container.appendChild(h('div', {style: 'margin-top: 20px;'}, label('Answers for Claude'), answersBox, submitBtn, status));
+        }
       }
     } else {
       container.appendChild(h('p', {}, 'Section not implemented: ' + key));

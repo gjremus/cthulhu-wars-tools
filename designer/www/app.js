@@ -1920,6 +1920,7 @@
 
       const ctx = {
         design,
+        unit,
         neutral: true,
         reference: this.state.reference,
         set: (path, value) => {
@@ -1938,6 +1939,7 @@
         pickLibraryImage: () => this.pickLibraryImage(),
         imgUrl: (id) => this.imgUrl(id),
         confirm: (msg, yes, no) => this.confirm(msg, yes, no),
+        readOnly: false,
         rerender: () => {
           const y = window.scrollY;
           container.innerHTML = '';
@@ -2023,6 +2025,7 @@
         pickLibraryImage: () => this.pickLibraryImage(),
         imgUrl: (id) => this.imgUrl(id),
         confirm: (msg, yes, no) => this.confirm(msg, yes, no),
+        readOnly: this.isReadOnly(),
         createRequest: (type, text, data) => this.isReadOnly() ? Promise.resolve(null) : this.createRequest(faction.id, type, text, data),
         rerender: () => {
           const y = window.scrollY;
@@ -2471,7 +2474,7 @@
       const missingFields = [];
       if (row.name) readyFields.push('Name'); else missingFields.push('Name');
       if (row.type) readyFields.push('Type'); else missingFields.push('Type');
-      if (Rules.unitHasAbility(row) && (!row.abilityName || !row.abilityText)) missingFields.push('Special Ability');
+      if (Rules.unitHasAbility(row) && !row.abilityText) missingFields.push('Special Ability');
       if (row.cost !== undefined && row.cost !== null) readyFields.push('Cost');
       if (row.combat) readyFields.push('Combat');
       summaryDiv.innerHTML = `

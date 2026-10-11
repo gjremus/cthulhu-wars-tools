@@ -42,3 +42,13 @@ the same process as every other homebrew feature:
  7. A Haiku agent adds the entry to the HomeBrews guide master rollback log (surgical hb-doc-edit only).
  8. tickers/designer-admin.py unit-build-status <uid> built "HB <commit>", then
     tickers/designer-admin.py done <rid> <one plain sentence>. Never touch live games.
+
+DESIGN-ANSWERS requests are queued when the designer user submits answers to Claude questions on a
+section. Read the questions and answers with tickers/designer-admin.py qa <id> <section> (id may be
+a faction or unit id). Apply what the answers settle: continue the build where they unblock it,
+using the same process as above. Then rewrite the section's questions box to only the still-unresolved
+questions with tickers/designer-admin.py questions <id> <section> <file> (clear it if all resolved
+by passing an empty file or echo "" | tickers/designer-admin.py questions <id> <section> -). Clear
+the answers box with tickers/designer-admin.py answers-clear <id> <section>. Finish with
+tickers/designer-admin.py done <rid> <one plain sentence>. When a faction or unit build leaves rules
+questions, put each question in the matching section's Claude questions box as well as in the reply.

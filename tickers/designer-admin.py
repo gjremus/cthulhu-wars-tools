@@ -22,6 +22,12 @@ Reads the owner admin token from its file so it never has to appear in a prompt.
                                             set unit build status (status: in_progress, built, none)
   designer-admin.py request-status <rid> <status>
                                             set request status
+  designer-admin.py qa <id> [section]       print claudeQA (whole or one section) as JSON; id may be
+                                            faction or unit id
+  designer-admin.py questions <id> <section> <file>
+                                            set questions text from file ('-' = stdin; empty clears)
+  designer-admin.py answers-clear <id> <section>
+                                            clear the answers box
   designer-admin.py grid <imageId> [x y w h]
                                             copy with labelled pixel grid (or a zoomed area of it)
                                             so you can read off crop coordinates; prints path
@@ -280,6 +286,59 @@ def ints(vals):
     return out
 
 
+def qa_get(fid_or_uid, section=None):
+    """Get claudeQA for a faction or unit. Try faction first, then unit."""
+    try:
+        entity = api(f'factions/{fid_or_uid}/qa')
+    except SystemExit:
+        try:
+            entity = api(f'units/{fid_or_uid}/qa')
+        except SystemExit:
+            sys.exit(f"ERROR: no faction or unit found with id {fid_or_uid}")
+
+    qa = entity.get('claudeQA', {})
+    if section:
+        qa = {section: qa.get(section, {})}
+    print(json.dumps(qa, indent=2))
+
+
+def qa_set_questions(fid_or_uid, section, file_path):
+    """Set questions text from file."""
+    if file_path == '-':
+        text = sys.stdin.read()
+    else:
+        try:
+            with open(file_path, 'r') as f:
+                text = f.read()
+        except OSError as e:
+            sys.exit(f"ERROR: could not read file {file_path}: {e}")
+
+    # Try faction first, then unit
+    try:
+        result = api(f'factions/{fid_or_uid}/qa', {'section': section, 'questions': text})
+        print(json.dumps(result))
+    except SystemExit:
+        try:
+            result = api(f'units/{fid_or_uid}/qa', {'section': section, 'questions': text})
+            print(json.dumps(result))
+        except SystemExit:
+            sys.exit(f"ERROR: no faction or unit found with id {fid_or_uid}")
+
+
+def qa_clear_answers(fid_or_uid, section):
+    """Clear the answers box."""
+    # Try faction first, then unit
+    try:
+        result = api(f'factions/{fid_or_uid}/qa', {'section': section, 'answers': ''})
+        print(json.dumps(result))
+    except SystemExit:
+        try:
+            result = api(f'units/{fid_or_uid}/qa', {'section': section, 'answers': ''})
+            print(json.dumps(result))
+        except SystemExit:
+            sys.exit(f"ERROR: no faction or unit found with id {fid_or_uid}")
+
+
 def handoff(rid, reason):
     queued = load(HANDOFF_FILE, [])
     if not any(h['id'] == rid for h in queued):
@@ -328,6 +387,12 @@ def main():
         print(json.dumps(api(f'units/{args[0]}/build-status', body)))
     elif cmd == 'request-status' and len(args) == 2:
         print(json.dumps(api(f'requests/{args[0]}', {'status': args[1]})))
+    elif cmd == 'qa' and len(args) in (1, 2):
+        qa_get(args[0], args[1] if len(args) == 2 else None)
+    elif cmd == 'questions' and len(args) == 3:
+        qa_set_questions(args[0], args[1], args[2])
+    elif cmd == 'answers-clear' and len(args) == 2:
+        qa_clear_answers(args[0], args[1])
     elif cmd == 'grid' and len(args) in (1, 5):
         need_pil()
         grid(args[0], ints(args[1:]) if len(args) == 5 else None)
