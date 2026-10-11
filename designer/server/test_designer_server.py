@@ -104,8 +104,10 @@ class DesignerServerTest(unittest.TestCase):
                 return json.loads(data) if data else {}
             raise
 
-    def register_user(self, username="testuser", password="testpass"):
+    def register_user(self, username=None, password="testpass"):
         """Register a user and return token."""
+        if username is None:
+            username = f"user{secrets.token_hex(4)}"
         resp = self.request('POST', '/register', {
             'username': username,
             'password': password

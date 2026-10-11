@@ -272,8 +272,12 @@ class AdminMapTest(DesignerServerTest):
             'status': 'built',
             'version': 1
         })
-        self.assertEqual(resp['build']['status'], 'built')
-        self.assertEqual(resp['build']['liveVersion'], 1)
+        self.assertEqual(resp['ok'], True)
+
+        # Verify status changed
+        updated_map = self.request('GET', f'/maps/{m["id"]}', token=token)
+        self.assertEqual(updated_map['build']['status'], 'built')
+        self.assertEqual(updated_map['build']['liveVersion'], 1)
 
 
 if __name__ == '__main__':
