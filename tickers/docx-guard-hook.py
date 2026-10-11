@@ -13,6 +13,21 @@ Exit code 2  => BLOCK the command (Claude Code treats nonzero PreToolUse as a
 
 Only the sanctioned surgical editor (hb-doc-edit.py / fbe-doc-edit.py) may
 change a .docx, and even those are matched explicitly so nothing else can.
+
+--- 2026-08-18 false-positive fix ---
+The destructive-verb detection used to match the *word* rm/unlink/trash/mv/cp
+ANYWHERE in the command string. That wrongly blocked:
+  * sanctioned hb-doc-edit.py reads/writes of files whose NAME contains the word
+    "TRASH" (or a "DO NOT DELETE OR MOVE TO TRASH" safety suffix),
+  * sanctioned writes whose REPLACEMENT TEXT merely mentioned trash/delete,
+  * plain `ls`/`echo`/append commands that referenced a .docx filename and
+    happened to contain one of those words in unrelated text.
+It now (a) exempts the sanctioned editors from the delete/move checks (they
+physically cannot delete — they only surgically replace text), and (b) only
+treats rm/unlink/trash/rmtrash/mv/cp/osascript as destructive when they are the
+actual COMMAND being run (first token of a shell segment), not a substring of a
+quoted filename or free text. All the hard protections (chflags, redirect onto a
+doc, python docx/openpyxl writes, pandoc-to-docx) are unchanged.
 """
 import sys, json, re
 
@@ -22,32 +37,54 @@ def block(reason):
                      "fbe-doc-edit.py replace-text. No delete/move/trash/overwrite.\n")
     sys.exit(2)
 
+# Split a shell command into segments on separators, and return the set of
+# COMMAND names actually being invoked (first real token of each segment, with
+# any leading `sudo`, `command`, `env`, or FOO=bar assignments stripped, and the
+# path basename taken). This lets us tell `rm foo.docx` (command rm) apart from
+# `echo "do not move to trash" > note.txt` or a filename that contains "trash".
+def command_names(cmd):
+    names = set()
+    # separators: ; | & && || newline, and $( ) `...` command substitution starts
+    segments = re.split(r'\|\||&&|[;\n|&]|\$\(|`', cmd)
+    for seg in segments:
+        toks = seg.strip().split()
+        i = 0
+        # strip leading env-assignments and simple wrappers
+        while i < len(toks) and (re.match(r'^[A-Za-z_][A-Za-z0-9_]*=', toks[i])
+                                 or toks[i] in ("sudo", "command", "env", "nice",
+                                                "nohup", "time", "exec", "\\")):
+            i += 1
+        if i < len(toks):
+            base = toks[i].split('/')[-1].lower()
+            names.add(base)
+    return names
+
 def main():
     try:
         payload = json.load(sys.stdin)
     except Exception:
-        # If we can't parse input, fail OPEN would be unsafe; but blocking all
-        # tools would wedge the ticker. Only Bash is hooked, so allow-through
-        # here would still be caught by the specific patterns below on retry.
         sys.exit(0)
 
     tool = payload.get("tool_name") or payload.get("tool") or ""
+    ti = payload.get("tool_input") or payload.get("input") or {}
+
+    # ---- NON-Bash file tools (Write/Edit/MultiEdit/NotebookEdit) ------------
+    if tool in ("Write", "Edit", "MultiEdit", "NotebookEdit"):
+        p = (ti.get("file_path") or ti.get("path") or ti.get("notebook_path")
+             or "").lower()
+        if re.search(r'\.docx(?![.\w])', p) or re.search(r'\.xlsx(?![.\w])', p):
+            block(f"attempt to write a .docx/.xlsx via the {tool} tool "
+                  "(corrupts the zip / destroys the doc). Use the surgical editor.")
+        sys.exit(0)
+
     if tool != "Bash":
         sys.exit(0)
 
-    ti = payload.get("tool_input") or payload.get("input") or {}
     cmd = ti.get("command", "")
     if not cmd:
         sys.exit(0)
 
     low = cmd.lower()
-    # A PRIMARY document reference ends AT the extension: ".docx" / ".xlsx"
-    # followed by end-of-string, whitespace, a quote, a paren, or a redirect —
-    # NOT by another char. This deliberately does NOT match a backup file such
-    # as "Foo.docx.20260810-095658.bak" (there ".docx" is followed by "."), so
-    # the ticker may freely trash/delete its OWN backups while every op against
-    # a live .docx/.xlsx is still blocked. (Rule: never move/delete/trash a MAIN
-    # doc; only backups.)
     PRIMARY_DOCX_RE = re.compile(r'\.docx(?![.\w])')
     PRIMARY_XLSX_RE = re.compile(r'\.xlsx(?![.\w])')
     mentions_docx = bool(PRIMARY_DOCX_RE.search(low))
@@ -58,42 +95,47 @@ def main():
     # The one sanctioned path for the master spreadsheet.
     sanctioned_xlsx = "task-move.py" in cmd
 
-    # pandoc producing docx output is banned regardless of an explicit filename
-    # (it strips embedded fonts and destroys these files).
+    # Command verbs actually being invoked in this command line.
+    verbs = command_names(cmd)
+    DELETE_VERBS = {"rm", "unlink", "trash", "rmtrash", "trash-put", "gio"}
+    MOVE_VERBS = {"mv"}
+    COPY_VERBS = {"cp"}
+
+    # ---- IMMUTABLE-LOCK PROTECTION (unconditional) --------------------------
+    if (mentions_docx or mentions_xlsx) and re.search(r'\bchflags\b', low):
+        block("attempt to change filesystem flags on a .docx/.xlsx "
+              "(would strip the delete-protection lock). Owner: use cw-doclock.sh.")
+
+    # pandoc producing docx output is banned regardless of an explicit filename.
     if "pandoc" in low and not sanctioned:
         if ((("-o" in low or "--output" in low) and ".docx" in low)
                 or re.search(r'-t\s+docx', low)
                 or "--to=docx" in low or "--to docx" in low):
             block("attempt to WRITE a .docx with pandoc (strips fonts, destroys file).")
 
-    # 1) Any destructive verb anywhere near a .docx => block.
-    if mentions_docx:
-        # rm / unlink
-        if re.search(r'\b(rm|unlink|trash|rmtrash)\b', low):
-            block("attempt to delete a .docx (rm/unlink/trash).")
-        # mv / rename a docx (moving to Trash or elsewhere)
-        if re.search(r'\bmv\b', low):
+    # 1) A destructive COMMAND acting where a .docx is referenced => block.
+    #    Gated by `not sanctioned`: hb-doc-edit.py/fbe-doc-edit.py cannot delete.
+    if mentions_docx and not sanctioned:
+        if verbs & DELETE_VERBS:
+            block("attempt to delete a .docx (rm/unlink/trash) — destructive command.")
+        if verbs & MOVE_VERBS:
             block("attempt to move/rename a .docx (mv).")
-        # trash via Finder/osascript/AppleScript "delete"
-        if "osascript" in low and "delete" in low:
+        if verbs & COPY_VERBS:
+            block("attempt to cp onto/over a .docx.")
+        # trash via Finder/osascript "delete"
+        if "osascript" in verbs and "delete" in low:
             block("attempt to trash a .docx via AppleScript.")
-        # explicit ~/.Trash target
-        if ".trash" in low:
-            block("attempt to send a .docx to the Trash.")
-        # pandoc writing a docx (-o something.docx, or -t docx)
-        if "pandoc" in low and (re.search(r'-o\s+\S*\.docx', low) or "-t docx" in low or "--to=docx" in low):
-            if not sanctioned:
-                block("attempt to WRITE a .docx with pandoc (strips fonts, destroys file).")
-        # cp OVER an existing docx (cp source dest.docx) — allow cp to a NEW backup name only if not overwriting is unknowable here, so block cp-to-docx outright unless sanctioned
-        if re.search(r'\bcp\b', low) and re.search(r'\.docx\b', low):
-            if not sanctioned:
-                block("attempt to cp onto/over a .docx.")
-        # shell redirection into a docx ( > file.docx )
-        if re.search(r'>\s*\S*\.docx', low):
+        # shell redirection into a docx ( > file.docx ) — unambiguous overwrite.
+        # Allow spaces inside a (possibly quoted) path — the real doc names all
+        # contain spaces, e.g. "HomeBrews Current Tasks.docx"; a \S* target match
+        # stops at the first space and misses them. Match up to a command separator.
+        if re.search(r'>>?\s*["\']?[^|;&\n]*\.docx', low):
             block("attempt to overwrite a .docx via shell redirection.")
+        # pandoc writing a docx (redundant safety, kept for clarity)
+        if "pandoc" in verbs and (re.search(r'-o\s+\S*\.docx', low) or "-t docx" in low or "--to=docx" in low):
+            block("attempt to WRITE a .docx with pandoc (strips fonts, destroys file).")
 
-    # 2) python/python3 that imports docx libs or opens Document() — block
-    #    (covers inline -c and here-doc styles) regardless of .docx mention.
+    # 2) python/python3 that imports docx libs or opens Document() — block.
     if re.search(r'\bpython3?\b', low):
         if ("import docx" in low or "from docx" in low or "docx.document(" in low
                 or "load_workbook" in low or "import openpyxl" in low
@@ -101,52 +143,28 @@ def main():
             if not sanctioned:
                 block("attempt to open/write an Office file via python docx/openpyxl.")
 
-        # GAP CLOSED (2026-08-05): a script can clobber a .docx WITHOUT importing
-        # docx/openpyxl — just `open(path, "w"/"a"/"wb")` or
-        # `zipfile.ZipFile(path, "w"/"a")` on the raw file (this is exactly how a
-        # docx is a zip, so it's the real destruction path). Block any python that
-        # mentions a .docx AND opens it for writing/appending, or zips to it.
-        # The sanctioned surgical editors are exempt (checked above via `sanctioned`).
         if mentions_docx and not sanctioned:
-            # Normalise away backslashes/quotes so shell-escaped forms like
-            # open(\"x.docx\",\"w\") match the same as open("x.docx","w").
             norm = low.replace("\\", "").replace('"', '').replace("'", "")
-            # open( ... .docx ... , <mode with w/a/x/+> ) — any write/append/truncate mode
             if re.search(r'open\s*\([^)]*\.docx[^)]*,\s*[rwax+b]*[wax+][rwax+b]*\s*\)', norm):
                 block("attempt to open a .docx for writing/appending in python (clobbers the file).")
-            # zipfile.ZipFile( ... .docx ... , <w/a> ) — writing the docx zip directly
             if re.search(r'zipfile\s*\([^)]*\.docx[^)]*,\s*[wa]', norm):
                 block("attempt to write a .docx zip directly in python (clobbers the file).")
-            # shutil copy/move, os remove/rename/replace, pathlib unlink/rename/write onto a .docx
-            if re.search(r'(shutil\.(copy\w*|move)|os\.(remove|unlink|rename|replace)|\.(unlink|write_bytes|write_text)\s*\()', norm) and ".docx" in norm:
-                block("attempt to remove/rename/overwrite a .docx via python (shutil/os/pathlib).")
+            if re.search(r'(shutil\.(copy\w*|move)|os\.(remove|unlink|rename|replace|chflags|chmod)|\.(unlink|write_bytes|write_text)\s*\()', norm) and ".docx" in norm:
+                block("attempt to remove/rename/overwrite/unlock a .docx via python (shutil/os/pathlib).")
 
-    # ---- MASTER SPREADSHEET (.xlsx) GUARD -------------------------------
-    # The master tasks spreadsheet may ONLY be touched via task-move.py.
-    # Anything else that could delete/move/overwrite it, or open it with a
-    # spreadsheet library outside task-move.py, is blocked.
+    # ---- MASTER SPREADSHEET (.xlsx) GUARD -----------------------------------
     if mentions_xlsx and not sanctioned_xlsx:
-        # rm / unlink / trash
-        if re.search(r'\b(rm|unlink|trash|rmtrash)\b', low):
-            block("attempt to delete a .xlsx (rm/unlink/trash).")
-        # mv / rename
-        if re.search(r'\bmv\b', low):
+        if verbs & DELETE_VERBS:
+            block("attempt to delete a .xlsx (rm/unlink/trash) — destructive command.")
+        if verbs & MOVE_VERBS:
             block("attempt to move/rename a .xlsx (mv).")
-        # cp over an xlsx
-        if re.search(r'\bcp\b', low):
+        if verbs & COPY_VERBS:
             block("attempt to cp onto/over a .xlsx.")
-        # AppleScript trash
-        if "osascript" in low and "delete" in low:
+        if "osascript" in verbs and "delete" in low:
             block("attempt to trash a .xlsx via AppleScript.")
-        # explicit Trash target
-        if ".trash" in low:
-            block("attempt to send a .xlsx to the Trash.")
-        # shell redirection into an xlsx
-        if re.search(r'>\s*\S*\.xlsx', low):
+        if re.search(r'>>?\s*["\']?[^|;&\n]*\.xlsx', low):
             block("attempt to overwrite a .xlsx via shell redirection.")
 
-    # python touching spreadsheet libs, outside task-move.py, is blocked
-    # regardless of an explicit .xlsx filename (the libs ARE the write path).
     if re.search(r'\bpython3?\b', low) and not sanctioned_xlsx:
         if ("load_workbook" in low or "import openpyxl" in low
                 or "from openpyxl" in low or "import xlsxwriter" in low
@@ -154,15 +172,14 @@ def main():
                 or "read_excel" in low or "to_excel" in low):
             block("attempt to open/write the master spreadsheet via python "
                   "(openpyxl/pandas/xlrd/xlsxwriter). Use task-move.py only.")
-        # raw open()/zipfile write onto an .xlsx (a .xlsx is a zip, same as docx)
         if mentions_xlsx:
             norm = low.replace("\\", "").replace('"', '').replace("'", "")
             if re.search(r'open\s*\([^)]*\.xlsx[^)]*,\s*[rwax+b]*[wax+][rwax+b]*\s*\)', norm):
                 block("attempt to open a .xlsx for writing/appending in python (clobbers the file).")
             if re.search(r'zipfile\s*\([^)]*\.xlsx[^)]*,\s*[wa]', norm):
                 block("attempt to write a .xlsx zip directly in python (clobbers the file).")
-            if re.search(r'(shutil\.(copy\w*|move)|os\.(remove|unlink|rename|replace)|\.(unlink|write_bytes|write_text)\s*\()', norm) and ".xlsx" in norm:
-                block("attempt to remove/rename/overwrite a .xlsx via python (shutil/os/pathlib).")
+            if re.search(r'(shutil\.(copy\w*|move)|os\.(remove|unlink|rename|replace|chflags|chmod)|\.(unlink|write_bytes|write_text)\s*\()', norm) and ".xlsx" in norm:
+                block("attempt to remove/rename/overwrite/unlock a .xlsx via python (shutil/os/pathlib).")
 
     # 3) safe-docx-write.sh is permanently banned (full-file replacement).
     if "safe-docx-write.sh" in low:

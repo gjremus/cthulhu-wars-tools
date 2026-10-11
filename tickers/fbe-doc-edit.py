@@ -7,18 +7,33 @@ text of EXACTLY ONE paragraph. It does NOT use pandoc or python-docx to write
 (both destroy these font-embedding files). It can never delete, truncate, add,
 or mass-edit.
 
-Commands (single fixed target doc):
-  fbe-doc-edit.py read
+Two whitelisted target docs (choose with --doc; defaults to tasks):
+  --doc tasks   Faceless Blight Current Tasks.docx        (the task list; default)
+  --doc guide   FacelessBlight Faction Implementation Guide.docx (the design/guide doc)
+
+Commands:
+  fbe-doc-edit.py [--doc tasks|guide] read
       Print every paragraph with an index (read-only).
-  fbe-doc-edit.py replace-text "unique search text" "new text"
+  fbe-doc-edit.py [--doc tasks|guide] replace-text "unique search text" "new text"
       Replace the visible text of the ONE paragraph matching the search string.
 
-There is deliberately NO remove, NO add, NO mass-edit.
+There is deliberately NO remove, NO add, NO mass-edit. The guide is subject to the
+IDENTICAL safety machinery (5-min lockout, live-Drive-sync back-off, byte-for-byte
+copy of every non-text entry — INCLUDING the embedded Faction Board / Spellbook
+images — one-paragraph limit, inode-preserving in-place write, backup). Editing the
+guide can ONLY change the text of one existing paragraph; it can never touch an
+image, add/remove a paragraph, or mass-edit.
 """
 import sys, os, time, zipfile, shutil, re
 import docguard_lock  # unlock()/relock() the OS immutable flag around our write
 
-DOC = "/Users/gremus/Library/CloudStorage/GoogleDrive-gremus@salesforce.com/My Drive/Personal/Games/Cthulhu Wars/Factions/HomeBrews/Faceless Blight Current Tasks.docx"
+_HB = "/Users/gremus/Library/CloudStorage/GoogleDrive-gremus@salesforce.com/My Drive/Personal/Games/Cthulhu Wars/Factions/HomeBrews"
+DOCS = {
+    "tasks": os.path.join(_HB, "Faceless Blight Current Tasks.docx"),
+    "guide": os.path.join(_HB, "FacelessBlight Faction Implementation Guide.docx"),
+}
+# DOC / OUR_WRITE_MARKER are bound in __main__ once --doc is resolved (default tasks).
+DOC = DOCS["tasks"]
 LOCKOUT_SECONDS = 300
 BACKUP_DIR = os.path.expanduser("~/.cw-doc-backups")
 OUR_WRITE_MARKER = os.path.join(BACKUP_DIR, ".last-fbe-ticker-write")
@@ -294,17 +309,29 @@ def replace_text(search, new_text):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
+    args = sys.argv[1:]
+    # Optional --doc selector (whitelist only), default "tasks" for backward compat.
+    doc_key = "tasks"
+    if args and args[0] == "--doc":
+        if len(args) < 2 or args[1] not in DOCS:
+            die(f"--doc must be one of {sorted(DOCS)}", 1)
+        doc_key = args[1]
+        args = args[2:]
+    DOC = DOCS[doc_key]
+    # Per-doc write marker so the lockout's "this was our own write" check never
+    # confuses a recent write to one doc with a human edit to the other.
+    OUR_WRITE_MARKER = os.path.join(BACKUP_DIR, f".last-fbe-ticker-write.{doc_key}")
+    if not args:
         print(__doc__)
         sys.exit(1)
     if not os.path.isfile(DOC):
-        die(f"FBE doc not found: {DOC}", 4)
-    cmd = sys.argv[1]
+        die(f"FBE {doc_key} doc not found: {DOC}", 4)
+    cmd = args[0]
     if cmd == "read":
         cmd_read()
     elif cmd == "replace-text":
-        if len(sys.argv) < 4:
+        if len(args) < 3:
             die("replace-text requires: replace-text \"search\" \"new text\"", 1)
-        replace_text(sys.argv[2], sys.argv[3])
+        replace_text(args[1], args[2])
     else:
         die(f"unknown command: {cmd}. Only 'read' and 'replace-text' exist.", 1)

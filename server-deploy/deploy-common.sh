@@ -39,7 +39,7 @@ export SBT_OPTS="${SBT_OPTS:--Xmx6G -Xss8m}"
 
 SSH_KEY="$HOME/.ssh/oracle_cw_ed25519"
 SSH_OPTS="-o ConnectTimeout=15 -o StrictHostKeyChecking=no"
-HOST="oracle-cw-server@35.255.125.91"
+HOST="oracle-cw-server@cwo.freeddns.org"
 VERIFY_URL="$SERVER_URL"
 COMMON_SBT="$SOURCE/common.sbt"
 

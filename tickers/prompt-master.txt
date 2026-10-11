@@ -125,7 +125,24 @@ STEP 2: Read the Rules sheet (MANDATORY — see G1):
   any task that touches game code before you write a single line.
 
 STEP 3: Process in this order:
-  a) @@@ markers in column B — these are owner commands. Execute them. Acknowledge in column C with task-move.py append.
+  a) @@@ markers in column B — these are DIRECT OWNER COMMANDS. They OUTRANK
+     everything else, including anything you previously wrote in column C.
+     ═══════════════════════════════════════════════════════════════════
+     ⚠ AN @@@ COMMAND OVERRIDES YOUR OWN PRIOR "INPUT NEEDED". OBEY IT.
+     ═══════════════════════════════════════════════════════════════════
+     - If the owner's @@@ says to fix a bug (e.g. "FIX THE BUG", "stop asking",
+       "just do it"), then the design question is CLOSED. Do NOT re-pose it. Do
+       NOT write "INPUT NEEDED" or "awaiting your decision" on that row again.
+       Do NOT argue the rules or restate your interpretation. Go fix the bug:
+       reproduce it (live game log + trace), find the root cause, fix it across
+       every affected build, deploy, verify in headless Chrome, and append your
+       progress/DONE note.
+     - You may NEVER re-append an INPUT NEEDED question that the owner has already
+       answered or told you to drop. Re-asking a settled question every tick is a
+       failure. If you already asked something once and it is still genuinely
+       unanswered, stay SILENT on it — do not repeat it every tick.
+     - Acknowledge the @@@ in column C with task-move.py append (a short "Acting on
+       your command: <what you are doing>"), then actually do the work this tick.
   b) X-marked rows in Open Tasks — move each to Completed with task-move.py complete <row>.
   c) Work through O and / tasks. For each:
      - Investigate the bug (check game logs, admin API, console).
@@ -133,7 +150,28 @@ STEP 3: Process in this order:
      - Write findings in column C with task-move.py append (NOT comment — append keeps prior history).
      - If you finish a fix and verify it works: append "DONE: [what, how verified]" in column C. Do NOT mark it X. The owner does that.
 
-STEP 4: Update Recent Summary (row 2 only — leave row 1 as the header):
+STEP 4: Update Recent Summary — ONLY IF THIS TICK ACTUALLY CHANGED SOMETHING.
+  ═══════════════════════════════════════════════════════════════════
+  ⚠ DO NOT WRITE THE SUMMARY ON AN IDLE TICK. THIS IS CRITICAL.
+  ═══════════════════════════════════════════════════════════════════
+  The xlsx is a single packed file: EVERY write — even a one-cell summary — rewrites
+  the ENTIRE file, and Google Drive records that as a brand-new "whole worksheet
+  replaced" version. If you write a routine "nothing happened / queue empty / console
+  clean" summary every 15 minutes, the owner sees the entire sheet being replaced
+  every 15 minutes in Drive version history. The owner has explicitly forbidden this.
+
+  So: write the summary in STEP 4 ONLY IF this tick made at least one REAL change to
+  the file already — i.e. you did one or more of:
+    - changed a task status (start / complete / reopen), OR
+    - appended a genuine new finding / DONE note to a task row, OR
+    - acknowledged an @@@ owner command, OR
+    - recorded a real ticker alert on a row.
+  If ALL of the following are true — admin queue empty, console clean, no @@@ to act
+  on, no task made any progress, no alert to record — then this was an IDLE tick:
+  WRITE NOTHING. Do not touch the xlsx at all. Do not update the summary. Leave the
+  file exactly as it is so Drive creates no new version. Just exit cleanly.
+
+  When you DO have a real change to report, then (and only then) update row 2:
   python3 /Users/gremus/Claude-Projects/cthulhu-wars-tools/tickers/task-move.py comment summary 2 "Brief summary of what you did this tick"
 
 ═══════════════════════════════════════════════════════════════════
