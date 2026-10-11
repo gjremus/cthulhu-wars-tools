@@ -277,9 +277,32 @@
       const data = this.state.adminView
         ? await this.api('GET', `/admin/${this.state.adminView}/view-map/${mid}`)
         : await this.api('GET', `/maps/${mid}`);
+      // Defensive deep-merge: ensure all expected keys exist with default values
+      if (data.design) {
+        data.design = this.mergeMapDefaults(data.design);
+      }
       this.state.currentMap = data;
       this.state.builtDesign = data.builtDesign;
       if (window.location.hash.replace(/\/$/, '') === `#/map/${mid}`) this.renderMapMainDesign();
+    }
+
+    mergeMapDefaults(design) {
+      // Deep-merge design with defaults from Rules.newMapDesign() so missing keys never crash
+      const defaults = Rules.newMapDesign();
+      const merge = (target, source) => {
+        if (!source || typeof source !== 'object' || Array.isArray(source)) return source;
+        if (!target || typeof target !== 'object' || Array.isArray(target)) return source;
+        const result = Object.assign({}, source);
+        Object.keys(target).forEach(key => {
+          if (key in source) {
+            result[key] = merge(target[key], source[key]);
+          } else {
+            result[key] = target[key];
+          }
+        });
+        return result;
+      };
+      return merge(defaults, design);
     }
 
     async patchMap(mid, ops) {
@@ -1161,6 +1184,51 @@
           this.root.appendChild(grid);
         }
 
+        // Neutral units, kept apart from any faction
+        const unitsTitle = document.createElement('h2');
+        unitsTitle.textContent = 'My Units';
+        unitsTitle.style.margin = '30px 0 12px';
+        this.root.appendChild(unitsTitle);
+
+        const createUnitBtn = document.createElement('button');
+        createUnitBtn.className = 'primary';
+        createUnitBtn.textContent = 'Create New Unit';
+        createUnitBtn.style.marginBottom = '20px';
+        createUnitBtn.onclick = () => this.showCreateUnitDialog();
+        this.root.appendChild(createUnitBtn);
+
+        if (units.length === 0) {
+          const p = document.createElement('p');
+          p.textContent = 'No units yet. Create one to get started.';
+          p.style.color = '#888';
+          this.root.appendChild(p);
+        } else {
+          const grid = document.createElement('div');
+          grid.className = 'faction-grid';
+          for (const unit of units) {
+            const card = document.createElement('div');
+            card.className = 'faction-card';
+            card.onclick = () => { window.location.hash = `#/unit/${unit.id}`; };
+            const name = document.createElement('h3');
+            name.textContent = unit.name || 'Unnamed unit';
+            card.appendChild(name);
+            const type = document.createElement('div');
+            type.className = 'status';
+            type.textContent = `Type: ${unit.type || 'not chosen'}`;
+            card.appendChild(type);
+            const status = document.createElement('div');
+            status.className = 'status';
+            status.innerHTML = `Status: ${this.buildStatusHtml(unit.buildStatus)}`;
+            card.appendChild(status);
+            const updated = document.createElement('div');
+            updated.className = 'status';
+            updated.textContent = `Updated: ${new Date(unit.updated * 1000).toLocaleDateString()}`;
+            card.appendChild(updated);
+            grid.appendChild(card);
+          }
+          this.root.appendChild(grid);
+        }
+
         // My Maps
         const mapsTitle = document.createElement('h2');
         mapsTitle.textContent = 'My Maps';
@@ -1222,51 +1290,6 @@
             by.className = 'status';
             by.textContent = `Designed by ${map.ownerName || map.owner}`;
             card.appendChild(by);
-            grid.appendChild(card);
-          }
-          this.root.appendChild(grid);
-        }
-
-        // Neutral units, kept apart from any faction
-        const unitsTitle = document.createElement('h2');
-        unitsTitle.textContent = 'My Units';
-        unitsTitle.style.margin = '30px 0 12px';
-        this.root.appendChild(unitsTitle);
-
-        const createUnitBtn = document.createElement('button');
-        createUnitBtn.className = 'primary';
-        createUnitBtn.textContent = 'Create New Unit';
-        createUnitBtn.style.marginBottom = '20px';
-        createUnitBtn.onclick = () => this.showCreateUnitDialog();
-        this.root.appendChild(createUnitBtn);
-
-        if (units.length === 0) {
-          const p = document.createElement('p');
-          p.textContent = 'No units yet. Create one to get started.';
-          p.style.color = '#888';
-          this.root.appendChild(p);
-        } else {
-          const grid = document.createElement('div');
-          grid.className = 'faction-grid';
-          for (const unit of units) {
-            const card = document.createElement('div');
-            card.className = 'faction-card';
-            card.onclick = () => { window.location.hash = `#/unit/${unit.id}`; };
-            const name = document.createElement('h3');
-            name.textContent = unit.name || 'Unnamed unit';
-            card.appendChild(name);
-            const type = document.createElement('div');
-            type.className = 'status';
-            type.textContent = `Type: ${unit.type || 'not chosen'}`;
-            card.appendChild(type);
-            const status = document.createElement('div');
-            status.className = 'status';
-            status.innerHTML = `Status: ${this.buildStatusHtml(unit.buildStatus)}`;
-            card.appendChild(status);
-            const updated = document.createElement('div');
-            updated.className = 'status';
-            updated.textContent = `Updated: ${new Date(unit.updated * 1000).toLocaleDateString()}`;
-            card.appendChild(updated);
             grid.appendChild(card);
           }
           this.root.appendChild(grid);

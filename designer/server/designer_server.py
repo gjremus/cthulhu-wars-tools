@@ -683,15 +683,12 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         return {"meta": {"color": None}, "units": {"rows": [row], "customLogic": ""}}
 
     def new_map_design(self) -> Dict:
-        """Create a blank map design with correct schema from task spec."""
+        """Create a blank map design matching frontend schema (rules.js newMapDesign)."""
         return {
             "images": {
-                "images": [],
-                "layout": None,
-                "gridColumns": 2,
-                "order": [],
-                "notes": "",
-                "regions": [],
+                "items": [],  # NOT "images"
+                "layout": {"type": None, "order": [], "notes": ""},  # NOT null at top level
+                "regions": {"rows": []},  # NOT just []
                 "customLogic": ""
             },
             "bitmaps": {
@@ -702,7 +699,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 "cols": 32,
                 "rows": 16,
                 "cells": [],
-                "specialTypes": [],
+                "special": {"rows": []},  # NOT "specialTypes"
                 "customLogic": ""
             },
             "units": {
@@ -715,9 +712,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 "customLogic": ""
             },
             "sb": {
-                "multiText": "",
-                "rows": [],
-                "books": [],
+                "requirements": {"rows": []},  # NOT "multiText" + "rows"
+                "books": {"rows": []},  # NOT just "books"
                 "customLogic": ""
             },
             "glyphs": {
@@ -731,17 +727,17 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         }
 
     def blank_map_row(self, table_path: str) -> Dict:
-        """Create a blank row for a map table."""
+        """Create a blank row for a map table (matches rules.js blankMapRow)."""
         row_id = self.new_id()
-        if table_path == "images.images":
-            return {"id": row_id, "label": "", "imageId": None}
-        elif table_path == "images.regions":
-            return {"id": row_id, "name": "", "type": "land", "glyphs": []}
+        if table_path == "images.items":
+            return {"id": row_id, "label": "", "image": None}
+        elif table_path == "images.regions.rows":
+            return {"id": row_id, "name": "", "type": "Land", "glyphs": {"gc": False, "cc": False, "bg": False, "ys": False, "dragon": False, "chevron": False, "thorn": False}}
         elif table_path == "bitmaps.items":
-            return {"id": row_id, "imageId": None, "colors": {}, "centroids": {}}
-        elif table_path == "adjacency.specialTypes":
-            return {"id": row_id, "name": "", "description": "", "cost": None, "oneWay": False, "pairs": []}
-        elif table_path.startswith("adjacency.specialTypes.") and table_path.endswith(".pairs"):
+            return {"id": row_id, "image": None, "colors": {}, "centroids": {}}
+        elif table_path == "adjacency.special.rows":
+            return {"id": row_id, "name": "", "desc": "", "cost": None, "oneWay": False, "pairs": []}
+        elif table_path == "adjacency.special.rows.pairs":
             return {"id": row_id, "from": None, "to": None}
         elif table_path == "units.rows":
             unit = self.blank_unit()
@@ -750,12 +746,12 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             return unit
         elif table_path == "tokens.rows":
             return {"id": row_id, "name": "", "qty": None, "image": None, "placement": "", "effects": "", "hasEffect": False, "effect": None}
-        elif table_path == "sb.rows":
+        elif table_path == "sb.requirements.rows":
             return {"id": row_id, "text": "", "hasNum": False, "num": None}
-        elif table_path == "sb.books":
+        elif table_path == "sb.books.rows":
             return {"id": row_id, "name": "", "type": None, "cost": 0, "hasEffect": False, "effect": None, "text": ""}
         elif table_path == "glyphs.rows":
-            return {"id": row_id, "name": "", "image": None, "description": ""}
+            return {"id": row_id, "name": "", "image": None, "desc": ""}
         elif table_path == "abilities.rows":
             return {"id": row_id, "name": "", "when": None, "type": None, "cost": None, "who": "", "text": ""}
         return {"id": row_id}

@@ -48,7 +48,7 @@ class MapTest(DesignerServerTest):
 
         # First edit (addition) stays in v1
         resp = self.request('POST', f'/maps/{mid}/patch', {
-            'ops': [{'op': 'set', 'path': 'images.layout', 'value': 'single'}]
+            'ops': [{'op': 'set', 'path': 'images.layout.type', 'value': 'single'}]
         }, token=token)
         self.assertEqual(resp['current'], 1)
 
@@ -57,7 +57,7 @@ class MapTest(DesignerServerTest):
 
         # Change creates v2
         resp = self.request('POST', f'/maps/{mid}/patch', {
-            'ops': [{'op': 'set', 'path': 'images.layout', 'value': 'grid'}]
+            'ops': [{'op': 'set', 'path': 'images.layout.type', 'value': 'grid'}]
         }, token=token)
         self.assertEqual(resp['current'], 2)
         self.assertEqual(resp['maxVersion'], 2)
@@ -70,7 +70,7 @@ class MapTest(DesignerServerTest):
 
         # v1: set layout to single
         self.request('POST', f'/maps/{mid}/patch', {
-            'ops': [{'op': 'set', 'path': 'images.layout', 'value': 'single'}]
+            'ops': [{'op': 'set', 'path': 'images.layout.type', 'value': 'single'}]
         }, token=token)
 
         # Close session so next change creates new version
@@ -78,17 +78,17 @@ class MapTest(DesignerServerTest):
 
         # v2: change to grid
         self.request('POST', f'/maps/{mid}/patch', {
-            'ops': [{'op': 'set', 'path': 'images.layout', 'value': 'grid'}]
+            'ops': [{'op': 'set', 'path': 'images.layout.type', 'value': 'grid'}]
         }, token=token)
 
         # Rollback to v1
         resp = self.request('POST', f'/maps/{mid}/rollback', {'version': 1}, token=token)
         self.assertEqual(resp['current'], 1)
-        self.assertEqual(resp['design']['images']['layout'], 'single')
+        self.assertEqual(resp['design']['images']['layout']['type'], 'single')
 
         # Next edit creates v3 (v1 is now locked)
         resp = self.request('POST', f'/maps/{mid}/patch', {
-            'ops': [{'op': 'set', 'path': 'images.layout', 'value': 'stacked'}]
+            'ops': [{'op': 'set', 'path': 'images.layout.type', 'value': 'stacked'}]
         }, token=token)
         self.assertEqual(resp['current'], 3)
 
@@ -259,7 +259,7 @@ class AdminMapTest(DesignerServerTest):
         m = self.request('POST', '/maps', {'name': 'Patch Map'}, token=token)
 
         resp = self.request('POST', f'/admin/{self.admin_token}/maps/{m["id"]}/patch', {
-            'ops': [{'op': 'set', 'path': 'images.layout', 'value': 'grid'}]
+            'ops': [{'op': 'set', 'path': 'images.layout.type', 'value': 'grid'}]
         })
         self.assertEqual(resp['current'], 1)
 
