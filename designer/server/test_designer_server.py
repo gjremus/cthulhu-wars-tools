@@ -674,7 +674,7 @@ class RequestTest(DesignerServerTest):
 
         self.assertIn('id', req)
         self.assertEqual(req['type'], 'build')
-        self.assertEqual(req['status'], 'open')
+        self.assertIn(req['status'], ('open', 'notified'))  # notified once queued for the console
 
     def test_duplicate_request_deduplication(self):
         """Duplicate open requests return existing."""

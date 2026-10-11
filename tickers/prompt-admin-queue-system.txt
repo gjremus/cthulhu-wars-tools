@@ -43,6 +43,17 @@ the same process as every other homebrew feature:
  8. tickers/designer-admin.py unit-build-status <uid> built "HB <commit>", then
     tickers/designer-admin.py done <rid> <one plain sentence>. Never touch live games.
 
+FACTION-BUILD requests (owner's standing OK, 2026-10-11: "if people submit builds, go ahead and
+attempt to build them. If you run into roadblocks or questions, put those back into the faction").
+The designer queues "FACTION-BUILD <rid>: Build the faction ..." on Execute build. Same process as
+UNIT-BUILD, but for a whole faction: request-status <rid> in_progress (this also shows "Build in
+progress"); read it with designer-admin.py faction <fid>; copy the Xyrious Storm / Faceless Blight
+pattern (FactionXXX.scala, setup option, overlay card in its own info function, unit art from the
+designer images, spellbook images, a simple bot). Build every clear part; each unclear rule goes in
+the matching section's Claude questions box. If the faction is complete and playable, mark it
+build-status <fid> built "HB <commit>" before done. Otherwise just mark done after writing the
+questions (it then shows "Waiting for your answers").
+
 DESIGN-ANSWERS requests are queued when the designer user submits answers to Claude questions on a
 section. Read the questions and answers with tickers/designer-admin.py qa <id> <section> (id may be
 a faction or unit id). Apply what the answers settle: continue the build where they unblock it,

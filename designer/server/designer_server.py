@@ -1410,7 +1410,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         for existing in requests:
             if (existing.get("type") == req_type and
                 existing.get("fid") == fid and
-                existing.get("status") == "open" and
+                existing.get("status") in ("open", "notified") and
                 existing.get("data") == data):
                 # Return existing
                 self.send_json(existing)
@@ -1442,6 +1442,20 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             self.add_terminal_entry(self.terminal_type(request), self.display_name(username),
                                     text or f"{req_type} request for {faction['name']}",
                                     "Waiting to be picked up.", ref=req_id)
+
+            # Faction builds go straight to the admin console queue (owner's standing OK to attempt them)
+            if req_type == "build":
+                try:
+                    clean_name = faction["name"].replace('\n', ' ').replace('[', '').replace(']', '')
+                    timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+                    with open(self.server.console_queue_path, 'a') as qf:
+                        qf.write(f"[{timestamp}] FACTION-BUILD {req_id}: Build the faction \"{clean_name}\" "
+                                 f"({faction['acronym']}) designed by {self.display_name(username)} into the homebrew "
+                                 f"build (designer faction id {fid}).\n")
+                    request["status"] = "notified"
+                    atomic_write(requests_file, requests_data)
+                except OSError:
+                    pass
 
             # Set build.requestedAt for build/update requests to enable buildAttempted flag
             if req_type in ("build", "update"):
@@ -1651,7 +1665,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         for existing in requests:
             if (existing.get("type") == req_type and
                 existing.get("uid") == uid and
-                existing.get("status") == "open" and
+                existing.get("status") in ("open", "notified") and
                 existing.get("data") == data):
                 # Return existing
                 self.send_json(existing)
