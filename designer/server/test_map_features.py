@@ -52,6 +52,9 @@ class MapTest(DesignerServerTest):
         }, token=token)
         self.assertEqual(resp['current'], 1)
 
+        # Close session so next change creates new version
+        self.request('POST', f'/maps/{mid}/close-session', token=token)
+
         # Change creates v2
         resp = self.request('POST', f'/maps/{mid}/patch', {
             'ops': [{'op': 'set', 'path': 'images.layout', 'value': 'grid'}]
@@ -69,6 +72,9 @@ class MapTest(DesignerServerTest):
         self.request('POST', f'/maps/{mid}/patch', {
             'ops': [{'op': 'set', 'path': 'images.layout', 'value': 'single'}]
         }, token=token)
+
+        # Close session so next change creates new version
+        self.request('POST', f'/maps/{mid}/close-session', token=token)
 
         # v2: change to grid
         self.request('POST', f'/maps/{mid}/patch', {
@@ -176,6 +182,9 @@ class UnitVersionsTest(DesignerServerTest):
         }, token=token)
         self.assertEqual(resp['current'], 1)
 
+        # Close session so next change creates new version
+        self.request('POST', f'/units/{uid}/close-session', token=token)
+
         # Change creates v2
         resp = self.request('POST', f'/units/{uid}/patch', {
             'ops': [{'op': 'set', 'path': f'units.rows.{row_id}.type', 'value': 'Terror'}]
@@ -193,6 +202,9 @@ class UnitVersionsTest(DesignerServerTest):
         self.request('POST', f'/units/{uid}/patch', {
             'ops': [{'op': 'set', 'path': f'units.rows.{row_id}.type', 'value': 'Monster'}]
         }, token=token)
+
+        # Close session so next change creates new version
+        self.request('POST', f'/units/{uid}/close-session', token=token)
 
         # v2: change type
         self.request('POST', f'/units/{uid}/patch', {

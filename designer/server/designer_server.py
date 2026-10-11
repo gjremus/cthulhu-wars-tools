@@ -266,6 +266,22 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         if m:
             self.handle_patch_unit(m.group(1))
             return
+        m = re.fullmatch(r'/designer/api/units/([A-Za-z0-9_-]+)/close-session', path)
+        if m:
+            self.handle_close_unit_session(m.group(1))
+            return
+        m = re.fullmatch(r'/designer/api/units/([A-Za-z0-9_-]+)/rollback', path)
+        if m:
+            self.handle_rollback_unit(m.group(1))
+            return
+        m = re.fullmatch(r'/designer/api/units/([A-Za-z0-9_-]+)/delete-version', path)
+        if m:
+            self.handle_delete_unit_version(m.group(1))
+            return
+        m = re.fullmatch(r'/designer/api/units/([A-Za-z0-9_-]+)/answers', path)
+        if m:
+            self.handle_submit_answers(m.group(1), 'unit')
+            return
         m = re.fullmatch(r'/designer/api/units/([A-Za-z0-9_-]+)/request', path)
         if m:
             self.handle_create_unit_request(m.group(1))
@@ -971,6 +987,32 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         unit["maxVersion"] = new_n
         unit["session"] = {"n": new_n, "sections": [section], "last": now}
 
+    def handle_close_unit_session(self, uid: str):
+        """POST /designer/api/units/<uid>/close-session"""
+        username = self.verify_session()
+        if not username:
+            self.send_error_json("Unauthorized", 401)
+            return
+
+        with WRITE_LOCK:
+            unit = self.load_unit(uid)
+            if not unit:
+                self.send_error_json("Unit not found", 404)
+                return
+
+            if unit.get("owner") != username:
+                self.send_error_json("Forbidden", 403)
+                return
+
+            # Clear session by resetting last time to far past
+            if "session" not in unit:
+                unit["session"] = {"n": 1, "sections": [], "last": 0}
+            unit["session"]["last"] = 0
+            unit_file = self.units_dir() / uid / "unit.json"
+            atomic_write(unit_file, unit)
+
+        self.send_json({})
+
     def handle_rollback_unit(self, uid: str):
         """POST /designer/api/units/<uid>/rollback"""
         username = self.verify_session()
@@ -1134,7 +1176,6 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
 
         now = int(time.time())
         design = self.new_map_design()
-        design["meta"]["name"] = name
 
         with WRITE_LOCK:
             mid = self.new_id()
