@@ -434,15 +434,13 @@
     constraintsDiv.appendChild(checkboxField('Land', d.constraints.land, val => ctx.set('setup.constraints.land', val)));
     constraintsDiv.appendChild(checkboxField('Empty regions with faction glyphs', d.constraints.emptyFactionGlyph, val => ctx.set('setup.constraints.emptyFactionGlyph', val)));
 
-    const glyphs = ref.glyphs || [];
-    const thorn = glyphs.find(g => g.nickname === 'Thorn');
-    const dragon = glyphs.find(g => g.nickname === 'Dragon');
-    const chevron = glyphs.find(g => g.nickname === 'Chevron');
-
-    constraintsDiv.appendChild(checkboxField((thorn ? thorn.unicodeSuggestion + ' ' : '') + 'Thorn glyph', d.constraints.thorn, val => ctx.set('setup.constraints.thorn', val)));
-    constraintsDiv.appendChild(checkboxField((dragon ? dragon.unicodeSuggestion + ' ' : '') + 'Dragon glyph', d.constraints.dragon, val => ctx.set('setup.constraints.dragon', val)));
-    constraintsDiv.appendChild(checkboxField((chevron ? chevron.unicodeSuggestion + ' ' : '') + 'Chevron glyph', d.constraints.chevron, val => ctx.set('setup.constraints.chevron', val)));
-    constraintsDiv.appendChild(checkboxField('None of 3 ' + [thorn, dragon, chevron].filter(Boolean).map(g => g.unicodeSuggestion).join('/') + ' glyphs', d.constraints.noneOf3, val => ctx.set('setup.constraints.noneOf3', val)));
+    // The three map glyphs, as printed on the Yellow Sign spellbook requirements
+    const glyphImg = name => h('img', {src: `glyphs/${name}.png`, alt: name, title: name,
+      style: 'height: 24px; vertical-align: middle; margin: 0 4px;'});
+    constraintsDiv.appendChild(checkboxField([glyphImg('thorns'), 'Thorn glyph'], d.constraints.thorn, val => ctx.set('setup.constraints.thorn', val)));
+    constraintsDiv.appendChild(checkboxField([glyphImg('dragon'), 'Dragon glyph'], d.constraints.dragon, val => ctx.set('setup.constraints.dragon', val)));
+    constraintsDiv.appendChild(checkboxField([glyphImg('chevron'), 'Chevron glyph'], d.constraints.chevron, val => ctx.set('setup.constraints.chevron', val)));
+    constraintsDiv.appendChild(checkboxField(['None of the 3 glyphs ', glyphImg('thorns'), glyphImg('dragon'), glyphImg('chevron')], d.constraints.noneOf3, val => ctx.set('setup.constraints.noneOf3', val)));
 
     constraintsDiv.appendChild(selectField('Proximity to other factions', d.constraints.proximity, ['adjacent', 'as far as possible', 'N/A'], val => ctx.set('setup.constraints.proximity', val)));
 
