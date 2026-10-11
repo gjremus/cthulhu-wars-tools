@@ -18,8 +18,13 @@ Reads the owner admin token from its file so it never has to appear in a prompt.
   designer-admin.py tlog-summary <id> <summaryFile>
                                             set that row's summary from a file
   designer-admin.py handoff <rid> <reason>  queue request for the Sonnet fallback
+  designer-admin.py build-status <fid> <status> [version]
   designer-admin.py unit-build-status <uid> <status> [version]
-                                            set unit build status (status: in_progress, built, none)
+                                            set faction / unit build status (status: requested,
+                                            in_progress, needs_answers, built, none). Setting a
+                                            build request in_progress/done also updates it:
+                                            done while not built = needs_answers if any Claude
+                                            questions are left, otherwise none
   designer-admin.py request-status <rid> <status>
                                             set request status
   designer-admin.py qa <id> [section]       print claudeQA (whole or one section) as JSON; id may be
@@ -380,6 +385,11 @@ def main():
         api(f'terminal-log/{args[0]}', {'summary': summary})
     elif cmd == 'handoff' and len(args) >= 2:
         handoff(args[0], ' '.join(args[1:]))
+    elif cmd == 'build-status' and len(args) in (2, 3):
+        body = {'status': args[1]}
+        if len(args) == 3:
+            body['version'] = args[2]
+        print(json.dumps(api(f'factions/{args[0]}/build-status', body)))
     elif cmd == 'unit-build-status' and len(args) in (2, 3):
         body = {'status': args[1]}
         if len(args) == 3:

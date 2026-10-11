@@ -52,3 +52,10 @@ by passing an empty file or echo "" | tickers/designer-admin.py questions <id> <
 the answers box with tickers/designer-admin.py answers-clear <id> <section>. Finish with
 tickers/designer-admin.py done <rid> <one plain sentence>. When a faction or unit build leaves rules
 questions, put each question in the matching section's Claude questions box as well as in the reply.
+
+BUILD STATUS shown to the designer: "Submitted, waiting to be picked up" (requested) -> "Build in
+progress" (in_progress) -> "Built" or "Waiting for your answers" (needs_answers). Setting a build or
+answers request in_progress / done updates it automatically: done while not built becomes
+needs_answers if any Claude questions box has text, otherwise back to not submitted. So always write
+the questions boxes BEFORE marking the request done, and mark built (unit-build-status / build-status
+<fid> built "HB <commit>") before done.

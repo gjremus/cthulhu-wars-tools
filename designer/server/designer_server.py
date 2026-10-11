@@ -599,7 +599,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
     def unit_summary(self, unit: Dict) -> Dict:
         row = (unit.get("design", {}).get("units", {}).get("rows") or [{}])[0]
         return {"id": unit["id"], "name": row.get("name") or "", "type": row.get("type"),
-                "created": unit["created"], "updated": unit["updated"]}
+                "created": unit["created"], "updated": unit["updated"],
+                "buildStatus": unit.get("build", {}).get("status", "none")}
 
     def handle_list_units(self):
         """GET /designer/api/units"""
@@ -706,6 +707,35 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             unit["updated"] = int(time.time())
             atomic_write(self.units_dir() / uid / "unit.json", unit)
         self.send_json({"updated": unit["updated"]})
+
+    def sync_build_status(self, request: Dict, status: str):
+        """Keep a design's build status in step with its build / answers request (caller holds
+        WRITE_LOCK): picked up -> in progress; finished but not built -> waiting for the
+        designer's answers if Claude left questions, otherwise back to not submitted."""
+        if request.get("type") not in ("build", "answers") or status not in ("in_progress", "done", "cancelled"):
+            return
+        if request.get("uid"):
+            entity, f = self.load_unit(request["uid"]), self.units_dir() / request["uid"] / "unit.json"
+        elif request.get("fid"):
+            entity = self.load_faction(request["fid"])
+            f = self.server.data_dir / "factions" / request["fid"] / "faction.json"
+        else:
+            return
+        if not entity:
+            return
+        build = entity.setdefault("build", {"status": "none", "liveVersion": None, "requestedAt": None, "builtAt": None})
+        if build.get("status") == "built":
+            return
+        if status == "in_progress":
+            new = "in_progress"
+        elif any(sec.get("questions") for sec in entity.get("claudeQA", {}).values()):
+            new = "needs_answers"
+        else:
+            new = "none"
+        if build.get("status") != new:
+            build["status"] = new
+            entity["updated"] = int(time.time())
+            atomic_write(f, entity)
 
     def has_build_attempt(self, entity: Dict, fid_or_uid: str, entity_type: str) -> bool:
         """Check if a faction or unit has had a build attempted."""
@@ -1419,8 +1449,11 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                     faction["build"] = {"status": "none", "liveVersion": None, "requestedAt": None, "builtAt": None}
                 if not faction["build"].get("requestedAt"):
                     faction["build"]["requestedAt"] = now
-                    faction_file = self.server.data_dir / "factions" / fid / "faction.json"
-                    atomic_write(faction_file, faction)
+                # Submitted and waiting to be picked up (an update to a built faction stays Built)
+                if req_type == "build" and faction["build"].get("status") != "built":
+                    faction["build"]["status"] = "requested"
+                faction_file = self.server.data_dir / "factions" / fid / "faction.json"
+                atomic_write(faction_file, faction)
 
         self.send_json(request)
 
@@ -1491,6 +1524,9 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             entity["claudeQA"][section]["answers"] = text
             entity["claudeQA"][section]["updated"] = now
             entity["updated"] = now
+            build = entity.get("build") or {}
+            if build.get("status") == "needs_answers":
+                build["status"] = "requested"
             atomic_write(entity_file, entity)
 
             # Create request
@@ -2109,6 +2145,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             request["updated"] = int(time.time())
 
             atomic_write(requests_file, requests_data)
+            self.sync_build_status(request, status)
             default = {"in_progress": "Being worked on now.", "notified": "Owner notified.",
                        "done": "Done.", "cancelled": "Cancelled.", "open": "Waiting to be picked up."}
             self.update_terminal_entry(rid, default.get(status, status), only_if_default=True)
@@ -2286,7 +2323,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         status = body.get('status')
         version = body.get('version')
 
-        valid_statuses = ['in_progress', 'built', 'none']
+        valid_statuses = ['requested', 'in_progress', 'needs_answers', 'built', 'none']
         if status not in valid_statuses:
             self.send_error_json(f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
             return
@@ -2389,7 +2426,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         status = body.get('status')
         version = body.get('version')
 
-        valid_statuses = ['in_progress', 'built', 'none']
+        valid_statuses = ['requested', 'in_progress', 'needs_answers', 'built', 'none']
         if status not in valid_statuses:
             self.send_error_json(f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
             return

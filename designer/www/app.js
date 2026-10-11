@@ -1029,7 +1029,7 @@
 
             const status = document.createElement('div');
             status.className = 'status';
-            status.textContent = `Status: ${faction.buildStatus || 'Not Ready'}`;
+            status.innerHTML = `Status: ${this.buildStatusHtml(faction.buildStatus)}`;
             card.appendChild(status);
 
             const updated = document.createElement('div');
@@ -1104,6 +1104,10 @@
             type.className = 'status';
             type.textContent = `Type: ${unit.type || 'not chosen'}`;
             card.appendChild(type);
+            const status = document.createElement('div');
+            status.className = 'status';
+            status.innerHTML = `Status: ${this.buildStatusHtml(unit.buildStatus)}`;
+            card.appendChild(status);
             const updated = document.createElement('div');
             updated.className = 'status';
             updated.textContent = `Updated: ${new Date(unit.updated * 1000).toLocaleDateString()}`;
@@ -1742,40 +1746,41 @@
       this.openOverlay(div);
     }
 
-    getBuildStatusLabel(faction) {
-      const build = faction.build;
-      if (build.status === 'built') {
-        return '<span class="status-built">Built</span>';
+    // Build status words, shared by the faction and unit screens and the list cards
+    buildStatusHtml(status, ready, hasQuestions) {
+      if (status === 'built') {
+        return hasQuestions
+          ? '<span class="status-built">Built</span> <span class="status-requested">(Claude has questions for you)</span>'
+          : '<span class="status-built">Built</span>';
       }
-      if (build.status === 'in_progress') {
+      if (status === 'requested') {
+        return '<span class="status-requested">Submitted, waiting to be picked up</span>';
+      }
+      if (status === 'in_progress') {
         return '<span class="status-in-progress">Build in progress</span>';
       }
-      if (build.status === 'requested') {
-        return '<span class="status-requested">Build Requested</span>';
+      if (status === 'needs_answers') {
+        return '<span class="status-requested">Waiting for your answers to Claude\'s questions</span>';
       }
-      if (Rules.buildReady(faction.design)) {
-        return '<span class="status-ready">Ready</span>';
+      if (ready === undefined) {
+        return '<span>Not submitted</span>';
       }
-      return '<span class="status-not-ready">Not Ready</span>';
+      return ready ? '<span class="status-ready">Ready</span>' : '<span class="status-not-ready">Not Ready</span>';
+    }
+
+    hasClaudeQuestions(entity) {
+      return Object.values(entity.claudeQA || {}).some(sec => sec && sec.questions);
+    }
+
+    getBuildStatusLabel(faction) {
+      return this.buildStatusHtml(faction.build.status, Rules.buildReady(faction.design), this.hasClaudeQuestions(faction));
     }
 
     getBuildStatusLabelForUnit(unit) {
       const build = unit.build || {status: 'none'};
-      if (build.status === 'built') {
-        return '<span class="status-built">Built</span>';
-      }
-      if (build.status === 'in_progress') {
-        return '<span class="status-in-progress">Build in progress</span>';
-      }
-      if (build.status === 'requested') {
-        return '<span class="status-requested">Build Requested</span>';
-      }
-      // Check if unit is ready: needs name and type at minimum
+      // Ready needs a name and type at minimum
       const row = (unit.design.units && unit.design.units.rows && unit.design.units.rows[0]) || {};
-      if (row.name && row.type) {
-        return '<span class="status-ready">Ready</span>';
-      }
-      return '<span class="status-not-ready">Not Ready</span>';
+      return this.buildStatusHtml(build.status, !!(row.name && row.type), this.hasClaudeQuestions(unit));
     }
 
     renderScreen(fid, screen) {
