@@ -29,6 +29,22 @@
 
   const BUILD_SECTIONS = ['ae', 'ufa', 'setup', 'units', 'sbr', 'sb', 'region', 'tokens', 'custom'];
 
+  const MAP_SECTIONS = [
+    {key: 'images', title: 'Map Images'},
+    {key: 'bitmaps', title: 'Map Placement Bitmaps'},
+    {key: 'adjacency', title: 'Adjacency'},
+    {key: 'units', title: 'Map Units'},
+    {key: 'tokens', title: 'Tokens'},
+    {key: 'sb', title: 'Spellbooks'},
+    {key: 'glyphs', title: 'Map Glyphs'},
+    {key: 'abilities', title: 'Map Abilities'}
+  ];
+
+  const MAP_BUILD_SECTIONS = ['images', 'bitmaps', 'adjacency', 'units', 'tokens', 'sb', 'glyphs', 'abilities'];
+
+  const MAP_ABILITY_PHASES = ['Gather Power', 'Determine First Player', 'Action', 'Doom', 'Battle', 'Ongoing', 'Setup'];
+  const MAP_ABILITY_TYPES = ['Action', 'Ongoing', 'Battle', 'Pre-Battle', 'Post-Battle', 'Doom', 'Setup'];
+
   function newId() {
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
     let id = '';
@@ -179,6 +195,46 @@
     return design;
   }
 
+  function newMapDesign() {
+    const design = {
+      images: {
+        items: [],  // [{id, label, image}]
+        layout: {type: null, order: [], notes: ''},  // type: null | 'single' | 'side-by-side' | 'stacked' | 'grid'
+        regions: {rows: []}  // [{id, name, type, glyphs:{gc,cc,bg,ys,dragon,chevron,thorn,...mapGlyphIds}}]
+      },
+      bitmaps: {
+        items: [],  // [{id, imageId, image, colors: {"#rrggbb": regionId}, centroids: {regionId: {x,y}}}]
+        unplacedRegions: []
+      },
+      adjacency: {
+        cols: 32,
+        rows: 16,
+        cells: [],  // [regionId|null...]
+        special: {rows: []}  // [{id, name, desc, cost, oneWay, pairs:[{id,from,to}]}]
+      },
+      units: {
+        wikiUrl: '',
+        rows: []  // same as faction units, but relatedSb stays [] for map units
+      },
+      tokens: {
+        rows: []  // same as faction tokens
+      },
+      sb: {
+        requirements: {rows: []},  // [{id, text, hasNum, num}]
+        books: {rows: []}  // [{id, name, type, cost, hasEffect, effect, text}]
+      },
+      glyphs: {
+        rows: []  // [{id, name, image, desc}]
+      },
+      abilities: {
+        rows: []  // [{id, name, when, type, cost, who, text}]
+      }
+    };
+    // Every map design section ends with a free "Any custom logic or rules" box
+    MAP_BUILD_SECTIONS.forEach(key => { design[key].customLogic = ''; });
+    return design;
+  }
+
   function blankUnit() {
     return {
       id: newId(),
@@ -267,6 +323,33 @@
     return null;
   }
 
+  function blankMapRow(tablePath) {
+    if (tablePath === 'images.items') {
+      return {id: newId(), label: '', image: null};
+    } else if (tablePath === 'images.regions.rows') {
+      return {id: newId(), name: '', type: 'Land', glyphs: {gc: false, cc: false, bg: false, ys: false, dragon: false, chevron: false, thorn: false}};
+    } else if (tablePath === 'bitmaps.items') {
+      return {id: newId(), image: null, colors: {}, centroids: {}};
+    } else if (tablePath === 'adjacency.special.rows') {
+      return {id: newId(), name: '', desc: '', cost: null, oneWay: false, pairs: []};
+    } else if (tablePath === 'adjacency.special.rows.pairs') {
+      return {id: newId(), from: null, to: null};
+    } else if (tablePath === 'units.rows') {
+      return blankUnit();
+    } else if (tablePath === 'tokens.rows') {
+      return {id: newId(), name: '', qty: null, image: null, placement: '', effects: '', hasEffect: false, effect: null};
+    } else if (tablePath === 'sb.requirements.rows') {
+      return {id: newId(), text: '', hasNum: false, num: null};
+    } else if (tablePath === 'sb.books.rows') {
+      return {id: newId(), name: '', type: null, cost: 0, hasEffect: false, effect: null, text: ''};
+    } else if (tablePath === 'glyphs.rows') {
+      return {id: newId(), name: '', image: null, desc: ''};
+    } else if (tablePath === 'abilities.rows') {
+      return {id: newId(), name: '', when: null, type: null, cost: null, who: '', text: ''};
+    }
+    return null;
+  }
+
   function eq(a, b) {
     if (a === b) return true;
     if (a == null || b == null) return false;
@@ -321,6 +404,15 @@
       ? Object.assign({}, defaults[key], design[key]) : design[key];
     const a = normalizeForComparison(stripBlankRows(key, sec));
     const b = normalizeForComparison(stripBlankRows(key, defaults[key]));
+    return eq(a, b);
+  }
+
+  function isMapEmpty(key, design) {
+    const defaults = newMapDesign();
+    const sec = design[key] && typeof design[key] === 'object' && !Array.isArray(design[key])
+      ? Object.assign({}, defaults[key], design[key]) : design[key];
+    const a = normalizeForComparison(sec);
+    const b = normalizeForComparison(defaults[key]);
     return eq(a, b);
   }
 
@@ -388,6 +480,18 @@
     } else if (rowType === 'custom') {
       if (!row.name || !row.image || !row.placement || !row.usage || !row.effects) return false;
       if (row.hasNum && row.num == null) return false;
+      return true;
+    } else if (rowType === 'mapGlyph') {
+      return row.name && row.image && row.desc;
+    } else if (rowType === 'mapAbility') {
+      return row.name && row.when && row.type && row.who && row.text;
+    } else if (rowType === 'mapSbRequirement') {
+      if (!row.text) return false;
+      if (row.hasNum && row.num == null) return false;
+      return true;
+    } else if (rowType === 'mapSbBook') {
+      if (!row.name || !row.type || !row.text) return false;
+      if (row.hasEffect && row.effect == null) return false;
       return true;
     }
     return false;
@@ -488,9 +592,122 @@
     return 'N/A';
   }
 
+  function mapStatus(key, design) {
+    const d = design[key];
+
+    if (key === 'images') {
+      if (!d.items || d.items.length === 0) return 'Incomplete';
+      if (d.items.some(item => !item.image)) return 'Incomplete';
+      if (!d.regions || !d.regions.rows || d.regions.rows.length === 0) return 'Incomplete';
+      if (d.regions.rows.some(r => !r.name)) return 'Incomplete';
+      return 'Complete';
+    }
+
+    if (key === 'bitmaps') {
+      if (!d.items || d.items.length === 0) return 'Incomplete';
+      if (d.items.some(item => !item.image)) return 'Incomplete';
+      const regionIds = design.images && design.images.regions && design.images.regions.rows
+        ? design.images.regions.rows.map(r => r.id) : [];
+      const placed = new Set();
+      d.items.forEach(item => {
+        if (item.colors) {
+          Object.values(item.colors).forEach(rid => placed.add(rid));
+        }
+      });
+      if (regionIds.some(rid => !placed.has(rid))) return 'Incomplete';
+      return 'Complete';
+    }
+
+    if (key === 'adjacency') {
+      const regionIds = design.images && design.images.regions && design.images.regions.rows
+        ? design.images.regions.rows.map(r => r.id) : [];
+      if (regionIds.length === 0) return 'Incomplete';
+      const adjacency = {};
+      const cells = d.cells || [];
+      for (let i = 0; i < cells.length; i++) {
+        const rid = cells[i];
+        if (!rid) continue;
+        const r = Math.floor(i / (d.cols || 32));
+        const c = i % (d.cols || 32);
+        const neighbors = [
+          [r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]
+        ];
+        neighbors.forEach(([nr, nc]) => {
+          if (nr < 0 || nr >= (d.rows || 16) || nc < 0 || nc >= (d.cols || 32)) return;
+          const nid = cells[nr * (d.cols || 32) + nc];
+          if (nid && nid !== rid) {
+            adjacency[rid] = adjacency[rid] || new Set();
+            adjacency[rid].add(nid);
+          }
+        });
+      }
+      if (regionIds.some(rid => !adjacency[rid] || adjacency[rid].size === 0)) return 'Incomplete';
+      return 'Complete';
+    }
+
+    if (key === 'units') {
+      if (isMapEmpty(key, design)) return 'N/A';
+      const completeUnits = (d.rows || []).filter(u => isRowComplete(u, 'unit'));
+      const partialUnits = (d.rows || []).filter(u => !isRowComplete(u, 'unit') && !isRowEmpty(u, blankUnit()));
+      if (completeUnits.length === 0 && partialUnits.length === 0) return 'N/A';
+      if (partialUnits.length > 0) return 'Incomplete';
+      return 'Complete';
+    }
+
+    if (key === 'tokens') {
+      if (isMapEmpty(key, design)) return 'N/A';
+      const allEmpty = (d.rows || []).every(r => isRowEmpty(r, blankMapRow('tokens.rows')));
+      if (allEmpty) return 'N/A';
+      const completeRows = (d.rows || []).filter(r => isRowComplete(r, 'tokens'));
+      const nonEmptyRows = (d.rows || []).filter(r => !isRowEmpty(r, blankMapRow('tokens.rows')));
+      if (completeRows.length === nonEmptyRows.length && completeRows.length > 0) return 'Complete';
+      return 'Incomplete';
+    }
+
+    if (key === 'sb') {
+      if (isMapEmpty(key, design)) return 'N/A';
+      const reqRows = d.requirements && d.requirements.rows ? d.requirements.rows : [];
+      const bookRows = d.books && d.books.rows ? d.books.rows : [];
+      if (reqRows.length === 0 && bookRows.length === 0) return 'N/A';
+      const reqComplete = reqRows.every(r => isRowComplete(r, 'mapSbRequirement'));
+      const bookComplete = bookRows.every(r => isRowComplete(r, 'mapSbBook'));
+      if (!reqComplete || !bookComplete) return 'Incomplete';
+      return 'Complete';
+    }
+
+    if (key === 'glyphs') {
+      if (isMapEmpty(key, design)) return 'N/A';
+      const allEmpty = (d.rows || []).every(r => !r.name && !r.image && !r.desc);
+      if (allEmpty) return 'N/A';
+      const completeRows = (d.rows || []).filter(r => isRowComplete(r, 'mapGlyph'));
+      const nonEmptyRows = (d.rows || []).filter(r => r.name || r.image || r.desc);
+      if (completeRows.length === nonEmptyRows.length && completeRows.length > 0) return 'Complete';
+      return 'Incomplete';
+    }
+
+    if (key === 'abilities') {
+      if (isMapEmpty(key, design)) return 'N/A';
+      const allEmpty = (d.rows || []).every(r => !r.name && !r.when && !r.type && !r.who && !r.text);
+      if (allEmpty) return 'N/A';
+      const completeRows = (d.rows || []).filter(r => isRowComplete(r, 'mapAbility'));
+      const nonEmptyRows = (d.rows || []).filter(r => r.name || r.when || r.type || r.who || r.text);
+      if (completeRows.length === nonEmptyRows.length && completeRows.length > 0) return 'Complete';
+      return 'Incomplete';
+    }
+
+    return 'N/A';
+  }
+
   function buildReady(design) {
     return BUILD_SECTIONS.every(key => {
       const s = status(key, design);
+      return s === 'N/A' || s === 'Complete';
+    });
+  }
+
+  function mapBuildReady(design) {
+    return MAP_BUILD_SECTIONS.every(key => {
+      const s = mapStatus(key, design);
       return s === 'N/A' || s === 'Complete';
     });
   }
@@ -681,6 +898,147 @@
         if (!r.usage) missing.push(`custom.rows.${r.id}.usage`);
         if (!r.effects) missing.push(`custom.rows.${r.id}.effects`);
         if (r.hasNum && r.num == null) missing.push(`custom.rows.${r.id}.num`);
+      });
+    }
+
+    return missing;
+  }
+
+  function missingMapFields(key, design) {
+    const st = mapStatus(key, design);
+    if (st !== 'Incomplete') return [];
+
+    const missing = [];
+    const d = design[key];
+
+    if (key === 'images') {
+      if (!d.items || d.items.length === 0) {
+        missing.push('images.items');
+      } else {
+        d.items.forEach(item => {
+          if (!item.image) missing.push(`images.items.${item.id}.image`);
+        });
+      }
+      if (!d.regions || !d.regions.rows || d.regions.rows.length === 0) {
+        missing.push('images.regions.rows');
+      } else {
+        d.regions.rows.forEach(r => {
+          if (!r.name) missing.push(`images.regions.rows.${r.id}.name`);
+        });
+      }
+    }
+
+    if (key === 'bitmaps') {
+      if (!d.items || d.items.length === 0) {
+        missing.push('bitmaps.items');
+      } else {
+        d.items.forEach(item => {
+          if (!item.image) missing.push(`bitmaps.items.${item.id}.image`);
+        });
+      }
+      const regionIds = design.images && design.images.regions && design.images.regions.rows
+        ? design.images.regions.rows.map(r => r.id) : [];
+      const placed = new Set();
+      d.items.forEach(item => {
+        if (item.colors) {
+          Object.values(item.colors).forEach(rid => placed.add(rid));
+        }
+      });
+      regionIds.forEach(rid => {
+        if (!placed.has(rid)) missing.push(`bitmaps.unplaced.${rid}`);
+      });
+    }
+
+    if (key === 'adjacency') {
+      const regionIds = design.images && design.images.regions && design.images.regions.rows
+        ? design.images.regions.rows.map(r => r.id) : [];
+      if (regionIds.length === 0) {
+        missing.push('adjacency.grid');
+      } else {
+        const adjacency = {};
+        const cells = d.cells || [];
+        for (let i = 0; i < cells.length; i++) {
+          const rid = cells[i];
+          if (!rid) continue;
+          const r = Math.floor(i / (d.cols || 32));
+          const c = i % (d.cols || 32);
+          const neighbors = [
+            [r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]
+          ];
+          neighbors.forEach(([nr, nc]) => {
+            if (nr < 0 || nr >= (d.rows || 16) || nc < 0 || nc >= (d.cols || 32)) return;
+            const nid = cells[nr * (d.cols || 32) + nc];
+            if (nid && nid !== rid) {
+              adjacency[rid] = adjacency[rid] || new Set();
+              adjacency[rid].add(nid);
+            }
+          });
+        }
+        regionIds.forEach(rid => {
+          if (!adjacency[rid] || adjacency[rid].size === 0) {
+            missing.push(`adjacency.region.${rid}`);
+          }
+        });
+      }
+    }
+
+    if (key === 'units') {
+      const partialUnits = (d.rows || []).filter(u => !isRowComplete(u, 'unit') && !isRowEmpty(u, blankUnit()));
+      partialUnits.forEach(u => {
+        if (!u.type) missing.push(`units.rows.${u.id}.type`);
+        if (!u.name) missing.push(`units.rows.${u.id}.name`);
+        if (!u.silhouette) missing.push(`units.rows.${u.id}.silhouette`);
+        if (u.qty == null) missing.push(`units.rows.${u.id}.qty`);
+        if (!u.costType) missing.push(`units.rows.${u.id}.costType`);
+        if (!u.combatType) missing.push(`units.rows.${u.id}.combatType`);
+        if (unitHasAbility(u) && !u.abilityText) missing.push(`units.rows.${u.id}.abilityText`);
+      });
+    }
+
+    if (key === 'tokens') {
+      const nonEmptyRows = (d.rows || []).filter(r => !isRowEmpty(r, blankMapRow('tokens.rows')));
+      nonEmptyRows.forEach(r => {
+        if (!r.name) missing.push(`tokens.rows.${r.id}.name`);
+        if (r.qty == null) missing.push(`tokens.rows.${r.id}.qty`);
+        if (!r.image) missing.push(`tokens.rows.${r.id}.image`);
+        if (!r.placement) missing.push(`tokens.rows.${r.id}.placement`);
+        if (!r.effects) missing.push(`tokens.rows.${r.id}.effects`);
+        if (r.hasEffect && r.effect == null) missing.push(`tokens.rows.${r.id}.effect`);
+      });
+    }
+
+    if (key === 'sb') {
+      const reqRows = d.requirements && d.requirements.rows ? d.requirements.rows : [];
+      const bookRows = d.books && d.books.rows ? d.books.rows : [];
+      reqRows.forEach(r => {
+        if (!r.text) missing.push(`sb.requirements.rows.${r.id}.text`);
+        if (r.hasNum && r.num == null) missing.push(`sb.requirements.rows.${r.id}.num`);
+      });
+      bookRows.forEach(r => {
+        if (!r.name) missing.push(`sb.books.rows.${r.id}.name`);
+        if (!r.type) missing.push(`sb.books.rows.${r.id}.type`);
+        if (!r.text) missing.push(`sb.books.rows.${r.id}.text`);
+        if (r.hasEffect && r.effect == null) missing.push(`sb.books.rows.${r.id}.effect`);
+      });
+    }
+
+    if (key === 'glyphs') {
+      const nonEmptyRows = (d.rows || []).filter(r => r.name || r.image || r.desc);
+      nonEmptyRows.forEach(r => {
+        if (!r.name) missing.push(`glyphs.rows.${r.id}.name`);
+        if (!r.image) missing.push(`glyphs.rows.${r.id}.image`);
+        if (!r.desc) missing.push(`glyphs.rows.${r.id}.desc`);
+      });
+    }
+
+    if (key === 'abilities') {
+      const nonEmptyRows = (d.rows || []).filter(r => r.name || r.when || r.type || r.who || r.text);
+      nonEmptyRows.forEach(r => {
+        if (!r.name) missing.push(`abilities.rows.${r.id}.name`);
+        if (!r.when) missing.push(`abilities.rows.${r.id}.when`);
+        if (!r.type) missing.push(`abilities.rows.${r.id}.type`);
+        if (!r.who) missing.push(`abilities.rows.${r.id}.who`);
+        if (!r.text) missing.push(`abilities.rows.${r.id}.text`);
       });
     }
 
@@ -1006,17 +1364,27 @@
   window.Rules = {
     SECTIONS,
     BUILD_SECTIONS,
+    MAP_SECTIONS,
+    MAP_BUILD_SECTIONS,
+    MAP_ABILITY_PHASES,
+    MAP_ABILITY_TYPES,
     NEUTRAL_UNIT_TYPES,
     SB_TYPES,
     UNIT_TYPES,
     COST_TYPES,
     COMBAT_TYPES,
     newDesign,
+    newMapDesign,
     blankRow,
+    blankMapRow,
     isEmpty,
+    isMapEmpty,
     status,
+    mapStatus,
     buildReady,
+    mapBuildReady,
     missingFields,
+    missingMapFields,
     fixedNumbers,
     sbTwo,
     sbAnyTwo,

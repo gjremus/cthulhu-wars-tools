@@ -1799,6 +1799,813 @@
     ctx.openOverlay(content);
   }
 
+  // Map section renderers
+
+  function renderMapImages(container, ctx) {
+    const d = ctx.design.images;
+    const missing = window.Rules.missingMapFields('images', ctx.design);
+    const isMissing = path => missing.includes(path);
+
+    // Board images
+    container.appendChild(h('h3', {}, 'Board Images'));
+
+    const imagesDiv = h('div', {className: 'sx-table'});
+    const table = h('table', {});
+    table.appendChild(h('thead', {}, h('tr', {},
+      h('th', {}, 'Label'),
+      h('th', {}, 'Image'),
+      h('th', {}, '')
+    )));
+
+    const tbody = h('tbody', {});
+    (d.items || []).forEach((item, idx) => {
+      const tr = h('tr', {});
+      tr.appendChild(h('td', {}, h('input', {
+        type: 'text',
+        value: item.label || '',
+        oninput: e => ctx.set(`images.items.${item.id}.label`, e.target.value)
+      })));
+
+      const imgTd = h('td', {});
+      if (item.image) {
+        imgTd.appendChild(h('img', {
+          src: ctx.imgUrl(item.image),
+          className: 'sx-img-thumb',
+          onclick: () => openImageEditor(item.image, ctx, id => ctx.set(`images.items.${item.id}.image`, id), 'card')
+        }));
+      } else {
+        imgTd.appendChild(h('div', {
+          className: 'sx-img-thumb sx-empty' + (isMissing(`images.items.${item.id}.image`) ? ' sx-missing' : ''),
+          onclick: async () => {
+            const id = await ctx.uploadImage('card');
+            if (id) ctx.set(`images.items.${item.id}.image`, id);
+          }
+        }, 'Upload'));
+      }
+      tr.appendChild(imgTd);
+
+      tr.appendChild(h('td', {}, h('button', {onclick: async () => {
+        const confirmed = await ctx.confirm('Delete this image?', 'Yes - delete', 'No - cancel');
+        if (confirmed) ctx.deleteRow('images.items', item.id);
+      }}, 'Delete')));
+
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    imagesDiv.appendChild(table);
+    container.appendChild(imagesDiv);
+
+    container.appendChild(h('button', {className: 'sx-btn', onclick: () => {
+      const newItem = window.Rules.blankMapRow('images.items');
+      ctx.addRow('images.items', newItem);
+    }}, 'Add image'));
+
+    // Layout
+    container.appendChild(h('h3', {style: 'margin-top: 24px;'}, 'Layout'));
+    container.appendChild(selectField('Layout type', d.layout.type, [
+      {value: 'single', label: 'Single image'},
+      {value: 'side-by-side', label: 'Side by side (left to right)'},
+      {value: 'stacked', label: 'Stacked (top to bottom)'},
+      {value: 'grid', label: 'Grid'}
+    ], val => ctx.set('images.layout.type', val)));
+
+    container.appendChild(textField('Layout notes', d.layout.notes, val => ctx.set('images.layout.notes', val), {rows: 2}));
+
+    // Regions
+    container.appendChild(h('h3', {style: 'margin-top: 24px;'}, 'Regions'));
+
+    const extractBtn = h('button', {className: 'sx-btn', onclick: async () => {
+      const confirmed = await ctx.confirm('Extract region names and glyphs from the map images?', 'Yes - Extract', 'Cancel');
+      if (!confirmed) return;
+      extractBtn.disabled = true;
+      try {
+        await ctx.createRequest('extract', `Extract region names and glyphs for map ${ctx.map.name}`, {target: 'regions'});
+        alert('Extract requested.');
+      } catch (err) {
+        alert('Request failed: ' + err.message);
+      }
+      extractBtn.disabled = false;
+    }}, 'Extract Region Names and Glyphs');
+    container.appendChild(extractBtn);
+
+    const regionsDiv = h('div', {className: 'sx-table', style: 'margin-top: 16px;'});
+    const regionsTable = h('table', {});
+    const glyphNames = {gc: 'GC', cc: 'CC', bg: 'BG', ys: 'YS', dragon: 'Dragon', chevron: 'Chevron', thorn: 'Thorn'};
+    const baseGlyphs = ['gc', 'cc', 'bg', 'ys', 'dragon', 'chevron', 'thorn'];
+    const mapGlyphs = (ctx.design.glyphs && ctx.design.glyphs.rows) || [];
+
+    regionsTable.appendChild(h('thead', {}, h('tr', {},
+      h('th', {}, 'Name'),
+      h('th', {}, 'Type'),
+      ...baseGlyphs.map(g => h('th', {title: glyphNames[g]},
+        h('img', {src: `glyphs/${g === 'gc' ? 'gc' : g === 'cc' ? 'cc' : g === 'bg' ? 'bg' : g === 'ys' ? 'ys' : g}-glyph.${g.includes('-') ? 'webp' : 'png'}`,
+          style: 'height: 24px;', alt: glyphNames[g]}))),
+      ...mapGlyphs.map(mg => h('th', {title: mg.name}, mg.image ? h('img', {src: ctx.imgUrl(mg.image), style: 'height: 24px;', alt: mg.name}) : mg.name)),
+      h('th', {}, '')
+    )));
+
+    const regionsTbody = h('tbody', {});
+    (d.regions.rows || []).forEach((region, idx) => {
+      const tr = h('tr', {});
+      tr.appendChild(h('td', {}, h('input', {
+        className: isMissing(`images.regions.rows.${region.id}.name`) ? 'sx-missing' : '',
+        type: 'text',
+        value: region.name || '',
+        oninput: e => ctx.set(`images.regions.rows.${region.id}.name`, e.target.value)
+      })));
+
+      tr.appendChild(h('td', {}, h('select', {
+        value: region.type || 'Land',
+        onchange: e => ctx.set(`images.regions.rows.${region.id}.type`, e.target.value)
+      }, h('option', {value: 'Land'}, 'Land'), h('option', {value: 'Sea'}, 'Sea'))));
+
+      const glyphs = region.glyphs || {};
+      baseGlyphs.forEach(g => {
+        tr.appendChild(h('td', {style: 'text-align: center;'}, h('input', {
+          type: 'checkbox',
+          checked: !!glyphs[g],
+          onchange: e => ctx.set(`images.regions.rows.${region.id}.glyphs.${g}`, e.target.checked)
+        })));
+      });
+
+      mapGlyphs.forEach(mg => {
+        tr.appendChild(h('td', {style: 'text-align: center;'}, h('input', {
+          type: 'checkbox',
+          checked: !!glyphs[mg.id],
+          onchange: e => ctx.set(`images.regions.rows.${region.id}.glyphs.${mg.id}`, e.target.checked)
+        })));
+      });
+
+      tr.appendChild(h('td', {}, h('button', {onclick: async () => {
+        const confirmed = await ctx.confirm('Delete this region?', 'Yes - delete', 'No - cancel');
+        if (confirmed) ctx.deleteRow('images.regions.rows', region.id);
+      }}, 'Delete')));
+
+      regionsTbody.appendChild(tr);
+    });
+    regionsTable.appendChild(regionsTbody);
+    regionsDiv.appendChild(regionsTable);
+    container.appendChild(regionsDiv);
+
+    container.appendChild(h('button', {className: 'sx-btn', onclick: () => {
+      const newRegion = window.Rules.blankMapRow('images.regions.rows');
+      ctx.addRow('images.regions.rows', newRegion);
+    }}, 'Add region'));
+  }
+
+  function renderMapBitmaps(container, ctx) {
+    const d = ctx.design.bitmaps;
+    const regions = (ctx.design.images && ctx.design.images.regions && ctx.design.images.regions.rows) || [];
+    const missing = window.Rules.missingMapFields('bitmaps', ctx.design);
+    const isMissing = path => missing.includes(path);
+
+    container.appendChild(h('h3', {}, 'Placement Bitmaps'));
+    container.appendChild(h('p', {}, 'Upload a bitmap for each map image. Click a pixel to assign that color to a region.'));
+
+    (d.items || []).forEach((item, idx) => {
+      const itemDiv = h('div', {style: 'margin: 24px 0; padding: 16px; border: 2px solid #444;'});
+      itemDiv.appendChild(h('h4', {}, `Bitmap ${idx + 1}`));
+
+      if (!item.image) {
+        itemDiv.appendChild(h('button', {className: 'sx-btn', onclick: async () => {
+          const id = await ctx.uploadImage('card');
+          if (id) ctx.set(`bitmaps.items.${item.id}.image`, id);
+        }}, 'Upload bitmap'));
+      } else {
+        const canvas = h('canvas', {style: 'border: 1px solid #666; display: block; max-width: 100%; cursor: crosshair;'});
+        const img = new Image();
+        img.onload = () => {
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const canvasCtx = canvas.getContext('2d');
+          canvasCtx.drawImage(img, 0, 0);
+
+          // Draw region labels at centroids
+          const centroids = item.centroids || {};
+          Object.entries(centroids).forEach(([rid, pos]) => {
+            const region = regions.find(r => r.id === rid);
+            if (region && region.name) {
+              canvasCtx.fillStyle = '#fff';
+              canvasCtx.strokeStyle = '#000';
+              canvasCtx.lineWidth = 2;
+              canvasCtx.font = '14px sans-serif';
+              canvasCtx.textAlign = 'center';
+              canvasCtx.strokeText(region.name, pos.x, pos.y);
+              canvasCtx.fillText(region.name, pos.x, pos.y);
+            }
+          });
+        };
+        img.src = ctx.imgUrl(item.image);
+
+        canvas.onclick = async (e) => {
+          const rect = canvas.getBoundingClientRect();
+          const x = Math.floor((e.clientX - rect.left) * (canvas.width / rect.width));
+          const y = Math.floor((e.clientY - rect.top) * (canvas.height / rect.height));
+
+          const canvasCtx = canvas.getContext('2d');
+          const imageData = canvasCtx.getImageData(0, 0, canvas.width, canvas.height);
+          const pixelData = imageData.data;
+          const idx = (y * canvas.width + x) * 4;
+          const r = pixelData[idx];
+          const g = pixelData[idx + 1];
+          const b = pixelData[idx + 2];
+          const color = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+
+          // Show region picker
+          const picker = h('div', {className: 'confirm-overlay'});
+          const dialog = h('div', {className: 'confirm-dialog'});
+          dialog.appendChild(h('h3', {}, `Assign color ${color} to:`));
+
+          regions.forEach(region => {
+            const btn = h('button', {
+              className: 'sx-btn',
+              style: 'display: block; width: 100%; margin: 8px 0;',
+              onclick: () => {
+                const colors = Object.assign({}, item.colors || {});
+                colors[color] = region.id;
+                ctx.set(`bitmaps.items.${item.id}.colors`, colors);
+                picker.remove();
+              }
+            }, region.name || `Region ${regions.indexOf(region) + 1}`);
+            dialog.appendChild(btn);
+          });
+
+          const noneBtn = h('button', {
+            className: 'sx-btn',
+            style: 'display: block; width: 100%; margin: 8px 0;',
+            onclick: () => {
+              const colors = Object.assign({}, item.colors || {});
+              delete colors[color];
+              ctx.set(`bitmaps.items.${item.id}.colors`, colors);
+              picker.remove();
+            }
+          }, 'None');
+          dialog.appendChild(noneBtn);
+
+          const cancelBtn = h('button', {
+            className: 'sx-btn',
+            style: 'display: block; width: 100%; margin: 16px 0 0;',
+            onclick: () => picker.remove()
+          }, 'Cancel');
+          dialog.appendChild(cancelBtn);
+
+          picker.appendChild(dialog);
+          document.body.appendChild(picker);
+        };
+
+        itemDiv.appendChild(canvas);
+
+        const replaceBtn = h('button', {className: 'sx-btn', style: 'margin-top: 12px;', onclick: async () => {
+          const id = await ctx.uploadImage('card');
+          if (id) ctx.set(`bitmaps.items.${item.id}.image`, id);
+        }}, 'Replace');
+        itemDiv.appendChild(replaceBtn);
+
+        const deleteBtn = h('button', {className: 'sx-btn danger', style: 'margin-left: 8px;', onclick: async () => {
+          const confirmed = await ctx.confirm('Delete this bitmap?', 'Yes - delete', 'No - cancel');
+          if (confirmed) ctx.deleteRow('bitmaps.items', item.id);
+        }}, 'Delete');
+        itemDiv.appendChild(deleteBtn);
+      }
+
+      container.appendChild(itemDiv);
+    });
+
+    container.appendChild(h('button', {className: 'sx-btn', onclick: () => {
+      const newItem = window.Rules.blankMapRow('bitmaps.items');
+      ctx.addRow('bitmaps.items', newItem);
+    }}, 'Add bitmap'));
+
+    // Unplaced regions
+    const placed = new Set();
+    (d.items || []).forEach(item => {
+      if (item.colors) {
+        Object.values(item.colors).forEach(rid => placed.add(rid));
+      }
+    });
+    const unplaced = regions.filter(r => !placed.has(r.id));
+
+    if (unplaced.length > 0) {
+      container.appendChild(h('h4', {style: 'margin-top: 24px;'}, 'Regions not yet on a bitmap'));
+      container.appendChild(h('ul', {}, ...unplaced.map(r => h('li', {}, r.name || `Region ${regions.indexOf(r) + 1}`))));
+    }
+  }
+
+  function renderMapAdjacency(container, ctx) {
+    const d = ctx.design.adjacency;
+    const regions = (ctx.design.images && ctx.design.images.regions && ctx.design.images.regions.rows) || [];
+    const cols = d.cols || 32;
+    const rows = d.rows || 16;
+    const cells = d.cells || [];
+
+    container.appendChild(h('h3', {}, 'Adjacency Grid'));
+
+    container.appendChild(numberField('Columns', cols, val => ctx.set('adjacency.cols', val), {min: 4, max: 64}));
+    container.appendChild(numberField('Rows', rows, val => ctx.set('adjacency.rows', val), {min: 4, max: 64}));
+
+    const autoBtn = h('button', {className: 'sx-btn', onclick: () => {
+      alert('Auto-generate from bitmaps: Not yet implemented');
+    }}, 'Auto generate from bitmaps');
+    container.appendChild(autoBtn);
+
+    // Grid
+    const gridDiv = h('div', {style: 'overflow-x: auto; margin: 16px 0;'});
+    const table = h('table', {style: 'border-collapse: collapse; user-select: none;'});
+
+    let selectedRegion = null;
+    let painting = false;
+
+    for (let r = 0; r < rows; r++) {
+      const tr = h('tr', {});
+      for (let c = 0; c < cols; c++) {
+        const idx = r * cols + c;
+        const cellRegionId = cells[idx] || null;
+        const cellRegion = regions.find(reg => reg.id === cellRegionId);
+
+        const td = h('td', {
+          style: `width: 20px; height: 20px; border: 1px solid #666; cursor: pointer; background: ${cellRegionId ? `hsl(${(regions.indexOf(cellRegion) * 137.5) % 360}, 70%, 50%)` : '#222'};`,
+          title: cellRegion ? cellRegion.name : 'Empty',
+          onmousedown: async () => {
+            painting = true;
+            // Show region picker
+            const picker = h('div', {className: 'confirm-overlay'});
+            const dialog = h('div', {className: 'confirm-dialog', style: 'max-height: 70vh; overflow-y: auto;'});
+            dialog.appendChild(h('h3', {}, 'Choose region:'));
+
+            const emptyBtn = h('button', {
+              className: 'sx-btn',
+              style: 'display: block; width: 100%; margin: 8px 0;',
+              onclick: () => {
+                selectedRegion = null;
+                const newCells = cells.slice();
+                while (newCells.length < cols * rows) newCells.push(null);
+                newCells[idx] = null;
+                ctx.set('adjacency.cells', newCells);
+                picker.remove();
+              }
+            }, 'Empty');
+            dialog.appendChild(emptyBtn);
+
+            regions.forEach(region => {
+              const btn = h('button', {
+                className: 'sx-btn',
+                style: 'display: block; width: 100%; margin: 8px 0;',
+                onclick: () => {
+                  selectedRegion = region.id;
+                  const newCells = cells.slice();
+                  while (newCells.length < cols * rows) newCells.push(null);
+                  newCells[idx] = region.id;
+                  ctx.set('adjacency.cells', newCells);
+                  picker.remove();
+                }
+              }, region.name || `Region ${regions.indexOf(region) + 1}`);
+              dialog.appendChild(btn);
+            });
+
+            const cancelBtn = h('button', {
+              className: 'sx-btn',
+              style: 'display: block; width: 100%; margin: 16px 0 0;',
+              onclick: () => picker.remove()
+            }, 'Cancel');
+            dialog.appendChild(cancelBtn);
+
+            picker.appendChild(dialog);
+            document.body.appendChild(picker);
+          },
+          onmouseenter: () => {
+            if (painting && selectedRegion !== undefined) {
+              const newCells = cells.slice();
+              while (newCells.length < cols * rows) newCells.push(null);
+              newCells[idx] = selectedRegion;
+              ctx.set('adjacency.cells', newCells);
+            }
+          }
+        });
+        tr.appendChild(td);
+      }
+      table.appendChild(tr);
+    }
+
+    document.addEventListener('mouseup', () => { painting = false; });
+
+    gridDiv.appendChild(table);
+    container.appendChild(gridDiv);
+
+    // Derived adjacency list
+    container.appendChild(h('h4', {}, 'Derived Adjacency'));
+    const adjacency = {};
+    for (let i = 0; i < cells.length; i++) {
+      const rid = cells[i];
+      if (!rid) continue;
+      const r = Math.floor(i / cols);
+      const c = i % cols;
+      const neighbors = [[r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]];
+      neighbors.forEach(([nr, nc]) => {
+        if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) return;
+        const nid = cells[nr * cols + nc];
+        if (nid && nid !== rid) {
+          adjacency[rid] = adjacency[rid] || new Set();
+          adjacency[rid].add(nid);
+        }
+      });
+    }
+
+    const adjList = h('div', {style: 'font-size: 0.9em; max-height: 300px; overflow-y: auto; border: 1px solid #666; padding: 12px;'});
+    regions.forEach(region => {
+      const neighbors = adjacency[region.id] || new Set();
+      const neighborNames = Array.from(neighbors).map(nid => {
+        const n = regions.find(r => r.id === nid);
+        return n ? n.name : nid;
+      }).join(', ');
+      adjList.appendChild(h('div', {}, `${region.name}: ${neighborNames || '(none)'}`));
+    });
+    container.appendChild(adjList);
+
+    // Special adjacency
+    container.appendChild(h('h3', {style: 'margin-top: 24px;'}, 'Special Adjacency'));
+    container.appendChild(h('p', {}, 'Custom adjacency types like doors, staircases, or portals.'));
+
+    (d.special.rows || []).forEach((special, idx) => {
+      const specialDiv = h('div', {style: 'margin: 16px 0; padding: 16px; border: 2px solid #444;'});
+      specialDiv.appendChild(h('h4', {}, `Special Type ${idx + 1}`));
+
+      specialDiv.appendChild(textField('Type name', special.name, val => ctx.set(`adjacency.special.rows.${special.id}.name`, val)));
+      specialDiv.appendChild(textField('Description', special.desc, val => ctx.set(`adjacency.special.rows.${special.id}.desc`, val), {rows: 2}));
+      specialDiv.appendChild(numberField('Cost to cross (optional)', special.cost, val => ctx.set(`adjacency.special.rows.${special.id}.cost`, val)));
+      specialDiv.appendChild(checkboxField('One-way', special.oneWay, val => ctx.set(`adjacency.special.rows.${special.id}.oneWay`, val)));
+
+      specialDiv.appendChild(h('h5', {}, 'Connected Regions'));
+      (special.pairs || []).forEach((pair, pidx) => {
+        const pairDiv = h('div', {style: 'display: flex; gap: 8px; align-items: center; margin: 8px 0;'});
+        pairDiv.appendChild(h('select', {
+          value: pair.from || '',
+          onchange: e => ctx.set(`adjacency.special.rows.${special.id}.pairs.${pair.id}.from`, e.target.value || null)
+        },
+          h('option', {value: ''}, '-- Select from --'),
+          ...regions.map(r => h('option', {value: r.id}, r.name))
+        ));
+        pairDiv.appendChild(h('span', {}, special.oneWay ? '→' : '↔'));
+        pairDiv.appendChild(h('select', {
+          value: pair.to || '',
+          onchange: e => ctx.set(`adjacency.special.rows.${special.id}.pairs.${pair.id}.to`, e.target.value || null)
+        },
+          h('option', {value: ''}, '-- Select to --'),
+          ...regions.map(r => h('option', {value: r.id}, r.name))
+        ));
+        pairDiv.appendChild(h('button', {className: 'sx-btn', onclick: () => {
+          const newPairs = special.pairs.filter(p => p.id !== pair.id);
+          ctx.set(`adjacency.special.rows.${special.id}.pairs`, newPairs);
+        }}, 'Remove'));
+        specialDiv.appendChild(pairDiv);
+      });
+
+      specialDiv.appendChild(h('button', {className: 'sx-btn', style: 'margin-top: 8px;', onclick: () => {
+        const newPair = window.Rules.blankMapRow('adjacency.special.rows.pairs');
+        const newPairs = (special.pairs || []).concat([newPair]);
+        ctx.set(`adjacency.special.rows.${special.id}.pairs`, newPairs);
+      }}, 'Add connection'));
+
+      specialDiv.appendChild(h('button', {className: 'sx-btn danger', style: 'margin-top: 16px;', onclick: async () => {
+        const confirmed = await ctx.confirm('Delete this special adjacency type?', 'Yes - delete', 'No - cancel');
+        if (confirmed) ctx.deleteRow('adjacency.special.rows', special.id);
+      }}, 'Delete this special type'));
+
+      container.appendChild(specialDiv);
+    });
+
+    container.appendChild(h('button', {className: 'sx-btn', onclick: () => {
+      const newSpecial = window.Rules.blankMapRow('adjacency.special.rows');
+      ctx.addRow('adjacency.special.rows', newSpecial);
+    }}, 'Add special adjacency type'));
+  }
+
+  function renderMapUnits(container, ctx) {
+    const d = ctx.design.units;
+
+    container.appendChild(h('h3', {}, 'Map Units'));
+    container.appendChild(textField('Wiki page URL', d.wikiUrl || '', val => ctx.set('units.wikiUrl', val)));
+
+    const extractBtn = h('button', {className: 'sx-btn', style: 'margin: 8px 0;', onclick: async () => {
+      if (!d.wikiUrl) {
+        alert('Please enter a wiki page URL first.');
+        return;
+      }
+      const confirmed = await ctx.confirm('Extract units and other content from wiki page?', 'Yes - Extract', 'Cancel');
+      if (!confirmed) return;
+      extractBtn.disabled = true;
+      try {
+        await ctx.createRequest('extract', `Extract units from wiki for map ${ctx.map.name}`, {target: 'wiki', url: d.wikiUrl});
+        alert('Extract requested.');
+      } catch (err) {
+        alert('Request failed: ' + err.message);
+      }
+      extractBtn.disabled = false;
+    }}, 'Extract units and other content from wiki');
+    container.appendChild(extractBtn);
+
+    // Reuse faction units renderer with neutral flag
+    const neutralCtx = Object.assign({}, ctx, {neutral: true, design: {units: d}});
+    renderUnits(container, neutralCtx);
+  }
+
+  function renderMapTokens(container, ctx) {
+    const d = ctx.design.tokens;
+    const neutralCtx = Object.assign({}, ctx, {design: {tokens: d}});
+    renderTokens(container, neutralCtx);
+  }
+
+  function renderMapSB(container, ctx) {
+    const d = ctx.design.sb;
+    const missing = window.Rules.missingMapFields('sb', ctx.design);
+    const isMissing = path => missing.includes(path);
+
+    container.appendChild(h('h3', {}, 'Spellbook Requirements'));
+
+    const reqDiv = h('div', {className: 'sx-table'});
+    const reqTable = h('table', {});
+    reqTable.appendChild(h('thead', {}, h('tr', {},
+      h('th', {}, 'Text'),
+      h('th', {style: 'width: 200px;'}, 'Includes Fixed Numeric Cost or Effect?'),
+      h('th', {style: 'width: 150px;'}, 'Fixed Numeric Cost or Effect'),
+      h('th', {}, '')
+    )));
+
+    const reqTbody = h('tbody', {});
+    (d.requirements.rows || []).forEach(row => {
+      const tr = h('tr', {});
+      tr.appendChild(h('td', {}, h('textarea', {
+        className: isMissing(`sb.requirements.rows.${row.id}.text`) ? 'sx-missing' : '',
+        value: row.text || '',
+        rows: 3,
+        oninput: e => ctx.set(`sb.requirements.rows.${row.id}.text`, e.target.value)
+      })));
+
+      tr.appendChild(h('td', {}, h('input', {
+        type: 'checkbox',
+        checked: row.hasNum,
+        onchange: e => ctx.set(`sb.requirements.rows.${row.id}.hasNum`, e.target.checked)
+      })));
+
+      tr.appendChild(h('td', {}, h('input', {
+        className: isMissing(`sb.requirements.rows.${row.id}.num`) ? 'sx-missing' : '',
+        type: 'number',
+        value: row.num != null ? row.num : '',
+        disabled: !row.hasNum,
+        oninput: e => ctx.set(`sb.requirements.rows.${row.id}.num`, e.target.value ? parseInt(e.target.value) : null)
+      })));
+
+      tr.appendChild(h('td', {}, h('button', {onclick: async () => {
+        const confirmed = await ctx.confirm('Delete this requirement?', 'Yes - delete', 'No - cancel');
+        if (confirmed) ctx.deleteRow('sb.requirements.rows', row.id);
+      }}, 'Delete')));
+
+      reqTbody.appendChild(tr);
+    });
+    reqTable.appendChild(reqTbody);
+    reqDiv.appendChild(reqTable);
+    container.appendChild(reqDiv);
+
+    container.appendChild(h('button', {className: 'sx-btn', onclick: () => {
+      const newRow = window.Rules.blankMapRow('sb.requirements.rows');
+      ctx.addRow('sb.requirements.rows', newRow);
+    }}, 'Add requirement'));
+
+    // Spellbooks
+    container.appendChild(h('h3', {style: 'margin-top: 24px;'}, 'Spellbooks'));
+
+    const booksDiv = h('div', {className: 'sx-table'});
+    const booksTable = h('table', {});
+    booksTable.appendChild(h('thead', {}, h('tr', {},
+      h('th', {}, 'Name'),
+      h('th', {}, 'Type'),
+      h('th', {style: 'width: 100px;'}, 'Cost'),
+      h('th', {style: 'width: 150px;'}, 'Includes Fixed Numeric Effect?'),
+      h('th', {style: 'width: 100px;'}, 'Fixed Numeric Effect'),
+      h('th', {}, 'Text'),
+      h('th', {}, '')
+    )));
+
+    const booksTbody = h('tbody', {});
+    (d.books.rows || []).forEach(row => {
+      const tr = h('tr', {});
+      tr.appendChild(h('td', {}, h('input', {
+        className: isMissing(`sb.books.rows.${row.id}.name`) ? 'sx-missing' : '',
+        type: 'text',
+        value: row.name || '',
+        style: 'min-width: 155px;',
+        oninput: e => ctx.set(`sb.books.rows.${row.id}.name`, e.target.value)
+      })));
+
+      tr.appendChild(h('td', {}, h('select', {
+        className: isMissing(`sb.books.rows.${row.id}.type`) ? 'sx-missing' : '',
+        value: row.type || '',
+        onchange: e => ctx.set(`sb.books.rows.${row.id}.type`, e.target.value || null)
+      },
+        h('option', {value: ''}, '-- Select --'),
+        ...window.Rules.SB_TYPES.map(t => h('option', {value: t}, t))
+      )));
+
+      tr.appendChild(h('td', {}, h('input', {
+        type: 'number',
+        value: row.cost != null ? row.cost : 0,
+        oninput: e => ctx.set(`sb.books.rows.${row.id}.cost`, e.target.value ? parseInt(e.target.value) : 0)
+      })));
+
+      tr.appendChild(h('td', {}, h('input', {
+        type: 'checkbox',
+        checked: !!row.hasEffect,
+        onchange: e => ctx.set(`sb.books.rows.${row.id}.hasEffect`, e.target.checked)
+      })));
+
+      tr.appendChild(h('td', {}, h('input', {
+        className: isMissing(`sb.books.rows.${row.id}.effect`) ? 'sx-missing' : '',
+        type: 'number',
+        value: row.effect != null ? row.effect : '',
+        disabled: !row.hasEffect,
+        oninput: e => ctx.set(`sb.books.rows.${row.id}.effect`, e.target.value ? parseInt(e.target.value) : null)
+      })));
+
+      tr.appendChild(h('td', {}, h('textarea', {
+        className: isMissing(`sb.books.rows.${row.id}.text`) ? 'sx-missing' : '',
+        value: row.text || '',
+        rows: 3,
+        style: 'min-width: 160px;',
+        oninput: e => ctx.set(`sb.books.rows.${row.id}.text`, e.target.value)
+      })));
+
+      tr.appendChild(h('td', {}, h('button', {onclick: async () => {
+        const confirmed = await ctx.confirm('Delete this spellbook?', 'Yes - delete', 'No - cancel');
+        if (confirmed) ctx.deleteRow('sb.books.rows', row.id);
+      }}, 'Delete')));
+
+      booksTbody.appendChild(tr);
+    });
+    booksTable.appendChild(booksTbody);
+    booksDiv.appendChild(booksTable);
+    container.appendChild(booksDiv);
+
+    container.appendChild(h('button', {className: 'sx-btn', onclick: () => {
+      const newRow = window.Rules.blankMapRow('sb.books.rows');
+      ctx.addRow('sb.books.rows', newRow);
+    }}, 'Add spellbook'));
+  }
+
+  function renderMapGlyphs(container, ctx) {
+    const d = ctx.design.glyphs;
+    const missing = window.Rules.missingMapFields('glyphs', ctx.design);
+    const isMissing = path => missing.includes(path);
+
+    container.appendChild(h('h3', {}, 'Map Glyphs'));
+
+    const tableDiv = h('div', {className: 'sx-table'});
+    const table = h('table', {});
+    table.appendChild(h('thead', {}, h('tr', {},
+      h('th', {}, 'Name'),
+      h('th', {}, 'Image'),
+      h('th', {}, 'What it does'),
+      h('th', {}, '')
+    )));
+
+    const tbody = h('tbody', {});
+    (d.rows || []).forEach((row, idx) => {
+      const tr = h('tr', {});
+
+      tr.appendChild(h('td', {}, h('input', {
+        className: isMissing(`glyphs.rows.${row.id}.name`) ? 'sx-missing' : '',
+        type: 'text',
+        value: row.name || '',
+        oninput: e => ctx.set(`glyphs.rows.${row.id}.name`, e.target.value)
+      })));
+
+      const imgTd = h('td', {});
+      if (row.image) {
+        imgTd.appendChild(h('img', {
+          src: ctx.imgUrl(row.image),
+          className: 'sx-img-thumb' + (isMissing(`glyphs.rows.${row.id}.image`) ? ' sx-missing' : ''),
+          onclick: () => openImageEditor(row.image, ctx, id => ctx.set(`glyphs.rows.${row.id}.image`, id), 'small')
+        }));
+      } else {
+        imgTd.appendChild(h('div', {
+          className: 'sx-img-thumb sx-empty' + (isMissing(`glyphs.rows.${row.id}.image`) ? ' sx-missing' : ''),
+          onclick: async () => {
+            const id = await ctx.uploadImage('small');
+            if (id) ctx.set(`glyphs.rows.${row.id}.image`, id);
+          }
+        }, 'Upload'));
+      }
+      tr.appendChild(imgTd);
+
+      tr.appendChild(h('td', {}, h('textarea', {
+        className: isMissing(`glyphs.rows.${row.id}.desc`) ? 'sx-missing' : '',
+        value: row.desc || '',
+        rows: 2,
+        oninput: e => ctx.set(`glyphs.rows.${row.id}.desc`, e.target.value)
+      })));
+
+      tr.appendChild(h('td', {}, h('button', {onclick: async () => {
+        const confirmed = await ctx.confirm('Delete this glyph?', 'Yes - delete', 'No - cancel');
+        if (confirmed) ctx.deleteRow('glyphs.rows', row.id);
+      }}, 'Delete')));
+
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    tableDiv.appendChild(table);
+    container.appendChild(tableDiv);
+
+    container.appendChild(h('button', {className: 'sx-btn', onclick: () => {
+      const newRow = window.Rules.blankMapRow('glyphs.rows');
+      ctx.addRow('glyphs.rows', newRow);
+    }}, 'Add glyph'));
+  }
+
+  function renderMapAbilities(container, ctx) {
+    const d = ctx.design.abilities;
+    const missing = window.Rules.missingMapFields('abilities', ctx.design);
+    const isMissing = path => missing.includes(path);
+
+    container.appendChild(h('h3', {}, 'Map Abilities'));
+
+    const tableDiv = h('div', {className: 'sx-table'});
+    const table = h('table', {});
+    table.appendChild(h('thead', {}, h('tr', {},
+      h('th', {}, 'Name'),
+      h('th', {}, 'When'),
+      h('th', {}, 'Type'),
+      h('th', {}, 'Cost'),
+      h('th', {}, 'Who can use it'),
+      h('th', {}, 'Text'),
+      h('th', {}, '')
+    )));
+
+    const tbody = h('tbody', {});
+    (d.rows || []).forEach((row, idx) => {
+      const tr = h('tr', {});
+
+      tr.appendChild(h('td', {}, h('input', {
+        className: isMissing(`abilities.rows.${row.id}.name`) ? 'sx-missing' : '',
+        type: 'text',
+        value: row.name || '',
+        oninput: e => ctx.set(`abilities.rows.${row.id}.name`, e.target.value)
+      })));
+
+      tr.appendChild(h('td', {}, h('select', {
+        className: isMissing(`abilities.rows.${row.id}.when`) ? 'sx-missing' : '',
+        value: row.when || '',
+        onchange: e => ctx.set(`abilities.rows.${row.id}.when`, e.target.value || null)
+      },
+        h('option', {value: ''}, '-- Select --'),
+        ...window.Rules.MAP_ABILITY_PHASES.map(p => h('option', {value: p}, p))
+      )));
+
+      tr.appendChild(h('td', {}, h('select', {
+        className: isMissing(`abilities.rows.${row.id}.type`) ? 'sx-missing' : '',
+        value: row.type || '',
+        onchange: e => ctx.set(`abilities.rows.${row.id}.type`, e.target.value || null)
+      },
+        h('option', {value: ''}, '-- Select --'),
+        ...window.Rules.MAP_ABILITY_TYPES.map(t => h('option', {value: t}, t))
+      )));
+
+      tr.appendChild(h('td', {}, h('input', {
+        type: 'number',
+        value: row.cost != null ? row.cost : '',
+        placeholder: 'optional',
+        oninput: e => ctx.set(`abilities.rows.${row.id}.cost`, e.target.value ? parseInt(e.target.value) : null)
+      })));
+
+      tr.appendChild(h('td', {}, h('textarea', {
+        className: isMissing(`abilities.rows.${row.id}.who`) ? 'sx-missing' : '',
+        value: row.who || '',
+        rows: 2,
+        placeholder: 'e.g. "Faction controlling the Gate"',
+        oninput: e => ctx.set(`abilities.rows.${row.id}.who`, e.target.value)
+      })));
+
+      tr.appendChild(h('td', {}, h('textarea', {
+        className: isMissing(`abilities.rows.${row.id}.text`) ? 'sx-missing' : '',
+        value: row.text || '',
+        rows: 3,
+        oninput: e => ctx.set(`abilities.rows.${row.id}.text`, e.target.value)
+      })));
+
+      tr.appendChild(h('td', {}, h('button', {onclick: async () => {
+        const confirmed = await ctx.confirm('Delete this ability?', 'Yes - delete', 'No - cancel');
+        if (confirmed) ctx.deleteRow('abilities.rows', row.id);
+      }}, 'Delete')));
+
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    tableDiv.appendChild(table);
+    container.appendChild(tableDiv);
+
+    container.appendChild(h('button', {className: 'sx-btn', onclick: () => {
+      const newRow = window.Rules.blankMapRow('abilities.rows');
+      ctx.addRow('abilities.rows', newRow);
+    }}, 'Add ability'));
+  }
+
   function render(key, container, ctx) {
     injectCSS();
     container.innerHTML = '';
@@ -1807,20 +2614,27 @@
       ae: renderAE,
       ufa: renderUFA,
       setup: renderSetup,
-      units: renderUnits,
+      units: ctx.map ? renderMapUnits : renderUnits,
       sbr: renderSBR,
-      sb: renderSB,
+      sb: ctx.map ? renderMapSB : renderSB,
       region: renderRegion,
-      tokens: renderTokens,
+      tokens: ctx.map ? renderMapTokens : renderTokens,
       custom: renderCustom,
-      menus: renderMenus
+      menus: renderMenus,
+      images: renderMapImages,
+      bitmaps: renderMapBitmaps,
+      adjacency: renderMapAdjacency,
+      glyphs: renderMapGlyphs,
+      abilities: renderMapAbilities
     };
 
     const renderer = renderers[key];
     if (renderer) {
       renderer(container, ctx);
       // Free box at the bottom of every design section (not Menu Design)
-      if (window.Rules.BUILD_SECTIONS.includes(key)) {
+      const isFactionSection = window.Rules.BUILD_SECTIONS.includes(key);
+      const isMapSection = window.Rules.MAP_BUILD_SECTIONS && window.Rules.MAP_BUILD_SECTIONS.includes(key);
+      if (isFactionSection || isMapSection) {
         const sec = ctx.design[key] || {};
         container.appendChild(textField('Any custom logic or rules', sec.customLogic,
           val => ctx.set(key + '.customLogic', val),
@@ -1829,10 +2643,10 @@
       }
 
       // Claude Q&A boxes: hidden until a build has been attempted
-      const entity = ctx.faction || ctx.unit;
-      const entityType = ctx.faction ? 'factions' : 'units';
+      const entity = ctx.faction || ctx.unit || ctx.map;
+      const entityType = ctx.faction ? 'factions' : ctx.unit ? 'units' : ctx.map ? 'maps' : null;
       const sectionKey = ctx.neutral ? 'unit' : key;  // a neutral unit has one screen, keyed 'unit'
-      if (entity && entity.buildAttempted) {
+      if (entity && entityType && entity.buildAttempted) {
         entity.claudeQA = entity.claudeQA || {};
         const qa = entity.claudeQA[sectionKey] || {questions: '', answers: ''};
         const label = text => h('label', {style: 'display: block; font-weight: bold; margin-bottom: 8px;'}, text);
