@@ -687,7 +687,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         return {
             "images": {
                 "items": [],  # NOT "images"
-                "layout": {"type": None, "order": [], "notes": ""},  # NOT null at top level
+                "layout": {"type": None, "columns": 2, "order": [], "notes": ""},  # NOT null at top level
                 "regions": {"rows": []},  # NOT just []
                 "customLogic": ""
             },

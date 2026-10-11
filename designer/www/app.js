@@ -927,7 +927,7 @@
         };
 
         buttons.appendChild(yesBtn);
-        buttons.appendChild(noBtn);
+        if (noLabel !== null) buttons.appendChild(noBtn);
         dialog.appendChild(buttons);
         div.appendChild(dialog);
         document.body.appendChild(div);

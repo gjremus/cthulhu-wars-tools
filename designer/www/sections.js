@@ -1869,6 +1869,9 @@
       {value: 'grid', label: 'Grid'}
     ], val => ctx.set('images.layout.type', val)));
 
+    if (d.layout.type === 'grid') {
+      container.appendChild(numberField('Grid columns', d.layout.columns || 2, val => ctx.set('images.layout.columns', val), {min: 1, max: 8}));
+    }
     container.appendChild(textField('Layout notes', d.layout.notes, val => ctx.set('images.layout.notes', val), {rows: 2}));
 
     // Regions
@@ -1892,13 +1895,15 @@
     const regionsTable = h('table', {});
     const glyphNames = {gc: 'GC', cc: 'CC', bg: 'BG', ys: 'YS', dragon: 'Dragon', chevron: 'Chevron', thorn: 'Thorn'};
     const baseGlyphs = ['gc', 'cc', 'bg', 'ys', 'dragon', 'chevron', 'thorn'];
+    const glyphFiles = {gc: 'gc-glyph.webp', cc: 'cc-glyph.webp', bg: 'bg-glyph.webp', ys: 'ys-glyph.webp',
+      dragon: 'dragon.png', chevron: 'chevron.png', thorn: 'thorns.png'};
     const mapGlyphs = (ctx.design.glyphs && ctx.design.glyphs.rows) || [];
 
     regionsTable.appendChild(h('thead', {}, h('tr', {},
       h('th', {}, 'Name'),
       h('th', {}, 'Type'),
       ...baseGlyphs.map(g => h('th', {title: glyphNames[g]},
-        h('img', {src: `glyphs/${g === 'gc' ? 'gc' : g === 'cc' ? 'cc' : g === 'bg' ? 'bg' : g === 'ys' ? 'ys' : g}-glyph.${g.includes('-') ? 'webp' : 'png'}`,
+        h('img', {src: `glyphs/${glyphFiles[g]}`,
           style: 'height: 24px;', alt: glyphNames[g]}))),
       ...mapGlyphs.map(mg => h('th', {title: mg.name}, mg.image ? h('img', {src: ctx.imgUrl(mg.image), style: 'height: 24px;', alt: mg.name}) : mg.name)),
       h('th', {}, '')
@@ -1980,15 +1985,28 @@
           const canvasCtx = canvas.getContext('2d');
           canvasCtx.drawImage(img, 0, 0);
 
-          // Draw region labels at centroids
-          const centroids = item.centroids || {};
+          // Draw region labels at the centre of each assigned colour (computed once per bitmap load)
+          const centroids = {};
+          const colors = item.colors || {};
+          if (Object.keys(colors).length) {
+            const px = canvasCtx.getImageData(0, 0, canvas.width, canvas.height).data;
+            const sums = {};
+            for (let i = 0, n = 0; i < px.length; i += 4, n++) {
+              const hex = '#' + [px[i], px[i + 1], px[i + 2]].map(v => v.toString(16).padStart(2, '0')).join('');
+              const rid = colors[hex];
+              if (!rid || px[i + 3] < 128) continue;
+              const sm = sums[rid] || (sums[rid] = {x: 0, y: 0, c: 0});
+              sm.x += n % canvas.width; sm.y += Math.floor(n / canvas.width); sm.c++;
+            }
+            Object.entries(sums).forEach(([rid, sm]) => { centroids[rid] = {x: sm.x / sm.c, y: sm.y / sm.c}; });
+          }
           Object.entries(centroids).forEach(([rid, pos]) => {
             const region = regions.find(r => r.id === rid);
             if (region && region.name) {
               canvasCtx.fillStyle = '#fff';
               canvasCtx.strokeStyle = '#000';
               canvasCtx.lineWidth = 2;
-              canvasCtx.font = '14px sans-serif';
+              canvasCtx.font = `${Math.max(14, Math.round(canvas.width / 40))}px sans-serif`;
               canvasCtx.textAlign = 'center';
               canvasCtx.strokeText(region.name, pos.x, pos.y);
               canvasCtx.fillText(region.name, pos.x, pos.y);
@@ -2098,6 +2116,13 @@
     const rows = d.rows || 16;
     const cells = d.cells || [];
 
+    // Cells use the region's bitmap colour; regions not on a bitmap get a stable made-up colour
+    const bitmapColour = {};
+    ((ctx.design.bitmaps && ctx.design.bitmaps.items) || []).forEach(bm =>
+      Object.entries(bm.colors || {}).forEach(([hex, rid]) => { if (!bitmapColour[rid]) bitmapColour[rid] = hex; }));
+    const regionColour = rid => bitmapColour[rid] ||
+      `hsl(${(Math.max(0, regions.findIndex(r => r.id === rid)) * 137.5) % 360}, 70%, 50%)`;
+
     container.appendChild(h('h3', {}, 'Adjacency Grid'));
 
     container.appendChild(numberField('Columns', cols, val => ctx.set('adjacency.cols', val), {min: 4, max: 64}));
@@ -2108,50 +2133,33 @@
       const images = ctx.design.images;
       const bitmaps = ctx.design.bitmaps;
 
-      if (!images || !images.images || images.images.length === 0) {
-        alert('No map images defined');
-        return;
-      }
-      if (!bitmaps || !bitmaps.items || bitmaps.items.length === 0) {
-        alert('No bitmaps defined');
+      const boardImages = (images && images.items) || [];
+      const bitmapItems = ((bitmaps && bitmaps.items) || []).filter(bm => bm.image);
+      if (bitmapItems.length === 0) {
+        await ctx.confirm('Upload at least one placement bitmap first.', 'OK', null);
         return;
       }
 
       const confirmed = await ctx.confirm('This will overwrite the current adjacency grid. Continue?', 'Yes', 'Cancel');
       if (!confirmed) return;
 
-      // Load all bitmap images
+      // Load all bitmap images (bitmap N belongs to board image N)
       const loadedBitmaps = [];
-      for (const bitmap of bitmaps.items) {
-        if (!bitmap.imageId) {
-          alert('One or more bitmaps have no image');
-          return;
-        }
+      for (const bitmap of bitmapItems) {
         const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.src = ctx.imgUrl(bitmap.imageId);
-        await new Promise((resolve, reject) => {
-          img.onload = resolve;
-          img.onerror = reject;
-        });
-        loadedBitmaps.push({img, colors: bitmap.colors || {}});
+        img.src = ctx.imgUrl(bitmap.image);
+        const ok = await new Promise(resolve => { img.onload = () => resolve(true); img.onerror = () => resolve(false); });
+        if (ok) loadedBitmaps.push({img, colors: bitmap.colors || {}});
       }
+      if (loadedBitmaps.length === 0) return;
 
-      // Join bitmaps according to layout
-      const layout = images.layout || 'single';
-      const gridCols = images.gridColumns || 2;
-      const order = images.order && images.order.length ? images.order : images.images.map(im => im.id);
-
-      // Reorder loaded bitmaps according to order
-      const orderedBitmaps = order.map(imgId => {
-        const idx = images.images.findIndex(im => im.id === imgId);
-        return idx >= 0 && idx < loadedBitmaps.length ? loadedBitmaps[idx] : null;
-      }).filter(b => b);
-
-      if (orderedBitmaps.length === 0) {
-        alert('No valid bitmaps to process');
-        return;
-      }
+      // Join bitmaps in the same order and layout as the board images
+      const layoutInfo = (images && images.layout) || {};
+      const layout = layoutInfo.type || 'single';
+      const gridCols = Math.max(1, layoutInfo.columns || 2);
+      const order = (layoutInfo.order && layoutInfo.order.length) ? layoutInfo.order : boardImages.map(im => im.id);
+      let orderedBitmaps = order.map(imgId => loadedBitmaps[boardImages.findIndex(im => im.id === imgId)]).filter(b => b);
+      loadedBitmaps.forEach(bm => { if (!orderedBitmaps.includes(bm)) orderedBitmaps.push(bm); });
 
       // Calculate joined canvas dimensions
       let joinedWidth = 0, joinedHeight = 0;
@@ -2161,7 +2169,7 @@
         joinedWidth = orderedBitmaps[0].img.width;
         joinedHeight = orderedBitmaps[0].img.height;
         positions.push({x: 0, y: 0, bitmap: orderedBitmaps[0]});
-      } else if (layout === 'sideBySide') {
+      } else if (layout === 'side-by-side') {
         joinedHeight = Math.max(...orderedBitmaps.map(b => b.img.height));
         let x = 0;
         orderedBitmaps.forEach(bitmap => {
@@ -2309,7 +2317,7 @@
         const cellRegion = regions.find(reg => reg.id === cellRegionId);
 
         const td = h('td', {
-          style: `width: 20px; height: 20px; border: 1px solid #666; cursor: pointer; background: ${cellRegionId ? `hsl(${(regions.indexOf(cellRegion) * 137.5) % 360}, 70%, 50%)` : '#222'};`,
+          style: `width: 20px; height: 20px; border: 1px solid #666; cursor: pointer; background: ${cellRegionId ? regionColour(cellRegionId) : '#222'};`,
           title: cellRegion ? cellRegion.name : 'Empty',
           onmousedown: async () => {
             painting = true;

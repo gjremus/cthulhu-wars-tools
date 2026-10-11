@@ -199,7 +199,7 @@
     const design = {
       images: {
         items: [],  // [{id, label, image}]
-        layout: {type: null, order: [], notes: ''},  // type: null | 'single' | 'side-by-side' | 'stacked' | 'grid'
+        layout: {type: null, columns: 2, order: [], notes: ''},  // type: null | 'single' | 'side-by-side' | 'stacked' | 'grid'
         regions: {rows: []}  // [{id, name, type, glyphs:{gc,cc,bg,ys,dragon,chevron,thorn,...mapGlyphIds}}]
       },
       bitmaps: {
