@@ -2103,8 +2103,73 @@
     container.appendChild(numberField('Columns', cols, val => ctx.set('adjacency.cols', val), {min: 4, max: 64}));
     container.appendChild(numberField('Rows', rows, val => ctx.set('adjacency.rows', val), {min: 4, max: 64}));
 
-    const autoBtn = h('button', {className: 'sx-btn', onclick: () => {
-      alert('Auto-generate from bitmaps: Not yet implemented');
+    const autoBtn = h('button', {className: 'sx-btn', onclick: async () => {
+      // Auto-generate adjacency from bitmaps
+      const images = ctx.design.images;
+      const bitmaps = ctx.design.bitmaps;
+
+      if (!images || !images.images || images.images.length === 0) {
+        alert('No map images defined');
+        return;
+      }
+      if (!bitmaps || !bitmaps.items || bitmaps.items.length === 0) {
+        alert('No bitmaps defined');
+        return;
+      }
+
+      const confirmed = await ctx.confirm('This will overwrite the current adjacency grid. Continue?', 'Yes', 'Cancel');
+      if (!confirmed) return;
+
+      alert('Auto-generate from bitmaps: basic implementation loads first bitmap and samples colors per cell. Full layout joining would require more complex image processing.');
+
+      // Use the first bitmap for now (full implementation would join all according to layout)
+      const firstBitmap = bitmaps.items[0];
+      if (!firstBitmap || !firstBitmap.imageId) {
+        alert('First bitmap has no image');
+        return;
+      }
+
+      // Create a canvas to load and sample the bitmap
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = ctx.imgUrl(firstBitmap.imageId);
+
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+      });
+
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const canvasCtx = canvas.getContext('2d');
+      canvasCtx.drawImage(img, 0, 0);
+
+      // Sample each cell
+      const newCells = [];
+      const cellWidth = img.width / cols;
+      const cellHeight = img.height / rows;
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          // Sample center of cell
+          const x = Math.floor(c * cellWidth + cellWidth / 2);
+          const y = Math.floor(r * cellHeight + cellHeight / 2);
+          const pixel = canvasCtx.getImageData(x, y, 1, 1).data;
+          const color = `#${[pixel[0], pixel[1], pixel[2]].map(v => v.toString(16).padStart(2, '0')).join('')}`;
+
+          // Find matching region from bitmap colors
+          let regionId = null;
+          if (firstBitmap.colors && firstBitmap.colors[color]) {
+            regionId = firstBitmap.colors[color];
+          }
+
+          newCells.push(regionId);
+        }
+      }
+
+      ctx.set('adjacency.cells', newCells);
+      ctx.rerender();
     }}, 'Auto generate from bitmaps');
     container.appendChild(autoBtn);
 
