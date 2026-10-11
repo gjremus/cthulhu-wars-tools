@@ -40,11 +40,12 @@ prompt_for() {  # $1 = haiku|sonnet
     print -r -- "${base//\{\{MODE\}\}/$mode}"
 }
 
-# run_claude <model> <haiku|sonnet> <max seconds>
+# run_claude <model> <haiku|sonnet> <max seconds> <ids_array_var>
 # Relaunches if nothing is printed within 90 s (the launchd startup deadlock seen by the
-# unified ticker), then waits up to <max seconds> before killing.
+# unified ticker), then waits up to <max seconds> before killing. Posts cost split evenly
+# over the request ids in the array variable named in $4.
 run_claude() {
-    local model="$1" mode="$2" max="$3" out="/tmp/cw-designer-extract.$2.jsonl" try pid waited
+    local model="$1" mode="$2" max="$3" ids_var="$4" out="/tmp/cw-designer-extract.$2.jsonl" try pid waited
     local prompt; prompt=$(prompt_for "$mode")
     for try in 1 2 3; do
         : > "$out"
@@ -61,8 +62,9 @@ run_claude() {
             kill -9 $pid 2>/dev/null; echo "[$(date '+%F %T')] $mode killed after ${max}s" >> "$LOG"
         fi
         wait $pid 2>/dev/null
-        python3 - "$out" "$mode" >> "$LOG" <<'PY'
-import json, sys, time
+        # Post cost split evenly over the request ids
+        python3 - "$out" "$mode" "$ids_var" "$TICKERS" >> "$LOG" <<'PY'
+import json, os, subprocess, sys, time
 res = None
 for line in open(sys.argv[1], errors='replace'):
     try:
@@ -76,7 +78,23 @@ if res is None:
     print(f"[{stamp}] {sys.argv[2]} no result line")
 else:
     text = (res.get('result') or '').strip().replace('\n', ' | ')
-    print(f"[{stamp}] {sys.argv[2]} ${res.get('total_cost_usd', 0):.4f} {text[:400]}")
+    cost = res.get('total_cost_usd', 0) or 0
+    print(f"[{stamp}] {sys.argv[2]} ${cost:.4f} {text[:400]}")
+    # Split cost evenly over request ids
+    ids_var = sys.argv[3]
+    ids = os.environ.get(ids_var, '').strip().split()
+    if ids and cost > 0:
+        per_id = cost / len(ids)
+        tickers = sys.argv[4]
+        for rid in ids:
+            try:
+                subprocess.run([
+                    'python3', f'{tickers}/designer-admin.py',
+                    'tlog-cost', rid, str(per_id), '--add'
+                ], check=True, capture_output=True, timeout=10)
+                print(f"[{stamp}] posted ${per_id:.4f} to {rid}")
+            except Exception as e:
+                print(f"[{stamp}] failed to post cost to {rid}: {e}")
 PY
         return 0
     done
@@ -91,10 +109,16 @@ if [[ $? -ne 0 ]]; then
 fi
 [[ "$(print -r -- "$pending" | tr -d ' \n')" == "[]" ]] && exit 0
 
-run_claude "$HAIKU" haiku 600
+# Record pending request ids (terminal log row ids) before the Haiku run
+haiku_ids=$(print -r -- "$pending" | python3 -c 'import json, sys; reqs = json.load(sys.stdin); print(" ".join(r["id"] for r in reqs))')
+export HAIKU_IDS="$haiku_ids"
+run_claude "$HAIKU" haiku 600 HAIKU_IDS
 
 if [[ -s "$HANDOFF" ]]; then
-    run_claude "$SONNET" sonnet 2700
+    # Record handed-off request ids before the Sonnet run
+    sonnet_ids=$(python3 -c 'import json; handed = json.load(open("'"$HANDOFF"'")); print(" ".join(h["id"] for h in handed))')
+    export SONNET_IDS="$sonnet_ids"
+    run_claude "$SONNET" sonnet 2700 SONNET_IDS
     # Count the try for every handed-off request; designer-admin.py stops listing one
     # (and alerts the owner) after 3 tries so a stuck request cannot loop forever.
     python3 - "$HANDOFF" "$ATTEMPTS" <<'PY'

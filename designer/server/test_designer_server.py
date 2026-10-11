@@ -1599,6 +1599,100 @@ class BaseFactionTest(DesignerServerTest):
             still_exists = json.loads(resp.read().decode())
         self.assertEqual(still_exists['id'], base_faction['id'])
 
+    def test_terminal_log_add_and_update(self):
+        """Test adding and updating terminal log entries."""
+        # Add a new terminal log entry
+        entry = self.request('POST', f'/admin/{self.admin_token}/terminal-log', {
+            'type': 'admin',
+            'user': 'testuser',
+            'prompt': 'Test prompt',
+            'summary': 'Test summary',
+            'id': 'test_entry_1'
+        })
+        self.assertEqual(entry['id'], 'test_entry_1')
+        self.assertEqual(entry['summary'], 'Test summary')
+        self.assertNotIn('cost', entry)
+
+        # Update summary only
+        updated = self.request('POST', f'/admin/{self.admin_token}/terminal-log/test_entry_1', {
+            'summary': 'Updated summary'
+        })
+        self.assertEqual(updated['summary'], 'Updated summary')
+        self.assertNotIn('cost', updated)
+
+    def test_terminal_log_cost_tracking(self):
+        """Test cost tracking in terminal log entries."""
+        # Add entry
+        entry = self.request('POST', f'/admin/{self.admin_token}/terminal-log', {
+            'type': 'design extraction',
+            'user': 'admin',
+            'prompt': 'Extract faction',
+            'summary': 'Extracting...',
+            'id': 'test_cost_1'
+        })
+
+        # Set cost
+        updated = self.request('POST', f'/admin/{self.admin_token}/terminal-log/test_cost_1', {
+            'cost': 0.12345
+        })
+        self.assertEqual(updated['cost'], 0.1235)  # Rounded to 4 places
+
+        # Add to cost
+        updated2 = self.request('POST', f'/admin/{self.admin_token}/terminal-log/test_cost_1', {
+            'cost': 0.05,
+            'add': True
+        })
+        self.assertEqual(updated2['cost'], 0.1735)  # 0.1235 + 0.05
+
+        # Update summary without changing cost
+        updated3 = self.request('POST', f'/admin/{self.admin_token}/terminal-log/test_cost_1', {
+            'summary': 'Done'
+        })
+        self.assertEqual(updated3['cost'], 0.1735)  # Cost unchanged
+        self.assertEqual(updated3['summary'], 'Done')
+
+    def test_terminal_log_cost_validation(self):
+        """Test cost validation."""
+        # Add entry
+        self.request('POST', f'/admin/{self.admin_token}/terminal-log', {
+            'type': 'admin',
+            'user': 'admin',
+            'prompt': 'Test',
+            'summary': 'Test',
+            'id': 'test_validation'
+        })
+
+        # Negative cost should fail
+        error = self.request('POST', f'/admin/{self.admin_token}/terminal-log/test_validation', {
+            'cost': -1.0
+        }, expect_error=True)
+        self.assertEqual(error['error'], 'cost must be a non-negative number')
+
+        # Non-numeric cost should fail
+        error2 = self.request('POST', f'/admin/{self.admin_token}/terminal-log/test_validation', {
+            'cost': 'invalid'
+        }, expect_error=True)
+        self.assertEqual(error2['error'], 'cost must be a non-negative number')
+
+    def test_terminal_log_cost_and_summary_update(self):
+        """Test updating both cost and summary in one request."""
+        # Add entry
+        self.request('POST', f'/admin/{self.admin_token}/terminal-log', {
+            'type': 'design build',
+            'user': 'admin',
+            'prompt': 'Build faction',
+            'summary': 'Building...',
+            'id': 'test_both'
+        })
+
+        # Update both
+        updated = self.request('POST', f'/admin/{self.admin_token}/terminal-log/test_both', {
+            'summary': 'Built successfully',
+            'cost': 1.5
+        })
+        self.assertEqual(updated['summary'], 'Built successfully')
+        self.assertEqual(updated['cost'], 1.5)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -122,8 +122,16 @@ else:
     reply = "Very sorry - the agent would not start (3 tries). Please send the request again in a few minutes."
 open(reply_file, 'w').write(reply + '\n')
 cost = (res or {}).get('total_cost_usd', 0) or 0
+open(sys.argv[1] + '.cost.tmp', 'w').write(str(cost))
 print(f"[{time.strftime('%F %T')}] done ${cost:.4f} {reply[:300].replace(chr(10), ' | ')}")
 PY
+        # Post the cost to the terminal log
+        if [[ -s "$out.cost.tmp" ]]; then
+            cost=$(cat "$out.cost.tmp")
+            rm -f "$out.cost.tmp"
+            echo "$cost" > "$job.cost"
+            python3 "$TICKERS/designer-admin.py" tlog-cost "q_${job:t}" "$cost" 2>>"$LOG" || note "could not post cost"
+        fi
         # Start the reply with the first words of the request, so replies that come back after
         # a queue are easy to match to what was asked.
         { print -r -- "(re: ${${text//$'\n'/ }[1,70]}...)"; cat "$job.reply"; } | post_output RESPONSE || note "could not post reply to the console"
@@ -134,6 +142,33 @@ PY
             { printf '%s|' "$tg"; tr '\n' ' ' < "$job.reply"; echo; } | "${SSH[@]}" "cat >> /tmp/claude-prompt-responses.log"
         fi
         mv "$job" "$job.jsonl" "$job.reply" "$Q/done/" 2>/dev/null
+        [[ -s "$job.cost" ]] && mv "$job.cost" "$Q/done/" 2>/dev/null
+    done
+    # Backfill: for every done/<name>.jsonl that has no done/<name>.cost file, extract the result
+    # cost and post it to row q_<name>
+    for jsonl in "$Q"/done/*.jsonl(N); do
+        name="${jsonl:t:r}"
+        [[ -s "$Q/done/$name.cost" ]] && continue
+        cost=$(python3 - "$jsonl" <<'PY'
+import json, sys
+res = None
+for line in open(sys.argv[1], errors='replace'):
+    try:
+        e = json.loads(line)
+    except ValueError:
+        continue
+    if e.get('type') == 'result':
+        res = e
+if res:
+    print((res.get('total_cost_usd') or 0))
+PY
+)
+        if [[ -n "$cost" ]] && [[ "$cost" != "0" ]]; then
+            if python3 "$TICKERS/designer-admin.py" tlog-cost "q_$name" "$cost" 2>>"$LOG"; then
+                echo "$cost" > "$Q/done/$name.cost"
+                note "backfilled cost for $name: \$$cost"
+            fi
+        fi
     done
     exit 0
 fi
