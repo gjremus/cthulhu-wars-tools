@@ -3941,7 +3941,6 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         name = str(body.get('name', '')).strip()
         acronym = str(body.get('acronym', '')).strip().upper()
         design = body.get('design')
-        images = body.get('images')  # Optional dict of imageId: imageData for admin uploads
 
         users = (load_json(self.server.data_dir / "users.json") or {}).get("users", {})
         if not is_base and owner not in users:
@@ -3991,26 +3990,6 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                             return
 
             # Upload images if provided (admin can inject images as part of import)
-            if images and isinstance(images, dict):
-                for image_id, image_data in images.items():
-                    if not isinstance(image_data, str):
-                        continue
-                    # image_data is base64-encoded
-                    import base64
-                    try:
-                        image_bytes = base64.b64decode(image_data)
-                        # Determine extension from image_id
-                        ext = image_id.split('.')[-1] if '.' in image_id else 'webp'
-                        # Write to images dir
-                        images_dir = self.server.data_dir / "images"
-                        images_dir.mkdir(exist_ok=True)
-                        image_file = images_dir / image_id
-                        if not image_file.exists():
-                            with open(image_file, 'wb') as f:
-                                f.write(image_bytes)
-                    except Exception as e:
-                        print(f"WARN: Failed to import image {image_id}: {e}", file=sys.stderr)
-
             if existing_fid:
                 # Replace existing base faction: new version
                 fid = existing_fid

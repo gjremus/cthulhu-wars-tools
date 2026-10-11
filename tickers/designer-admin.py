@@ -51,7 +51,8 @@ Reads the owner admin token from its file so it never has to appear in a prompt.
   designer-admin.py upload <png>            upload a PNG to the designer; prints the image id
   designer-admin.py import-base <design.json>
                                             import a base faction from JSON file. Format:
-                                            {name, acronym, design, images:{imageId: base64data}}.
+                                            {name, acronym, design}; upload art first and put
+                                            the image ids in the design.
                                             Base factions are visible to all users (read-only).
                                             Re-importing same acronym replaces it (new version).
 
@@ -293,7 +294,8 @@ def upload(path):
 
 
 def import_base(design_file):
-    """Import a base faction from JSON file. Format: {name, acronym, design, images:{imageId: base64data}}."""
+    """Import a base faction from JSON file. Format: {name, acronym, design}; upload art first and put
+                                            the image ids in the design."""
     try:
         with open(design_file, 'r') as f:
             data = json.load(f)
@@ -308,11 +310,6 @@ def import_base(design_file):
     if missing:
         sys.exit(f"ERROR: missing required fields: {', '.join(missing)}")
 
-    # Upload images if provided
-    images = data.get('images', {})
-    if images and not isinstance(images, dict):
-        sys.exit("ERROR: images must be a dict of {imageId: base64data}")
-
     # Call admin import-faction with base=true
     body = {
         'base': True,
@@ -320,7 +317,6 @@ def import_base(design_file):
         'acronym': data['acronym'],
         'design': data['design'],
         'built': data.get('built', True),  # Base factions are typically built
-        'images': images
     }
 
     try:
