@@ -12,7 +12,10 @@
         token: localStorage.getItem('cw_designer_token'),
         username: localStorage.getItem('cw_designer_username'),
         factions: null,
+        units: null,
+        maps: null,
         currentFaction: null,
+        currentMap: null,
         builtDesign: null,
         reference: null
       };
@@ -55,10 +58,23 @@
       if (!(path === 'faction' && rest[0] && rest.length === 1)) this.extractComplete = null;
 
       if (this.state.adminView) {
-        // Admin view only ever shows one faction, read only
+        // Admin view shows one faction or map, read only
         if (path === 'faction' && rest[0]) {
           const screen = rest.slice(1).join('/');
           if (screen) this.renderScreen(rest[0], screen); else this.loadFaction(rest[0]);
+        } else if (path === 'map' && rest[0]) {
+          const mid = rest[0];
+          const screen = rest.slice(1).join('/');
+          if (!screen) {
+            this.loadMap(mid);
+          } else if (screen.startsWith('section/')) {
+            const section = screen.split('/')[1];
+            this.renderMapSectionScreen(mid, section);
+          } else if (screen === 'build') {
+            this.renderMapBuildScreen(mid);
+          } else if (screen === 'versions') {
+            this.renderMapVersionsScreen(mid);
+          }
         } else {
           this.root.innerHTML = '<p style="padding:20px;">Admin view: close this tab to go back to the admin console.</p>';
         }
@@ -75,6 +91,29 @@
           this.renderUnitScreen(uid);
         } else if (screen === 'build') {
           this.renderUnitBuildScreen(uid);
+        } else if (screen === 'versions') {
+          this.renderUnitVersionsScreen(uid);
+        } else if (screen === 'bug-report') {
+          this.renderUnitBugReportScreen(uid);
+        } else if (screen === 'simple-update') {
+          this.renderUnitSimpleUpdateScreen(uid);
+        }
+      } else if (path === 'map' && rest[0]) {
+        const mid = rest[0];
+        const screen = rest.slice(1).join('/');
+        if (!screen) {
+          this.loadMap(mid);
+        } else if (screen.startsWith('section/')) {
+          const section = screen.split('/')[1];
+          this.renderMapSectionScreen(mid, section);
+        } else if (screen === 'build') {
+          this.renderMapBuildScreen(mid);
+        } else if (screen === 'versions') {
+          this.renderMapVersionsScreen(mid);
+        } else if (screen === 'bug-report') {
+          this.renderMapBugReportScreen(mid);
+        } else if (screen === 'simple-update') {
+          this.renderMapSimpleUpdateScreen(mid);
         }
       } else if (path === 'faction') {
         const fid = rest[0];
@@ -220,6 +259,54 @@
         }
         this.refreshExtractStatus(fid);
       }, 20000);
+    }
+
+    // Maps
+    async loadMapList() {
+      const data = await this.api('GET', '/maps');
+      this.state.maps = data.maps;
+      return data.maps;
+    }
+
+    async createMap(name) {
+      const data = await this.api('POST', '/maps', {name});
+      return data;
+    }
+
+    async loadMap(mid) {
+      const data = this.state.adminView
+        ? await this.api('GET', `/admin/${this.state.adminView}/view-map/${mid}`)
+        : await this.api('GET', `/maps/${mid}`);
+      this.state.currentMap = data;
+      this.state.builtDesign = data.builtDesign;
+      if (window.location.hash.replace(/\/$/, '') === `#/map/${mid}`) this.renderMapMainDesign();
+    }
+
+    async patchMap(mid, ops) {
+      if (this.isReadOnly()) return;
+      const data = await this.api('POST', `/maps/${mid}/patch`, {ops});
+      if (this.state.currentMap && this.state.currentMap.id === mid) {
+        this.state.currentMap.current = data.current;
+        this.state.currentMap.maxVersion = data.maxVersion;
+        this.state.currentMap.versions = data.versions;
+        this.state.currentMap.session = data.session;
+        this.state.currentMap.updated = data.updated;
+      }
+    }
+
+    async closeMapSession(mid) {
+      if (this.isReadOnly()) return;
+      await this.api('POST', `/maps/${mid}/close-session`);
+    }
+
+    async createMapRequest(mid, type, text, data) {
+      const r = await this.api('POST', `/maps/${mid}/request`, {type, text, data});
+      if (type === 'extract') this.refreshExtractStatus(mid);
+      return r;
+    }
+
+    async getMapRequests(mid) {
+      return await this.api('GET', `/maps/${mid}/requests`);
     }
 
     // A faction shared with this user as read only (owner set it up from the admin console)
@@ -695,7 +782,7 @@
     }
 
     // Autosave
-    // kind 'unit' = a neutral unit from My Units (fid is then its unit id)
+    // kind: 'faction' | 'unit' | 'map'
     scheduleSave(fid, path, value, kind = 'faction') {
       if (this.isReadOnly()) return;
       const key = `${kind}:${fid}:${path}`;
@@ -726,6 +813,7 @@
         const [kind, fid] = g.split(':');
         try {
           if (kind === 'unit') await this.api('POST', `/units/${fid}/patch`, {ops});
+          else if (kind === 'map') await this.patchMap(fid, ops);
           else await this.patch(fid, ops);
           this.showSaveIndicator('saved', 'All changes saved');
           setTimeout(() => this.hideSaveIndicator(), 2000);
@@ -966,9 +1054,10 @@
       this.root.innerHTML = '<div class="spinner"></div>';
 
       try {
-        const [factions, units] = await Promise.all([
+        const [factions, units, maps] = await Promise.all([
           this.loadFactionList(),
-          this.api('GET', '/units').then(d => d.units)
+          this.api('GET', '/units').then(d => d.units),
+          this.loadMapList()
         ]);
 
         this.root.innerHTML = '';
@@ -1066,6 +1155,72 @@
             const by = document.createElement('div');
             by.className = 'status';
             by.textContent = `Designed by ${faction.ownerName || faction.owner}`;
+            card.appendChild(by);
+            grid.appendChild(card);
+          }
+          this.root.appendChild(grid);
+        }
+
+        // My Maps
+        const mapsTitle = document.createElement('h2');
+        mapsTitle.textContent = 'My Maps';
+        mapsTitle.style.margin = '30px 0 12px';
+        this.root.appendChild(mapsTitle);
+
+        const createMapBtn = document.createElement('button');
+        createMapBtn.className = 'primary';
+        createMapBtn.textContent = 'Create New Map';
+        createMapBtn.style.marginBottom = '20px';
+        createMapBtn.onclick = () => this.showCreateMapDialog();
+        this.root.appendChild(createMapBtn);
+
+        if (maps.filter(m => !m.readOnly).length === 0) {
+          const p = document.createElement('p');
+          p.textContent = 'No maps yet. Create one to get started.';
+          p.style.color = '#888';
+          this.root.appendChild(p);
+        } else {
+          const grid = document.createElement('div');
+          grid.className = 'faction-grid';
+          for (const map of maps.filter(m => !m.readOnly)) {
+            const card = document.createElement('div');
+            card.className = 'faction-card';
+            card.onclick = () => { window.location.hash = `#/map/${map.id}`; };
+            const name = document.createElement('h3');
+            name.textContent = map.name;
+            card.appendChild(name);
+            const status = document.createElement('div');
+            status.className = 'status';
+            status.innerHTML = `Status: ${this.buildStatusHtml(map.buildStatus)}`;
+            card.appendChild(status);
+            const updated = document.createElement('div');
+            updated.className = 'status';
+            updated.textContent = `Updated: ${new Date(map.updated * 1000).toLocaleDateString()}`;
+            card.appendChild(updated);
+            grid.appendChild(card);
+          }
+          this.root.appendChild(grid);
+        }
+
+        // Shared maps (read only)
+        const sharedMaps = maps.filter(m => m.readOnly);
+        if (sharedMaps.length) {
+          const h = document.createElement('h2');
+          h.textContent = 'Shared with me (read only)';
+          h.style.marginTop = '30px';
+          this.root.appendChild(h);
+          const grid = document.createElement('div');
+          grid.className = 'faction-grid';
+          for (const map of sharedMaps) {
+            const card = document.createElement('div');
+            card.className = 'faction-card';
+            card.onclick = () => { window.location.hash = `#/map/${map.id}`; };
+            const name = document.createElement('h3');
+            name.textContent = map.name;
+            card.appendChild(name);
+            const by = document.createElement('div');
+            by.className = 'status';
+            by.textContent = `Designed by ${map.ownerName || map.owner}`;
             card.appendChild(by);
             grid.appendChild(card);
           }
@@ -1183,6 +1338,67 @@
           const faction = await this.createFaction(name, acronym);
           overlay.remove();
           window.location.hash = `#/faction/${faction.id}`;
+        } catch (err) {
+          createBtn.disabled = false;
+          this.showError(dialog, err.message);
+        }
+      };
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.onclick = () => overlay.remove();
+
+      buttons.appendChild(createBtn);
+      buttons.appendChild(cancelBtn);
+      dialog.appendChild(buttons);
+
+      overlay.appendChild(dialog);
+      document.body.appendChild(overlay);
+    }
+
+    showCreateMapDialog() {
+      const overlay = document.createElement('div');
+      overlay.className = 'confirm-overlay';
+
+      const dialog = document.createElement('div');
+      dialog.className = 'confirm-dialog';
+      dialog.style.maxWidth = '600px';
+
+      const title = document.createElement('h2');
+      title.textContent = 'Create New Map';
+      title.style.marginBottom = '20px';
+      dialog.appendChild(title);
+
+      const nameGroup = document.createElement('div');
+      nameGroup.className = 'form-group';
+      const nameLabel = document.createElement('label');
+      nameLabel.textContent = 'Map Name (at least 3 characters)';
+      const nameInput = document.createElement('input');
+      nameInput.type = 'text';
+      nameInput.style.width = '100%';
+      nameGroup.appendChild(nameLabel);
+      nameGroup.appendChild(nameInput);
+      dialog.appendChild(nameGroup);
+
+      const buttons = document.createElement('div');
+      buttons.className = 'buttons';
+
+      const createBtn = document.createElement('button');
+      createBtn.className = 'primary';
+      createBtn.textContent = 'Create';
+      createBtn.disabled = true;
+
+      nameInput.addEventListener('input', () => {
+        createBtn.disabled = nameInput.value.trim().length < 3;
+      });
+
+      createBtn.onclick = async () => {
+        const name = nameInput.value.trim();
+        try {
+          createBtn.disabled = true;
+          const map = await this.createMap(name);
+          overlay.remove();
+          window.location.hash = `#/map/${map.id}`;
         } catch (err) {
           createBtn.disabled = false;
           this.showError(dialog, err.message);
@@ -1922,6 +2138,38 @@
         window.location.hash = `#/unit/${uid}/build`;
       };
       this.root.appendChild(buildBtn);
+
+      // Simple Update button
+      const updateBtn = document.createElement('button');
+      updateBtn.textContent = 'Simple Update';
+      updateBtn.disabled = !(unit.build && unit.build.status === 'built');
+      updateBtn.style.marginTop = '10px';
+      updateBtn.style.marginLeft = '10px';
+      updateBtn.onclick = () => {
+        window.location.hash = `#/unit/${uid}/simple-update`;
+      };
+      this.root.appendChild(updateBtn);
+
+      // Bug Report button
+      const bugBtn = document.createElement('button');
+      bugBtn.textContent = 'Bug Report';
+      bugBtn.disabled = !(unit.build && unit.build.status === 'built');
+      bugBtn.style.marginTop = '10px';
+      bugBtn.style.marginLeft = '10px';
+      bugBtn.onclick = () => {
+        window.location.hash = `#/unit/${uid}/bug-report`;
+      };
+      this.root.appendChild(bugBtn);
+
+      // Versions button
+      const versionsBtn = document.createElement('button');
+      versionsBtn.textContent = 'Versions';
+      versionsBtn.style.marginTop = '10px';
+      versionsBtn.style.marginLeft = '10px';
+      versionsBtn.onclick = () => {
+        window.location.hash = `#/unit/${uid}/versions`;
+      };
+      this.root.appendChild(versionsBtn);
 
       const ctx = {
         design,
@@ -2706,6 +2954,754 @@
           textarea.value = '';
         } catch (err) {
           alert('Failed to send bug report: ' + err.message);
+        }
+      };
+      this.root.appendChild(sendBtn);
+    }
+
+    // Map render methods
+
+    renderMapMainDesign() {
+      const map = this.state.currentMap;
+      const design = map.design;
+
+      this.root.innerHTML = '';
+
+      const header = document.createElement('div');
+      header.className = 'design-header';
+
+      const backBtn = document.createElement('button');
+      backBtn.textContent = '← Back to List';
+      backBtn.dataset.nav = '1';
+      backBtn.onclick = () => {
+        this.flushSaves();
+        window.location.hash = '#/factions';
+      };
+      header.appendChild(backBtn);
+
+      const nameTitle = document.createElement('h1');
+      nameTitle.className = 'faction-title';
+      nameTitle.textContent = map.name;
+      header.appendChild(nameTitle);
+
+      this.root.appendChild(header);
+      if (this.isReadOnly()) this.root.appendChild(this.readOnlyBanner());
+
+      // Section buttons
+      const sectionsDiv = document.createElement('div');
+
+      for (const sec of Rules.MAP_SECTIONS) {
+        const btn = document.createElement('button');
+        btn.className = 'section-button';
+
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = sec.title;
+        btn.appendChild(nameSpan);
+
+        const labelSpan = document.createElement('span');
+        labelSpan.className = 'section-label';
+        const st = Rules.mapStatus(sec.key, design);
+        labelSpan.textContent = st;
+        btn.appendChild(labelSpan);
+
+        btn.dataset.nav = '1';
+        btn.onclick = () => {
+          window.location.hash = `#/map/${map.id}/section/${sec.key}`;
+        };
+
+        sectionsDiv.appendChild(btn);
+      }
+
+      // Build button
+      const buildBtn = document.createElement('button');
+      buildBtn.className = 'section-button';
+      const buildName = document.createElement('span');
+      buildName.textContent = 'Build';
+      buildBtn.appendChild(buildName);
+      const buildLabel = document.createElement('span');
+      buildLabel.className = 'section-label';
+      buildLabel.innerHTML = this.getMapBuildStatusLabel(map);
+      buildBtn.appendChild(buildLabel);
+      buildBtn.onclick = () => {
+        window.location.hash = `#/map/${map.id}/build`;
+      };
+      sectionsDiv.appendChild(buildBtn);
+
+      // Simple Update button
+      const updateBtn = document.createElement('button');
+      updateBtn.className = 'section-button';
+      updateBtn.disabled = map.build.status !== 'built';
+      const updateName = document.createElement('span');
+      updateName.textContent = 'Simple Update';
+      updateBtn.appendChild(updateName);
+      updateBtn.onclick = () => {
+        window.location.hash = `#/map/${map.id}/simple-update`;
+      };
+      sectionsDiv.appendChild(updateBtn);
+
+      // Bug Report button
+      const bugBtn = document.createElement('button');
+      bugBtn.className = 'section-button';
+      bugBtn.disabled = map.build.status !== 'built';
+      const bugName = document.createElement('span');
+      bugName.textContent = 'Bug Report';
+      bugBtn.appendChild(bugName);
+      bugBtn.onclick = () => {
+        window.location.hash = `#/map/${map.id}/bug-report`;
+      };
+      sectionsDiv.appendChild(bugBtn);
+
+      // Versions button
+      const versionsBtn = document.createElement('button');
+      versionsBtn.className = 'section-button';
+      const versionsName = document.createElement('span');
+      versionsName.textContent = 'Versions';
+      versionsBtn.appendChild(versionsName);
+      versionsBtn.dataset.nav = '1';
+      versionsBtn.onclick = () => {
+        window.location.hash = `#/map/${map.id}/versions`;
+      };
+      sectionsDiv.appendChild(versionsBtn);
+
+      this.root.appendChild(sectionsDiv);
+      this.lockReadOnly(this.root);
+    }
+
+    getMapBuildStatusLabel(map) {
+      return this.buildStatusHtml(map.build.status, Rules.mapBuildReady(map.design), this.hasClaudeQuestions(map));
+    }
+
+    async renderMapSectionScreen(mid, section) {
+      if (!this.state.currentMap || this.state.currentMap.id !== mid) {
+        await this.loadMap(mid);
+        if (window.location.hash.replace(/\/$/, '') !== `#/map/${mid}/section/${section}`) return;
+      }
+
+      const map = this.state.currentMap;
+      const design = map.design;
+
+      this.root.innerHTML = '';
+
+      const backBtn = document.createElement('button');
+      backBtn.textContent = 'Exit to Main';
+      backBtn.onclick = async () => {
+        await this.flushSaves();
+        await this.closeMapSession(map.id);
+        window.location.hash = `#/map/${map.id}`;
+      };
+      backBtn.style.marginTop = '20px';
+
+      if (this.isReadOnly()) this.root.appendChild(this.readOnlyBanner());
+      const container = document.createElement('div');
+      this.root.appendChild(container);
+      this.root.appendChild(backBtn);
+
+      const ctx = {
+        design,
+        map,
+        reference: this.state.reference,
+        set: (path, value) => {
+          if (this.isReadOnly()) return;
+          this.setDesignValue(design, path, value);
+          this.scheduleSave(map.id, path, value, 'map');
+          const ev = window.event;
+          const t = ev && ev.target;
+          const typing = ev && ev.type === 'input' && t &&
+            (t.tagName === 'TEXTAREA' || (t.tagName === 'INPUT' && /^(text|number|search|email|url)$/.test(t.type)));
+          if (!typing) ctx.rerender();
+          else if (t.classList.contains('sx-missing')) t.classList.toggle('sx-missing', Rules.missingMapFields(path.split('.')[0], design).includes(path));
+        },
+        addRow: (tablePath, row) => {
+          if (this.isReadOnly()) return;
+          const parts = tablePath.split('.');
+          let obj = design;
+          for (let i = 0; i < parts.length; i++) {
+            if (i === parts.length - 1) {
+              obj[parts[i]].push(row);
+            } else {
+              obj = obj[parts[i]];
+            }
+          }
+          this.patchMap(map.id, [{op: 'addRow', path: tablePath, row}]);
+          ctx.rerender();
+        },
+        deleteRow: (tablePath, rowId) => {
+          if (this.isReadOnly()) return;
+          const parts = tablePath.split('.');
+          let obj = design;
+          for (let i = 0; i < parts.length; i++) {
+            if (i === parts.length - 1) {
+              obj[parts[i]] = obj[parts[i]].filter(r => r.id !== rowId);
+            } else {
+              obj = obj[parts[i]];
+            }
+          }
+          this.patchMap(map.id, [{op: 'deleteRow', path: tablePath, id: rowId}]);
+          ctx.rerender();
+        },
+        uploadImage: (kind) => this.uploadImage(kind),
+        pickLibraryImage: () => this.pickLibraryImage(),
+        imgUrl: (id) => this.imgUrl(id),
+        confirm: (msg, yes, no) => this.confirm(msg, yes, no),
+        readOnly: this.isReadOnly(),
+        createRequest: (type, text, data) => this.isReadOnly() ? Promise.resolve(null) : this.createMapRequest(map.id, type, text, data),
+        rerender: () => {
+          const y = window.scrollY;
+          container.innerHTML = '';
+          Sections.render(section, container, ctx);
+          this.lockReadOnly(container);
+          window.scrollTo(0, y);
+        },
+        openOverlay: (content) => this.openOverlay(content),
+        closeOverlay: () => this.closeOverlay()
+      };
+
+      Sections.render(section, container, ctx);
+      this.lockReadOnly(container);
+    }
+
+    async renderMapBuildScreen(mid) {
+      if (!this.state.currentMap || this.state.currentMap.id !== mid) {
+        await this.loadMap(mid);
+        if (window.location.hash.replace(/\/$/, '') !== `#/map/${mid}/build`) return;
+      }
+
+      const map = this.state.currentMap;
+      const design = map.design;
+
+      this.root.innerHTML = '';
+
+      const backBtn = document.createElement('button');
+      backBtn.textContent = 'Exit to Main';
+      backBtn.onclick = () => {
+        window.location.hash = `#/map/${map.id}`;
+      };
+      this.root.appendChild(backBtn);
+
+      const title = document.createElement('h2');
+      title.textContent = 'Build';
+      title.style.marginTop = '20px';
+      this.root.appendChild(title);
+
+      const statusDiv = document.createElement('div');
+      statusDiv.style.marginBottom = '20px';
+      statusDiv.innerHTML = `<strong>Status:</strong> ${this.getMapBuildStatusLabel(map)}`;
+      this.root.appendChild(statusDiv);
+
+      const table = document.createElement('table');
+      const thead = document.createElement('thead');
+      const headerRow = document.createElement('tr');
+      ['Section', 'Status'].forEach(h => {
+        const th = document.createElement('th');
+        th.textContent = h;
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
+      const incompleteSections = [];
+
+      for (const key of Rules.MAP_BUILD_SECTIONS) {
+        const row = document.createElement('tr');
+        const sectionCell = document.createElement('td');
+        const sec = Rules.MAP_SECTIONS.find(s => s.key === key);
+        const st = Rules.mapStatus(key, design);
+
+        if (st === 'Incomplete') {
+          const link = document.createElement('a');
+          link.href = `#/map/${map.id}/section/${key}`;
+          link.textContent = sec.title;
+          link.style.color = '#60a5fa';
+          link.style.textDecoration = 'underline';
+          sectionCell.appendChild(link);
+          incompleteSections.push({key, title: sec.title});
+        } else {
+          sectionCell.textContent = sec.title;
+        }
+        row.appendChild(sectionCell);
+
+        const statusCell = document.createElement('td');
+        statusCell.className = `status-${st.toLowerCase().replace('/', '')}`;
+        statusCell.textContent = st;
+        row.appendChild(statusCell);
+
+        tbody.appendChild(row);
+      }
+
+      table.appendChild(tbody);
+      this.root.appendChild(table);
+
+      if (incompleteSections.length > 0) {
+        const missingDiv = document.createElement('div');
+        missingDiv.style.cssText = 'margin-top: 20px; padding: 16px; background: #2a2a2a; border: 1px solid #666; border-radius: 4px;';
+        const missingTitle = document.createElement('h3');
+        missingTitle.textContent = 'Missing fields';
+        missingTitle.style.marginTop = '0';
+        missingDiv.appendChild(missingTitle);
+
+        incompleteSections.forEach(sec => {
+          const missing = Rules.missingMapFields(sec.key, design);
+          if (missing.length === 0) return;
+          const p = document.createElement('p');
+          const strong = document.createElement('strong');
+          strong.textContent = `${sec.title}: `;
+          p.appendChild(strong);
+          p.appendChild(document.createTextNode(missing.join(', ')));
+          p.style.margin = '8px 0';
+          missingDiv.appendChild(p);
+        });
+
+        this.root.appendChild(missingDiv);
+      }
+
+      const versionInfo = document.createElement('div');
+      versionInfo.style.marginTop = '20px';
+      versionInfo.innerHTML = `
+        <p><strong>Current Design Version:</strong> ${map.current}</p>
+        <p><strong>Current Live Built Version:</strong> ${map.build.liveVersion !== null ? map.build.liveVersion : 'N/A'}</p>
+      `;
+      this.root.appendChild(versionInfo);
+
+      if (map.build.status !== 'built') {
+        const executeBtn = document.createElement('button');
+        executeBtn.className = 'primary';
+        executeBtn.textContent = 'Execute build';
+        executeBtn.disabled = !Rules.mapBuildReady(design) || map.build.status === 'requested' || map.build.status === 'in_progress';
+        executeBtn.style.marginTop = '20px';
+        executeBtn.onclick = async () => {
+          try {
+            await this.createMapRequest(
+              map.id,
+              'build',
+              `Design complete and ready to execute build for ${map.name}`,
+              {version: map.current}
+            );
+            alert('Build requested. Check the admin console.');
+            map.build.status = 'requested';
+            this.renderMapBuildScreen(mid);
+          } catch (err) {
+            alert('Build request failed: ' + err.message);
+          }
+        };
+        this.root.appendChild(executeBtn);
+      }
+    }
+
+    async renderMapVersionsScreen(mid) {
+      if (!this.state.currentMap || this.state.currentMap.id !== mid) {
+        await this.loadMap(mid);
+        if (window.location.hash.replace(/\/$/, '') !== `#/map/${mid}/versions`) return;
+      }
+
+      const map = this.state.currentMap;
+
+      this.root.innerHTML = '';
+
+      const backBtn = document.createElement('button');
+      backBtn.textContent = 'Exit to Main';
+      backBtn.onclick = () => {
+        window.location.hash = `#/map/${map.id}`;
+      };
+      this.root.appendChild(backBtn);
+
+      const title = document.createElement('h2');
+      title.textContent = 'Versions';
+      title.style.marginTop = '20px';
+      this.root.appendChild(title);
+
+      const table = document.createElement('table');
+      const thead = document.createElement('thead');
+      const headerRow = document.createElement('tr');
+      ['Version', 'Sections Changed', 'Changed from Version', 'Used in Live Game', 'Actions'].forEach(h => {
+        const th = document.createElement('th');
+        th.textContent = h;
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
+      const liveVersions = [map.build.liveVersion, ...map.liveGameVersions].filter(v => v !== null);
+
+      for (const ver of map.versions) {
+        const row = document.createElement('tr');
+        if (ver.n === map.current) {
+          row.style.background = '#3a3a3a';
+        }
+
+        const versionCell = document.createElement('td');
+        versionCell.textContent = ver.n + (ver.n === map.current ? ' (current)' : '');
+        row.appendChild(versionCell);
+
+        const sectionsCell = document.createElement('td');
+        sectionsCell.textContent = ver.deleted ? 'DELETED' : ver.sections.join(', ') || 'Initial';
+        row.appendChild(sectionsCell);
+
+        const fromCell = document.createElement('td');
+        fromCell.textContent = ver.from !== null ? ver.from : '-';
+        row.appendChild(fromCell);
+
+        const liveCell = document.createElement('td');
+        liveCell.textContent = liveVersions.includes(ver.n) ? 'Y' : 'N';
+        row.appendChild(liveCell);
+
+        const actionsCell = document.createElement('td');
+        if (!ver.deleted) {
+          const rollbackBtn = document.createElement('button');
+          rollbackBtn.className = 'small';
+          rollbackBtn.textContent = 'Roll back';
+          rollbackBtn.disabled = ver.n === map.current;
+          rollbackBtn.onclick = async () => {
+            const confirmed = await this.confirm(
+              `Roll back to version ${ver.n}? This will load that version's design.`,
+              'Roll back',
+              'Cancel'
+            );
+            if (confirmed) {
+              try {
+                const data = await this.api('POST', `/maps/${map.id}/rollback`, {version: ver.n});
+                this.state.currentMap = data;
+                this.renderMapVersionsScreen(mid);
+              } catch (err) {
+                alert('Rollback failed: ' + err.message);
+              }
+            }
+          };
+          actionsCell.appendChild(rollbackBtn);
+
+          const deleteBtn = document.createElement('button');
+          deleteBtn.className = 'small danger';
+          deleteBtn.textContent = 'Delete';
+          deleteBtn.style.marginLeft = '5px';
+          deleteBtn.disabled = liveVersions.includes(ver.n) || ver.n === map.current || map.versions.filter(v => !v.deleted).length === 1;
+          deleteBtn.onclick = async () => {
+            const confirmed = await this.confirm(
+              `Delete version ${ver.n}? This cannot be undone.`,
+              'Delete',
+              'Cancel'
+            );
+            if (confirmed) {
+              try {
+                const data = await this.api('POST', `/maps/${map.id}/delete-version`, {version: ver.n});
+                this.state.currentMap = data;
+                this.renderMapVersionsScreen(mid);
+              } catch (err) {
+                alert('Delete failed: ' + err.message);
+              }
+            }
+          };
+          actionsCell.appendChild(deleteBtn);
+        }
+        row.appendChild(actionsCell);
+
+        tbody.appendChild(row);
+      }
+
+      table.appendChild(tbody);
+      this.root.appendChild(table);
+    }
+
+    async renderMapBugReportScreen(mid) {
+      if (!this.state.currentMap || this.state.currentMap.id !== mid) {
+        await this.loadMap(mid);
+        if (window.location.hash.replace(/\/$/, '') !== `#/map/${mid}/bug-report`) return;
+      }
+
+      const map = this.state.currentMap;
+
+      this.root.innerHTML = '';
+
+      const backBtn = document.createElement('button');
+      backBtn.textContent = 'Exit to Main';
+      backBtn.onclick = () => {
+        window.location.hash = `#/map/${map.id}`;
+      };
+      this.root.appendChild(backBtn);
+
+      const title = document.createElement('h2');
+      title.textContent = 'Bug Report';
+      title.style.marginTop = '20px';
+      this.root.appendChild(title);
+
+      const label = document.createElement('label');
+      label.textContent = 'Describe the bug:';
+      label.style.marginTop = '20px';
+      this.root.appendChild(label);
+
+      const textarea = document.createElement('textarea');
+      textarea.style.width = '100%';
+      textarea.style.minHeight = '200px';
+      textarea.value = localStorage.getItem(`bug_draft_map_${map.id}`) || '';
+      textarea.addEventListener('input', () => {
+        localStorage.setItem(`bug_draft_map_${map.id}`, textarea.value);
+      });
+      this.root.appendChild(textarea);
+
+      const sendBtn = document.createElement('button');
+      sendBtn.className = 'primary';
+      sendBtn.textContent = 'Send bug report';
+      sendBtn.style.marginTop = '20px';
+      sendBtn.onclick = async () => {
+        const description = textarea.value.trim();
+        if (!description) {
+          alert('Please describe the bug.');
+          return;
+        }
+
+        try {
+          await this.createMapRequest(
+            map.id,
+            'bug',
+            `Bug report for ${map.name} (built v${map.build.liveVersion}): ${description}`,
+            {description}
+          );
+          alert('Bug report sent.');
+          localStorage.removeItem(`bug_draft_map_${map.id}`);
+          textarea.value = '';
+        } catch (err) {
+          alert('Failed to send bug report: ' + err.message);
+        }
+      };
+      this.root.appendChild(sendBtn);
+    }
+
+    async renderMapSimpleUpdateScreen(mid) {
+      if (!this.state.currentMap || this.state.currentMap.id !== mid) {
+        await this.loadMap(mid);
+        if (window.location.hash.replace(/\/$/, '') !== `#/map/${mid}/simple-update`) return;
+      }
+
+      const map = this.state.currentMap;
+
+      this.root.innerHTML = '';
+
+      const backBtn = document.createElement('button');
+      backBtn.textContent = 'Exit to Main';
+      backBtn.onclick = () => {
+        window.location.hash = `#/map/${map.id}`;
+      };
+      this.root.appendChild(backBtn);
+
+      const title = document.createElement('h2');
+      title.textContent = 'Simple Update';
+      title.style.marginTop = '20px';
+      this.root.appendChild(title);
+
+      const note = document.createElement('p');
+      note.textContent = 'For maps, describe what needs to be changed:';
+      this.root.appendChild(note);
+
+      const textarea = document.createElement('textarea');
+      textarea.style.width = '100%';
+      textarea.style.minHeight = '200px';
+      textarea.value = localStorage.getItem(`update_draft_map_${map.id}`) || '';
+      textarea.addEventListener('input', () => {
+        localStorage.setItem(`update_draft_map_${map.id}`, textarea.value);
+      });
+      this.root.appendChild(textarea);
+
+      const sendBtn = document.createElement('button');
+      sendBtn.className = 'primary';
+      sendBtn.textContent = 'Submit update request';
+      sendBtn.style.marginTop = '20px';
+      sendBtn.onclick = async () => {
+        const description = textarea.value.trim();
+        if (!description) {
+          alert('Please describe what needs to be changed.');
+          return;
+        }
+
+        try {
+          await this.createMapRequest(
+            map.id,
+            'update',
+            `Map ${map.name} update: ${description}`,
+            {description}
+          );
+          alert('Update request sent.');
+          localStorage.removeItem(`update_draft_map_${map.id}`);
+          textarea.value = '';
+        } catch (err) {
+          alert('Failed to send update request: ' + err.message);
+        }
+      };
+      this.root.appendChild(sendBtn);
+    }
+
+    // Unit meta sections
+    async renderUnitVersionsScreen(uid) {
+      this.root.innerHTML = '<div class="spinner"></div>';
+      let unit;
+      try {
+        unit = await this.api('GET', `/units/${uid}`);
+      } catch (err) {
+        this.root.innerHTML = `<p style="color: #f87171;">Error loading unit: ${err.message}</p>`;
+        return;
+      }
+      if (window.location.hash.replace(/\/$/, '') !== `#/unit/${uid}/versions`) return;
+
+      // Lazy migration: units without versions get version 1 created from current design
+      if (!unit.versions) {
+        unit.versions = [{n: 1, from: null, sections: [], created: unit.created, deleted: false}];
+        unit.current = 1;
+        unit.maxVersion = 1;
+        await this.api('POST', `/units/${uid}/patch`, {ops: [{op: 'set', path: 'versions', value: unit.versions}]});
+      }
+
+      this.root.innerHTML = '';
+
+      const backBtn = document.createElement('button');
+      backBtn.textContent = 'Back to Unit';
+      backBtn.onclick = () => {
+        window.location.hash = `#/unit/${uid}`;
+      };
+      this.root.appendChild(backBtn);
+
+      const title = document.createElement('h2');
+      title.textContent = 'Versions';
+      title.style.marginTop = '20px';
+      this.root.appendChild(title);
+
+      const note = document.createElement('p');
+      note.textContent = 'Unit version management is limited. Only current version is shown.';
+      this.root.appendChild(note);
+
+      const currentDiv = document.createElement('div');
+      currentDiv.textContent = `Current version: ${unit.current || 1}`;
+      this.root.appendChild(currentDiv);
+    }
+
+    async renderUnitBugReportScreen(uid) {
+      this.root.innerHTML = '<div class="spinner"></div>';
+      let unit;
+      try {
+        unit = await this.api('GET', `/units/${uid}`);
+      } catch (err) {
+        this.root.innerHTML = `<p style="color: #f87171;">Error loading unit: ${err.message}</p>`;
+        return;
+      }
+      if (window.location.hash.replace(/\/$/, '') !== `#/unit/${uid}/bug-report`) return;
+
+      this.root.innerHTML = '';
+
+      const backBtn = document.createElement('button');
+      backBtn.textContent = 'Back to Unit';
+      backBtn.onclick = () => {
+        window.location.hash = `#/unit/${uid}`;
+      };
+      this.root.appendChild(backBtn);
+
+      const title = document.createElement('h2');
+      title.textContent = 'Bug Report';
+      title.style.marginTop = '20px';
+      this.root.appendChild(title);
+
+      const label = document.createElement('label');
+      label.textContent = 'Describe the bug:';
+      label.style.marginTop = '20px';
+      this.root.appendChild(label);
+
+      const textarea = document.createElement('textarea');
+      textarea.style.width = '100%';
+      textarea.style.minHeight = '200px';
+      textarea.value = localStorage.getItem(`bug_draft_unit_${uid}`) || '';
+      textarea.addEventListener('input', () => {
+        localStorage.setItem(`bug_draft_unit_${uid}`, textarea.value);
+      });
+      this.root.appendChild(textarea);
+
+      const sendBtn = document.createElement('button');
+      sendBtn.className = 'primary';
+      sendBtn.textContent = 'Send bug report';
+      sendBtn.style.marginTop = '20px';
+      sendBtn.onclick = async () => {
+        const description = textarea.value.trim();
+        if (!description) {
+          alert('Please describe the bug.');
+          return;
+        }
+
+        try {
+          await this.createRequest(
+            uid,
+            'bug',
+            `Bug report for unit ${unit.design.units.rows[0].name}: ${description}`,
+            {description},
+            'unit'
+          );
+          alert('Bug report sent.');
+          localStorage.removeItem(`bug_draft_unit_${uid}`);
+          textarea.value = '';
+        } catch (err) {
+          alert('Failed to send bug report: ' + err.message);
+        }
+      };
+      this.root.appendChild(sendBtn);
+    }
+
+    async renderUnitSimpleUpdateScreen(uid) {
+      this.root.innerHTML = '<div class="spinner"></div>';
+      let unit;
+      try {
+        unit = await this.api('GET', `/units/${uid}`);
+      } catch (err) {
+        this.root.innerHTML = `<p style="color: #f87171;">Error loading unit: ${err.message}</p>`;
+        return;
+      }
+      if (window.location.hash.replace(/\/$/, '') !== `#/unit/${uid}/simple-update`) return;
+
+      this.root.innerHTML = '';
+
+      const backBtn = document.createElement('button');
+      backBtn.textContent = 'Back to Unit';
+      backBtn.onclick = () => {
+        window.location.hash = `#/unit/${uid}`;
+      };
+      this.root.appendChild(backBtn);
+
+      const title = document.createElement('h2');
+      title.textContent = 'Simple Update';
+      title.style.marginTop = '20px';
+      this.root.appendChild(title);
+
+      const note = document.createElement('p');
+      note.textContent = 'For units, describe what needs to be changed:';
+      this.root.appendChild(note);
+
+      const textarea = document.createElement('textarea');
+      textarea.style.width = '100%';
+      textarea.style.minHeight = '200px';
+      textarea.value = localStorage.getItem(`update_draft_unit_${uid}`) || '';
+      textarea.addEventListener('input', () => {
+        localStorage.setItem(`update_draft_unit_${uid}`, textarea.value);
+      });
+      this.root.appendChild(textarea);
+
+      const sendBtn = document.createElement('button');
+      sendBtn.className = 'primary';
+      sendBtn.textContent = 'Submit update request';
+      sendBtn.style.marginTop = '20px';
+      sendBtn.onclick = async () => {
+        const description = textarea.value.trim();
+        if (!description) {
+          alert('Please describe what needs to be changed.');
+          return;
+        }
+
+        try {
+          await this.createRequest(
+            uid,
+            'update',
+            `Unit ${unit.design.units.rows[0].name} update: ${description}`,
+            {description},
+            'unit'
+          );
+          alert('Update request sent.');
+          localStorage.removeItem(`update_draft_unit_${uid}`);
+          textarea.value = '';
+        } catch (err) {
+          alert('Failed to send update request: ' + err.message);
         }
       };
       this.root.appendChild(sendBtn);
