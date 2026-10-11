@@ -1156,7 +1156,7 @@
         }
 
         // Designs other users shared with this user (read only)
-        const shared = factions.filter(f => f.readOnly);
+        const shared = factions.filter(f => f.readOnly && !f.base);
         if (shared.length) {
           const h = document.createElement('h2');
           h.textContent = 'Shared with me (read only)';
@@ -1179,6 +1179,35 @@
             by.className = 'status';
             by.textContent = `Designed by ${faction.ownerName || faction.owner}`;
             card.appendChild(by);
+            grid.appendChild(card);
+          }
+          this.root.appendChild(grid);
+        }
+
+        // Base factions (always shown last, read only for everyone)
+        const baseFactions = factions.filter(f => f.base);
+        if (baseFactions.length) {
+          const h = document.createElement('h2');
+          h.textContent = 'Base factions (read only)';
+          h.style.marginTop = '30px';
+          this.root.appendChild(h);
+          const grid = document.createElement('div');
+          grid.className = 'faction-grid';
+          for (const faction of baseFactions) {
+            const card = document.createElement('div');
+            card.className = 'faction-card';
+            card.onclick = () => { window.location.hash = `#/faction/${faction.id}`; };
+            const name = document.createElement('h3');
+            name.textContent = faction.name;
+            card.appendChild(name);
+            const acronym = document.createElement('div');
+            acronym.className = 'acronym';
+            acronym.textContent = faction.acronym;
+            card.appendChild(acronym);
+            const label = document.createElement('div');
+            label.className = 'status';
+            label.textContent = 'Base faction';
+            card.appendChild(label);
             grid.appendChild(card);
           }
           this.root.appendChild(grid);

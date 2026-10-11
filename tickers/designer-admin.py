@@ -49,6 +49,11 @@ Reads the owner admin token from its file so it never has to appear in a prompt.
                                             circle/oval that fills the box (round emblems);
                                             prints the PNG path and a preview-on-pink path
   designer-admin.py upload <png>            upload a PNG to the designer; prints the image id
+  designer-admin.py import-base <design.json>
+                                            import a base faction from JSON file. Format:
+                                            {name, acronym, design, images:{imageId: base64data}}.
+                                            Base factions are visible to all users (read-only).
+                                            Re-importing same acronym replaces it (new version).
 
 Requests that the Sonnet fallback has already failed MAX_ATTEMPTS times are left out of
 list-extract (and the owner is alerted once) so a stuck request cannot loop forever.
@@ -287,6 +292,45 @@ def upload(path):
         sys.exit(f"ERROR: HTTP {e.code} on admin/images: {e.read().decode(errors='replace')[:300]}")
 
 
+def import_base(design_file):
+    """Import a base faction from JSON file. Format: {name, acronym, design, images:{imageId: base64data}}."""
+    try:
+        with open(design_file, 'r') as f:
+            data = json.load(f)
+    except (OSError, ValueError) as e:
+        sys.exit(f"ERROR: could not read design file: {e}")
+
+    if not isinstance(data, dict):
+        sys.exit("ERROR: design file must be a JSON object")
+
+    required = ['name', 'acronym', 'design']
+    missing = [k for k in required if k not in data]
+    if missing:
+        sys.exit(f"ERROR: missing required fields: {', '.join(missing)}")
+
+    # Upload images if provided
+    images = data.get('images', {})
+    if images and not isinstance(images, dict):
+        sys.exit("ERROR: images must be a dict of {imageId: base64data}")
+
+    # Call admin import-faction with base=true
+    body = {
+        'base': True,
+        'name': data['name'],
+        'acronym': data['acronym'],
+        'design': data['design'],
+        'built': data.get('built', True),  # Base factions are typically built
+        'images': images
+    }
+
+    try:
+        result = api('import-faction', body)
+        print(json.dumps(result, indent=2))
+        print(f"\nBase faction '{data['name']}' ({data['acronym']}) imported successfully.", file=sys.stderr)
+    except SystemExit as e:
+        sys.exit(f"ERROR importing base faction: {e}")
+
+
 def ints(vals):
     try:
         out = [int(v) for v in vals]
@@ -430,6 +474,8 @@ def main():
         crop(args[0], ints(args[1:5]), '--knockout' in args[5:], '--circle' in args[5:])
     elif cmd == 'upload' and len(args) == 1:
         upload(args[0])
+    elif cmd == 'import-base' and len(args) == 1:
+        import_base(args[0])
     else:
         sys.exit(__doc__)
 

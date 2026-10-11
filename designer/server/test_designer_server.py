@@ -1425,5 +1425,180 @@ class ClaudeQATest(DesignerServerTest):
         self.assertEqual(qa['claudeQA']['unit']['answers'], '')
 
 
+class BaseFactionTest(DesignerServerTest):
+    """Test base faction functionality."""
+
+    def test_cannot_register_base_username(self):
+        """Cannot register 'base' as username."""
+        resp = self.request('POST', '/register', {
+            'username': 'base',
+            'password': 'password'
+        }, expect_error=True)
+        self.assertIn('error', resp)
+        self.assertIn('reserved', resp['error'].lower())
+
+    def test_base_faction_visible_to_all_users(self):
+        """Base factions are visible to all logged-in users."""
+        # Import a base faction as admin
+        admin_url = f"{self.base_url}/admin/{self.admin_token}/import-faction"
+        design = {
+            "meta": {"color": "#ff0000"},
+            "card": {"image": None, "glyph": None},
+            "sbImages": {"mode": None, "all": None, "each": [None]*6},
+            "sbImagesB": {"mode": None, "all": None, "each": [None]*6},
+            "ae": {"enabled": False, "name": "", "acronym": "", "rows": []},
+            "ufa": {"name": "", "phase": None, "type": None, "hasCost": False, "cost": None,
+                    "hasEffect": False, "effect": None, "text": ""},
+            "setup": {"text": "", "location": None, "earthRegion": None, "libraryRegion": None,
+                     "constraints": {}, "gate": None, "units": [], "power": 8, "aeStart": 0},
+            "units": {"rows": []},
+            "sbr": {"multiText": "", "rows": []},
+            "sb": {"twoSided": False, "rows": []},
+            "region": {"rows": []},
+            "tokens": {"rows": []},
+            "custom": {"rows": []},
+            "menus": {"rows": []}
+        }
+
+        import_data = json.dumps({
+            'base': True,
+            'name': 'Great Cthulhu',
+            'acronym': 'GC',
+            'design': design,
+            'built': True
+        }).encode()
+
+        req = Request(admin_url, data=import_data, headers={'Content-Type': 'application/json'}, method='POST')
+        with urlopen(req) as resp:
+            base_faction = json.loads(resp.read().decode())
+
+        self.assertEqual(base_faction['name'], 'Great Cthulhu')
+        self.assertEqual(base_faction['acronym'], 'GC')
+        self.assertEqual(base_faction['owner'], 'base')
+        self.assertTrue(base_faction.get('base'))
+
+        # Register a new user
+        token = self.register_user(f'user{secrets.token_hex(4)}')
+
+        # User can see the base faction in their list
+        factions = self.request('GET', '/factions', token=token)
+        base_in_list = [f for f in factions['factions'] if f.get('base')]
+        # Find the GC faction we just created (there may be others from previous tests)
+        gc_base = [f for f in base_in_list if f['acronym'] == 'GC']
+        self.assertEqual(len(gc_base), 1)
+        self.assertTrue(gc_base[0]['readOnly'])
+
+        # User can GET the base faction (read-only)
+        base_get = self.request('GET', f"/factions/{base_faction['id']}", token=token)
+        self.assertEqual(base_get['name'], 'Great Cthulhu')
+
+    def test_base_faction_write_forbidden(self):
+        """Non-admin users cannot modify base factions."""
+        # Import a base faction as admin
+        admin_url = f"{self.base_url}/admin/{self.admin_token}/import-faction"
+        design = {k: {} if k != 'sbImages' and k != 'sbImagesB' else {"mode": None, "all": None, "each": [None]*6}
+                  for k in ['meta', 'card', 'sbImages', 'sbImagesB', 'ae', 'ufa', 'setup', 'units', 'sbr', 'sb', 'region', 'tokens', 'custom', 'menus']}
+
+        import_data = json.dumps({
+            'base': True,
+            'name': 'Crawling Chaos',
+            'acronym': 'CC',
+            'design': design,
+            'built': True
+        }).encode()
+
+        req = Request(admin_url, data=import_data, headers={'Content-Type': 'application/json'}, method='POST')
+        with urlopen(req) as resp:
+            base_faction = json.loads(resp.read().decode())
+
+        # Register a user
+        token = self.register_user(f'user{secrets.token_hex(4)}')
+
+        # Try to patch the base faction
+        resp = self.request('POST', f"/factions/{base_faction['id']}/patch", {
+            'ops': [{'op': 'set', 'path': 'ufa.name', 'value': 'Hacked'}]
+        }, token=token, expect_error=True)
+        self.assertIn('error', resp)
+        self.assertIn('read-only', resp['error'].lower())
+
+    def test_base_faction_reimport_replaces(self):
+        """Re-importing a base faction with same acronym replaces it (new version)."""
+        # Import a base faction
+        admin_url = f"{self.base_url}/admin/{self.admin_token}/import-faction"
+        design_v1 = {k: {} if k != 'sbImages' and k != 'sbImagesB' else {"mode": None, "all": None, "each": [None]*6}
+                     for k in ['meta', 'card', 'sbImages', 'sbImagesB', 'ae', 'ufa', 'setup', 'units', 'sbr', 'sb', 'region', 'tokens', 'custom', 'menus']}
+        design_v1['ufa'] = {"name": "Version 1", "phase": None, "type": None, "hasCost": False, "cost": None,
+                            "hasEffect": False, "effect": None, "text": ""}
+
+        import_data = json.dumps({
+            'base': True,
+            'name': 'Black Goat',
+            'acronym': 'BG',
+            'design': design_v1,
+            'built': True
+        }).encode()
+
+        req = Request(admin_url, data=import_data, headers={'Content-Type': 'application/json'}, method='POST')
+        with urlopen(req) as resp:
+            faction_v1 = json.loads(resp.read().decode())
+
+        fid = faction_v1['id']
+        self.assertEqual(faction_v1['current'], 1)
+
+        # Re-import with same acronym but different design
+        design_v2 = design_v1.copy()
+        design_v2['ufa'] = {"name": "Version 2", "phase": None, "type": None, "hasCost": False, "cost": None,
+                            "hasEffect": False, "effect": None, "text": ""}
+
+        import_data_v2 = json.dumps({
+            'base': True,
+            'name': 'Black Goat',
+            'acronym': 'BG',
+            'design': design_v2,
+            'built': True
+        }).encode()
+
+        req = Request(admin_url, data=import_data_v2, headers={'Content-Type': 'application/json'}, method='POST')
+        with urlopen(req) as resp:
+            faction_v2 = json.loads(resp.read().decode())
+
+        # Same ID, new version
+        self.assertEqual(faction_v2['id'], fid)
+        self.assertEqual(faction_v2['current'], 2)
+        self.assertEqual(faction_v2['design']['ufa']['name'], 'Version 2')
+
+    def test_base_faction_delete_protected(self):
+        """Admin cannot delete base factions."""
+        # Import a base faction
+        admin_url = f"{self.base_url}/admin/{self.admin_token}/import-faction"
+        design = {k: {} if k != 'sbImages' and k != 'sbImagesB' else {"mode": None, "all": None, "each": [None]*6}
+                  for k in ['meta', 'card', 'sbImages', 'sbImagesB', 'ae', 'ufa', 'setup', 'units', 'sbr', 'sb', 'region', 'tokens', 'custom', 'menus']}
+
+        import_data = json.dumps({
+            'base': True,
+            'name': 'Yellow Sign',
+            'acronym': 'YS',
+            'design': design,
+            'built': True
+        }).encode()
+
+        req = Request(admin_url, data=import_data, headers={'Content-Type': 'application/json'}, method='POST')
+        with urlopen(req) as resp:
+            base_faction = json.loads(resp.read().decode())
+
+        # Try to delete via admin delete endpoint
+        delete_url = f"{self.base_url}/admin/{self.admin_token}/delete"
+        delete_data = json.dumps({'factions': [base_faction['id']]}).encode()
+        req = Request(delete_url, data=delete_data, headers={'Content-Type': 'application/json'}, method='POST')
+        urlopen(req)  # Should succeed but not actually delete
+
+        # Verify base faction still exists
+        admin_get_url = f"{self.base_url}/admin/{self.admin_token}/factions/{base_faction['id']}"
+        req = Request(admin_get_url, method='GET')
+        with urlopen(req) as resp:
+            still_exists = json.loads(resp.read().decode())
+        self.assertEqual(still_exists['id'], base_faction['id'])
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -68,10 +68,22 @@ Factions (`faction.json`), maps (`map.json`), and units (`unit.json`) all share 
   "build": {"status":"none|requested|in_progress|built","liveVersion":null,"requestedAt":null,"builtAt":null,"history":[]},
   "liveGameVersions": [],    // version numbers admin marked as used by a live game (factions/maps only)
   "viewers": [],             // usernames with read-only access (factions/maps only; set by admin)
+  "base": true,              // (factions only) base faction: owned by "base" system owner, visible to all users read-only, cannot be deleted
   "claudeQA": {},            // Claude questions and answers per section (top-level, not in design)
   "design": { ... §5 ... }   // content of version `current`
 }
 ```
+
+### Base Factions (added 2026-10-11)
+Base factions are reference designs (Great Cthulhu, Crawling Chaos, Black Goat, Yellow Sign) visible to EVERY user as read-only. They:
+- Have `owner: "base"` (a reserved system owner name that cannot be registered as a username)
+- Carry `base: true` flag
+- Are listed for every logged-in user in GET /factions (returned with `readOnly: true` and `base: true`)
+- Return 403 on any write operation (patch, rollback, delete-version, create-request, close-session) by non-admin users
+- Are protected from deletion (admin delete skips them)
+- Keep their images (not garbage-collected)
+- Reserved acronyms (GC, CC, BG, YS, etc.) remain reserved for base factions only
+- Admin import with `base: true` creates or replaces a base faction (if same acronym exists, it creates a new version rather than a duplicate)
 
 Units had no versions before 2026-10-11; old units are migrated lazily on first GET (add current=1, maxVersion=1, versions=[{n:1,from:null,sections:[],created,deleted:false}], session={n:1,sections:[],last:updated}, and save the current design to v/1.json).
 

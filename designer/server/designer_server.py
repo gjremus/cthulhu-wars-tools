@@ -378,6 +378,11 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             self.send_error_json("Username must be 3-24 characters: letters, numbers, _, ., -")
             return
 
+        # Reserved system owner name for base factions
+        if username.lower() == 'base':
+            self.send_error_json("Username 'base' is reserved")
+            return
+
         # Validate password
         if len(password) < 4:
             self.send_error_json("Password must be at least 4 characters")
@@ -519,6 +524,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
 
         factions_dir = self.server.data_dir / "factions"
         factions = []
+        base_factions = []
 
         if factions_dir.exists():
             for fid_dir in factions_dir.iterdir():
@@ -528,7 +534,22 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 if not faction_file.exists():
                     continue
                 faction = load_json(faction_file)
-                if faction.get("owner") == username:
+
+                # Base factions: owned by "base" system user, visible to everyone read-only
+                if faction.get("base") or faction.get("owner") == "base":
+                    base_factions.append({
+                        "id": faction["id"],
+                        "name": faction["name"],
+                        "acronym": faction["acronym"],
+                        "current": faction["current"],
+                        "buildStatus": faction.get("build", {}).get("status", "none"),
+                        "updated": faction["updated"],
+                        "readOnly": True,
+                        "base": True,
+                        "owner": "base",
+                        "ownerName": "Base Faction"
+                    })
+                elif faction.get("owner") == username:
                     factions.append({
                         "id": faction["id"],
                         "name": faction["name"],
@@ -552,7 +573,13 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                     })
 
         factions.sort(key=lambda f: f["updated"], reverse=True)
-        self.send_json({"factions": factions})
+
+        # Sort base factions by acronym: GC, CC, BG, YS
+        base_order = {"GC": 0, "CC": 1, "BG": 2, "YS": 3}
+        base_factions.sort(key=lambda f: base_order.get(f["acronym"], 99))
+
+        # Combine: user's own factions, then shared, then base
+        self.send_json({"factions": factions + base_factions})
 
     def handle_create_faction(self):
         """POST /designer/api/factions"""
@@ -1880,6 +1907,10 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             return True
         return False
 
+    def is_base_faction(self, faction: Dict) -> bool:
+        """Check if a faction is a base faction (read-only for non-admin users)."""
+        return faction.get("base") or faction.get("owner") == "base"
+
     def handle_get_faction(self, fid: str):
         """GET /designer/api/factions/<fid>"""
         username = self.verify_session()
@@ -1892,8 +1923,10 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             self.send_error_json("Faction not found", 404)
             return
 
-        read_only = faction["owner"] != username
-        if read_only and username not in faction.get("viewers", []):
+        # Base factions are visible to everyone (read-only)
+        is_base = self.is_base_faction(faction)
+        read_only = is_base or faction["owner"] != username
+        if read_only and not is_base and username not in faction.get("viewers", []):
             self.send_error_json("Forbidden", 403)
             return
 
@@ -1963,6 +1996,11 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             faction = self.load_faction(fid)
             if not faction:
                 self.send_error_json("Faction not found", 404)
+                return
+
+            # Base factions are read-only for non-admin users
+            if self.is_base_faction(faction):
+                self.send_error_json("Base factions are read-only", 403)
                 return
 
             if faction["owner"] != username:
@@ -2278,6 +2316,11 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 self.send_error_json("Faction not found", 404)
                 return
 
+            # Base factions are read-only for non-admin users
+            if self.is_base_faction(faction):
+                self.send_error_json("Base factions are read-only", 403)
+                return
+
             if faction["owner"] != username:
                 self.send_error_json("Forbidden", 403)
                 return
@@ -2310,6 +2353,11 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             faction = self.load_faction(fid)
             if not faction:
                 self.send_error_json("Faction not found", 404)
+                return
+
+            # Base factions are read-only for non-admin users
+            if self.is_base_faction(faction):
+                self.send_error_json("Base factions are read-only", 403)
                 return
 
             if faction["owner"] != username:
@@ -2365,6 +2413,11 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             faction = self.load_faction(fid)
             if not faction:
                 self.send_error_json("Faction not found", 404)
+                return
+
+            # Base factions are read-only for non-admin users
+            if self.is_base_faction(faction):
+                self.send_error_json("Base factions are read-only", 403)
                 return
 
             if faction["owner"] != username:
@@ -2512,6 +2565,11 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         faction = self.load_faction(fid)
         if not faction:
             self.send_error_json("Faction not found", 404)
+            return
+
+        # Base factions are read-only for non-admin users
+        if self.is_base_faction(faction):
+            self.send_error_json("Base factions are read-only", 403)
             return
 
         if faction["owner"] != username:
@@ -3097,7 +3155,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         delete_maps = body.get('maps', [])
 
         with WRITE_LOCK:
-            # Delete factions
+            # Delete factions (except base factions)
             factions_dir = self.server.data_dir / "factions"
             deleted_fids = set()
 
@@ -3106,6 +3164,12 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                     continue
                 faction_dir = factions_dir / fid
                 if faction_dir.exists():
+                    faction_file = faction_dir / "faction.json"
+                    if faction_file.exists():
+                        faction = load_json(faction_file)
+                        # Never delete base factions
+                        if self.is_base_faction(faction):
+                            continue
                     import shutil
                     shutil.rmtree(faction_dir)
                     deleted_fids.add(fid)
@@ -3128,7 +3192,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             for username in delete_users:
                 username_lc = username.lower()
                 if username_lc in users:
-                    # Find and delete all user's factions
+                    # Find and delete all user's factions (except base factions)
                     if factions_dir.exists():
                         for fid_dir in list(factions_dir.iterdir()):
                             if not fid_dir.is_dir():
@@ -3136,6 +3200,9 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                             faction_file = fid_dir / "faction.json"
                             if faction_file.exists():
                                 faction = load_json(faction_file)
+                                # Never delete base factions
+                                if self.is_base_faction(faction):
+                                    continue
                                 if faction.get("owner") == username_lc:
                                     import shutil
                                     shutil.rmtree(fid_dir)
@@ -3861,60 +3928,151 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         self.send_json({"id": fid, "viewers": faction["viewers"]})
 
     def handle_admin_import_faction(self):
-        """POST admin/import-faction {owner, name, acronym, design, built:bool, viewers:[]}
+        """POST admin/import-faction {owner, name, acronym, design, built:bool, viewers:[], base:bool}
         Creates a design for a user from a faction that already exists in code (no reserved-acronym
-        check; still refuses an acronym another design uses). built=true marks version 1 as the live build."""
+        check; still refuses an acronym another design uses unless it's a base faction being replaced).
+        built=true marks version 1 as the live build. base=true creates a base faction (owner forced to "base",
+        viewers ignored); if a base faction with the same acronym exists, replaces it in place (new version)."""
         body = self.read_json_body()
         if body is None:
             return
-        owner = str(body.get('owner', '')).strip().lower()
+        is_base = bool(body.get('base'))
+        owner = "base" if is_base else str(body.get('owner', '')).strip().lower()
         name = str(body.get('name', '')).strip()
         acronym = str(body.get('acronym', '')).strip().upper()
         design = body.get('design')
+        images = body.get('images')  # Optional dict of imageId: imageData for admin uploads
+
         users = (load_json(self.server.data_dir / "users.json") or {}).get("users", {})
-        if owner not in users:
+        if not is_base and owner not in users:
             self.send_error_json("No such user")
             return
         if len(name) < 5 or not re.match(r'^[A-Z0-9]{2,3}$', acronym):
             self.send_error_json("Name must be 5+ characters and acronym 2-3 letters or digits")
             return
-        base = self.new_design()
-        if not isinstance(design, dict) or set(design) - set(base):
+
+        # Keep reserved acronyms reserved for base factions
+        if acronym in self.server.reserved_acronyms and not is_base:
+            self.send_error_json(f"Acronym {acronym} is reserved")
+            return
+
+        base_design = self.new_design()
+        if not isinstance(design, dict) or set(design) - set(base_design):
             self.send_error_json("design must be an object with only the known sections")
             return
-        for key, value in base.items():
+        for key, value in base_design.items():
             design.setdefault(key, value)
-        viewers = [str(v).strip().lower() for v in body.get('viewers', [])]
-        if any(v not in users for v in viewers):
+
+        # Base factions ignore viewers (always visible to everyone read-only)
+        viewers = [] if is_base else [str(v).strip().lower() for v in body.get('viewers', [])]
+        if viewers and any(v not in users for v in viewers):
             self.send_error_json("A viewer is not a user")
             return
+
         factions_dir = self.server.data_dir / "factions"
         factions_dir.mkdir(parents=True, exist_ok=True)
         now = int(time.time())
-        fid = secrets.token_urlsafe(9).replace('_', '').replace('-', '').lower()[:12]
         built = bool(body.get('built'))
-        faction = {
-            "id": fid, "owner": owner, "name": name, "acronym": acronym,
-            "created": now, "updated": now, "current": 1, "maxVersion": 1,
-            "versions": [{"n": 1, "from": None, "sections": [k for k in base if not self.is_section_empty(k, design.get(k))],
-                          "created": now, "deleted": False}],
-            "session": {"n": 1, "sections": [], "last": 0},
-            "build": {"status": "built" if built else "none", "liveVersion": 1 if built else None,
-                      "requestedAt": None, "builtAt": now if built else None,
-                      "history": [{"version": 1, "builtAt": now}] if built else []},
-            "liveGameVersions": [],
-            "viewers": [v for v in viewers if v != owner],
-            "imported": True,
-            "design": design
-        }
+
         with WRITE_LOCK:
+            # Check for existing base faction with same acronym (replace in place)
+            existing_fid = None
             for fd in factions_dir.iterdir():
-                if (fd / "faction.json").exists() and load_json(fd / "faction.json").get("acronym") == acronym:
-                    self.send_error_json(f"Acronym {acronym} is already used by another design")
-                    return
-            (factions_dir / fid / "v").mkdir(parents=True, exist_ok=True)
-            atomic_write(factions_dir / fid / "faction.json", faction)
-            atomic_write(factions_dir / fid / "v" / "1.json", design)
+                if (fd / "faction.json").exists():
+                    existing = load_json(fd / "faction.json")
+                    if existing.get("acronym") == acronym:
+                        if is_base and self.is_base_faction(existing):
+                            # Replace this base faction in place
+                            existing_fid = existing["id"]
+                            break
+                        elif not is_base or not self.is_base_faction(existing):
+                            # Non-base collision, or user faction collision
+                            self.send_error_json(f"Acronym {acronym} is already used by another design")
+                            return
+
+            # Upload images if provided (admin can inject images as part of import)
+            if images and isinstance(images, dict):
+                for image_id, image_data in images.items():
+                    if not isinstance(image_data, str):
+                        continue
+                    # image_data is base64-encoded
+                    import base64
+                    try:
+                        image_bytes = base64.b64decode(image_data)
+                        # Determine extension from image_id
+                        ext = image_id.split('.')[-1] if '.' in image_id else 'webp'
+                        # Write to images dir
+                        images_dir = self.server.data_dir / "images"
+                        images_dir.mkdir(exist_ok=True)
+                        image_file = images_dir / image_id
+                        if not image_file.exists():
+                            with open(image_file, 'wb') as f:
+                                f.write(image_bytes)
+                    except Exception as e:
+                        print(f"WARN: Failed to import image {image_id}: {e}", file=sys.stderr)
+
+            if existing_fid:
+                # Replace existing base faction: new version
+                fid = existing_fid
+                existing = load_json(factions_dir / fid / "faction.json")
+                current = existing["current"]
+                max_version = existing["maxVersion"]
+
+                # Freeze current version
+                v_file = factions_dir / fid / "v" / f"{current}.json"
+                if not v_file.exists():
+                    atomic_write(v_file, existing["design"])
+
+                # Create new version
+                new_n = max_version + 1
+                existing["versions"].append({
+                    "n": new_n,
+                    "from": current,
+                    "sections": [k for k in base_design if not self.is_section_empty(k, design.get(k))],
+                    "created": now,
+                    "deleted": False
+                })
+                existing["current"] = new_n
+                existing["maxVersion"] = new_n
+                existing["design"] = design
+                existing["updated"] = now
+                existing["name"] = name  # Update name too
+                # Keep build status if it was built
+                if built or existing.get("build", {}).get("status") == "built":
+                    existing["build"]["liveVersion"] = new_n
+                    existing["build"]["status"] = "built"
+                    existing["build"]["builtAt"] = now
+                    if not any(h.get("version") == new_n for h in existing["build"].get("history", [])):
+                        existing.setdefault("build", {}).setdefault("history", []).append({
+                            "version": new_n,
+                            "builtAt": now
+                        })
+                faction = existing
+                atomic_write(factions_dir / fid / "faction.json", faction)
+                atomic_write(factions_dir / fid / "v" / f"{new_n}.json", design)
+            else:
+                # Create new faction
+                fid = secrets.token_urlsafe(9).replace('_', '').replace('-', '').lower()[:12]
+                faction = {
+                    "id": fid, "owner": owner, "name": name, "acronym": acronym,
+                    "created": now, "updated": now, "current": 1, "maxVersion": 1,
+                    "versions": [{"n": 1, "from": None, "sections": [k for k in base_design if not self.is_section_empty(k, design.get(k))],
+                                  "created": now, "deleted": False}],
+                    "session": {"n": 1, "sections": [], "last": 0},
+                    "build": {"status": "built" if built else "none", "liveVersion": 1 if built else None,
+                              "requestedAt": None, "builtAt": now if built else None,
+                              "history": [{"version": 1, "builtAt": now}] if built else []},
+                    "liveGameVersions": [],
+                    "viewers": [v for v in viewers if v != owner],
+                    "imported": True,
+                    "design": design
+                }
+                if is_base:
+                    faction["base"] = True
+                (factions_dir / fid / "v").mkdir(parents=True, exist_ok=True)
+                atomic_write(factions_dir / fid / "faction.json", faction)
+                atomic_write(factions_dir / fid / "v" / "1.json", design)
+
         self.send_json(faction)
 
     @staticmethod
