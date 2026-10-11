@@ -3586,13 +3586,94 @@
       title.style.marginTop = '20px';
       this.root.appendChild(title);
 
-      const note = document.createElement('p');
-      note.textContent = 'Unit version management is limited. Only current version is shown.';
-      this.root.appendChild(note);
+      const table = document.createElement('table');
+      const thead = document.createElement('thead');
+      const headerRow = document.createElement('tr');
+      ['Version', 'Sections Changed', 'Changed from Version', 'Used in Live Game', 'Actions'].forEach(h => {
+        const th = document.createElement('th');
+        th.textContent = h;
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
 
-      const currentDiv = document.createElement('div');
-      currentDiv.textContent = `Current version: ${unit.current || 1}`;
-      this.root.appendChild(currentDiv);
+      const tbody = document.createElement('tbody');
+      const liveVersions = [unit.build && unit.build.liveVersion, ...(unit.liveGameVersions || [])].filter(v => v !== null);
+
+      for (const ver of unit.versions) {
+        const row = document.createElement('tr');
+        if (ver.n === unit.current) {
+          row.style.background = '#3a3a3a';
+        }
+
+        const versionCell = document.createElement('td');
+        versionCell.textContent = ver.n + (ver.n === unit.current ? ' (current)' : '');
+        row.appendChild(versionCell);
+
+        const sectionsCell = document.createElement('td');
+        sectionsCell.textContent = ver.deleted ? 'DELETED' : ver.sections.join(', ') || 'Initial';
+        row.appendChild(sectionsCell);
+
+        const fromCell = document.createElement('td');
+        fromCell.textContent = ver.from !== null ? ver.from : '-';
+        row.appendChild(fromCell);
+
+        const liveCell = document.createElement('td');
+        liveCell.textContent = liveVersions.includes(ver.n) ? 'Y' : 'N';
+        row.appendChild(liveCell);
+
+        const actionsCell = document.createElement('td');
+        if (!ver.deleted) {
+          const rollbackBtn = document.createElement('button');
+          rollbackBtn.className = 'small';
+          rollbackBtn.textContent = 'Roll back';
+          rollbackBtn.disabled = ver.n === unit.current;
+          rollbackBtn.onclick = async () => {
+            const confirmed = await this.confirm(
+              `Roll back to version ${ver.n}? This will load that version's design.`,
+              'Roll back',
+              'Cancel'
+            );
+            if (confirmed) {
+              try {
+                unit = await this.api('POST', `/units/${uid}/rollback`, {version: ver.n});
+                this.renderUnitVersionsScreen(uid);
+              } catch (err) {
+                alert('Rollback failed: ' + err.message);
+              }
+            }
+          };
+          actionsCell.appendChild(rollbackBtn);
+
+          const deleteBtn = document.createElement('button');
+          deleteBtn.className = 'small danger';
+          deleteBtn.textContent = 'Delete';
+          deleteBtn.style.marginLeft = '5px';
+          deleteBtn.disabled = liveVersions.includes(ver.n) || ver.n === unit.current || unit.versions.filter(v => !v.deleted).length === 1;
+          deleteBtn.onclick = async () => {
+            const confirmed = await this.confirm(
+              `Delete version ${ver.n}? This cannot be undone.`,
+              'Delete',
+              'Cancel'
+            );
+            if (confirmed) {
+              try {
+                unit = await this.api('POST', `/units/${uid}/delete-version`, {version: ver.n});
+                this.renderUnitVersionsScreen(uid);
+              } catch (err) {
+                alert('Delete failed: ' + err.message);
+              }
+            }
+          };
+          actionsCell.appendChild(deleteBtn);
+        }
+        row.appendChild(actionsCell);
+
+        tbody.appendChild(row);
+      }
+
+      table.appendChild(tbody);
+      this.root.appendChild(table);
     }
 
     async renderUnitBugReportScreen(uid) {
