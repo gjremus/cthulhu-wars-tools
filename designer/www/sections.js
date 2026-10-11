@@ -2120,48 +2120,169 @@
       const confirmed = await ctx.confirm('This will overwrite the current adjacency grid. Continue?', 'Yes', 'Cancel');
       if (!confirmed) return;
 
-      alert('Auto-generate from bitmaps: basic implementation loads first bitmap and samples colors per cell. Full layout joining would require more complex image processing.');
+      // Load all bitmap images
+      const loadedBitmaps = [];
+      for (const bitmap of bitmaps.items) {
+        if (!bitmap.imageId) {
+          alert('One or more bitmaps have no image');
+          return;
+        }
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = ctx.imgUrl(bitmap.imageId);
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+        });
+        loadedBitmaps.push({img, colors: bitmap.colors || {}});
+      }
 
-      // Use the first bitmap for now (full implementation would join all according to layout)
-      const firstBitmap = bitmaps.items[0];
-      if (!firstBitmap || !firstBitmap.imageId) {
-        alert('First bitmap has no image');
+      // Join bitmaps according to layout
+      const layout = images.layout || 'single';
+      const gridCols = images.gridColumns || 2;
+      const order = images.order && images.order.length ? images.order : images.images.map(im => im.id);
+
+      // Reorder loaded bitmaps according to order
+      const orderedBitmaps = order.map(imgId => {
+        const idx = images.images.findIndex(im => im.id === imgId);
+        return idx >= 0 && idx < loadedBitmaps.length ? loadedBitmaps[idx] : null;
+      }).filter(b => b);
+
+      if (orderedBitmaps.length === 0) {
+        alert('No valid bitmaps to process');
         return;
       }
 
-      // Create a canvas to load and sample the bitmap
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.src = ctx.imgUrl(firstBitmap.imageId);
+      // Calculate joined canvas dimensions
+      let joinedWidth = 0, joinedHeight = 0;
+      const positions = [];
 
-      await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = reject;
+      if (layout === 'single' || orderedBitmaps.length === 1) {
+        joinedWidth = orderedBitmaps[0].img.width;
+        joinedHeight = orderedBitmaps[0].img.height;
+        positions.push({x: 0, y: 0, bitmap: orderedBitmaps[0]});
+      } else if (layout === 'sideBySide') {
+        joinedHeight = Math.max(...orderedBitmaps.map(b => b.img.height));
+        let x = 0;
+        orderedBitmaps.forEach(bitmap => {
+          positions.push({x, y: 0, bitmap});
+          x += bitmap.img.width;
+        });
+        joinedWidth = x;
+      } else if (layout === 'stacked') {
+        joinedWidth = Math.max(...orderedBitmaps.map(b => b.img.width));
+        let y = 0;
+        orderedBitmaps.forEach(bitmap => {
+          positions.push({x: 0, y, bitmap});
+          y += bitmap.img.height;
+        });
+        joinedHeight = y;
+      } else if (layout === 'grid') {
+        const rows = Math.ceil(orderedBitmaps.length / gridCols);
+        const colWidths = [];
+        const rowHeights = [];
+        for (let i = 0; i < gridCols; i++) colWidths[i] = 0;
+        for (let i = 0; i < rows; i++) rowHeights[i] = 0;
+
+        orderedBitmaps.forEach((bitmap, idx) => {
+          const r = Math.floor(idx / gridCols);
+          const c = idx % gridCols;
+          colWidths[c] = Math.max(colWidths[c], bitmap.img.width);
+          rowHeights[r] = Math.max(rowHeights[r], bitmap.img.height);
+        });
+
+        orderedBitmaps.forEach((bitmap, idx) => {
+          const r = Math.floor(idx / gridCols);
+          const c = idx % gridCols;
+          const x = colWidths.slice(0, c).reduce((sum, w) => sum + w, 0);
+          const y = rowHeights.slice(0, r).reduce((sum, h) => sum + h, 0);
+          positions.push({x, y, bitmap});
+        });
+
+        joinedWidth = colWidths.reduce((sum, w) => sum + w, 0);
+        joinedHeight = rowHeights.reduce((sum, h) => sum + h, 0);
+      }
+
+      // Create joined canvas
+      const canvas = document.createElement('canvas');
+      canvas.width = joinedWidth;
+      canvas.height = joinedHeight;
+      const canvasCtx = canvas.getContext('2d');
+
+      // Draw all bitmaps onto canvas
+      positions.forEach(pos => {
+        canvasCtx.drawImage(pos.bitmap.img, pos.x, pos.y);
       });
 
-      const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const canvasCtx = canvas.getContext('2d');
-      canvasCtx.drawImage(img, 0, 0);
-
-      // Sample each cell
+      // Sample each cell with majority color
       const newCells = [];
-      const cellWidth = img.width / cols;
-      const cellHeight = img.height / rows;
+      const cellWidth = joinedWidth / cols;
+      const cellHeight = joinedHeight / rows;
+
+      function isIgnoredPixel(r, g, b, a) {
+        if (a < 128) return true; // transparent
+        const brightness = (r + g + b) / 3;
+        if (brightness > 250) return true; // near-white
+        if (brightness < 5) return true; // near-black
+        return false;
+      }
 
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
-          // Sample center of cell
-          const x = Math.floor(c * cellWidth + cellWidth / 2);
-          const y = Math.floor(r * cellHeight + cellHeight / 2);
-          const pixel = canvasCtx.getImageData(x, y, 1, 1).data;
-          const color = `#${[pixel[0], pixel[1], pixel[2]].map(v => v.toString(16).padStart(2, '0')).join('')}`;
+          // Sample all pixels in cell
+          const x1 = Math.floor(c * cellWidth);
+          const y1 = Math.floor(r * cellHeight);
+          const x2 = Math.floor((c + 1) * cellWidth);
+          const y2 = Math.floor((r + 1) * cellHeight);
+          const w = x2 - x1;
+          const h = y2 - y1;
 
-          // Find matching region from bitmap colors
+          if (w <= 0 || h <= 0) {
+            newCells.push(null);
+            continue;
+          }
+
+          const imageData = canvasCtx.getImageData(x1, y1, w, h);
+          const pixels = imageData.data;
+          const colorCounts = {};
+
+          for (let i = 0; i < pixels.length; i += 4) {
+            const pr = pixels[i];
+            const pg = pixels[i + 1];
+            const pb = pixels[i + 2];
+            const pa = pixels[i + 3];
+
+            if (isIgnoredPixel(pr, pg, pb, pa)) continue;
+
+            const color = `#${[pr, pg, pb].map(v => v.toString(16).padStart(2, '0')).join('')}`;
+            colorCounts[color] = (colorCounts[color] || 0) + 1;
+          }
+
+          // Find majority color
+          let majorityColor = null;
+          let maxCount = 0;
+          for (const color in colorCounts) {
+            if (colorCounts[color] > maxCount) {
+              maxCount = colorCounts[color];
+              majorityColor = color;
+            }
+          }
+
+          // Map color to region through bitmap colors
           let regionId = null;
-          if (firstBitmap.colors && firstBitmap.colors[color]) {
-            regionId = firstBitmap.colors[color];
+          if (majorityColor) {
+            // Check which bitmap this cell overlaps with
+            const cellCenterX = x1 + w / 2;
+            const cellCenterY = y1 + h / 2;
+            for (const pos of positions) {
+              if (cellCenterX >= pos.x && cellCenterX < pos.x + pos.bitmap.img.width &&
+                  cellCenterY >= pos.y && cellCenterY < pos.y + pos.bitmap.img.height) {
+                if (pos.bitmap.colors[majorityColor]) {
+                  regionId = pos.bitmap.colors[majorityColor];
+                }
+                break;
+              }
+            }
           }
 
           newCells.push(regionId);
