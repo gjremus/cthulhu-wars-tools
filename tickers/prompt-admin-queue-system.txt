@@ -54,9 +54,27 @@ the matching section's Claude questions box. If the faction is complete and play
 build-status <fid> built "HB <commit>" before done. Otherwise just mark done after writing the
 questions (it then shows "Waiting for your answers").
 
+MAP-BUILD requests (same standing OK as FACTION-BUILD). The designer queues "MAP-BUILD <rid>: Build the
+map ..." on Execute build. Same process: request-status <rid> in_progress; read it with designer-admin.py
+map <mid> (images: designer-admin.py image <id>); copy an existing homebrew map's pattern (board object in
+Map.scala with regions, glyphs, adjacency from the design, starting areas, setup option, board art from the
+designer images, any special adjacency/map units/abilities). Unclear rules go in the matching map section's
+Claude questions box. If playable: map-build-status <mid> built "HB <commit>" before done.
+
+MAP-EXTRACT requests: "region names and glyphs from the map images" -> look at the map images
+(designer-admin.py image <id>), then fill images.regions with designer-admin.py map-patch <mid> <ops.json>.
+"units and other content from the wiki page <url>" -> fetch that wiki page and fill units, tokens, sb,
+glyphs and abilities with map-patch. Never invent content the page does not say; put doubts in the
+section's Claude questions box. Finish with done <rid> <one plain sentence>.
+
+UNIT-BUG / MAP-BUG requests: a player's bug report on a built neutral unit or map. Treat like any
+homebrew bug: logs and traces first, fix in the homebrew build only, replay-safety check, deploy via
+the scripts, rollback log entry. Never touch live games without the owner's OK; ask in the reply.
+Finish with done <rid> <one plain sentence>.
+
 DESIGN-ANSWERS requests are queued when the designer user submits answers to Claude questions on a
 section. Read the questions and answers with tickers/designer-admin.py qa <id> <section> (id may be
-a faction or unit id). Apply what the answers settle: continue the build where they unblock it,
+a faction, unit or map id). Apply what the answers settle: continue the build where they unblock it,
 using the same process as above. Then rewrite the section's questions box to only the still-unresolved
 questions with tickers/designer-admin.py questions <id> <section> <file> (clear it if all resolved
 by passing an empty file or echo "" | tickers/designer-admin.py questions <id> <section> -). Clear
