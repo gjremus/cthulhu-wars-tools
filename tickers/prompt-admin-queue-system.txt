@@ -12,6 +12,16 @@ agent a second try with what went wrong; only after two Sonnet failures do it yo
 own (Opus) work to hard design/rules questions, reviewing, and the final testing. Each task's
 estimated cost is shown to the owner in the Claude Terminal Log.
 
+PUSHING A BUILD (owner, 2026-10-11) - always this order, all by scripts:
+ a. A Sonnet agent commits the source with a change summary:
+    scripts/git-push-summary.sh <repo> "<title>" "<what changed and why>" <its files>
+    (only its own files; -u for all tracked changes). It pushes and hides the remote address.
+ b. The same Sonnet agent deploys with server-deploy/deploy-hb-to-vm.sh (main build:
+    deploy-mnu-to-vm.sh), adding --assets for new images. Every deploy bumps the version and
+    lists the changes it ships; it refuses uncommitted code, and --no-bump is refused when code
+    changed. Never deploy by hand, never use --no-bump for a new build. Report the new version.
+ c. A Haiku agent writes the documentation (rollback log, surgical hb-doc-edit only).
+
 The user message is a request the owner typed (or a button queued) in the Claude Terminal of the
 admin console (https://cwo.freeddns.org admin page). Your final reply is posted back into that
 console's terminal log, so:
@@ -42,8 +52,8 @@ the same process as every other homebrew feature:
     clear parts, ask about the rest in your reply.
  4. Replay-safety check before deploying: replay at least 3 real homebrew games on the old and new
     code and diff the logs (local replay rig in memory). They must match.
- 5. A Sonnet agent commits only its files, pushes, and deploys with
-    server-deploy/deploy-homebrew-to-vm.sh --build (add --assets when there are new images).
+ 5. A Sonnet agent commits only its files with scripts/git-push-summary.sh, then deploys with
+    server-deploy/deploy-hb-to-vm.sh (add --assets when there are new images). See PUSHING A BUILD.
  6. Verify live in headless Chrome: page loads, no console errors, the unit shows in setup.
  7. A Haiku agent adds the entry to the HomeBrews guide master rollback log (surgical hb-doc-edit only).
  8. tickers/designer-admin.py unit-build-status <uid> built "HB <commit>", then

@@ -11,9 +11,12 @@
 #   SERVER_URL   public URL, e.g. https://cwo.freeddns.org/HB/
 #
 # Behaviour (same for every build):
+#   0. Refuse to run if solo/ has uncommitted code. Commit it first with
+#      scripts/git-push-summary.sh so git says what changed.
 #   1. Bump the numeric suffix of `version :=` in solo/common.sbt (so EVERY
-#      deploy ships a new, visible version number).
-#   2. Commit the version bump and git push.
+#      deploy ships a new, visible version number). --no-bump is refused when
+#      any code changed since the last version bump.
+#   2. Commit the version bump (message lists the changes it ships) and git push.
 #   3. ALWAYS rebuild main.js (sbt fullLinkJS) so the new version is compiled in.
 #   4. scp main.js (both paths) + index.html; every scp failure is fatal.
 #   5. Hash-verify: served main.js must byte-match the local build, else abort.
@@ -64,6 +67,21 @@ source "$SCRIPT_DIR/../scripts/deploy-lock.sh"
 deploy_lock_acquire "$BUILD_KEY" "deploy-$BUILD_KEY" || exit 1
 trap deploy_lock_release EXIT
 
+# ── 0. Source must be committed first ────────────────────────────────────────
+DIRTY=$(cd "$SOURCE" && { git diff --name-only HEAD -- . ; git ls-files --others --exclude-standard -- '*.scala' '*.sbt' 'index.html'; } | sort -u)
+if [ -n "$DIRTY" ]; then
+    echo "ERROR: uncommitted changes in $SOURCE:"
+    echo "$DIRTY" | sed 's/^/  /'
+    echo "Commit them first with scripts/git-push-summary.sh (title + change summary), then deploy."
+    exit 1
+fi
+LAST_BUMP=$(cd "$SOURCE" && git log -1 --format=%H --grep='bump version to' -- common.sbt || true)
+if [ -n "$LAST_BUMP" ]; then
+    SHIPS=$(cd "$SOURCE" && git log --format='  %h %s' "$LAST_BUMP"..HEAD -- . ':!common.sbt' | head -40)
+else
+    SHIPS=""
+fi
+
 # ── 1. Version bump ──────────────────────────────────────────────────────────
 # Bump the LAST numeric group of the version string in common.sbt. Works for
 # every build's format: "Homebrew v 2.31" -> 2.32, "bubastis-v2.4.41" -> 2.4.42,
@@ -83,11 +101,21 @@ if $DO_BUMP; then
     fi
     echo "==> [version] $OLD_VER -> $NEW_VER"
     sed -i '' -E "s|^version := \".*\"|version := \"$NEW_VER\"|" "$COMMON_SBT"
-    (cd "$SOURCE" && git add common.sbt && git commit -q -m "$BUILD_KEY: bump version to $NEW_VER (deploy)" || true)
+    (cd "$SOURCE" && git add common.sbt && git commit -q \
+        -m "$BUILD_KEY: bump version to $NEW_VER (deploy)" \
+        -m "Ships:
+${SHIPS:-  (no code changes since the last version)}" || true)
+else
+    if [ -n "$SHIPS" ]; then
+        echo "ERROR: --no-bump refused - code changed since the last version bump:"
+        echo "$SHIPS"
+        echo "A new build always needs a new version. Run without --no-bump."
+        exit 1
+    fi
 fi
 
 echo "==> [git push] pushing source to remote..."
-(cd "$SOURCE" && git push 2>&1 | tail -3)
+(cd "$SOURCE" && git push 2>&1 | sed -E -e '/^To /d' -e 's#(https?://|git@|ssh://)[^ ]+#<remote>#g' | tail -3)
 
 # ── 2. Always rebuild so the new version is compiled into main.js ────────────
 MAIN_JS="$SOURCE/target/scala-2.13/cthulhu-wars-solo-hrf-opt/main.js"
@@ -158,5 +186,9 @@ if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 400 ]; then
 fi
 
 echo
+DEPLOYED_VER=$(grep -E '^version :=' "$COMMON_SBT" | head -1 | sed -E 's/^version := "(.*)".*/\1/')
+echo "Version: $DEPLOYED_VER   commit: $(cd "$SOURCE" && git rev-parse --short HEAD)"
+echo "Changes in this deploy:"
+echo "${SHIPS:-  (no code changes since the last version)}"
 echo "Done.  Live: $VERIFY_URL   (cache tag $CACHE_TAG)"
 echo "Allow ~1 min for browsers with warm caches to refetch main.js."
