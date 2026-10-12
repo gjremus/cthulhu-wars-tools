@@ -2635,6 +2635,52 @@
       statusDiv.innerHTML = `<strong>Status:</strong> ${this.getBuildStatusLabel(faction)}`;
       this.root.appendChild(statusDiv);
 
+      // Stability field
+      const stabilityDiv = document.createElement('div');
+      stabilityDiv.style.marginBottom = '20px';
+      stabilityDiv.innerHTML = '<strong>Stability:</strong> ';
+
+      const stability = faction.stability || 'alpha';
+      const stabilityLabels = {alpha: 'Untested / Alpha', beta: 'Tested / Beta', stable: 'Stable'};
+
+      const isBase = faction.base || false;
+      const isBuilt = faction.build && faction.build.status === 'built';
+      const canEdit = !isBase && isBuilt;
+
+      if (canEdit) {
+        const stabilitySelect = document.createElement('select');
+        stabilitySelect.style.padding = '4px';
+        ['alpha', 'beta', 'stable'].forEach(val => {
+          const option = document.createElement('option');
+          option.value = val;
+          option.textContent = stabilityLabels[val];
+          if (val === stability) option.selected = true;
+          stabilitySelect.appendChild(option);
+        });
+        stabilitySelect.onchange = async (e) => {
+          try {
+            await this.api('POST', `/factions/${faction.id}/stability`, {stability: e.target.value});
+            faction.stability = e.target.value;
+            alert(`Stability updated to ${stabilityLabels[e.target.value]}`);
+          } catch (err) {
+            alert('Failed to update stability: ' + err.message);
+            stabilitySelect.value = stability; // Revert
+          }
+        };
+        stabilityDiv.appendChild(stabilitySelect);
+      } else {
+        const stabilityText = document.createElement('span');
+        stabilityText.textContent = stabilityLabels[stability];
+        if (isBase) {
+          stabilityText.textContent += ' (read-only)';
+        } else if (!isBuilt) {
+          stabilityText.textContent = '(set when built)';
+          stabilityText.style.color = '#aaa';
+        }
+        stabilityDiv.appendChild(stabilityText);
+      }
+      this.root.appendChild(stabilityDiv);
+
       const table = document.createElement('table');
       const thead = document.createElement('thead');
       const headerRow = document.createElement('tr');

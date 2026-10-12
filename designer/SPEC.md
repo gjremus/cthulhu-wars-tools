@@ -69,6 +69,7 @@ Factions (`faction.json`), maps (`map.json`), and units (`unit.json`) all share 
   "liveGameVersions": [],    // version numbers admin marked as used by a live game (factions/maps only)
   "viewers": [],             // usernames with read-only access (factions/maps only; set by admin)
   "base": true,              // (factions only) base faction: owned by "base" system owner, visible to all users read-only, cannot be deleted
+  "stability": "alpha",      // (factions only) "alpha" | "beta" | "stable"; set automatically to alpha when built; owner/admin can change via UI or POST /factions/<fid>/stability
   "claudeQA": {},            // Claude questions and answers per section: {<section_key>: {questions: "", answers: "", updated: 0}}
   "design": { ... §5 ... }   // content of version `current`
 }
@@ -84,12 +85,23 @@ Factions (`faction.json`), maps (`map.json`), and units (`unit.json`) all share 
 Base factions are reference designs (Great Cthulhu, Crawling Chaos, Black Goat, Yellow Sign) visible to EVERY user as read-only. They:
 - Have `owner: "base"` (a reserved system owner name that cannot be registered as a username)
 - Carry `base: true` flag
+- Have `stability: "stable"` (read-only in the UI)
 - Are listed for every logged-in user in GET /factions (returned with `readOnly: true` and `base: true`)
 - Return 403 on any write operation (patch, rollback, delete-version, create-request, close-session) by non-admin users
 - Are protected from deletion (admin delete skips them)
 - Keep their images (not garbage-collected)
 - Reserved acronyms (GC, CC, BG, YS, etc.) remain reserved for base factions only
 - Admin import with `base: true` creates or replaces a base faction (if same acronym exists, it creates a new version rather than a duplicate)
+
+### Stability Field (added 2026-10-12)
+Every designer faction (once built) has a `stability` field stored at the faction level (not per-version):
+- Three values: `"alpha"` (Untested / Alpha), `"beta"` (Tested / Beta), `"stable"` (Stable).
+- Automatically set to `"alpha"` when a faction is first marked as `built` (via `build.status = "built"`).
+- Shown in the Build section: base factions display "Stable (read-only)", unbuilt factions show "(set when built)", built factions show a dropdown (owner/admin can change).
+- Public read-only endpoint: `GET /designer/api/public/stability` returns JSON `{"<ACRONYM>": "alpha"|"beta"|"stable", ...}` for all designer factions with a stability field set. No login required, fetches within 3 seconds.
+- User endpoint: `POST /factions/<fid>/stability {stability: "alpha"|"beta"|"stable"}` (owner or admin only).
+- Admin endpoint: `POST /admin/factions/<fid>/stability {stability: "alpha"|"beta"|"stable"}` (admin only, no owner check).
+- CLI: `designer-admin.py stability <fid> <alpha|beta|stable>` (server-side script for bulk updates).
 
 Units had no versions before 2026-10-11; old units are migrated lazily on first GET (add current=1, maxVersion=1, versions=[{n:1,from:null,sections:[],created,deleted:false}], session={n:1,sections:[],last:updated}, and save the current design to v/1.json).
 

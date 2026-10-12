@@ -174,6 +174,11 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             self.send_json({"ok": True})
             return
 
+        # Public endpoint for stability
+        if path == '/designer/api/public/stability':
+            self.handle_public_stability()
+            return
+
         # User endpoints
         if path == '/designer/api/factions':
             self.handle_list_factions()
@@ -330,6 +335,9 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 fid = parts[4]
                 if len(parts) == 6:
                     action = parts[5]
+                    if action == 'stability':
+                        self.handle_set_stability(fid)
+                        return
                     if action == 'patch':
                         self.handle_patch_faction(fid)
                         return
@@ -1976,6 +1984,76 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             return
         self.send_json({"status": self.extract_queue_position(fid)})
 
+    def handle_public_stability(self):
+        """GET /designer/api/public/stability - Public endpoint, no auth required"""
+        result = {}
+        factions_dir = self.server.data_dir / "factions"
+        if not factions_dir.exists():
+            self.send_json(result)
+            return
+
+        # Scan all factions and collect stability for designer factions with a stability set
+        for faction_dir in factions_dir.iterdir():
+            if not faction_dir.is_dir():
+                continue
+            faction_file = faction_dir / "faction.json"
+            if not faction_file.exists():
+                continue
+            faction = load_json(faction_file)
+            if not faction:
+                continue
+
+            # Only include factions with a stability field set
+            stability = faction.get("stability")
+            acronym = faction.get("acronym")
+            if stability and acronym:
+                result[acronym] = stability
+
+        self.send_json(result)
+
+    def handle_set_stability(self, fid: str):
+        """POST /designer/api/factions/<fid>/stability"""
+        username = self.verify_session()
+        if not username:
+            self.send_error_json("Unauthorized", 401)
+            return
+
+        body = self.read_json_body()
+        if not body:
+            return
+
+        stability = body.get('stability')
+        valid_values = ['alpha', 'beta', 'stable']
+        if stability not in valid_values:
+            self.send_error_json(f"Invalid stability. Must be one of: {', '.join(valid_values)}")
+            return
+
+        with WRITE_LOCK:
+            faction = self.load_faction(fid)
+            if not faction:
+                self.send_error_json("Faction not found", 404)
+                return
+
+            # Check if owner or if base faction (only admin can modify those via admin endpoint)
+            is_owner = faction["owner"] == username
+            base_faction = faction.get("base", False)
+
+            if base_faction:
+                self.send_error_json("Only admin can modify base factions", 403)
+                return
+
+            if not is_owner:
+                self.send_error_json("Forbidden", 403)
+                return
+
+            faction["stability"] = stability
+            faction["updated"] = int(time.time())
+
+            faction_file = self.server.data_dir / "factions" / fid / "faction.json"
+            atomic_write(faction_file, faction)
+
+        self.send_json({"ok": True, "stability": stability})
+
     def handle_patch_faction(self, fid: str):
         """POST /designer/api/factions/<fid>/patch"""
         username = self.verify_session()
@@ -3033,6 +3111,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                     self.handle_admin_patch_faction(fid)
                 elif action == 'build-status':
                     self.handle_admin_build_status(fid)
+                elif action == 'stability':
+                    self.handle_admin_stability(fid)
                 elif action == 'live-game-versions':
                     self.handle_admin_live_game_versions(fid)
                 elif action == 'viewers':
@@ -3612,6 +3692,10 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                         "builtAt": build["builtAt"]
                     })
 
+                # Set stability to alpha if not already set
+                if "stability" not in faction:
+                    faction["stability"] = "alpha"
+
             faction["updated"] = int(time.time())
             faction_file = self.server.data_dir / "factions" / fid / "faction.json"
             atomic_write(faction_file, faction)
@@ -3636,6 +3720,32 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 return
 
             faction["liveGameVersions"] = versions
+            faction["updated"] = int(time.time())
+
+            faction_file = self.server.data_dir / "factions" / fid / "faction.json"
+            atomic_write(faction_file, faction)
+
+        self.send_json({"ok": True})
+
+    def handle_admin_stability(self, fid: str):
+        """POST admin/factions/<fid>/stability"""
+        body = self.read_json_body()
+        if not body:
+            return
+
+        stability = body.get('stability')
+        valid_values = ['alpha', 'beta', 'stable']
+        if stability not in valid_values:
+            self.send_error_json(f"Invalid stability. Must be one of: {', '.join(valid_values)}")
+            return
+
+        with WRITE_LOCK:
+            faction = self.load_faction(fid)
+            if not faction:
+                self.send_error_json("Faction not found", 404)
+                return
+
+            faction["stability"] = stability
             faction["updated"] = int(time.time())
 
             faction_file = self.server.data_dir / "factions" / fid / "faction.json"
@@ -3955,6 +4065,12 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             self.send_error_json(f"Acronym {acronym} is reserved")
             return
 
+        # Get stability if provided (for imports)
+        stability = body.get('stability')
+        if stability and stability not in ['alpha', 'beta', 'stable']:
+            self.send_error_json("stability must be alpha, beta, or stable")
+            return
+
         base_design = self.new_design()
         if not isinstance(design, dict) or set(design) - set(base_design):
             self.send_error_json("design must be an object with only the known sections")
@@ -4048,6 +4164,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 }
                 if is_base:
                     faction["base"] = True
+                if stability:
+                    faction["stability"] = stability
                 (factions_dir / fid / "v").mkdir(parents=True, exist_ok=True)
                 atomic_write(factions_dir / fid / "faction.json", faction)
                 atomic_write(factions_dir / fid / "v" / "1.json", design)

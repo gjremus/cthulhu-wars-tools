@@ -1738,5 +1738,105 @@ class BaseFactionTest(DesignerServerTest):
         self.assertEqual(len(updated5['costNote']), 60)
 
 
+    def test_stability_field(self):
+        """Test stability field: set on build, owner/admin can change, public endpoint."""
+        # Register and create faction
+        user = 'stabilityuser'
+        password = 'pass123'
+        self.request('POST', '/register', {'username': user, 'password': password})
+        login_data = self.request('POST', '/login', {'username': user, 'password': password})
+        token = login_data['token']
+
+        # Create faction
+        faction_data = self.request('POST', '/factions', {'name': 'Test Stability', 'acronym': 'TST'}, token=token)
+        fid = faction_data['id']
+
+        # Faction should have no stability yet (not built)
+        faction = self.request('GET', f'/factions/{fid}', token=token)
+        self.assertNotIn('stability', faction)
+
+        # Mark as built (admin)
+        self.request('POST', f'/admin/{self.admin_token}/factions/{fid}/build-status', {'status': 'built', 'version': 1})
+
+        # Should now have stability = alpha
+        faction = self.request('GET', f'/factions/{fid}', token=token)
+        self.assertEqual(faction['stability'], 'alpha')
+
+        # Owner can change stability
+        self.request('POST', f'/factions/{fid}/stability', {'stability': 'beta'}, token=token)
+        faction = self.request('GET', f'/factions/{fid}', token=token)
+        self.assertEqual(faction['stability'], 'beta')
+
+        # Admin can change stability
+        self.request('POST', f'/admin/{self.admin_token}/factions/{fid}/stability', {'stability': 'stable'})
+        faction = self.request('GET', f'/factions/{fid}', token=token)
+        self.assertEqual(faction['stability'], 'stable')
+
+        # Invalid stability values should fail
+        result = self.request('POST', f'/factions/{fid}/stability', {'stability': 'invalid'}, token=token, expect_error=True)
+        self.assertIn('error', result)
+
+        # Public endpoint should include this faction
+        public = self.request('GET', '/public/stability')
+        self.assertEqual(public['TST'], 'stable')
+
+        # Create another faction, leave unbuilt
+        faction_data2 = self.request('POST', '/factions', {'name': 'Unbuilt', 'acronym': 'UNB'}, token=token)
+
+        # Public endpoint should not include unbuilt faction
+        public = self.request('GET', '/public/stability')
+        self.assertNotIn('UNB', public)
+        self.assertEqual(public['TST'], 'stable')
+
+    def test_stability_base_faction(self):
+        """Test that base factions are stable and only admin can modify."""
+        # Import base faction (admin only) with full design structure
+        full_design = {
+            "meta": {"name": "Base Test", "acronym": "BTF", "color": "#ff0000"},
+            "card": {"image": None, "glyph": None},
+            "sbImages": {"mode": None, "all": None, "each": [None]*6},
+            "sbImagesB": {"mode": None, "all": None, "each": [None]*6},
+            "ae": {"enabled": False, "name": "", "acronym": "", "rows": []},
+            "ufa": {"name": "", "phase": None, "type": None, "hasCost": False, "cost": None, "customLogic": ""},
+            "setup": {"power": 0, "gates": 0, "customLogic": ""},
+            "units": {"rows": [], "customLogic": ""},
+            "sbr": {"mode": "each", "rows": []},
+            "sb": {"rows": []},
+            "region": {"glyphs": {}, "customLogic": ""},
+            "tokens": {"rows": [], "customLogic": ""},
+            "custom": {"rows": [], "customLogic": ""},
+            "menus": {"rows": [], "customLogic": ""}
+        }
+        base_faction = {
+            "owner": "base",
+            "name": "Base Test",
+            "acronym": "BTF",
+            "base": True,
+            "stability": "stable",
+            "design": full_design
+        }
+        result = self.request('POST', f'/admin/{self.admin_token}/import-faction', base_faction)
+        fid = result['id']
+
+        # Public endpoint should show stable
+        public = self.request('GET', '/public/stability')
+        self.assertEqual(public.get('BTF'), 'stable')
+
+        # Regular user cannot change base faction stability
+        user = 'regularuser'
+        password = 'pass123'
+        self.request('POST', '/register', {'username': user, 'password': password})
+        login_data = self.request('POST', '/login', {'username': user, 'password': password})
+        token = login_data['token']
+
+        result = self.request('POST', f'/factions/{fid}/stability', {'stability': 'alpha'}, token=token, expect_error=True)
+        self.assertIn('error', result)
+
+        # Admin can change base faction stability
+        self.request('POST', f'/admin/{self.admin_token}/factions/{fid}/stability', {'stability': 'beta'})
+        public = self.request('GET', '/public/stability')
+        self.assertEqual(public['BTF'], 'beta')
+
+
 if __name__ == '__main__':
     unittest.main()
