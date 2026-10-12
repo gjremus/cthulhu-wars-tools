@@ -19,6 +19,7 @@ export CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0
 
 CLAUDE="/Users/gremus/.local/share/claude/ticker-claude-pinned"
 TICKERS="/Users/gremus/Claude-Projects/cthulhu-wars-tools/tickers"
+SONNET="claude-sonnet-5"
 OPUS="claude-opus-5-5"
 SSH=(ssh -i /Users/gremus/.ssh/oracle_cw_ed25519 -o ConnectTimeout=10 -o StrictHostKeyChecking=no oracle-cw-server@cwo.freeddns.org)
 Q="/Users/gremus/.cw-admin-queue"          # pending/ running/ done/ + session state
@@ -107,27 +108,94 @@ if [[ "${1:-}" == "worker" ]]; then
         note "start ${job:t} ${resume:+(resume)} :: ${text[1,120]//$'\n'/ }"
         print "Working on it now." > "$job.status"; tlog summary "${job:t}" "$job.status"; rm -f "$job.status"
         started=0
-        for try in 1 2 3; do
+
+        # Classify request: simple tasks use Haiku-first, complex tasks skip to Sonnet.
+        # Simple: extractions, logs, analysis, documentation, read-only queries, menu design.
+        # Complex: builds, code generation, deployments, fixes.
+        is_simple=0
+        if print -r -- "$text" | grep -qiE '(extract|analyze|review|log|document|check|read|list|menu.*design|bug.*report)'; then
+            is_simple=1
+        fi
+
+        # Haiku-first for simple tasks (if not resuming an old Sonnet/Opus conversation).
+        if (( is_simple && ! ${#resume} )); then
+            for haiku_try in 1 2 3; do
+                : > "$out"
+                "$CLAUDE" -p "$text" --append-system-prompt "$sysprompt" \
+                    --permission-mode bypassPermissions --model claude-haiku-4-5-20251001 --strict-mcp-config \
+                    --output-format stream-json --verbose < /dev/null > "$out" 2>&1 &
+                pid=$!; waited=0
+                while kill -0 $pid 2>/dev/null && [[ ! -s "$out" ]] && (( waited < 90 )); do sleep 2; (( waited += 2 )); done
+                if kill -0 $pid 2>/dev/null && [[ ! -s "$out" ]]; then
+                    kill -9 $pid 2>/dev/null; note "Haiku startup hang, retry $haiku_try"; continue
+                fi
+                started=1
+                while kill -0 $pid 2>/dev/null && (( waited < MAX_SECONDS )); do sleep 5; (( waited += 5 )); done
+                if kill -0 $pid 2>/dev/null; then kill -9 $pid 2>/dev/null; note "Haiku killed after ${MAX_SECONDS}s"; fi
+                wait $pid 2>/dev/null
+                if grep -q '"type":"result"' "$out" 2>/dev/null; then
+                    note "Haiku attempt $haiku_try succeeded"
+                    break 2  # Exit both loops, go process the result
+                fi
+                note "Haiku attempt $haiku_try failed; retrying Haiku"
+            done
+            # All 3 Haiku attempts failed. Fall through to Sonnet.
+            note "Haiku failed 3x on simple task; escalating to Sonnet"
+        fi
+
+        # Sonnet-first: try Sonnet up to 3 times. If Sonnet fails all 3, try Opus.
+        for sonnet_try in 1 2 3; do
             : > "$out"
             "$CLAUDE" -p "$text" "${resume[@]}" --append-system-prompt "$sysprompt" \
-                --permission-mode bypassPermissions --model "$OPUS" --strict-mcp-config \
+                --permission-mode bypassPermissions --model "$SONNET" --strict-mcp-config \
                 --output-format stream-json --verbose < /dev/null > "$out" 2>&1 &
             pid=$!; waited=0
             # Relaunch if nothing is printed within 90 s (launchd startup deadlock seen before).
             while kill -0 $pid 2>/dev/null && [[ ! -s "$out" ]] && (( waited < 90 )); do sleep 2; (( waited += 2 )); done
             if kill -0 $pid 2>/dev/null && [[ ! -s "$out" ]]; then
-                kill -9 $pid 2>/dev/null; note "startup hang, retry $try"; continue
+                kill -9 $pid 2>/dev/null; note "Sonnet startup hang, retry $sonnet_try"; continue
             fi
             started=1
             while kill -0 $pid 2>/dev/null && (( waited < MAX_SECONDS )); do sleep 5; (( waited += 5 )); done
-            if kill -0 $pid 2>/dev/null; then kill -9 $pid 2>/dev/null; note "killed after ${MAX_SECONDS}s"; fi
+            if kill -0 $pid 2>/dev/null; then kill -9 $pid 2>/dev/null; note "Sonnet killed after ${MAX_SECONDS}s"; fi
             wait $pid 2>/dev/null
-            # An old conversation that will not resume: start a fresh one instead.
-            if (( ${#resume} )) && ! grep -q '"type":"result"' "$out"; then
-                note "resume failed, starting a fresh conversation"; resume=(); started=0; continue
+            # Check if Sonnet succeeded
+            if grep -q '"type":"result"' "$out" 2>/dev/null; then
+                # Sonnet succeeded: an old conversation that will not resume, start a fresh one.
+                if (( ${#resume} )) && ! grep -q '"modelUsage"' "$out"; then
+                    note "Sonnet resume failed, starting fresh"; resume=(); started=0; continue
+                fi
+                break 2  # Exit both loops, go process the result
             fi
-            break
+            # Sonnet failed or didn't produce a result. Log it and retry with Sonnet (up to 3x).
+            note "Sonnet attempt $sonnet_try failed; retrying Sonnet"
         done
+        # All 3 Sonnet attempts failed. Fall back to Opus.
+        note "Sonnet failed 3x; falling back to Opus"
+        for opus_try in 1 2 3; do
+            : > "$out"
+            "$CLAUDE" -p "$text" "${resume[@]}" --append-system-prompt "$sysprompt" \
+                --permission-mode bypassPermissions --model "$OPUS" --strict-mcp-config \
+                --output-format stream-json --verbose < /dev/null > "$out" 2>&1 &
+            pid=$!; waited=0
+            while kill -0 $pid 2>/dev/null && [[ ! -s "$out" ]] && (( waited < 90 )); do sleep 2; (( waited += 2 )); done
+            if kill -0 $pid 2>/dev/null && [[ ! -s "$out" ]]; then
+                kill -9 $pid 2>/dev/null; note "Opus startup hang, retry $opus_try"; continue
+            fi
+            started=1
+            while kill -0 $pid 2>/dev/null && (( waited < MAX_SECONDS )); do sleep 5; (( waited += 5 )); done
+            if kill -0 $pid 2>/dev/null; then kill -9 $pid 2>/dev/null; note "Opus killed after ${MAX_SECONDS}s"; fi
+            wait $pid 2>/dev/null
+            if grep -q '"type":"result"' "$out" 2>/dev/null; then
+                if (( ${#resume} )) && ! grep -q '"modelUsage"' "$out"; then
+                    note "Opus resume failed, starting fresh"; resume=(); started=0; continue
+                fi
+                break 2
+            fi
+            note "Opus attempt $opus_try failed; retrying Opus"
+        done
+        # Both Sonnet and Opus failed 3x each.
+        note "Both Sonnet and Opus failed 3x each; giving up on this task"
         # Pull the reply, cost and session id out of the stream.
         python3 - "$out" "$Q/session" "$job.reply" "$started" >> "$LOG" <<'PY'
 import json, sys, time
