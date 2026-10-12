@@ -1698,7 +1698,17 @@
 
         const labelSpan = document.createElement('span');
         labelSpan.className = 'section-label';
-        labelSpan.textContent = Rules.isEmpty(sec.key, design) ? 'empty' : 'edited';
+
+        // Check if this section has Claude questions
+        const claudeQA = faction.claudeQA || {};
+        const hasQuestions = claudeQA[sec.key] && claudeQA[sec.key].questions && claudeQA[sec.key].questions.trim();
+
+        if (hasQuestions) {
+          labelSpan.textContent = 'Claude Question';
+          labelSpan.style.color = '#fbbf24'; // Amber color for questions
+        } else {
+          labelSpan.textContent = Rules.isEmpty(sec.key, design) ? 'empty' : 'edited';
+        }
         btn.appendChild(labelSpan);
 
         btn.dataset.nav = '1';
@@ -2015,10 +2025,14 @@
     }
 
     // Build status words, shared by the faction and unit screens and the list cards
-    buildStatusHtml(status, ready, hasQuestions) {
+    buildStatusHtml(status, ready, hasQuestions, sectionsWithQuestions) {
+      const sectionSuffix = sectionsWithQuestions && sectionsWithQuestions.length > 0
+        ? ': ' + sectionsWithQuestions.join(', ')
+        : '';
+
       if (status === 'built') {
         return hasQuestions
-          ? '<span class="status-built">Built</span> <span class="status-requested">(Claude has questions for you)</span>'
+          ? `<span class="status-built">Built</span> <span class="status-requested">(Claude has questions for you${sectionSuffix})</span>`
           : '<span class="status-built">Built</span>';
       }
       if (status === 'requested') {
@@ -2028,7 +2042,7 @@
         return '<span class="status-in-progress">Build in progress</span>';
       }
       if (status === 'needs_answers') {
-        return '<span class="status-requested">Waiting for your answers to Claude\'s questions</span>';
+        return `<span class="status-requested">Waiting for your answers to Claude's questions${sectionSuffix}</span>`;
       }
       if (ready === undefined) {
         return '<span>Not submitted</span>';
@@ -2040,15 +2054,37 @@
       return Object.values(entity.claudeQA || {}).some(sec => sec && sec.questions);
     }
 
+    // Get section names that have Claude questions, for display in build status
+    getSectionsWithQuestions(entity, sectionsList) {
+      const sections = [];
+      const claudeQA = entity.claudeQA || {};
+
+      for (const sec of sectionsList) {
+        const key = sec.key;
+        if (claudeQA[key] && claudeQA[key].questions && claudeQA[key].questions.trim()) {
+          sections.push(sec.title);
+        }
+      }
+
+      return sections;
+    }
+
     getBuildStatusLabel(faction) {
-      return this.buildStatusHtml(faction.build.status, Rules.buildReady(faction.design), this.hasClaudeQuestions(faction));
+      const sectionsWithQuestions = this.getSectionsWithQuestions(faction, Rules.SECTIONS);
+      return this.buildStatusHtml(faction.build.status, Rules.buildReady(faction.design), this.hasClaudeQuestions(faction), sectionsWithQuestions);
     }
 
     getBuildStatusLabelForUnit(unit) {
       const build = unit.build || {status: 'none'};
       // Ready needs a name and type at minimum
       const row = (unit.design.units && unit.design.units.rows && unit.design.units.rows[0]) || {};
-      return this.buildStatusHtml(build.status, !!(row.name && row.type), this.hasClaudeQuestions(unit));
+      // For units, section is always "unit"
+      const sectionsWithQuestions = [];
+      const claudeQA = unit.claudeQA || {};
+      if (claudeQA.unit && claudeQA.unit.questions && claudeQA.unit.questions.trim()) {
+        sectionsWithQuestions.push('Unit');
+      }
+      return this.buildStatusHtml(build.status, !!(row.name && row.type), this.hasClaudeQuestions(unit), sectionsWithQuestions);
     }
 
     renderScreen(fid, screen) {
@@ -3052,8 +3088,18 @@
 
         const labelSpan = document.createElement('span');
         labelSpan.className = 'section-label';
-        const st = Rules.mapStatus(sec.key, design);
-        labelSpan.textContent = st;
+
+        // Check if this section has Claude questions
+        const claudeQA = map.claudeQA || {};
+        const hasQuestions = claudeQA[sec.key] && claudeQA[sec.key].questions && claudeQA[sec.key].questions.trim();
+
+        if (hasQuestions) {
+          labelSpan.textContent = 'Claude Question';
+          labelSpan.style.color = '#fbbf24'; // Amber color for questions
+        } else {
+          const st = Rules.mapStatus(sec.key, design);
+          labelSpan.textContent = st;
+        }
         btn.appendChild(labelSpan);
 
         btn.dataset.nav = '1';
@@ -3120,7 +3166,8 @@
     }
 
     getMapBuildStatusLabel(map) {
-      return this.buildStatusHtml(map.build.status, Rules.mapBuildReady(map.design), this.hasClaudeQuestions(map));
+      const sectionsWithQuestions = this.getSectionsWithQuestions(map, Rules.MAP_SECTIONS);
+      return this.buildStatusHtml(map.build.status, Rules.mapBuildReady(map.design), this.hasClaudeQuestions(map), sectionsWithQuestions);
     }
 
     async renderMapSectionScreen(mid, section) {

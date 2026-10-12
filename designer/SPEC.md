@@ -69,10 +69,16 @@ Factions (`faction.json`), maps (`map.json`), and units (`unit.json`) all share 
   "liveGameVersions": [],    // version numbers admin marked as used by a live game (factions/maps only)
   "viewers": [],             // usernames with read-only access (factions/maps only; set by admin)
   "base": true,              // (factions only) base faction: owned by "base" system owner, visible to all users read-only, cannot be deleted
-  "claudeQA": {},            // Claude questions and answers per section (top-level, not in design)
+  "claudeQA": {},            // Claude questions and answers per section: {<section_key>: {questions: "", answers: "", updated: 0}}
   "design": { ... §5 ... }   // content of version `current`
 }
 ```
+
+**Section Status with Claude Questions:**
+- When a section has non-empty `claudeQA[section].questions`, the section's status displays as "Claude Question" (amber color), overriding the normal "empty" / "edited" / "Complete" / "Incomplete" status.
+- The status reverts to normal as soon as the questions field is cleared (when Claude processes the designer's answers).
+- The build status text "Claude has questions" / "Waiting for your answers" includes the names of sections with questions, e.g., "Claude has questions: Units, Spellbooks".
+- Section titles shown match the section's display title from `Rules.SECTIONS` or `Rules.MAP_SECTIONS`.
 
 ### Base Factions (added 2026-10-11)
 Base factions are reference designs (Great Cthulhu, Crawling Chaos, Black Goat, Yellow Sign) visible to EVERY user as read-only. They:
