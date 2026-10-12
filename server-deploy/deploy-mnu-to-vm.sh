@@ -12,7 +12,7 @@
 #   ./deploy-mnu-to-vm.sh --no-bump  # deploy without bumping the version
 
 BUILD_KEY="mnu"
-SOURCE="/Users/gremus/Claude-Projects/cw-mnu-wt/solo"
+SOURCE="/Users/gremus/Claude-Projects/cthulhu-wars-Main/solo"
 REMOTE_ROOT="/opt/cwo/mnu"
 SERVER_URL="https://cwo.freeddns.org/mnu/"
 
