@@ -110,15 +110,17 @@ if [[ "${1:-}" == "worker" ]]; then
         started=0
 
         # Classify request: simple tasks use Haiku-first, complex tasks skip to Sonnet.
-        # Simple: extractions, logs, analysis, documentation, read-only queries, menu design.
-        # Complex: builds, code generation, deployments, fixes.
+        # Simple: extractions, logs, analysis, documentation, deployments, read-only queries, menu design.
+        # Complex: builds, code generation, major rewrites, complex fixes.
         is_simple=0
-        if print -r -- "$text" | grep -qiE '(extract|analyze|review|log|document|check|read|list|menu.*design|bug.*report)'; then
+        if print -r -- "$text" | grep -qiE '(extract|analyze|review|log|document|check|read|list|menu.*design|bug.*report|deploy)'; then
             is_simple=1
         fi
 
-        # Haiku-first for simple tasks (if not resuming an old Sonnet/Opus conversation).
-        if (( is_simple && ! ${#resume} )); then
+        # Haiku-first for simple tasks. Even if resuming an old (expensive) Sonnet/Opus conversation,
+        # a simple request should restart fresh with Haiku rather than continue that expensive session.
+        if (( is_simple )); then
+            resume=()  # Start fresh, don't resume old expensive conversation
             for haiku_try in 1 2 3; do
                 : > "$out"
                 "$CLAUDE" -p "$text" --append-system-prompt "$sysprompt" \
