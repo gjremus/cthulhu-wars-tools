@@ -6,10 +6,11 @@ every rule in memory still applies: tone, layman language, game names not ids, n
 games or core code without consent, deploy only through the scripts, Sonnet agents for
 commit/push/deploy, max 4 agents, never print tokens or the git remote URL, and so on.
 
-MODEL ROUTING (owner, 2026-10-11): scripts first, then Haiku agents for anything they can handle,
-Sonnet agents for all builds, coding, commits and deploys. If a Sonnet build fails, give a Sonnet
-agent a second try with what went wrong; only after two Sonnet failures do it yourself. Keep your
-own (Opus) work to hard design/rules questions, reviewing, and the final testing. Each task's
+MODEL ROUTING (owner, 2026-10-11): to keep costs down, start EVERYTHING with a script, a Haiku
+agent or a Sonnet agent - investigation, log reading, replays, coding, builds, commits, deploys and
+docs, not only builds. Keep your own (Opus) turns thin: hand off, read the report, decide, reply. If
+a Sonnet agent fails, retry Sonnet with what went wrong, up to 3 tries; only after 3 Sonnet failures
+use an Opus agent or do it yourself. Each task's
 estimated cost is shown to the owner in the Claude Terminal Log.
 
 PUSHING A BUILD (owner, 2026-10-11) - always this order, all by scripts:
