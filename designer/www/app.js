@@ -11,6 +11,7 @@
       this.state = {
         token: localStorage.getItem('cw_designer_token'),
         username: localStorage.getItem('cw_designer_username'),
+        adminToken: sessionStorage.getItem('cw_designer_admin_token'),
         factions: null,
         units: null,
         maps: null,
@@ -77,6 +78,25 @@
           }
         } else {
           this.root.innerHTML = '<p style="padding:20px;">Admin view: close this tab to go back to the admin console.</p>';
+        }
+      } else if (path === 'admin' && rest[0] === 'users') {
+        // Admin console - all users
+        if (rest.length === 1) {
+          this.renderAdminDashboard();
+        } else if (rest.length === 2) {
+          this.renderAdminUserDetail(rest[1]);
+        }
+      } else if (path === 'admin' && rest[0] === 'factions' && rest[1]) {
+        // Admin console - read-only faction view
+        this.state.adminToken = sessionStorage.getItem('cw_designer_admin_token');
+        if (this.state.adminToken) {
+          this.loadFaction(rest[1]);
+        }
+      } else if (path === 'admin' && rest[0] === 'maps' && rest[1]) {
+        // Admin console - read-only map view
+        this.state.adminToken = sessionStorage.getItem('cw_designer_admin_token');
+        if (this.state.adminToken) {
+          this.loadMap(rest[1]);
         }
       } else if (!this.state.token && path !== 'register') {
         this.renderLogin();
@@ -201,6 +221,8 @@
     async loadFaction(fid) {
       const data = this.state.adminView
         ? await this.api('GET', `/admin/${this.state.adminView}/view-faction/${fid}`)
+        : this.state.adminToken
+        ? await this.api('GET', `/admin/${this.state.adminToken}/view-faction/${fid}`)
         : await this.api('GET', `/factions/${fid}`);
       this.state.currentFaction = data;
       this.state.builtDesign = data.builtDesign;
@@ -276,6 +298,8 @@
     async loadMap(mid) {
       const data = this.state.adminView
         ? await this.api('GET', `/admin/${this.state.adminView}/view-map/${mid}`)
+        : this.state.adminToken
+        ? await this.api('GET', `/admin/${this.state.adminToken}/view-map/${mid}`)
         : await this.api('GET', `/maps/${mid}`);
       // Defensive deep-merge: ensure all expected keys exist with default values
       if (data.design) {
@@ -349,14 +373,61 @@
     }
 
     readOnlyBanner() {
-      const f = this.state.currentFaction;
+      const isAdmin = this.state.adminView;
+      const bannerText = isAdmin
+        ? 'Admin view (read-only): Viewing designer submission. All validation, feedback, and Claude questions visible. Form locked.'
+        : 'Shared view (read-only): Form locked for editing.';
+
       const div = document.createElement('div');
-      div.className = 'read-only-banner';
+      div.className = 'banner-readonly';
       div.style.cssText = 'border: 1px solid #000; background: #fde68a; color: #222; padding: 8px 12px; margin: 10px 0; border-radius: 4px;';
-      div.textContent = f.adminView
-        ? `Admin view (read only): designed by ${f.ownerName || f.owner}. You can look at everything, but nothing can be changed here.`
-        : `Read only: ${f.ownerName || f.owner} shared this design with you. You can look at everything, but you can't change it.`;
+      div.textContent = bannerText;
       return div;
+    }
+
+    buildStatusBanner(entity, isAdminView = false) {
+      if (!entity.build) return null;
+      const status = entity.build.status || 'none';
+      const colors = {
+        'none': '#666',
+        'requested': '#f59e0b',
+        'in_progress': '#3b82f6',
+        'built': '#10b981',
+        'needs_answers': '#ef4444'
+      };
+
+      const div = document.createElement('div');
+      div.className = 'admin-view-build-panel';
+      div.style.cssText = `background: ${colors[status] || '#666'}; color: #fff; padding: 12px; margin-bottom: 20px; font-weight: bold; border-radius: 4px;`;
+
+      let text = `Build Status: ${status.toUpperCase()}`;
+      if (entity.build.requestedAt) {
+        text += `<br>Requested: ${new Date(entity.build.requestedAt * 1000).toLocaleString()}`;
+      }
+      if (entity.build.liveVersion) {
+        text += `<br>Live Version: ${entity.build.liveVersion}`;
+      }
+      if (entity.build.rid) {
+        text += `<br>Request ID: ${entity.build.rid}`;
+      }
+
+      // Add admin-specific details for certain statuses
+      if (isAdminView && status === 'needs_answers') {
+        // Count pending Claude questions
+        const pendingCount = this.getPendingClaudeQuestionsCount(entity);
+        if (pendingCount > 0) {
+          text += `<br><strong>Pending Claude Questions: ${pendingCount}</strong>`;
+        }
+      }
+
+      div.innerHTML = text;
+      return div;
+    }
+
+    // Helper to count pending Claude questions
+    getPendingClaudeQuestionsCount(entity) {
+      const claudeQA = entity.claudeQA || {};
+      return Object.values(claudeQA).filter(sec => sec && sec.questions && sec.questions.trim()).length;
     }
 
     async patch(fid, ops) {
@@ -1515,6 +1586,10 @@
 
       this.root.appendChild(header);
       if (this.isReadOnly()) this.root.appendChild(this.readOnlyBanner());
+      if (this.state.adminView && faction.build) {
+        const banner = this.buildStatusBanner(faction, true);
+        if (banner) this.root.appendChild(banner);
+      }
 
       // Images section
       const imagesSection = document.createElement('div');
@@ -1710,6 +1785,14 @@
           labelSpan.textContent = Rules.isEmpty(sec.key, design) ? 'empty' : 'edited';
         }
         btn.appendChild(labelSpan);
+
+        // Add status badge for admin view
+        if (this.state.adminView) {
+          const badgeSpan = document.createElement('span');
+          badgeSpan.className = 'section-status-badge';
+          badgeSpan.innerHTML = this.getSectionStatusBadge(sec.key, faction);
+          btn.appendChild(badgeSpan);
+        }
 
         btn.dataset.nav = '1';
         btn.onclick = () => {
@@ -2069,6 +2152,68 @@
       return sections;
     }
 
+    // Get status badge HTML for a section in the main menu
+    getSectionStatusBadge(key, faction) {
+      const claudeQA = faction.claudeQA || {};
+      const design = faction.design;
+
+      // If section has Claude questions, show amber badge with count
+      if (claudeQA[key] && claudeQA[key].questions && claudeQA[key].questions.trim()) {
+        if (this.state.adminView) {
+          return '<span class="status-badge-amber">⚠ Claude Q</span>';
+        }
+        return '<span class="status-amber">Claude Question</span>';
+      }
+
+      // Otherwise call Rules.status to determine completion
+      if (!window.Rules || !window.Rules.status) {
+        return '';
+      }
+
+      const statusResult = window.Rules.status(key, design);
+      if (statusResult === 'Complete') {
+        return '<span class="status-complete">✓</span>';
+      } else if (statusResult === 'Incomplete') {
+        if (this.state.adminView) {
+          return '<span class="status-badge-red">✗ Incomplete</span>';
+        }
+        return '<span class="status-incomplete">Incomplete</span>';
+      } else if (statusResult === 'N/A') {
+        return '<span class="status-na">N/A</span>';
+      }
+
+      return '';
+    }
+
+    // Get status badge HTML for a map section in the main menu (admin view)
+    getMapSectionStatusBadge(key, map) {
+      const claudeQA = map.claudeQA || {};
+      const design = map.design;
+
+      // If section has Claude questions, show amber badge
+      if (claudeQA[key] && claudeQA[key].questions && claudeQA[key].questions.trim()) {
+        if (this.state.adminView) {
+          return '<span class="status-badge-amber">⚠ Claude Q</span>';
+        }
+        return '<span class="status-amber">Claude Question</span>';
+      }
+
+      // For maps, use Rules.mapStatus if available
+      if (!window.Rules || !window.Rules.mapStatus) {
+        return '';
+      }
+
+      const statusResult = window.Rules.mapStatus(key, design);
+      // mapStatus typically returns strings like status values, check if incomplete
+      if (statusResult && statusResult.includes('Incomplete')) {
+        if (this.state.adminView) {
+          return '<span class="status-badge-red">✗ Incomplete</span>';
+        }
+      }
+
+      return '';
+    }
+
     getBuildStatusLabel(faction) {
       const sectionsWithQuestions = this.getSectionsWithQuestions(faction, Rules.SECTIONS);
       return this.buildStatusHtml(faction.build.status, Rules.buildReady(faction.design), this.hasClaudeQuestions(faction), sectionsWithQuestions);
@@ -2264,6 +2409,7 @@
         unit,
         neutral: true,
         reference: this.state.reference,
+        adminView: this.state.adminView ? true : false,
         set: (path, value) => {
           this.setDesignValue(design, path, value);
           this.scheduleSave(uid, path, value, 'unit');
@@ -2319,6 +2465,7 @@
         design,
         faction,
         reference: this.state.reference,
+        adminView: this.state.adminView ? true : false,  // Mark admin view for UI styling/messaging
         set: (path, value) => {
           if (this.isReadOnly()) return;
           this.setDesignValue(design, path, value);
@@ -2820,6 +2967,9 @@
         };
         this.root.appendChild(updateBtn);
       }
+
+      if (this.isReadOnly()) this.root.appendChild(this.readOnlyBanner());
+      this.lockReadOnly(this.root);
     }
 
     async renderUnitBuildScreen(uid) {
@@ -3120,6 +3270,10 @@
 
       this.root.appendChild(header);
       if (this.isReadOnly()) this.root.appendChild(this.readOnlyBanner());
+      if (this.state.adminView && map.build) {
+        const banner = this.buildStatusBanner(map, true);
+        if (banner) this.root.appendChild(banner);
+      }
 
       // Section buttons
       const sectionsDiv = document.createElement('div');
@@ -3147,6 +3301,14 @@
           labelSpan.textContent = st;
         }
         btn.appendChild(labelSpan);
+
+        // Add status badge for admin view
+        if (this.state.adminView) {
+          const badgeSpan = document.createElement('span');
+          badgeSpan.className = 'section-status-badge';
+          badgeSpan.innerHTML = this.getMapSectionStatusBadge(sec.key, map);
+          btn.appendChild(badgeSpan);
+        }
 
         btn.dataset.nav = '1';
         btn.onclick = () => {
@@ -3245,6 +3407,7 @@
         design,
         map,
         reference: this.state.reference,
+        adminView: this.state.adminView ? true : false,
         set: (path, value) => {
           if (this.isReadOnly()) return;
           this.setDesignValue(design, path, value);
@@ -3931,6 +4094,339 @@
         }
       };
       this.root.appendChild(sendBtn);
+    }
+
+    // Admin Console - Dashboard
+    async renderAdminDashboard() {
+      this.root.innerHTML = '<div class="spinner"></div>';
+
+      try {
+        const adminToken = sessionStorage.getItem('cw_designer_admin_token');
+        if (!adminToken) {
+          this.root.innerHTML = '<p style="padding:20px; color: red;">No admin token found. Please access via the admin link.</p>';
+          return;
+        }
+
+        const response = await this.api('GET', `/admin/${adminToken}/users`);
+        const users = response.users || [];
+
+        this.root.innerHTML = '';
+
+        const header = document.createElement('div');
+        header.style.display = 'flex';
+        header.style.justifyContent = 'space-between';
+        header.style.alignItems = 'center';
+        header.style.marginBottom = '20px';
+
+        const title = document.createElement('h1');
+        title.textContent = 'Admin Console — All Users';
+        header.appendChild(title);
+
+        const exitBtn = document.createElement('button');
+        exitBtn.textContent = 'Exit Admin View';
+        exitBtn.onclick = () => {
+          sessionStorage.removeItem('cw_designer_admin_token');
+          window.location.hash = '#/';
+        };
+        header.appendChild(exitBtn);
+
+        this.root.appendChild(header);
+
+        if (users.length === 0) {
+          const p = document.createElement('p');
+          p.textContent = 'No users found.';
+          p.style.color = '#888';
+          this.root.appendChild(p);
+        } else {
+          const table = document.createElement('table');
+          table.style.borderCollapse = 'collapse';
+          table.style.width = '100%';
+          table.style.marginTop = '20px';
+
+          // Header row
+          const headerRow = document.createElement('tr');
+          headerRow.style.border = '1px solid #000';
+          ['Username', 'Factions', 'Maps', 'Units', 'Last Login', 'Created'].forEach(label => {
+            const th = document.createElement('th');
+            th.textContent = label;
+            th.style.border = '1px solid #000';
+            th.style.padding = '8px';
+            th.style.textAlign = 'left';
+            th.style.backgroundColor = '#f0f0f0';
+            headerRow.appendChild(th);
+          });
+          table.appendChild(headerRow);
+
+          // Data rows
+          users.forEach(user => {
+            const row = document.createElement('tr');
+            row.style.border = '1px solid #000';
+
+            // Username (link to user detail)
+            const usernameCell = document.createElement('td');
+            usernameCell.style.border = '1px solid #000';
+            usernameCell.style.padding = '8px';
+            const usernameLink = document.createElement('a');
+            usernameLink.href = `#/admin/users/${user.username}`;
+            usernameLink.textContent = user.username;
+            usernameLink.style.color = '#0066cc';
+            usernameLink.style.textDecoration = 'underline';
+            usernameCell.appendChild(usernameLink);
+            row.appendChild(usernameCell);
+
+            // Factions
+            const factionsCell = document.createElement('td');
+            factionsCell.style.border = '1px solid #000';
+            factionsCell.style.padding = '8px';
+            if (user.factions && user.factions.length > 0) {
+              user.factions.forEach((faction, idx) => {
+                if (idx > 0) factionsCell.appendChild(document.createElement('br'));
+                const link = document.createElement('a');
+                link.href = `#/admin/factions/${faction.id}`;
+                link.textContent = faction.name;
+                link.style.color = '#0066cc';
+                link.style.textDecoration = 'underline';
+                factionsCell.appendChild(link);
+              });
+            } else {
+              factionsCell.textContent = '—';
+            }
+            row.appendChild(factionsCell);
+
+            // Maps
+            const mapsCell = document.createElement('td');
+            mapsCell.style.border = '1px solid #000';
+            mapsCell.style.padding = '8px';
+            if (user.maps && user.maps.length > 0) {
+              user.maps.forEach((map, idx) => {
+                if (idx > 0) mapsCell.appendChild(document.createElement('br'));
+                const link = document.createElement('a');
+                link.href = `#/admin/maps/${map.id}`;
+                link.textContent = map.name;
+                link.style.color = '#0066cc';
+                link.style.textDecoration = 'underline';
+                mapsCell.appendChild(link);
+              });
+            } else {
+              mapsCell.textContent = '—';
+            }
+            row.appendChild(mapsCell);
+
+            // Units
+            const unitsCell = document.createElement('td');
+            unitsCell.style.border = '1px solid #000';
+            unitsCell.style.padding = '8px';
+            if (user.units && user.units.length > 0) {
+              unitsCell.textContent = `${user.units.length} unit${user.units.length !== 1 ? 's' : ''}`;
+            } else {
+              unitsCell.textContent = '—';
+            }
+            row.appendChild(unitsCell);
+
+            // Last Login
+            const lastLoginCell = document.createElement('td');
+            lastLoginCell.style.border = '1px solid #000';
+            lastLoginCell.style.padding = '8px';
+            lastLoginCell.textContent = user.lastLogin ? new Date(user.lastLogin * 1000).toLocaleDateString() : '—';
+            row.appendChild(lastLoginCell);
+
+            // Created
+            const createdCell = document.createElement('td');
+            createdCell.style.border = '1px solid #000';
+            createdCell.style.padding = '8px';
+            createdCell.textContent = user.created ? new Date(user.created * 1000).toLocaleDateString() : '—';
+            row.appendChild(createdCell);
+
+            row.style.backgroundColor = row.children.length % 2 === 0 ? '#f9f9f9' : '#fff';
+            table.appendChild(row);
+          });
+
+          this.root.appendChild(table);
+        }
+      } catch (err) {
+        this.root.innerHTML = `<p style="padding:20px; color: red;">Failed to load admin dashboard: ${err.message}</p>`;
+      }
+    }
+
+    // Admin Console - User Detail
+    async renderAdminUserDetail(username) {
+      this.root.innerHTML = '<div class="spinner"></div>';
+
+      try {
+        const adminToken = sessionStorage.getItem('cw_designer_admin_token');
+        if (!adminToken) {
+          this.root.innerHTML = '<p style="padding:20px; color: red;">No admin token found.</p>';
+          return;
+        }
+
+        const response = await this.api('GET', `/admin/${adminToken}/users`);
+        const users = response.users || [];
+        const user = users.find(u => u.username === username);
+
+        if (!user) {
+          this.root.innerHTML = '<p style="padding:20px; color: red;">User not found.</p>';
+          return;
+        }
+
+        this.root.innerHTML = '';
+
+        const backBtn = document.createElement('button');
+        backBtn.textContent = 'Back to Admin Dashboard';
+        backBtn.onclick = () => {
+          window.location.hash = '#/admin/users';
+        };
+        this.root.appendChild(backBtn);
+
+        const title = document.createElement('h1');
+        title.textContent = `Admin Console — ${username}`;
+        title.style.marginTop = '20px';
+        this.root.appendChild(title);
+
+        // Factions table
+        if (user.factions && user.factions.length > 0) {
+          const h2 = document.createElement('h2');
+          h2.textContent = 'Factions';
+          h2.style.marginTop = '30px';
+          h2.style.marginBottom = '12px';
+          this.root.appendChild(h2);
+
+          const table = document.createElement('table');
+          table.style.borderCollapse = 'collapse';
+          table.style.width = '100%';
+          table.style.border = '1px solid #000';
+
+          const headerRow = document.createElement('tr');
+          headerRow.style.backgroundColor = '#f0f0f0';
+          ['Name', 'Version', 'Build Status', 'Updated'].forEach(label => {
+            const th = document.createElement('th');
+            th.textContent = label;
+            th.style.border = '1px solid #000';
+            th.style.padding = '8px';
+            th.style.textAlign = 'left';
+            headerRow.appendChild(th);
+          });
+          table.appendChild(headerRow);
+
+          user.factions.forEach((faction, idx) => {
+            const row = document.createElement('tr');
+            row.style.backgroundColor = idx % 2 === 0 ? '#f9f9f9' : '#fff';
+            row.style.border = '1px solid #000';
+
+            const nameCell = document.createElement('td');
+            nameCell.style.border = '1px solid #000';
+            nameCell.style.padding = '8px';
+            const nameLink = document.createElement('a');
+            nameLink.href = `#/admin/factions/${faction.id}`;
+            nameLink.textContent = faction.name;
+            nameLink.style.color = '#0066cc';
+            nameLink.style.textDecoration = 'underline';
+            nameCell.appendChild(nameLink);
+            row.appendChild(nameCell);
+
+            const versionCell = document.createElement('td');
+            versionCell.style.border = '1px solid #000';
+            versionCell.style.padding = '8px';
+            versionCell.textContent = faction.version || '—';
+            row.appendChild(versionCell);
+
+            const buildCell = document.createElement('td');
+            buildCell.style.border = '1px solid #000';
+            buildCell.style.padding = '8px';
+            buildCell.innerHTML = this.buildStatusHtml(faction.buildStatus);
+            row.appendChild(buildCell);
+
+            const updatedCell = document.createElement('td');
+            updatedCell.style.border = '1px solid #000';
+            updatedCell.style.padding = '8px';
+            updatedCell.textContent = faction.updated ? new Date(faction.updated * 1000).toLocaleDateString() : '—';
+            row.appendChild(updatedCell);
+
+            table.appendChild(row);
+          });
+
+          this.root.appendChild(table);
+        }
+
+        // Maps table
+        if (user.maps && user.maps.length > 0) {
+          const h2 = document.createElement('h2');
+          h2.textContent = 'Maps';
+          h2.style.marginTop = '30px';
+          h2.style.marginBottom = '12px';
+          this.root.appendChild(h2);
+
+          const table = document.createElement('table');
+          table.style.borderCollapse = 'collapse';
+          table.style.width = '100%';
+          table.style.border = '1px solid #000';
+
+          const headerRow = document.createElement('tr');
+          headerRow.style.backgroundColor = '#f0f0f0';
+          ['Name', 'Version', 'Build Status', 'Updated'].forEach(label => {
+            const th = document.createElement('th');
+            th.textContent = label;
+            th.style.border = '1px solid #000';
+            th.style.padding = '8px';
+            th.style.textAlign = 'left';
+            headerRow.appendChild(th);
+          });
+          table.appendChild(headerRow);
+
+          user.maps.forEach((map, idx) => {
+            const row = document.createElement('tr');
+            row.style.backgroundColor = idx % 2 === 0 ? '#f9f9f9' : '#fff';
+            row.style.border = '1px solid #000';
+
+            const nameCell = document.createElement('td');
+            nameCell.style.border = '1px solid #000';
+            nameCell.style.padding = '8px';
+            const nameLink = document.createElement('a');
+            nameLink.href = `#/admin/maps/${map.id}`;
+            nameLink.textContent = map.name;
+            nameLink.style.color = '#0066cc';
+            nameLink.style.textDecoration = 'underline';
+            nameCell.appendChild(nameLink);
+            row.appendChild(nameCell);
+
+            const versionCell = document.createElement('td');
+            versionCell.style.border = '1px solid #000';
+            versionCell.style.padding = '8px';
+            versionCell.textContent = map.version || '—';
+            row.appendChild(versionCell);
+
+            const buildCell = document.createElement('td');
+            buildCell.style.border = '1px solid #000';
+            buildCell.style.padding = '8px';
+            buildCell.innerHTML = this.buildStatusHtml(map.buildStatus);
+            row.appendChild(buildCell);
+
+            const updatedCell = document.createElement('td');
+            updatedCell.style.border = '1px solid #000';
+            updatedCell.style.padding = '8px';
+            updatedCell.textContent = map.updated ? new Date(map.updated * 1000).toLocaleDateString() : '—';
+            row.appendChild(updatedCell);
+
+            table.appendChild(row);
+          });
+
+          this.root.appendChild(table);
+        }
+
+        // Units count
+        if (user.units && user.units.length > 0) {
+          const h2 = document.createElement('h2');
+          h2.textContent = 'Units';
+          h2.style.marginTop = '30px';
+          h2.style.marginBottom = '12px';
+          this.root.appendChild(h2);
+
+          const p = document.createElement('p');
+          p.textContent = `${user.units.length} unit${user.units.length !== 1 ? 's' : ''} created`;
+          this.root.appendChild(p);
+        }
+      } catch (err) {
+        this.root.innerHTML = `<p style="padding:20px; color: red;">Failed to load user details: ${err.message}</p>`;
+      }
     }
   }
 

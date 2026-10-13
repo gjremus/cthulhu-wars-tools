@@ -261,6 +261,84 @@
     ctx.openOverlay(content);
   }
 
+  // Helper to render Claude Q&A boxes for each section (admin view only)
+  function renderClaudeQA(container, ctx, sectionName) {
+    if (!ctx.adminView) return;
+
+    const claudeQAData = ctx.faction ? ctx.faction.claudeQA : (ctx.map ? ctx.map.claudeQA : (ctx.unit ? ctx.unit.claudeQA : null));
+    if (!claudeQAData) return;
+
+    const qa = claudeQAData[sectionName];
+    if (!qa) return;
+
+    // Questions box
+    if (qa.questions && qa.questions.trim()) {
+      const qDiv = document.createElement('div');
+      qDiv.style.cssText = 'margin: 16px 0; padding: 12px; background: #1e3a8a; border: 2px solid #3b82f6; color: #fff; border-radius: 4px;';
+      const qLabel = document.createElement('strong');
+      qLabel.style.cssText = 'display: block; margin-bottom: 8px;';
+      qLabel.textContent = 'Claude Questions:';
+      const qPre = document.createElement('pre');
+      qPre.style.cssText = 'white-space: pre-wrap; margin: 0; font-family: monospace; font-size: 13px;';
+      qPre.textContent = qa.questions;
+      qDiv.appendChild(qLabel);
+      qDiv.appendChild(qPre);
+      container.appendChild(qDiv);
+    }
+
+    // Answers box
+    if (qa.answers && qa.answers.trim()) {
+      const aDiv = document.createElement('div');
+      aDiv.style.cssText = 'margin: 16px 0; padding: 12px; background: #065f46; border: 2px solid #10b981; color: #fff; border-radius: 4px;';
+      const aLabel = document.createElement('strong');
+      aLabel.style.cssText = 'display: block; margin-bottom: 8px;';
+      aLabel.textContent = 'Claude Answers:';
+      const aPre = document.createElement('pre');
+      aPre.style.cssText = 'white-space: pre-wrap; margin: 0; font-family: monospace; font-size: 13px;';
+      aPre.textContent = qa.answers;
+      aDiv.appendChild(aLabel);
+      aDiv.appendChild(aPre);
+      container.appendChild(aDiv);
+    }
+  }
+
+  // Helper to render admin notes for each section
+  function renderAdminNotes(container, ctx, sectionPath) {
+    if (!ctx.adminView) return;
+
+    const adminNotesDiv = document.createElement('div');
+    adminNotesDiv.style.cssText = 'margin-top: 20px; border-top: 2px solid #000; padding-top: 10px;';
+
+    const label = document.createElement('label');
+    label.style.cssText = 'display: block; font-weight: bold; margin-bottom: 4px;';
+    label.textContent = 'Admin Notes (visible only to admin):';
+
+    const textarea = document.createElement('textarea');
+    // Get the value from the design object
+    let value = '';
+    const parts = sectionPath.split('.');
+    let obj = ctx.design;
+    for (let i = 0; i < parts.length; i++) {
+      obj = obj[parts[i]];
+      if (obj == null) break;
+    }
+    if (obj && typeof obj === 'object' && 'adminNotes' in obj) {
+      value = obj.adminNotes || '';
+    }
+
+    textarea.value = value;
+    textarea.style.cssText = 'width: 100%; min-height: 80px; font-family: monospace; font-size: 12px; border: 2px solid #f59e0b; background: #fef3c7; color: #000;';
+    textarea.placeholder = 'Internal notes about this section...';
+
+    textarea.addEventListener('blur', () => {
+      ctx.set(`${sectionPath}.adminNotes`, textarea.value);
+    });
+
+    adminNotesDiv.appendChild(label);
+    adminNotesDiv.appendChild(textarea);
+    container.appendChild(adminNotesDiv);
+  }
+
   // Section renderers
 
   function renderAE(container, ctx) {
@@ -367,6 +445,9 @@
         ctx.addRow('ae.rows', newRow);
       }}, 'Add row'));
     }
+
+    renderClaudeQA(container, ctx, 'ae');
+    renderAdminNotes(container, ctx, 'ae');
   }
 
   function renderUFA(container, ctx) {
@@ -390,6 +471,9 @@
 
     const textLen = 200;
     container.appendChild(textField('Text', d.text, val => ctx.set('ufa.text', val), {rows: Math.max(3, Math.ceil(textLen / 45)), missing: isMissing('ufa.text')}));
+
+    renderClaudeQA(container, ctx, 'ufa');
+    renderAdminNotes(container, ctx, 'ufa');
   }
 
   function renderSetup(container, ctx) {
@@ -525,6 +609,9 @@
     const aeEnabled = ctx.design.ae && ctx.design.ae.enabled;
     const aeName = aeEnabled && ctx.design.ae.name ? ctx.design.ae.name : 'alternate economy';
     container.appendChild(numberField('Starting ' + aeName, d.aeStart, val => ctx.set('setup.aeStart', val), {greyed: !aeEnabled, min: 0, missing: isMissing('setup.aeStart')}));
+
+    renderClaudeQA(container, ctx, 'setup');
+    renderAdminNotes(container, ctx, 'setup');
   }
 
   function renderUnits(container, ctx) {
@@ -789,6 +876,9 @@
       const newUnit = window.Rules.blankRow('units.rows');
       ctx.addRow('units.rows', newUnit);
     }}, 'Add unit'));
+
+    renderClaudeQA(container, ctx, 'units');
+    renderAdminNotes(container, ctx, 'units');
   }
 
   // In-game box (map pixels, Earth unitScale 1.0) each unit type is drawn in, from the type's
@@ -1002,6 +1092,7 @@
     table.appendChild(h('thead', {},
       h('tr', {},
         h('th', {}, 'Spellbook Requirement Text'),
+        h('th', {}, 'Shortened Card Text (abbreviated)'),
         h('th', {style: 'width: 200px;'}, 'Includes Fixed Numeric Cost or Effect?'),
         h('th', {style: 'width: 150px;'}, 'Fixed Numeric Cost or Effect')
       )
@@ -1017,6 +1108,16 @@
           value: row.text || '',
           rows: 3,
           oninput: e => ctx.set(`sbr.rows.${row.id}.text`, e.target.value)
+        })
+      ));
+
+      tr.appendChild(h('td', {},
+        h('textarea', {
+          className: isMissing(`sbr.rows.${row.id}.shortText`) ? 'sx-missing' : '',
+          value: row.shortText || '',
+          rows: 3,
+          placeholder: 'Brief version for faction card display...',
+          oninput: e => ctx.set(`sbr.rows.${row.id}.shortText`, e.target.value)
         })
       ));
 
@@ -1039,6 +1140,9 @@
     table.appendChild(tbody);
     tableDiv.appendChild(table);
     container.appendChild(tableDiv);
+
+    renderClaudeQA(container, ctx, 'sbr');
+    renderAdminNotes(container, ctx, 'sbr');
   }
 
   function renderSB(container, ctx) {
@@ -1201,6 +1305,9 @@
       const newRow = window.Rules.blankRow('sb.rows');
       ctx.addRow('sb.rows', newRow);
     }}, 'Add row'));
+
+    renderClaudeQA(container, ctx, 'sb');
+    renderAdminNotes(container, ctx, 'sb');
   }
 
   function renderRegion(container, ctx) {
@@ -1301,6 +1408,9 @@
       const newRow = window.Rules.blankRow('region.rows');
       ctx.addRow('region.rows', newRow);
     }}, 'Add row'));
+
+    renderClaudeQA(container, ctx, 'region');
+    renderAdminNotes(container, ctx, 'region');
   }
 
   function renderTokens(container, ctx) {
@@ -1430,6 +1540,9 @@
       const newRow = window.Rules.blankRow('tokens.rows');
       ctx.addRow('tokens.rows', newRow);
     }}, 'Add row'));
+
+    renderClaudeQA(container, ctx, 'tokens');
+    renderAdminNotes(container, ctx, 'tokens');
   }
 
   function renderCustom(container, ctx) {
@@ -1559,6 +1672,9 @@
       const newRow = window.Rules.blankRow('custom.rows');
       ctx.addRow('custom.rows', newRow);
     }}, 'Add row'));
+
+    renderClaudeQA(container, ctx, 'custom');
+    renderAdminNotes(container, ctx, 'custom');
   }
 
   const MENU_RECOMMEND_MINUTES = 5;
@@ -1716,6 +1832,9 @@
       const newMenu = window.Rules.blankRow('menus.rows');
       ctx.addRow('menus.rows', newMenu);
     }}, 'Add menu'));
+
+    renderClaudeQA(container, ctx, 'menus');
+    renderAdminNotes(container, ctx, 'menus');
   }
 
   function showMenuPreview(menu, ctx) {
@@ -1956,6 +2075,9 @@
       const newRegion = window.Rules.blankMapRow('images.regions.rows');
       ctx.addRow('images.regions.rows', newRegion);
     }}, 'Add region'));
+
+    renderClaudeQA(container, ctx, 'images');
+    renderAdminNotes(container, ctx, 'images');
   }
 
   function renderMapBitmaps(container, ctx) {
@@ -2107,6 +2229,9 @@
       container.appendChild(h('h4', {style: 'margin-top: 24px;'}, 'Regions not yet on a bitmap'));
       container.appendChild(h('ul', {}, ...unplaced.map(r => h('li', {}, r.name || `Region ${regions.indexOf(r) + 1}`))));
     }
+
+    renderClaudeQA(container, ctx, 'bitmaps');
+    renderAdminNotes(container, ctx, 'bitmaps');
   }
 
   function renderMapAdjacency(container, ctx) {
@@ -2471,6 +2596,9 @@
       const newSpecial = window.Rules.blankMapRow('adjacency.special.rows');
       ctx.addRow('adjacency.special.rows', newSpecial);
     }}, 'Add special adjacency type'));
+
+    renderClaudeQA(container, ctx, 'adjacency');
+    renderAdminNotes(container, ctx, 'adjacency');
   }
 
   function renderMapUnits(container, ctx) {
@@ -2500,12 +2628,18 @@
     // Reuse faction units renderer with neutral flag
     const neutralCtx = Object.assign({}, ctx, {neutral: true, design: {units: d}});
     renderUnits(container, neutralCtx);
+
+    renderClaudeQA(container, ctx, 'units');
+    renderAdminNotes(container, ctx, 'units');
   }
 
   function renderMapTokens(container, ctx) {
     const d = ctx.design.tokens;
     const neutralCtx = Object.assign({}, ctx, {design: {tokens: d}});
     renderTokens(container, neutralCtx);
+
+    renderClaudeQA(container, ctx, 'tokens');
+    renderAdminNotes(container, ctx, 'tokens');
   }
 
   function renderMapSB(container, ctx) {
@@ -2642,6 +2776,9 @@
       const newRow = window.Rules.blankMapRow('sb.books.rows');
       ctx.addRow('sb.books.rows', newRow);
     }}, 'Add spellbook'));
+
+    renderClaudeQA(container, ctx, 'sb');
+    renderAdminNotes(container, ctx, 'sb');
   }
 
   function renderMapGlyphs(container, ctx) {
@@ -2711,6 +2848,9 @@
       const newRow = window.Rules.blankMapRow('glyphs.rows');
       ctx.addRow('glyphs.rows', newRow);
     }}, 'Add glyph'));
+
+    renderClaudeQA(container, ctx, 'glyphs');
+    renderAdminNotes(container, ctx, 'glyphs');
   }
 
   function renderMapAbilities(container, ctx) {
@@ -2798,6 +2938,37 @@
       const newRow = window.Rules.blankMapRow('abilities.rows');
       ctx.addRow('abilities.rows', newRow);
     }}, 'Add ability'));
+
+    renderClaudeQA(container, ctx, 'abilities');
+    renderAdminNotes(container, ctx, 'abilities');
+  }
+
+  // Highlight missing fields in the container based on Rules.missingFields
+  function highlightMissingFields(key, design, container) {
+    if (!window.Rules || !window.Rules.missingFields) return;
+
+    const missingPaths = window.Rules.missingFields(key, design);
+    if (!missingPaths || missingPaths.length === 0) return;
+
+    for (const path of missingPaths) {
+      // Try to find the element by id or data-path attribute
+      const parts = path.split('.');
+      const fieldName = parts[parts.length - 1];
+
+      // Search for inputs, selects, and textareas with matching IDs or data-path
+      const inputs = container.querySelectorAll(`input[data-path="${path}"], select[data-path="${path}"], textarea[data-path="${path}"]`);
+      inputs.forEach(el => {
+        el.classList.add('sx-missing');
+      });
+
+      // Also try finding by ID if data-path didn't work
+      if (inputs.length === 0) {
+        const idMatch = container.querySelector(`[id*="${fieldName}"]`);
+        if (idMatch && (idMatch.tagName === 'INPUT' || idMatch.tagName === 'SELECT' || idMatch.tagName === 'TEXTAREA' || idMatch.classList.contains('sx-img-thumb'))) {
+          idMatch.classList.add('sx-missing');
+        }
+      }
+    }
   }
 
   function render(key, container, ctx) {
@@ -2825,6 +2996,11 @@
     const renderer = renderers[key];
     if (renderer) {
       renderer(container, ctx);
+
+      // Highlight missing fields if in admin view
+      if (ctx.readOnly && ctx.adminView) {
+        highlightMissingFields(key, ctx.design, container);
+      }
       // Free box at the bottom of every design section (not Menu Design)
       const isFactionSection = window.Rules.BUILD_SECTIONS.includes(key);
       const isMapSection = window.Rules.MAP_BUILD_SECTIONS && window.Rules.MAP_BUILD_SECTIONS.includes(key);
@@ -2837,6 +3013,9 @@
       }
 
       // Claude Q&A boxes: hidden until a build has been attempted
+      // Admin view: Claude Q&A section is always visible when buildAttempted=true,
+      // whether viewing as designer or admin. This allows admins to see all feedback.
+      // Answer submission form is only shown when not read-only (ctx.readOnly=false).
       const entity = ctx.faction || ctx.unit || ctx.map;
       const entityType = ctx.faction ? 'factions' : ctx.unit ? 'units' : ctx.map ? 'maps' : null;
       const sectionKey = ctx.neutral ? 'unit' : key;  // a neutral unit has one screen, keyed 'unit'
