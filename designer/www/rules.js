@@ -55,6 +55,24 @@
     return id;
   }
 
+  // Older designs were saved before some sections existed (e.g. 'interactions').
+  // Fill any missing section with its default so every page and status check works.
+  // Interactions rows get fixed ids so the server's own backfill (designer_server.py) matches.
+  const BACKFILL_IDS = {interactions: ['ia-sleeper', 'ia-neutral', 'ia-bubastis']};
+  function backfillDesign(design) {
+    if (!design || typeof design !== 'object') return design;
+    const defaults = newDesign();
+    Object.keys(defaults).forEach(key => {
+      if (design[key] == null) {
+        const sec = defaults[key];
+        const ids = BACKFILL_IDS[key];
+        if (ids && sec && Array.isArray(sec.rows)) sec.rows.forEach((r, i) => { if (ids[i]) r.id = ids[i]; });
+        design[key] = sec;
+      }
+    });
+    return design;
+  }
+
   function newDesign() {
     const design = {
       meta: {color: null},
@@ -609,7 +627,7 @@
 
     if (key === 'interactions') {
       // Only Ancient Sorcery row is required
-      const ancientSorceryRow = d.rows.find(r =>
+      const ancientSorceryRow = ((d && d.rows) || []).find(r =>
         r.otherFaction === 'Sleeper' &&
         r.abilityType === 'Spellbook' &&
         r.ability === 'Ancient Sorcery'
@@ -931,7 +949,7 @@
     }
 
     if (key === 'interactions') {
-      const ancientSorceryRow = d.rows.find(r =>
+      const ancientSorceryRow = ((d && d.rows) || []).find(r =>
         r.otherFaction === 'Sleeper' &&
         r.abilityType === 'Spellbook' &&
         r.ability === 'Ancient Sorcery'
@@ -1417,6 +1435,7 @@
     COST_TYPES,
     COMBAT_TYPES,
     newDesign,
+    backfillDesign,
     newMapDesign,
     blankRow,
     blankMapRow,

@@ -2544,10 +2544,22 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             return False
 
         section = parts[0]
-        valid_sections = ['ae', 'ufa', 'setup', 'units', 'sbr', 'sb', 'region', 'tokens', 'custom', 'menus', 'card', 'sbImages', 'sbImagesB', 'meta']
+        valid_sections = ['ae', 'ufa', 'setup', 'units', 'sbr', 'sb', 'region', 'tokens', 'custom', 'menus', 'interactions', 'card', 'sbImages', 'sbImagesB', 'meta']
         if section not in valid_sections:
             self.send_error_json(f"Unknown section: {section}")
             return False
+
+        # Older designs were saved before some sections existed (e.g. 'interactions').
+        # Fill the missing section with its default; interactions rows use the same fixed ids
+        # as Rules.backfillDesign in www/rules.js so the page's edits land on the right rows.
+        if section not in faction["design"]:
+            defaults = self.new_design()
+            if section in defaults:
+                sec = defaults[section]
+                if section == 'interactions':
+                    for row, rid in zip(sec["rows"], ('ia-sleeper', 'ia-neutral', 'ia-bubastis')):
+                        row["id"] = rid
+                faction["design"][section] = sec
 
         # Determine if this is an addition or change
         is_addition = self.is_addition(faction, op)

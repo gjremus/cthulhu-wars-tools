@@ -232,6 +232,7 @@
         : this.state.adminToken
         ? await this.api('GET', `/admin/${this.state.adminToken}/view-faction/${fid}`)
         : await this.api('GET', `/factions/${fid}`);
+      if (data && data.design && Rules.backfillDesign) Rules.backfillDesign(data.design);
       this.state.currentFaction = data;
       this.state.builtDesign = data.builtDesign;
       // Only draw the main page if the user is still on it (a slow load must not cover a section they opened since)
@@ -3022,6 +3023,7 @@
             if (confirmed) {
               try {
                 const data = await this.api('POST', `/factions/${faction.id}/rollback`, {version: ver.n});
+                if (data && data.design && Rules.backfillDesign) Rules.backfillDesign(data.design);
                 this.state.currentFaction = data;
                 this.renderVersionsScreen();
               } catch (err) {
@@ -3045,6 +3047,7 @@
             if (confirmed) {
               try {
                 const data = await this.api('POST', `/factions/${faction.id}/delete-version`, {version: ver.n});
+                if (data && data.design && Rules.backfillDesign) Rules.backfillDesign(data.design);
                 this.state.currentFaction = data;
                 this.renderVersionsScreen();
               } catch (err) {
@@ -3498,6 +3501,7 @@
 
       try {
         const faction = await this.api('GET', `/admin/${this.state.adminToken}/view-faction/${fid}`);
+        if (faction && faction.design && Rules.backfillDesign) Rules.backfillDesign(faction.design);
         this.state.currentFaction = faction;
         const inspector = new FactionBuildInspectorScreen(faction, this);
         inspector.render();
