@@ -89,12 +89,20 @@
       } else if (path === 'admin' && rest[0] === 'factions' && rest[1]) {
         // Admin console - read-only faction view
         this.state.adminToken = sessionStorage.getItem('cw_designer_admin_token');
+        this.state.adminView = true;
         if (this.state.adminToken) {
           this.loadFaction(rest[1]);
+        }
+      } else if (path === 'admin' && rest[0] === 'faction-build' && rest[1]) {
+        // Admin inspector - faction build details
+        this.state.adminToken = sessionStorage.getItem('cw_designer_admin_token');
+        if (this.state.adminToken) {
+          this.renderFactionBuildInspector(rest[1]);
         }
       } else if (path === 'admin' && rest[0] === 'maps' && rest[1]) {
         // Admin console - read-only map view
         this.state.adminToken = sessionStorage.getItem('cw_designer_admin_token');
+        this.state.adminView = true;
         if (this.state.adminToken) {
           this.loadMap(rest[1]);
         }
@@ -295,6 +303,156 @@
       return data;
     }
 
+    async copyFaction(faction) {
+      try {
+        const newFaction = await this.api('POST', `/factions/${faction.id}/copy`, {});
+        this.showMessage(`Faction copied: ${newFaction.name}`);
+        // Reload list
+        await this.renderFactionList();
+      } catch (err) {
+        this.showError(this.root, `Failed to copy faction: ${err.message}`);
+      }
+    }
+
+    async copyUnit(unit) {
+      try {
+        const newUnit = await this.api('POST', `/units/${unit.id}/copy`, {});
+        this.showMessage(`Unit copied: ${newUnit.design.units.rows[0].name}`);
+        // Reload list
+        await this.renderFactionList();
+      } catch (err) {
+        this.showError(this.root, `Failed to copy unit: ${err.message}`);
+      }
+    }
+
+    async copyMap(map) {
+      try {
+        const newMap = await this.api('POST', `/maps/${map.id}/copy`, {});
+        this.showMessage(`Map copied: ${newMap.name}`);
+        // Reload list
+        await this.renderFactionList();
+      } catch (err) {
+        this.showError(this.root, `Failed to copy map: ${err.message}`);
+      }
+    }
+
+    showRenameDialog(entity, entityType) {
+      const overlay = document.createElement('div');
+      overlay.className = 'confirm-overlay';
+
+      const dialog = document.createElement('div');
+      dialog.className = 'confirm-dialog';
+      dialog.style.maxWidth = '400px';
+
+      const title = document.createElement('h2');
+      const typeDisplay = entityType === 'faction' ? 'Faction' : entityType === 'unit' ? 'Unit' : 'Map';
+      title.textContent = `Edit ${typeDisplay}`;
+      title.style.marginBottom = '20px';
+      dialog.appendChild(title);
+
+      // Get the current name depending on entity type
+      let currentName = entity.name;
+      if (entityType === 'unit' && !currentName) {
+        // For units loaded from renderUnitScreen, name is in design
+        currentName = entity.design?.units?.rows?.[0]?.name || '';
+      }
+
+      // Name field
+      const nameGroup = document.createElement('div');
+      nameGroup.className = 'form-group';
+      nameGroup.style.marginBottom = '16px';
+      const nameLabel = document.createElement('label');
+      nameLabel.textContent = 'Name';
+      nameLabel.style.display = 'block';
+      nameLabel.style.marginBottom = '4px';
+      nameLabel.style.fontWeight = 'bold';
+      const nameInput = document.createElement('input');
+      nameInput.type = 'text';
+      nameInput.value = currentName || '';
+      nameInput.style.width = '100%';
+      nameInput.style.padding = '8px';
+      nameInput.style.boxSizing = 'border-box';
+      nameGroup.appendChild(nameLabel);
+      nameGroup.appendChild(nameInput);
+      dialog.appendChild(nameGroup);
+
+      // Acronym field (only for factions)
+      let acronymInput;
+      if (entityType === 'faction') {
+        const acronymGroup = document.createElement('div');
+        acronymGroup.className = 'form-group';
+        acronymGroup.style.marginBottom = '16px';
+        const acronymLabel = document.createElement('label');
+        acronymLabel.textContent = 'Acronym (2-3 chars)';
+        acronymLabel.style.display = 'block';
+        acronymLabel.style.marginBottom = '4px';
+        acronymLabel.style.fontWeight = 'bold';
+        acronymInput = document.createElement('input');
+        acronymInput.type = 'text';
+        acronymInput.value = entity.acronym || '';
+        acronymInput.maxLength = 3;
+        acronymInput.style.width = '100%';
+        acronymInput.style.padding = '8px';
+        acronymInput.style.boxSizing = 'border-box';
+        acronymGroup.appendChild(acronymLabel);
+        acronymGroup.appendChild(acronymInput);
+        dialog.appendChild(acronymGroup);
+      }
+
+      const buttons = document.createElement('div');
+      buttons.className = 'buttons';
+
+      const saveBtn = document.createElement('button');
+      saveBtn.className = 'primary';
+      saveBtn.textContent = 'Save';
+      saveBtn.onclick = async () => {
+        try {
+          saveBtn.disabled = true;
+          const updateData = { name: nameInput.value.trim() };
+          if (acronymInput) {
+            updateData.acronym = acronymInput.value.trim().toUpperCase();
+          }
+
+          await this.api('POST', `/${entityType}s/${entity.id}/rename`, updateData);
+
+          // Update entity
+          entity.name = updateData.name;
+          if (acronymInput) {
+            entity.acronym = updateData.acronym;
+          }
+
+          overlay.remove();
+
+          // Refresh appropriate view
+          if (entityType === 'faction') {
+            await this.loadFaction(entity.id);
+          } else if (entityType === 'unit') {
+            // Reload the unit screen
+            await this.renderUnitScreen(entity.id);
+          } else if (entityType === 'map') {
+            await this.loadMap(entity.id);
+          }
+
+          this.showMessage(`${typeDisplay} renamed successfully`);
+        } catch (err) {
+          saveBtn.disabled = false;
+          this.showError(dialog, `Failed to rename: ${err.message}`);
+        }
+      };
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.onclick = () => overlay.remove();
+
+      buttons.appendChild(saveBtn);
+      buttons.appendChild(cancelBtn);
+      dialog.appendChild(buttons);
+
+      overlay.appendChild(dialog);
+      document.body.appendChild(overlay);
+      nameInput.focus();
+    }
+
     async loadMap(mid) {
       const data = this.state.adminView
         ? await this.api('GET', `/admin/${this.state.adminView}/view-map/${mid}`)
@@ -365,18 +523,35 @@
     // Buttons that only move between pages are kept (Exit to Main, Back to List, section buttons).
     lockReadOnly(el) {
       if (!this.isReadOnly() || !el) return;
-      el.querySelectorAll('input, select, textarea').forEach(x => { x.disabled = true; });
+      el.querySelectorAll('input, select, textarea').forEach(x => {
+        // In admin view, only admin notes are editable
+        if (this.state.adminView && x.placeholder && x.placeholder.includes('Internal notes')) {
+          x.disabled = false;
+        } else {
+          x.disabled = true;
+        }
+      });
       el.querySelectorAll('button').forEach(b => {
-        const keep = b.dataset.nav === '1' || b.textContent.trim() === 'Exit to Main';
+        const text = b.textContent.trim();
+        // In admin view, show all navigation buttons
+        const keep = b.dataset.nav === '1' || text === 'Exit to Main' ||
+                     (this.state.adminView && (text.startsWith('Build') || text === 'Simple Update' || text === 'Bug Report' || text === 'Versions'));
         if (!keep) b.style.display = 'none';
       });
     }
 
     readOnlyBanner() {
       const isAdmin = this.state.adminView;
-      const bannerText = isAdmin
-        ? 'Admin view (read-only): Viewing designer submission. All validation, feedback, and Claude questions visible. Form locked.'
-        : 'Shared view (read-only): Form locked for editing.';
+      let bannerText;
+
+      if (isAdmin) {
+        const faction = this.state.currentFaction;
+        const ownerName = faction && faction.ownerName ? faction.ownerName : 'Designer';
+        const factionName = faction && faction.name ? faction.name : 'Faction';
+        bannerText = `Admin view (read-only): Viewing ${ownerName}'s faction "${factionName}". All validation, feedback, and Claude questions visible. Form locked.`;
+      } else {
+        bannerText = 'Shared view (read-only): Form locked for editing.';
+      }
 
       const div = document.createElement('div');
       div.className = 'banner-readonly';
@@ -422,6 +597,54 @@
 
       div.innerHTML = text;
       return div;
+    }
+
+    allRequestsStatusBanner(pendingRequests) {
+      if (!pendingRequests || pendingRequests.length === 0) return null;
+
+      const typeLabels = {
+        'build': 'BUILD',
+        'update': 'UPDATE',
+        'simple_update': 'UPDATE',
+        'bug': 'BUG',
+        'extract': 'EXTRACT',
+        'menu': 'MENU',
+        'answers': 'ANSWERS'
+      };
+
+      const statusColors = {
+        'open': '#f59e0b',        // amber/orange
+        'notified': '#f59e0b',    // amber/orange (pending)
+        'requested': '#f59e0b',   // amber/orange
+        'in_progress': '#3b82f6'  // blue
+      };
+
+      const container = document.createElement('div');
+      container.style.cssText = 'margin-bottom: 20px;';
+
+      // Header
+      const header = document.createElement('div');
+      header.style.cssText = 'background: #1e40af; color: #fff; padding: 8px 12px; font-weight: bold; border-radius: 4px 4px 0 0; font-size: 12px; letter-spacing: 0.5px;';
+      header.textContent = 'PENDING REQUESTS';
+      container.appendChild(header);
+
+      // Each request as a row
+      pendingRequests.forEach((req, idx) => {
+        const row = document.createElement('div');
+        const bgColor = statusColors[req.status] || '#666';
+        const isLast = idx === pendingRequests.length - 1;
+        row.style.cssText = `background: ${bgColor}; color: #fff; padding: 8px 12px; margin-bottom: ${isLast ? '0' : '-1px'}; border-radius: ${isLast ? '0 0 4px 4px' : '0'}; border-left: 4px solid #1e40af;`;
+
+        const typeLabel = typeLabels[req.type] || req.type.toUpperCase();
+        const statusLabel = req.status === 'in_progress' ? 'In Progress' : 'Waiting';
+        const timeStr = req.created ? ` • ${new Date(req.created * 1000).toLocaleDateString()}` : '';
+
+        row.innerHTML = `<strong>[${typeLabel}]</strong> ${statusLabel}${timeStr}<br><span style="font-size: 11px; margin-top: 4px; display: block; opacity: 0.9;">${req.text}</span>`;
+
+        container.appendChild(row);
+      });
+
+      return container;
     }
 
     // Helper to count pending Claude questions
@@ -878,9 +1101,12 @@
     // Autosave
     // kind: 'faction' | 'unit' | 'map'
     scheduleSave(fid, path, value, kind = 'faction') {
-      if (this.isReadOnly()) return;
+      // Admin notes can be saved even in read-only mode (admin only)
+      const isAdminNotes = path.endsWith('.adminNotes');
+      if (this.isReadOnly() && !isAdminNotes) return;
+
       const key = `${kind}:${fid}:${path}`;
-      this.saveQueue.set(key, {fid, path, value, kind});
+      this.saveQueue.set(key, {fid, path, value, kind, isAdminNotes});
 
       clearTimeout(this.saveTimer);
       this.saveTimer = setTimeout(() => this.flushSaves(), 600);
@@ -894,21 +1120,29 @@
       const saves = Array.from(this.saveQueue.values());
       this.saveQueue.clear();
 
-      // Group by faction (or unit)
+      // Group by faction (or unit) and whether it's admin notes
       const byFid = {};
-      for (const {fid, path, value, kind} of saves) {
-        const g = `${kind}:${fid}`;
+      for (const {fid, path, value, kind, isAdminNotes} of saves) {
+        const g = `${kind}:${fid}:${isAdminNotes ? 'admin' : 'user'}`;
         if (!byFid[g]) byFid[g] = [];
         byFid[g].push({op: 'set', path, value});
       }
 
       // Send patches
       for (const [g, ops] of Object.entries(byFid)) {
-        const [kind, fid] = g.split(':');
+        const [kind, fid, mode] = g.split(':');
         try {
-          if (kind === 'unit') await this.api('POST', `/units/${fid}/patch`, {ops});
-          else if (kind === 'map') await this.patchMap(fid, ops);
-          else await this.patch(fid, ops);
+          if (mode === 'admin') {
+            // Admin notes use admin patch endpoint
+            if (kind === 'unit') await this.api('POST', `/admin/${this.state.adminToken}/units/${fid}/patch`, {ops});
+            else if (kind === 'map') await this.api('POST', `/admin/${this.state.adminToken}/maps/${fid}/patch`, {ops});
+            else await this.api('POST', `/admin/${this.state.adminToken}/factions/${fid}/patch`, {ops});
+          } else {
+            // Regular user patches
+            if (kind === 'unit') await this.api('POST', `/units/${fid}/patch`, {ops});
+            else if (kind === 'map') await this.patchMap(fid, ops);
+            else await this.patch(fid, ops);
+          }
           this.showSaveIndicator('saved', 'All changes saved');
           setTimeout(() => this.hideSaveIndicator(), 2000);
         } catch (err) {
@@ -1144,6 +1378,14 @@
       errorDiv.textContent = message;
     }
 
+    showMessage(message) {
+      const msg = document.createElement('div');
+      msg.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #4ade80; color: white; padding: 12px 16px; border-radius: 4px; z-index: 10000; box-shadow: 0 2px 8px rgba(0,0,0,0.15);';
+      msg.textContent = message;
+      document.body.appendChild(msg);
+      setTimeout(() => msg.remove(), 3000);
+    }
+
     async renderFactionList() {
       this.root.innerHTML = '<div class="spinner"></div>';
 
@@ -1197,13 +1439,38 @@
           for (const faction of factions.filter(f => !f.readOnly)) {
             const card = document.createElement('div');
             card.className = 'faction-card';
-            card.onclick = () => {
-              window.location.hash = `#/faction/${faction.id}`;
-            };
+            card.style.position = 'relative';
+
+            // Click on card to navigate (but not on buttons)
+            card.addEventListener('click', (e) => {
+              if (!e.target.closest('button')) {
+                window.location.hash = `#/faction/${faction.id}`;
+              }
+            });
+
+            const nameRow = document.createElement('div');
+            nameRow.style.display = 'flex';
+            nameRow.style.alignItems = 'center';
+            nameRow.style.justifyContent = 'space-between';
+            nameRow.style.marginBottom = '8px';
 
             const name = document.createElement('h3');
             name.textContent = faction.name;
-            card.appendChild(name);
+            name.style.margin = '0';
+            nameRow.appendChild(name);
+
+            const pencilBtn = document.createElement('button');
+            pencilBtn.className = 'icon-button';
+            pencilBtn.textContent = '✏️';
+            pencilBtn.style.cssText = 'background: none; border: none; cursor: pointer; font-size: 18px; padding: 0 4px;';
+            pencilBtn.title = 'Edit name and acronym';
+            pencilBtn.onclick = (e) => {
+              e.stopPropagation();
+              this.showRenameDialog(faction, 'faction');
+            };
+            nameRow.appendChild(pencilBtn);
+
+            card.appendChild(nameRow);
 
             const acronym = document.createElement('div');
             acronym.className = 'acronym';
@@ -1219,6 +1486,18 @@
             updated.className = 'status';
             updated.textContent = `Updated: ${new Date(faction.updated * 1000).toLocaleDateString()}`;
             card.appendChild(updated);
+
+            // Copy button
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'copy-button';
+            copyBtn.textContent = '📋';
+            copyBtn.title = 'Copy this faction';
+            copyBtn.style.cssText = 'position: absolute; bottom: 8px; right: 8px; background: none; border: none; cursor: pointer; font-size: 18px; padding: 4px;';
+            copyBtn.onclick = (e) => {
+              e.stopPropagation();
+              this.copyFaction(faction);
+            };
+            card.appendChild(copyBtn);
 
             grid.appendChild(card);
           }
@@ -1308,10 +1587,37 @@
           for (const unit of units) {
             const card = document.createElement('div');
             card.className = 'faction-card';
-            card.onclick = () => { window.location.hash = `#/unit/${unit.id}`; };
+            card.style.position = 'relative';
+            card.addEventListener('click', (e) => {
+              if (!e.target.closest('button')) {
+                window.location.hash = `#/unit/${unit.id}`;
+              }
+            });
+
+            const nameRow = document.createElement('div');
+            nameRow.style.display = 'flex';
+            nameRow.style.alignItems = 'center';
+            nameRow.style.justifyContent = 'space-between';
+            nameRow.style.marginBottom = '8px';
+
             const name = document.createElement('h3');
             name.textContent = unit.name || 'Unnamed unit';
-            card.appendChild(name);
+            name.style.margin = '0';
+            nameRow.appendChild(name);
+
+            const pencilBtn = document.createElement('button');
+            pencilBtn.className = 'icon-button';
+            pencilBtn.textContent = '✏️';
+            pencilBtn.style.cssText = 'background: none; border: none; cursor: pointer; font-size: 18px; padding: 0 4px;';
+            pencilBtn.title = 'Edit unit name';
+            pencilBtn.onclick = (e) => {
+              e.stopPropagation();
+              this.showRenameDialog(unit, 'unit');
+            };
+            nameRow.appendChild(pencilBtn);
+
+            card.appendChild(nameRow);
+
             const type = document.createElement('div');
             type.className = 'status';
             type.textContent = `Type: ${unit.type || 'not chosen'}`;
@@ -1324,6 +1630,19 @@
             updated.className = 'status';
             updated.textContent = `Updated: ${new Date(unit.updated * 1000).toLocaleDateString()}`;
             card.appendChild(updated);
+
+            // Copy button
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'copy-button';
+            copyBtn.textContent = '📋';
+            copyBtn.title = 'Copy this unit';
+            copyBtn.style.cssText = 'position: absolute; bottom: 8px; right: 8px; background: none; border: none; cursor: pointer; font-size: 18px; padding: 4px;';
+            copyBtn.onclick = (e) => {
+              e.stopPropagation();
+              this.copyUnit(unit);
+            };
+            card.appendChild(copyBtn);
+
             grid.appendChild(card);
           }
           this.root.appendChild(grid);
@@ -1353,10 +1672,37 @@
           for (const map of maps.filter(m => !m.readOnly)) {
             const card = document.createElement('div');
             card.className = 'faction-card';
-            card.onclick = () => { window.location.hash = `#/map/${map.id}`; };
+            card.style.position = 'relative';
+            card.addEventListener('click', (e) => {
+              if (!e.target.closest('button')) {
+                window.location.hash = `#/map/${map.id}`;
+              }
+            });
+
+            const nameRow = document.createElement('div');
+            nameRow.style.display = 'flex';
+            nameRow.style.alignItems = 'center';
+            nameRow.style.justifyContent = 'space-between';
+            nameRow.style.marginBottom = '8px';
+
             const name = document.createElement('h3');
             name.textContent = map.name;
-            card.appendChild(name);
+            name.style.margin = '0';
+            nameRow.appendChild(name);
+
+            const pencilBtn = document.createElement('button');
+            pencilBtn.className = 'icon-button';
+            pencilBtn.textContent = '✏️';
+            pencilBtn.style.cssText = 'background: none; border: none; cursor: pointer; font-size: 18px; padding: 0 4px;';
+            pencilBtn.title = 'Edit map name';
+            pencilBtn.onclick = (e) => {
+              e.stopPropagation();
+              this.showRenameDialog(map, 'map');
+            };
+            nameRow.appendChild(pencilBtn);
+
+            card.appendChild(nameRow);
+
             const status = document.createElement('div');
             status.className = 'status';
             status.innerHTML = `Status: ${this.buildStatusHtml(map.buildStatus)}`;
@@ -1365,6 +1711,19 @@
             updated.className = 'status';
             updated.textContent = `Updated: ${new Date(map.updated * 1000).toLocaleDateString()}`;
             card.appendChild(updated);
+
+            // Copy button
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'copy-button';
+            copyBtn.textContent = '📋';
+            copyBtn.title = 'Copy this map';
+            copyBtn.style.cssText = 'position: absolute; bottom: 8px; right: 8px; background: none; border: none; cursor: pointer; font-size: 18px; padding: 4px;';
+            copyBtn.onclick = (e) => {
+              e.stopPropagation();
+              this.copyMap(map);
+            };
+            card.appendChild(copyBtn);
+
             grid.appendChild(card);
           }
           this.root.appendChild(grid);
@@ -1559,10 +1918,35 @@
       };
       header.appendChild(backBtn);
 
+      const titleRow = document.createElement('div');
+      titleRow.style.display = 'flex';
+      titleRow.style.alignItems = 'center';
+      titleRow.style.gap = '12px';
+
       const nameTitle = document.createElement('h1');
       nameTitle.className = 'faction-title';
       nameTitle.textContent = faction.name;
-      header.appendChild(nameTitle);
+      nameTitle.style.margin = '0';
+      titleRow.appendChild(nameTitle);
+
+      if (faction.acronym) {
+        const acronymSpan = document.createElement('span');
+        acronymSpan.style.cssText = 'font-size: 0.6em; color: #888; font-weight: normal;';
+        acronymSpan.textContent = `(${faction.acronym})`;
+        titleRow.appendChild(acronymSpan);
+      }
+
+      const pencilBtn = document.createElement('button');
+      pencilBtn.className = 'icon-button';
+      pencilBtn.textContent = '✏️';
+      pencilBtn.style.cssText = 'background: none; border: none; cursor: pointer; font-size: 24px; padding: 0 8px; margin-left: 8px;';
+      pencilBtn.title = 'Edit name and acronym';
+      pencilBtn.onclick = () => {
+        this.showRenameDialog(faction, 'faction');
+      };
+      titleRow.appendChild(pencilBtn);
+
+      header.appendChild(titleRow);
 
       if (design.meta) {
         const colorGroup = document.createElement('div');
@@ -1586,7 +1970,13 @@
 
       this.root.appendChild(header);
       if (this.isReadOnly()) this.root.appendChild(this.readOnlyBanner());
-      if (this.state.adminView && faction.build) {
+
+      // Show ALL pending requests if in admin view
+      if (this.state.adminView && faction.pendingRequests && faction.pendingRequests.length > 0) {
+        const allReqBanner = this.allRequestsStatusBanner(faction.pendingRequests);
+        if (allReqBanner) this.root.appendChild(allReqBanner);
+      } else if (this.state.adminView && faction.build) {
+        // Fallback to build-only banner for legacy compatibility
         const banner = this.buildStatusBanner(faction, true);
         if (banner) this.root.appendChild(banner);
       }
@@ -2134,7 +2524,7 @@
     }
 
     hasClaudeQuestions(entity) {
-      return Object.values(entity.claudeQA || {}).some(sec => sec && sec.questions);
+      return Object.values(entity.claudeQA || {}).some(sec => sec && sec.questions && sec.questions.trim());
     }
 
     // Get section names that have Claude questions, for display in build status
@@ -2238,7 +2628,10 @@
         return;
       }
 
-      if (this.isReadOnly() && !screen.startsWith('section/') && screen !== 'versions') {
+      if (this.isReadOnly() && !screen.startsWith('section/') && screen !== 'versions' &&
+          !(screen === 'build' && this.state.adminView) &&
+          !(screen === 'bug-report' && this.state.adminView) &&
+          !(screen === 'simple-update' && this.state.adminView)) {
         window.location.hash = `#/faction/${fid}`;
         return;
       }
@@ -2345,10 +2738,29 @@
       const design = unit.design;
 
       this.root.innerHTML = '';
+      const titleRow = document.createElement('div');
+      titleRow.style.display = 'flex';
+      titleRow.style.alignItems = 'center';
+      titleRow.style.gap = '12px';
+      titleRow.style.marginBottom = '12px';
+
       const title = document.createElement('h1');
       title.className = 'faction-title';
       title.textContent = design.units.rows[0].name || 'Unit';
-      this.root.appendChild(title);
+      title.style.margin = '0';
+      titleRow.appendChild(title);
+
+      const pencilBtn = document.createElement('button');
+      pencilBtn.className = 'icon-button';
+      pencilBtn.textContent = '✏️';
+      pencilBtn.style.cssText = 'background: none; border: none; cursor: pointer; font-size: 24px; padding: 0 8px;';
+      pencilBtn.title = 'Edit unit name';
+      pencilBtn.onclick = () => {
+        this.showRenameDialog(unit, 'unit');
+      };
+      titleRow.appendChild(pencilBtn);
+
+      this.root.appendChild(titleRow);
 
       const container = document.createElement('div');
       this.root.appendChild(container);
@@ -2900,6 +3312,13 @@
         });
 
         this.root.appendChild(missingDiv);
+
+        if (this.isReadOnly()) {
+          const note = document.createElement('p');
+          note.style.cssText = 'color: #888; margin-top: 20px; font-style: italic;';
+          note.textContent = 'Admin view: The owner must submit the build request from their designer account.';
+          this.root.appendChild(note);
+        }
       }
 
       const versionInfo = document.createElement('div');
@@ -2910,62 +3329,74 @@
       `;
       this.root.appendChild(versionInfo);
 
-      if (faction.build.status !== 'built') {
-        const executeBtn = document.createElement('button');
-        executeBtn.className = 'primary';
-        executeBtn.textContent = 'Execute build';
-        executeBtn.disabled = !Rules.buildReady(design) || faction.build.status === 'requested' || faction.build.status === 'in_progress';
-        executeBtn.style.marginTop = '20px';
-        executeBtn.onclick = async () => {
-          try {
-            await this.createRequest(
-              faction.id,
-              'build',
-              `Design complete and ready to execute build for ${faction.name}`,
-              {version: faction.current}
-            );
-            alert('Build requested. Check the admin console.');
-            faction.build.status = 'requested';
-            this.renderBuildScreen();
-          } catch (err) {
-            alert('Build request failed: ' + err.message);
-          }
-        };
-        this.root.appendChild(executeBtn);
-      } else {
-        const updateBtn = document.createElement('button');
-        updateBtn.className = 'primary';
-        updateBtn.textContent = 'Update';
-        updateBtn.disabled = faction.current === faction.build.liveVersion;
-        updateBtn.style.marginTop = '20px';
-        updateBtn.onclick = async () => {
-          const sections = Rules.BUILD_SECTIONS.filter(key => {
-            const diff = Rules.describeSectionDiff(key, this.state.builtDesign, design);
-            return diff !== '';
-          });
-
-          if (sections.length === 0) {
-            alert('No changes detected.');
-            return;
-          }
-
-          try {
-            for (const key of sections) {
-              const sec = Rules.SECTIONS.find(s => s.key === key);
-              const diff = Rules.describeSectionDiff(key, this.state.builtDesign, design);
+      if (!this.isReadOnly()) {
+        if (faction.build.status !== 'built') {
+          const executeBtn = document.createElement('button');
+          executeBtn.className = 'primary';
+          executeBtn.textContent = 'Execute build';
+          executeBtn.disabled = !Rules.buildReady(design) || faction.build.status === 'requested' || faction.build.status === 'in_progress';
+          executeBtn.style.marginTop = '20px';
+          executeBtn.onclick = async () => {
+            try {
               await this.createRequest(
                 faction.id,
-                'update',
-                `${faction.name} update required. ${sec.title} needs to be changed. New version includes ${diff}.`,
-                {section: key, fromVersion: faction.build.liveVersion, toVersion: faction.current}
+                'build',
+                `Design complete and ready to execute build for ${faction.name}`,
+                {version: faction.current}
               );
+              alert('Build requested. Check the admin console.');
+              faction.build.status = 'requested';
+              this.renderBuildScreen();
+            } catch (err) {
+              alert('Build request failed: ' + err.message);
             }
-            alert(`Update requests created for ${sections.length} section(s).`);
-          } catch (err) {
-            alert('Update request failed: ' + err.message);
-          }
-        };
-        this.root.appendChild(updateBtn);
+          };
+          this.root.appendChild(executeBtn);
+        } else {
+          const updateBtn = document.createElement('button');
+          updateBtn.className = 'primary';
+          updateBtn.textContent = 'Update';
+          updateBtn.disabled = faction.current === faction.build.liveVersion;
+          updateBtn.style.marginTop = '20px';
+          updateBtn.onclick = async () => {
+            const sections = Rules.BUILD_SECTIONS.filter(key => {
+              const diff = Rules.describeSectionDiff(key, this.state.builtDesign, design);
+              return diff !== '';
+            });
+
+            if (sections.length === 0) {
+              alert('No changes detected.');
+              return;
+            }
+
+            try {
+              for (const key of sections) {
+                const sec = Rules.SECTIONS.find(s => s.key === key);
+                const diff = Rules.describeSectionDiff(key, this.state.builtDesign, design);
+                await this.createRequest(
+                  faction.id,
+                  'update',
+                  `${faction.name} update required. ${sec.title} needs to be changed. New version includes ${diff}.`,
+                  {section: key, fromVersion: faction.build.liveVersion, toVersion: faction.current}
+                );
+              }
+              alert(`Update requests created for ${sections.length} section(s).`);
+            } catch (err) {
+              alert('Update request failed: ' + err.message);
+            }
+          };
+          this.root.appendChild(updateBtn);
+        }
+      } else if (this.state.adminView) {
+        const note = document.createElement('p');
+        note.style.cssText = 'margin-top: 20px; padding: 12px; background: #1f2937; border: 1px solid #666; border-radius: 4px; color: #d1d5db; font-style: italic;';
+        note.textContent = 'Admin view: The owner must submit the build request from their designer account.';
+        this.root.appendChild(note);
+      } else {
+        const note = document.createElement('p');
+        note.style.cssText = 'margin-top: 20px; padding: 12px; background: #1f2937; border: 1px solid #666; border-radius: 4px; color: #d1d5db; font-style: italic;';
+        note.textContent = 'Admin view: The owner must submit the build request from their designer account.';
+        this.root.appendChild(note);
       }
 
       if (this.isReadOnly()) this.root.appendChild(this.readOnlyBanner());
@@ -3056,6 +3487,24 @@
         window.location.hash = `#/unit/${uid}`;
       };
       this.root.appendChild(exitBtn);
+    }
+
+    async renderFactionBuildInspector(fid) {
+      // Admin inspector: read-only build details with Claude Q&A
+      if (!window.FactionBuildInspectorScreen) {
+        this.root.innerHTML = '<p style="padding:20px; color:red;">Inspector component not loaded</p>';
+        return;
+      }
+
+      try {
+        const faction = await this.api('GET', `/admin/${this.state.adminToken}/view-faction/${fid}`);
+        this.state.currentFaction = faction;
+        const inspector = new FactionBuildInspectorScreen(faction, this);
+        inspector.render();
+      } catch (err) {
+        console.error('Failed to load faction for inspector:', err);
+        this.root.innerHTML = `<p style="padding:20px; color:red;">Error loading faction: ${err.message}</p>`;
+      }
     }
 
     renderSimpleUpdateScreen() {
@@ -3201,6 +3650,119 @@
       title.style.marginTop = '20px';
       this.root.appendChild(title);
 
+      // Bug history table
+      if (faction.bugHistory && faction.bugHistory.length > 0) {
+        const historyDiv = document.createElement('div');
+        historyDiv.style.marginTop = '30px';
+        historyDiv.style.marginBottom = '30px';
+
+        const historyTitle = document.createElement('h3');
+        historyTitle.textContent = 'Bug History';
+        historyTitle.style.marginBottom = '15px';
+        historyDiv.appendChild(historyTitle);
+
+        const table = document.createElement('table');
+        table.style.width = '100%';
+        table.style.borderCollapse = 'collapse';
+        table.style.border = '1px solid #000';
+        table.style.fontSize = '14px';
+
+        // Table header
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        headerRow.style.backgroundColor = '#f0f0f0';
+        headerRow.style.border = '1px solid #000';
+
+        const headers = ['Bug #', 'Submitted', 'Description', 'Response', 'Status'];
+        for (const headerText of headers) {
+          const th = document.createElement('th');
+          th.textContent = headerText;
+          th.style.padding = '8px';
+          th.style.textAlign = 'left';
+          th.style.border = '1px solid #000';
+          th.style.fontWeight = 'bold';
+          headerRow.appendChild(th);
+        }
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+
+        // Table body - most recent first
+        const tbody = document.createElement('tbody');
+        const sortedBugs = [...faction.bugHistory].sort((a, b) => b.submittedAt - a.submittedAt);
+
+        for (const bug of sortedBugs) {
+          const row = document.createElement('tr');
+          row.style.border = '1px solid #000';
+
+          // Bug Number
+          const bugCell = document.createElement('td');
+          bugCell.textContent = bug.bugNumber;
+          bugCell.style.padding = '8px';
+          bugCell.style.border = '1px solid #000';
+          row.appendChild(bugCell);
+
+          // Submitted date
+          const dateCell = document.createElement('td');
+          const date = new Date(bug.submittedAt * 1000);
+          dateCell.textContent = date.toLocaleString();
+          dateCell.style.padding = '8px';
+          dateCell.style.border = '1px solid #000';
+          dateCell.style.fontSize = '12px';
+          row.appendChild(dateCell);
+
+          // Description
+          const descCell = document.createElement('td');
+          descCell.textContent = bug.description;
+          descCell.style.padding = '8px';
+          descCell.style.border = '1px solid #000';
+          descCell.style.maxWidth = '300px';
+          descCell.style.overflow = 'hidden';
+          descCell.style.textOverflow = 'ellipsis';
+          descCell.title = bug.description;
+          row.appendChild(descCell);
+
+          // Response
+          const respCell = document.createElement('td');
+          respCell.textContent = bug.response || '';
+          respCell.style.padding = '8px';
+          respCell.style.border = '1px solid #000';
+          respCell.style.maxWidth = '300px';
+          respCell.style.overflow = 'hidden';
+          respCell.style.textOverflow = 'ellipsis';
+          if (bug.response) {
+            respCell.title = bug.response;
+          }
+          row.appendChild(respCell);
+
+          // Status - show full Claude status, not just Pending/Addressed
+          const statusCell = document.createElement('td');
+          if (bug.response) {
+            // Show the full response text as status
+            statusCell.textContent = bug.response;
+            statusCell.style.color = '#008000';
+          } else {
+            statusCell.textContent = 'Submitted, waiting to be picked up';
+            statusCell.style.color = '#ff8800';
+          }
+          statusCell.style.padding = '8px';
+          statusCell.style.border = '1px solid #000';
+          statusCell.style.maxWidth = '400px';
+          statusCell.style.overflow = 'hidden';
+          statusCell.style.textOverflow = 'ellipsis';
+          statusCell.style.whiteSpace = 'normal';
+          statusCell.style.fontSize = '12px';
+          if (bug.response) {
+            statusCell.title = bug.response;
+          }
+          row.appendChild(statusCell);
+
+          tbody.appendChild(row);
+        }
+        table.appendChild(tbody);
+        historyDiv.appendChild(table);
+        this.root.appendChild(historyDiv);
+      }
+
       const label = document.createElement('label');
       label.textContent = 'Describe the bug:';
       label.style.marginTop = '20px';
@@ -3236,6 +3798,8 @@
           alert('Bug report sent.');
           localStorage.removeItem(`bug_draft_${faction.id}`);
           textarea.value = '';
+          // Reload to show new bug in history
+          this.loadFaction(faction.id);
         } catch (err) {
           alert('Failed to send bug report: ' + err.message);
         }
@@ -3263,14 +3827,37 @@
       };
       header.appendChild(backBtn);
 
+      const titleRow = document.createElement('div');
+      titleRow.style.display = 'flex';
+      titleRow.style.alignItems = 'center';
+      titleRow.style.gap = '12px';
+
       const nameTitle = document.createElement('h1');
       nameTitle.className = 'faction-title';
       nameTitle.textContent = map.name;
-      header.appendChild(nameTitle);
+      nameTitle.style.margin = '0';
+      titleRow.appendChild(nameTitle);
 
+      const pencilBtn = document.createElement('button');
+      pencilBtn.className = 'icon-button';
+      pencilBtn.textContent = '✏️';
+      pencilBtn.style.cssText = 'background: none; border: none; cursor: pointer; font-size: 24px; padding: 0 8px; margin-left: 8px;';
+      pencilBtn.title = 'Edit map name';
+      pencilBtn.onclick = () => {
+        this.showRenameDialog(map, 'map');
+      };
+      titleRow.appendChild(pencilBtn);
+
+      header.appendChild(titleRow);
       this.root.appendChild(header);
       if (this.isReadOnly()) this.root.appendChild(this.readOnlyBanner());
-      if (this.state.adminView && map.build) {
+
+      // Show ALL pending requests if in admin view
+      if (this.state.adminView && map.pendingRequests && map.pendingRequests.length > 0) {
+        const allReqBanner = this.allRequestsStatusBanner(map.pendingRequests);
+        if (allReqBanner) this.root.appendChild(allReqBanner);
+      } else if (this.state.adminView && map.build) {
+        // Fallback to build-only banner for legacy compatibility
         const banner = this.buildStatusBanner(map, true);
         if (banner) this.root.appendChild(banner);
       }
@@ -3732,6 +4319,119 @@
       title.style.marginTop = '20px';
       this.root.appendChild(title);
 
+      // Bug history table
+      if (map.bugHistory && map.bugHistory.length > 0) {
+        const historyDiv = document.createElement('div');
+        historyDiv.style.marginTop = '30px';
+        historyDiv.style.marginBottom = '30px';
+
+        const historyTitle = document.createElement('h3');
+        historyTitle.textContent = 'Bug History';
+        historyTitle.style.marginBottom = '15px';
+        historyDiv.appendChild(historyTitle);
+
+        const table = document.createElement('table');
+        table.style.width = '100%';
+        table.style.borderCollapse = 'collapse';
+        table.style.border = '1px solid #000';
+        table.style.fontSize = '14px';
+
+        // Table header
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        headerRow.style.backgroundColor = '#f0f0f0';
+        headerRow.style.border = '1px solid #000';
+
+        const headers = ['Bug #', 'Submitted', 'Description', 'Response', 'Status'];
+        for (const headerText of headers) {
+          const th = document.createElement('th');
+          th.textContent = headerText;
+          th.style.padding = '8px';
+          th.style.textAlign = 'left';
+          th.style.border = '1px solid #000';
+          th.style.fontWeight = 'bold';
+          headerRow.appendChild(th);
+        }
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+
+        // Table body - most recent first
+        const tbody = document.createElement('tbody');
+        const sortedBugs = [...map.bugHistory].sort((a, b) => b.submittedAt - a.submittedAt);
+
+        for (const bug of sortedBugs) {
+          const row = document.createElement('tr');
+          row.style.border = '1px solid #000';
+
+          // Bug Number
+          const bugCell = document.createElement('td');
+          bugCell.textContent = bug.bugNumber;
+          bugCell.style.padding = '8px';
+          bugCell.style.border = '1px solid #000';
+          row.appendChild(bugCell);
+
+          // Submitted date
+          const dateCell = document.createElement('td');
+          const date = new Date(bug.submittedAt * 1000);
+          dateCell.textContent = date.toLocaleString();
+          dateCell.style.padding = '8px';
+          dateCell.style.border = '1px solid #000';
+          dateCell.style.fontSize = '12px';
+          row.appendChild(dateCell);
+
+          // Description
+          const descCell = document.createElement('td');
+          descCell.textContent = bug.description;
+          descCell.style.padding = '8px';
+          descCell.style.border = '1px solid #000';
+          descCell.style.maxWidth = '300px';
+          descCell.style.overflow = 'hidden';
+          descCell.style.textOverflow = 'ellipsis';
+          descCell.title = bug.description;
+          row.appendChild(descCell);
+
+          // Response
+          const respCell = document.createElement('td');
+          respCell.textContent = bug.response || '';
+          respCell.style.padding = '8px';
+          respCell.style.border = '1px solid #000';
+          respCell.style.maxWidth = '300px';
+          respCell.style.overflow = 'hidden';
+          respCell.style.textOverflow = 'ellipsis';
+          if (bug.response) {
+            respCell.title = bug.response;
+          }
+          row.appendChild(respCell);
+
+          // Status - show full Claude status, not just Pending/Addressed
+          const statusCell = document.createElement('td');
+          if (bug.response) {
+            // Show the full response text as status
+            statusCell.textContent = bug.response;
+            statusCell.style.color = '#008000';
+          } else {
+            statusCell.textContent = 'Submitted, waiting to be picked up';
+            statusCell.style.color = '#ff8800';
+          }
+          statusCell.style.padding = '8px';
+          statusCell.style.border = '1px solid #000';
+          statusCell.style.maxWidth = '400px';
+          statusCell.style.overflow = 'hidden';
+          statusCell.style.textOverflow = 'ellipsis';
+          statusCell.style.whiteSpace = 'normal';
+          statusCell.style.fontSize = '12px';
+          if (bug.response) {
+            statusCell.title = bug.response;
+          }
+          row.appendChild(statusCell);
+
+          tbody.appendChild(row);
+        }
+        table.appendChild(tbody);
+        historyDiv.appendChild(table);
+        this.root.appendChild(historyDiv);
+      }
+
       const label = document.createElement('label');
       label.textContent = 'Describe the bug:';
       label.style.marginTop = '20px';
@@ -3767,6 +4467,8 @@
           alert('Bug report sent.');
           localStorage.removeItem(`bug_draft_map_${map.id}`);
           textarea.value = '';
+          // Reload to show new bug in history
+          this.loadMap(map.id);
         } catch (err) {
           alert('Failed to send bug report: ' + err.message);
         }
@@ -3986,6 +4688,119 @@
       title.style.marginTop = '20px';
       this.root.appendChild(title);
 
+      // Bug history table
+      if (unit.bugHistory && unit.bugHistory.length > 0) {
+        const historyDiv = document.createElement('div');
+        historyDiv.style.marginTop = '30px';
+        historyDiv.style.marginBottom = '30px';
+
+        const historyTitle = document.createElement('h3');
+        historyTitle.textContent = 'Bug History';
+        historyTitle.style.marginBottom = '15px';
+        historyDiv.appendChild(historyTitle);
+
+        const table = document.createElement('table');
+        table.style.width = '100%';
+        table.style.borderCollapse = 'collapse';
+        table.style.border = '1px solid #000';
+        table.style.fontSize = '14px';
+
+        // Table header
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        headerRow.style.backgroundColor = '#f0f0f0';
+        headerRow.style.border = '1px solid #000';
+
+        const headers = ['Bug #', 'Submitted', 'Description', 'Response', 'Status'];
+        for (const headerText of headers) {
+          const th = document.createElement('th');
+          th.textContent = headerText;
+          th.style.padding = '8px';
+          th.style.textAlign = 'left';
+          th.style.border = '1px solid #000';
+          th.style.fontWeight = 'bold';
+          headerRow.appendChild(th);
+        }
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+
+        // Table body - most recent first
+        const tbody = document.createElement('tbody');
+        const sortedBugs = [...unit.bugHistory].sort((a, b) => b.submittedAt - a.submittedAt);
+
+        for (const bug of sortedBugs) {
+          const row = document.createElement('tr');
+          row.style.border = '1px solid #000';
+
+          // Bug Number
+          const bugCell = document.createElement('td');
+          bugCell.textContent = bug.bugNumber;
+          bugCell.style.padding = '8px';
+          bugCell.style.border = '1px solid #000';
+          row.appendChild(bugCell);
+
+          // Submitted date
+          const dateCell = document.createElement('td');
+          const date = new Date(bug.submittedAt * 1000);
+          dateCell.textContent = date.toLocaleString();
+          dateCell.style.padding = '8px';
+          dateCell.style.border = '1px solid #000';
+          dateCell.style.fontSize = '12px';
+          row.appendChild(dateCell);
+
+          // Description
+          const descCell = document.createElement('td');
+          descCell.textContent = bug.description;
+          descCell.style.padding = '8px';
+          descCell.style.border = '1px solid #000';
+          descCell.style.maxWidth = '300px';
+          descCell.style.overflow = 'hidden';
+          descCell.style.textOverflow = 'ellipsis';
+          descCell.title = bug.description;
+          row.appendChild(descCell);
+
+          // Response
+          const respCell = document.createElement('td');
+          respCell.textContent = bug.response || '';
+          respCell.style.padding = '8px';
+          respCell.style.border = '1px solid #000';
+          respCell.style.maxWidth = '300px';
+          respCell.style.overflow = 'hidden';
+          respCell.style.textOverflow = 'ellipsis';
+          if (bug.response) {
+            respCell.title = bug.response;
+          }
+          row.appendChild(respCell);
+
+          // Status - show full Claude status, not just Pending/Addressed
+          const statusCell = document.createElement('td');
+          if (bug.response) {
+            // Show the full response text as status
+            statusCell.textContent = bug.response;
+            statusCell.style.color = '#008000';
+          } else {
+            statusCell.textContent = 'Submitted, waiting to be picked up';
+            statusCell.style.color = '#ff8800';
+          }
+          statusCell.style.padding = '8px';
+          statusCell.style.border = '1px solid #000';
+          statusCell.style.maxWidth = '400px';
+          statusCell.style.overflow = 'hidden';
+          statusCell.style.textOverflow = 'ellipsis';
+          statusCell.style.whiteSpace = 'normal';
+          statusCell.style.fontSize = '12px';
+          if (bug.response) {
+            statusCell.title = bug.response;
+          }
+          row.appendChild(statusCell);
+
+          tbody.appendChild(row);
+        }
+        table.appendChild(tbody);
+        historyDiv.appendChild(table);
+        this.root.appendChild(historyDiv);
+      }
+
       const label = document.createElement('label');
       label.textContent = 'Describe the bug:';
       label.style.marginTop = '20px';
@@ -4022,6 +4837,8 @@
           alert('Bug report sent.');
           localStorage.removeItem(`bug_draft_unit_${uid}`);
           textarea.value = '';
+          // Reload to show new bug in history
+          await this.api('GET', `/units/${uid}`);
         } catch (err) {
           alert('Failed to send bug report: ' + err.message);
         }

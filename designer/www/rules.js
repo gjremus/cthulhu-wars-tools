@@ -24,10 +24,11 @@
     {key: 'region', title: 'Faction region (ex. "the Moon")'},
     {key: 'tokens', title: 'Tokens (ex. "Craters")'},
     {key: 'custom', title: 'Other Custom (ex. "Cursed Tomes")'},
-    {key: 'menus', title: 'Menu Design'}
+    {key: 'menus', title: 'Menu Design'},
+    {key: 'interactions', title: 'Ability Interactions'}
   ];
 
-  const BUILD_SECTIONS = ['ae', 'ufa', 'setup', 'units', 'sbr', 'sb', 'region', 'tokens', 'custom'];
+  const BUILD_SECTIONS = ['ae', 'ufa', 'setup', 'units', 'sbr', 'sb', 'region', 'tokens', 'custom', 'interactions'];
 
   const MAP_SECTIONS = [
     {key: 'images', title: 'Map Images'},
@@ -188,10 +189,17 @@
           next: null,
           nextTrigger: ''
         }]
+      },
+      interactions: {
+        rows: [
+          {id: newId(), otherFaction: 'Sleeper', abilityType: 'Spellbook', ability: 'Ancient Sorcery', abilityText: '', yourAbility: 'ufa', interactionDesc: ''},
+          {id: newId(), otherFaction: 'Neutral Monsters', abilityType: 'Unit Special', ability: 'Blasphemous Obeisance', abilityText: '', yourAbility: '', interactionDesc: ''},
+          {id: newId(), otherFaction: 'Bubastis', abilityType: 'Unit Special', ability: 'Moon', abilityText: '', yourAbility: '', interactionDesc: ''}
+        ]
       }
     };
     // Every design section ends with a free "Any custom logic or rules" box
-    BUILD_SECTIONS.forEach(key => { design[key].customLogic = ''; });
+    BUILD_SECTIONS.forEach(key => { design[key].customLogic = ''; design[key].adminNotes = ''; });
     return design;
   }
 
@@ -318,6 +326,16 @@
         leadsToNext: false,
         next: null,
         nextTrigger: ''
+      };
+    } else if (tablePath === 'interactions.rows') {
+      return {
+        id: newId(),
+        otherFaction: '',
+        abilityType: '',
+        ability: '',
+        abilityText: '',
+        yourAbility: '',
+        interactionDesc: ''
       };
     }
     return null;
@@ -587,6 +605,18 @@
       const nonEmptyRows = d.rows.filter(r => !isRowEmpty(r, blankRow('custom.rows')));
       if (completeRows.length === nonEmptyRows.length && completeRows.length > 0) return 'Complete';
       return 'Incomplete';
+    }
+
+    if (key === 'interactions') {
+      // Only Ancient Sorcery row is required
+      const ancientSorceryRow = d.rows.find(r =>
+        r.otherFaction === 'Sleeper' &&
+        r.abilityType === 'Spellbook' &&
+        r.ability === 'Ancient Sorcery'
+      );
+      if (!ancientSorceryRow) return 'Incomplete';
+      if (!ancientSorceryRow.yourAbility || !ancientSorceryRow.interactionDesc) return 'Incomplete';
+      return 'Complete';
     }
 
     return 'N/A';
@@ -898,6 +928,20 @@
         if (!r.effects) missing.push(`custom.rows.${r.id}.effects`);
         if (r.hasNum && r.num == null) missing.push(`custom.rows.${r.id}.num`);
       });
+    }
+
+    if (key === 'interactions') {
+      const ancientSorceryRow = d.rows.find(r =>
+        r.otherFaction === 'Sleeper' &&
+        r.abilityType === 'Spellbook' &&
+        r.ability === 'Ancient Sorcery'
+      );
+      if (!ancientSorceryRow) {
+        missing.push('interactions.rows');
+      } else {
+        if (!ancientSorceryRow.yourAbility) missing.push(`interactions.rows.${ancientSorceryRow.id}.yourAbility`);
+        if (!ancientSorceryRow.interactionDesc) missing.push(`interactions.rows.${ancientSorceryRow.id}.interactionDesc`);
+      }
     }
 
     return missing;

@@ -287,17 +287,26 @@
     }
 
     // Answers box
-    if (qa.answers && qa.answers.trim()) {
+    if (qa.questions && qa.questions.trim()) {
       const aDiv = document.createElement('div');
       aDiv.style.cssText = 'margin: 16px 0; padding: 12px; background: #065f46; border: 2px solid #10b981; color: #fff; border-radius: 4px;';
       const aLabel = document.createElement('strong');
       aLabel.style.cssText = 'display: block; margin-bottom: 8px;';
       aLabel.textContent = 'Claude Answers:';
-      const aPre = document.createElement('pre');
-      aPre.style.cssText = 'white-space: pre-wrap; margin: 0; font-family: monospace; font-size: 13px;';
-      aPre.textContent = qa.answers;
-      aDiv.appendChild(aLabel);
-      aDiv.appendChild(aPre);
+
+      if (qa.answers && qa.answers.trim()) {
+        const aPre = document.createElement('pre');
+        aPre.style.cssText = 'white-space: pre-wrap; margin: 0; font-family: monospace; font-size: 13px;';
+        aPre.textContent = qa.answers;
+        aDiv.appendChild(aPre);
+      } else if (ctx.readOnly) {
+        // In read-only mode, show placeholder if no answers yet
+        const placeholder = document.createElement('p');
+        placeholder.style.cssText = 'color: #d1d5db; font-style: italic; padding: 8px 0; margin: 0;';
+        placeholder.textContent = 'Awaiting designer\'s answer';
+        aDiv.appendChild(placeholder);
+      }
+
       container.appendChild(aDiv);
     }
   }
@@ -329,8 +338,10 @@
     textarea.value = value;
     textarea.style.cssText = 'width: 100%; min-height: 80px; font-family: monospace; font-size: 12px; border: 2px solid #f59e0b; background: #fef3c7; color: #000;';
     textarea.placeholder = 'Internal notes about this section...';
+    // Admin notes are ONLY editable in admin view - regular users never see them
+    textarea.disabled = false;
 
-    textarea.addEventListener('blur', () => {
+    textarea.addEventListener('input', () => {
       ctx.set(`${sectionPath}.adminNotes`, textarea.value);
     });
 
@@ -2986,6 +2997,7 @@
       tokens: ctx.map ? renderMapTokens : renderTokens,
       custom: renderCustom,
       menus: renderMenus,
+      interactions: renderInteractions,
       images: renderMapImages,
       bitmaps: renderMapBitmaps,
       adjacency: renderMapAdjacency,
@@ -3030,7 +3042,13 @@
         questionsBox.value = qa.questions || '';
         container.appendChild(h('div', {style: 'margin-top: 40px;'}, label('Claude questions'), questionsBox));
 
-        if (!ctx.readOnly) {
+        const answersDiv = h('div', {style: 'margin-top: 20px;'});
+        if (ctx.readOnly && !qa.answers) {
+          const placeholder = h('p', {style: 'color: #888; font-style: italic; padding: 8px;'},
+            'Awaiting designer\'s answer');
+          answersDiv.appendChild(placeholder);
+          container.appendChild(answersDiv);
+        } else if (!ctx.readOnly) {
           const answersBox = h('textarea', {style: boxStyle + ' height: 35vh; border: 1px solid #888; background: #222; color: #eee;'});
           answersBox.value = qa.answers || '';
           const status = h('span', {style: 'margin-left: 12px; font-size: 14px;'});
@@ -3058,7 +3076,17 @@
             }
           }, 'Submit answers');
           answersBox.oninput = () => { submitBtn.disabled = !answersBox.value.trim(); };
-          container.appendChild(h('div', {style: 'margin-top: 20px;'}, label('Answers for Claude'), answersBox, submitBtn, status));
+          answersDiv.appendChild(label('Answers for Claude'));
+          answersDiv.appendChild(answersBox);
+          answersDiv.appendChild(submitBtn);
+          answersDiv.appendChild(status);
+          container.appendChild(answersDiv);
+        } else if (ctx.readOnly && qa.answers) {
+          const answersBox = h('textarea', {readonly: true, style: boxStyle + ' height: 35vh; border: 1px solid #666; background: #1a1a1a; color: #aaa;'});
+          answersBox.value = qa.answers || '';
+          answersDiv.appendChild(label('Designer\'s answers'));
+          answersDiv.appendChild(answersBox);
+          container.appendChild(answersDiv);
         }
       }
     } else {
@@ -3068,3 +3096,224 @@
 
   window.Sections = {render};
 })();
+// Temporary file - will be integrated into sections.js
+function renderInteractions(container, ctx) {
+  const d = ctx.design.interactions;
+  const missing = window.Rules.missingFields('interactions', ctx.design);
+  const isMissing = path => missing.includes(path);
+
+  // Load abilities data (cached)
+  if (!window._abilitiesData) {
+    fetch('/designer/abilities-data.json')
+      .then(r => r.json())
+      .then(data => {
+        window._abilitiesData = data;
+        ctx.rerender(); // Re-render once data is loaded
+      });
+    container.appendChild(h('p', {}, 'Loading abilities data...'));
+    return;
+  }
+
+  const abilitiesData = window._abilitiesData;
+
+  // Helper to get abilities for a faction/type combination
+  const getAbilities = (faction, type) => {
+    if (!faction || !type) return [];
+    return abilitiesData.abilities.filter(a => {
+      if (a.faction !== faction) return false;
+      // Map ability types
+      if (type === 'UFA' && a.unit === 'N/A' && a.type !== 'Spellbook') return true;
+      if (type === 'Spellbook' && a.type === 'Spellbook') return true;
+      if (type === 'Unit Special' && a.unit !== 'N/A') return true;
+      if (type === 'GOO/iGOO/EG ability' && a.unit !== 'N/A') return true;
+      return false;
+    });
+  };
+
+  // Helper to get ability text
+  const getAbilityText = (faction, abilityName) => {
+    const ability = abilitiesData.abilities.find(a => a.faction === faction && a.name === abilityName);
+    return ability ? ability.text : '';
+  };
+
+  // Get this faction's abilities for dropdown
+  const getYourAbilities = () => {
+    const abilities = [{value: 'ufa', label: 'Unique Faction Ability'}];
+
+    // Add spellbooks
+    const sbRows = ctx.design.sb?.rows || [];
+    sbRows.forEach((sb, idx) => {
+      if (sb.name) {
+        abilities.push({value: `sb_${idx + 1}`, label: `SB ${idx + 1}: ${sb.name}`});
+      }
+    });
+
+    // Add units with abilities
+    const unitRows = ctx.design.units?.rows || [];
+    unitRows.forEach(unit => {
+      if (unit.abilityName && unit.name) {
+        abilities.push({value: `unit_${unit.name}`, label: `${unit.name}: ${unit.abilityName}`});
+      }
+    });
+
+    // Add GOO ability if exists
+    const goo = unitRows.find(u => u.type === 'Great Old One');
+    if (goo && goo.abilityName) {
+      abilities.push({value: 'goo', label: `${goo.name} (GOO ability)`});
+    }
+
+    return abilities;
+  };
+
+  const tableDiv = h('div', {className: 'sx-table'});
+  const table = h('table', {});
+  const thead = h('thead', {},
+    h('tr', {},
+      h('th', {}, 'Faction/Map'),
+      h('th', {}, 'Ability Type'),
+      h('th', {}, 'Ability'),
+      h('th', {}, 'Ability Text'),
+      h('th', {}, 'Your Faction\'s Ability'),
+      h('th', {}, 'Interaction Description'),
+      h('th', {}, '')
+    )
+  );
+  table.appendChild(thead);
+
+  const tbody = h('tbody', {});
+
+  d.rows.forEach(row => {
+    const tr = h('tr', {});
+
+    // Check if this is the Ancient Sorcery row (required)
+    const isAncientSorcery = row.otherFaction === 'Sleeper' &&
+                             row.abilityType === 'Spellbook' &&
+                             row.ability === 'Ancient Sorcery';
+
+    if (isAncientSorcery) {
+      tr.style.backgroundColor = '#1a2a1a'; // Slight green tint to indicate required row
+    }
+
+    // Column 1: Faction/Map dropdown
+    tr.appendChild(h('td', {},
+      h('select', {
+        className: isMissing(`interactions.rows.${row.id}.otherFaction`) ? 'sx-missing' : '',
+        value: row.otherFaction || '',
+        onchange: e => {
+          ctx.set(`interactions.rows.${row.id}.otherFaction`, e.target.value || null);
+          ctx.set(`interactions.rows.${row.id}.ability`, null);
+          ctx.set(`interactions.rows.${row.id}.abilityText`, '');
+        }
+      },
+        h('option', {value: ''}, '-- Select --'),
+        abilitiesData.factions.map(f => h('option', {value: f}, f))
+      )
+    ));
+
+    // Column 2: Ability Type dropdown
+    const abilityTypes = ['UFA', 'Spellbook', 'Unit Special', 'GOO/iGOO/EG ability'];
+    tr.appendChild(h('td', {},
+      h('select', {
+        className: isMissing(`interactions.rows.${row.id}.abilityType`) ? 'sx-missing' : '',
+        value: row.abilityType || '',
+        onchange: e => {
+          ctx.set(`interactions.rows.${row.id}.abilityType`, e.target.value || null);
+          ctx.set(`interactions.rows.${row.id}.ability`, null);
+          ctx.set(`interactions.rows.${row.id}.abilityText`, '');
+        }
+      },
+        h('option', {value: ''}, '-- Select --'),
+        abilityTypes.map(t => h('option', {value: t}, t))
+      )
+    ));
+
+    // Column 3: Ability dropdown (waterfall based on columns 1+2)
+    const availableAbilities = getAbilities(row.otherFaction, row.abilityType);
+    tr.appendChild(h('td', {},
+      h('select', {
+        className: isMissing(`interactions.rows.${row.id}.ability`) ? 'sx-missing' : '',
+        value: row.ability || '',
+        disabled: !row.otherFaction || !row.abilityType,
+        onchange: e => {
+          ctx.set(`interactions.rows.${row.id}.ability`, e.target.value || null);
+          const text = getAbilityText(row.otherFaction, e.target.value);
+          ctx.set(`interactions.rows.${row.id}.abilityText`, text);
+        }
+      },
+        h('option', {value: ''}, '-- Select --'),
+        availableAbilities.map(a => h('option', {value: a.name}, a.name))
+      )
+    ));
+
+    // Column 4: Ability Text (read-only, large)
+    tr.appendChild(h('td', {},
+      h('textarea', {
+        value: row.abilityText || '',
+        disabled: true,
+        rows: 4,
+        style: 'background: #1a1a1a; color: #888; resize: vertical; min-height: 80px;'
+      })
+    ));
+
+    // Column 5: Your Faction's Ability dropdown
+    const yourAbilities = getYourAbilities();
+    tr.appendChild(h('td', {},
+      h('select', {
+        className: isMissing(`interactions.rows.${row.id}.yourAbility`) ? 'sx-missing' : '',
+        value: row.yourAbility || '',
+        onchange: e => ctx.set(`interactions.rows.${row.id}.yourAbility`, e.target.value || null)
+      },
+        h('option', {value: ''}, '-- Select --'),
+        yourAbilities.map(a => h('option', {value: a.value}, a.label))
+      )
+    ));
+
+    // Column 6: Interaction Description (large text box)
+    tr.appendChild(h('td', {},
+      h('textarea', {
+        className: isMissing(`interactions.rows.${row.id}.interactionDesc`) ? 'sx-missing' : '',
+        value: row.interactionDesc || '',
+        rows: 4,
+        style: 'min-height: 80px; resize: vertical;',
+        oninput: e => ctx.set(`interactions.rows.${row.id}.interactionDesc`, e.target.value)
+      })
+    ));
+
+    // Column 7: Delete button (only if not Ancient Sorcery row)
+    tr.appendChild(h('td', {},
+      isAncientSorcery
+        ? h('span', {style: 'color: #888; font-size: 12px;'}, 'Required')
+        : h('button', {
+            onclick: async () => {
+              const confirmed = await ctx.confirm('Delete this interaction row?', 'Yes', 'No');
+              if (confirmed) ctx.deleteRow('interactions.rows', row.id);
+            }
+          }, 'Delete')
+    ));
+
+    tbody.appendChild(tr);
+  });
+
+  table.appendChild(tbody);
+  tableDiv.appendChild(table);
+  container.appendChild(tableDiv);
+
+  // Add row button
+  container.appendChild(h('button', {
+    className: 'sx-btn',
+    onclick: () => {
+      const newRow = window.Rules.blankRow('interactions.rows');
+      ctx.addRow('interactions.rows', newRow);
+    }
+  }, 'Add Interaction Row'));
+
+  // Help text
+  container.appendChild(h('p', {style: 'margin-top: 20px; font-size: 14px; color: #aaa;'},
+    'The Ancient Sorcery row (green background) is required. All other rows are optional. ' +
+    'Use this section to document interactions between your faction\'s abilities and known abilities ' +
+    'from other factions, maps, or neutral units.'
+  ));
+
+  renderClaudeQA(container, ctx, 'interactions');
+  renderAdminNotes(container, ctx, 'interactions');
+}

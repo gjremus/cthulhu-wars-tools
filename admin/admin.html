@@ -194,6 +194,32 @@
              border-radius: 6px; margin-bottom: 12px; display: flex; gap: 10px; align-items: center;
              flex-wrap: wrap; }
 
+  /* Admin faction detail pane */
+  .admin-faction-detail { display: none; }
+  .admin-faction-detail.visible { display: block; }
+  .admin-faction-detail .back-btn { display: inline-block; margin-bottom: 12px; }
+  .build-status-banner { padding: 12px 14px; border-radius: 6px; margin-bottom: 14px; font-weight: 500; }
+  .build-status-banner.requested { background: rgba(210,153,34,0.15); color: var(--warn); border: 1px solid var(--warn); }
+  .build-status-banner.in_progress { background: rgba(47,129,247,0.15); color: var(--accent); border: 1px solid var(--accent); }
+  .build-status-banner.built { background: rgba(63,185,80,0.15); color: var(--success); border: 1px solid var(--success); }
+  .build-status-banner.needs_answers { background: rgba(248,81,73,0.15); color: var(--danger); border: 1px solid var(--danger); }
+  .section-status-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+  .section-status-table tbody tr { border-bottom: 1px solid var(--border); }
+  .section-status-table td { padding: 8px 10px; font-size: 10pt; }
+  .section-status-table td:first-child { font-weight: 500; }
+  .section-status-table td:last-child { text-align: center; }
+  .badge-complete { display: inline-block; width: 20px; height: 20px; background: rgba(63,185,80,0.2); color: var(--success); text-align: center; line-height: 1.2; border-radius: 3px; font-size: 12pt; font-weight: bold; }
+  .badge-incomplete { display: inline-block; padding: 2px 8px; background: rgba(248,81,73,0.2); color: var(--danger); border-radius: 3px; font-size: 9pt; }
+  .badge-question { display: inline-block; padding: 2px 8px; background: rgba(210,153,34,0.2); color: var(--warn); border-radius: 3px; font-size: 9pt; }
+  .missing-fields-panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; margin-bottom: 14px; }
+  .missing-fields-panel ul { margin: 4px 0; padding-left: 20px; }
+  .missing-fields-panel li { margin: 2px 0; font-size: 10pt; color: var(--text-muted); }
+  .version-info { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; font-size: 10pt; }
+  .version-info-row { background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; }
+  .version-info-row label { display: block; font-size: 9pt; color: var(--text-muted); margin-bottom: 2px; }
+  .stability-row { background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; }
+  .admin-faction-loading { padding: 20px; text-align: center; color: var(--text-muted); }
+
   /* Code blocks in the Build / SimRunner runbook pages. Click anywhere on the
      block to copy the command to clipboard; a small toast fades in to confirm. */
   pre.cmd { background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
@@ -519,6 +545,24 @@
 
     <h3 style="margin-top:24px;">Queue (prompts submitted but not yet picked up) <button class="small" style="margin-left:8px;" onclick="refreshClaudeQueue()">Refresh</button></h3>
     <pre id="claude-queue" class="sim-tail" style="height:20vh;max-height:20vh;">loading…</pre>
+
+    <h3 style="margin-top:24px;">Live Agent Output (Debug View) <button class="small" style="margin-left:8px;" onclick="refreshAgentOutput()">Refresh</button></h3>
+    <p style="color:var(--text-muted);font-size:9pt;">Real-time JSONL output from the currently running admin queue agent. Shows last 200 lines or 50KB.</p>
+    <div id="agent-output-container" style="
+      background: #000;
+      color: #0f0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      padding: 12px;
+      height: 300px;
+      overflow-y: auto;
+      border: 2px solid #333;
+      border-radius: 6px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      line-height: 1.4;">
+      <em style="color: #666;">No agent currently running</em>
+    </div>
   </div>
 
   <!-- Server Stats — host + JVM resource usage. -->
@@ -603,6 +647,15 @@
     <div id="designer-bulk-bar" style="display:none;gap:8px;align-items:center;margin:10px 0;font-size:10pt;">
       <button class="small danger" onclick="bulkDeleteDesignerFactions()" id="designer-bulk-delete-btn">Delete all checked</button>
       <span id="designer-bulk-status" style="font-size:9pt;color:var(--text-muted);"></span>
+    </div>
+
+    <!-- Admin faction detail pane (read-only) -->
+    <div id="admin-faction-detail" class="admin-faction-detail">
+      <button class="back-btn small" onclick="closeAdminFactionDetail()">← Back to list</button>
+      <h3 id="admin-detail-title" style="margin-top: 0; margin-bottom: 14px;"></h3>
+      <div id="admin-detail-content">
+        <div class="admin-faction-loading">Loading…</div>
+      </div>
     </div>
   </div>
 
@@ -904,6 +957,7 @@ function loadPastRun(name) {
 // Polling is global (started once at sign-in) so the log stays warm even if
 // you navigate to the Games view and come back.
 let CLAUDE_POLL_TIMER = null;
+let AGENT_OUTPUT_POLL_TIMER = null;
 
 function submitClaudePrompt() {
   const ta = document.getElementById('claude-prompt-input');
@@ -957,14 +1011,47 @@ function refreshClaudeQueue() {
     .catch(() => {});
 }
 
+function refreshAgentOutput() {
+  fetch(`${SERVER}/admin/${TOKEN}/agent-output`)
+    .then(r => r.json())
+    .then(data => {
+      const container = document.getElementById('agent-output-container');
+      if (!container) return;
+      const wasAtBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 20;
+
+      if (data.running) {
+        const output = data.output || '(empty)';
+        const requestId = data.requestId ? ` [${data.requestId}]` : '';
+        container.textContent = output;
+        // Auto-scroll to bottom if user is already at bottom
+        if (wasAtBottom) container.scrollTop = container.scrollHeight;
+      } else {
+        container.innerHTML = '<em style="color: #666;">No agent currently running</em>';
+      }
+    })
+    .catch(err => {
+      const container = document.getElementById('agent-output-container');
+      if (container) {
+        container.innerHTML = `<em style="color: #f00;">Error fetching agent output: ${err.message}</em>`;
+      }
+    });
+}
+
 function startClaudePolling() {
   if (CLAUDE_POLL_TIMER) return;
   refreshClaudeOutput();
   refreshClaudeQueue();
+  refreshAgentOutput();
   CLAUDE_POLL_TIMER = setInterval(() => {
     refreshClaudeOutput();
     refreshClaudeQueue();
   }, 4000);
+  // Poll agent output every 2.5 seconds (faster than the main log)
+  if (!AGENT_OUTPUT_POLL_TIMER) {
+    AGENT_OUTPUT_POLL_TIMER = setInterval(() => {
+      refreshAgentOutput();
+    }, 2500);
+  }
 }
 
 const PERMANENT_KEYWORDS = ['rolled', 'Elder Sign', 'Silence Token', 'captured'];
@@ -3581,11 +3668,12 @@ function renderDesignerList() {
           const versionLabel = faction.current ? `v${faction.current}` : '';
           const liveLabel = faction.liveVersion ? ` (live: v${faction.liveVersion})` : '';
           const cb = sel ? `<input type="checkbox" class="designer-faction-cb" data-fid="${esc(faction.id)}" ${checkedF.has(faction.id) ? 'checked' : ''} />` : '';
-          return `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;margin-bottom:4px;">
+          return `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;margin-bottom:4px;cursor:pointer;" onclick="showAdminFactionDetail('${esc(faction.id)}', '${esc(faction.name).replace(/'/g, "\\'")}'); event.stopPropagation();">
             ${cb}
-            <span style="flex:1;cursor:pointer;" title="Open this design read only" onclick="viewDesignerFaction('${esc(faction.id)}')"><b style="text-decoration:underline;">${esc(faction.name)}</b> (${esc(faction.acronym)}) · ${versionLabel}${liveLabel} · ${esc(buildStatus)}</span>
-            <button class="small" onclick="viewDesignerFaction('${esc(faction.id)}')">View</button>
-            <button class="small danger" onclick="deleteSingleDesignerFaction('${esc(faction.id)}', '${esc(faction.name).replace(/'/g, "\\'")}')">Delete</button>
+            <span style="flex:1;"><b style="text-decoration:underline;">${esc(faction.name)}</b> (${esc(faction.acronym)}) · ${versionLabel}${liveLabel} · ${esc(buildStatus)}</span>
+            <button class="small" onclick="viewDesignerFactionReadOnly('${esc(faction.id)}'); event.stopPropagation();" title="View read-only (new tab)">View</button>
+            <button class="small" onclick="viewDesignerFaction('${esc(faction.id)}'); event.stopPropagation();" title="Open in designer (new tab)">▶ Designer</button>
+            <button class="small danger" onclick="deleteSingleDesignerFaction('${esc(faction.id)}', '${esc(faction.name).replace(/'/g, "\\'")}'); event.stopPropagation();">Delete</button>
           </div>`;
         }).join('') +
         `</div>`;
@@ -3605,6 +3693,11 @@ function renderDesignerList() {
 // Opens the design in the faction designer, read only, in a new tab
 function viewDesignerFaction(fid) {
   window.open(`${SERVER}/designer/#/admin-view/${encodeURIComponent(TOKEN)}/${encodeURIComponent(fid)}`, '_blank');
+}
+
+// Opens the faction in read-only admin view (all sections, validation, Q&A visible)
+function viewDesignerFactionReadOnly(fid) {
+  window.open(`${SERVER}/designer/#/admin/factions/${encodeURIComponent(fid)}`, '_blank');
 }
 
 function filterDesignerList() {
@@ -3688,6 +3781,149 @@ function bulkDeleteDesignerFactions() {
       if (btn) { btn.disabled = false; btn.textContent = 'Delete all checked'; }
       if (status) { status.textContent = `error: ${err}`; status.style.color = 'var(--danger)'; }
     });
+}
+
+// ========== Admin Faction Detail Pane ==========
+function showAdminFactionDetail(factionId, factionName) {
+  const detailDiv = document.getElementById('admin-faction-detail');
+  const contentDiv = document.getElementById('admin-detail-content');
+  const titleEl = document.getElementById('admin-detail-title');
+
+  if (!detailDiv) return;
+
+  detailDiv.classList.add('visible');
+  titleEl.textContent = factionName + ' (Admin Detail)';
+  contentDiv.innerHTML = '<div class="admin-faction-loading">Loading design details…</div>';
+
+  // Fetch faction details from the designer API
+  if (!SERVER || !TOKEN) {
+    contentDiv.innerHTML = '<div class="err">Server or token not configured.</div>';
+    return;
+  }
+
+  fetch(`${SERVER}/designer/api/admin/${TOKEN}/view-faction/${encodeURIComponent(factionId)}`)
+    .then(r => r.ok ? r.json() : Promise.reject(`HTTP ${r.status}`))
+    .then(data => {
+      renderAdminFactionDetail(data, factionName);
+    })
+    .catch(err => {
+      contentDiv.innerHTML = `<div class="err">Failed to load faction details: ${esc(String(err))}</div>`;
+    });
+}
+
+function closeAdminFactionDetail() {
+  const detailDiv = document.getElementById('admin-faction-detail');
+  if (detailDiv) detailDiv.classList.remove('visible');
+}
+
+function renderAdminFactionDetail(data, factionName) {
+  const contentDiv = document.getElementById('admin-detail-content');
+  if (!contentDiv) return;
+
+  const faction = data.faction || {};
+  const design = faction.design || {};
+  const buildStatus = faction.buildStatus || faction.build?.status || 'none';
+  const claudeQA = faction.claudeQA || {};
+
+  // Build status banner
+  let bannerColor = 'requested';
+  let bannerText = buildStatus.charAt(0).toUpperCase() + buildStatus.slice(1).replace(/_/g, ' ');
+  if (buildStatus === 'in_progress') bannerColor = 'in_progress';
+  else if (buildStatus === 'built') bannerColor = 'built';
+  else if (buildStatus === 'needs_answers') bannerColor = 'needs_answers';
+
+  const bannerHtml = `<div class="build-status-banner ${bannerColor}">
+    <b>Build Status:</b> ${bannerText}${buildStatus === 'built' ? ' ✓' : ''}
+  </div>`;
+
+  // Section status table
+  let tableRows = '';
+  const sections = [
+    { key: 'theme', label: 'Theme' },
+    { key: 'faction_powers', label: 'Faction Powers' },
+    { key: 'expansion', label: 'Expansion' },
+    { key: 'units', label: 'Units' },
+    { key: 'neutral_elements', label: 'Neutral Elements' },
+    { key: 'special_rules', label: 'Special Rules' },
+    { key: 'balance_notes', label: 'Balance Notes' }
+  ];
+
+  sections.forEach(sec => {
+    const sectionDesign = design[sec.key];
+    const hasQuestions = claudeQA[sec.key] && claudeQA[sec.key].questions && claudeQA[sec.key].questions.trim();
+
+    let badge = '';
+    if (hasQuestions) {
+      badge = '<span class="badge-question">Claude Question</span>';
+    } else if (sectionDesign) {
+      // Check if section is empty/incomplete
+      const isEmpty = !sectionDesign || Object.values(sectionDesign).every(v => !v || (Array.isArray(v) && v.length === 0));
+      if (isEmpty) {
+        badge = '<span class="badge-incomplete">Incomplete</span>';
+      } else {
+        badge = '<span class="badge-complete">✓</span>';
+      }
+    } else {
+      badge = '<span class="badge-incomplete">Incomplete</span>';
+    }
+
+    tableRows += `<tr><td>${sec.label}</td><td>${badge}</td></tr>`;
+  });
+
+  const tableHtml = `<table class="section-status-table"><tbody>${tableRows}</tbody></table>`;
+
+  // Missing fields panel (only show if there are incomplete sections)
+  let missingFieldsHtml = '';
+  const incompleteCount = tableRows.match(/<span class="badge-incomplete">/g)?.length || 0;
+  if (incompleteCount > 0) {
+    const missingList = [];
+    sections.forEach(sec => {
+      const sectionDesign = design[sec.key];
+      const hasQuestions = claudeQA[sec.key] && claudeQA[sec.key].questions && claudeQA[sec.key].questions.trim();
+      const isEmpty = !sectionDesign || Object.values(sectionDesign).every(v => !v || (Array.isArray(v) && v.length === 0));
+
+      if (!hasQuestions && isEmpty) {
+        missingList.push(sec.label);
+      }
+    });
+
+    if (missingList.length > 0) {
+      missingFieldsHtml = `<div class="missing-fields-panel">
+        <b style="color:var(--text);">Incomplete Sections:</b>
+        <ul>${missingList.map(s => `<li>${esc(s)}</li>`).join('')}</ul>
+      </div>`;
+    }
+  }
+
+  // Version info
+  const currentVersion = faction.current || 'n/a';
+  const liveVersion = faction.liveVersion || 'n/a';
+  const versionHtml = `<div class="version-info">
+    <div class="version-info-row">
+      <label>Current Design Version</label>
+      <span style="font-weight:600;color:var(--text);">v${currentVersion}</span>
+    </div>
+    <div class="version-info-row">
+      <label>Live Built Version</label>
+      <span style="font-weight:600;color:var(--text);">v${liveVersion}</span>
+    </div>
+  </div>`;
+
+  // Stability row
+  const hasClaudeQs = Object.values(claudeQA).some(sec => sec && sec.questions && sec.questions.trim());
+  const stabilityText = hasClaudeQs ? 'Awaiting Claude clarification' : (buildStatus === 'built' ? 'Stable' : 'In progress');
+  const stabilityHtml = `<div class="stability-row">
+    <b style="color:var(--text);">Stability:</b> ${esc(stabilityText)}
+  </div>`;
+
+  const html = bannerHtml + tableHtml + missingFieldsHtml + versionHtml + stabilityHtml;
+  contentDiv.innerHTML = html;
+}
+
+function esc(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
 }
 </script>
 
