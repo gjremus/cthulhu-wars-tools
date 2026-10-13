@@ -160,15 +160,21 @@ REQUIRED TEST PROCEDURE:
   9. Verify the game screen loads and shows the faction card/units
   10. ONLY if ZERO errors appear and the game loads can you mark: build-status <fid> built "HB <commit>"
 
-ALTERNATIVE: Use this headless test BUT you MUST grep for errors:
+**REQUIRED: Use the official test script** at ~/Claude-Projects/cthulhu-wars-tools/scripts/test-faction-build.mjs:
+  ```bash
+  cd /Users/gremus/Claude-Projects/cthulhu-wars-Main && \
+  cp ~/Claude-Projects/cthulhu-wars-tools/scripts/test-faction-build.mjs . && \
+  node test-faction-build.mjs XXX
   ```
-  /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
-    --headless --disable-gpu --enable-logging --v=1 \
-    --virtual-time-budget=30000 --dump-dom \
-    'https://cwo.freeddns.org/HB/?setup=4:GC-XXX-CC-BG' 2>&1 \
-    | grep -i -E "(ReferenceError|TypeError|undefined is not|Cannot read)" | grep -v CVDisplayLink
-  ```
-  If this grep returns ANY output, the faction is broken - do NOT mark it built.
+  This script uses Puppeteer (installed in cthulhu-wars-Main/node_modules) to:
+  - Load the faction in a real Chrome browser
+  - Capture ALL JavaScript console errors
+  - Capture ALL page exceptions
+  - Wait for game initialization
+  - Return exit code 0 if clean, 1 if ANY errors
+
+  The script MUST exit with code 0 before you can mark the faction "built".
+  If exit code is 1, the script prints the exact errors - FIX them and re-run the test.
 
 The owner's EXACT words: "MAKE FUCKING SURE THE TICKER KNOWS - IT CANNOT MARK A FACTION 'BUILT' UNTIL THAT
 FUCKING STEP IS AUDITED AND PASSED" and "YOU HAVE TO ACTUALLY FUCKING CLICK THE FUCKING LINK AND CHECK THE
