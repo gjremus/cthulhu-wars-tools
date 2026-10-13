@@ -2532,6 +2532,20 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             "updated": faction["updated"]
         })
 
+    def backfill_section(self, design: Dict, section: str, defaults: Optional[Dict] = None):
+        """Older designs were saved before some sections existed (e.g. 'interactions').
+        Fill the missing section with its default; interactions rows use the same fixed ids
+        as Rules.backfillDesign in www/rules.js so the page's edits land on the right rows."""
+        if section in design:
+            return
+        defaults = defaults if defaults is not None else self.new_design()
+        if section in defaults:
+            sec = defaults[section]
+            if section == 'interactions':
+                for row, rid in zip(sec["rows"], ('ia-sleeper', 'ia-neutral', 'ia-bubastis')):
+                    row["id"] = rid
+            design[section] = sec
+
     def apply_patch_op(self, faction: Dict, op: Dict, fid: str) -> bool:
         """Apply a single patch operation. Return False on error."""
         op_type = op.get('op')
@@ -2552,14 +2566,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         # Older designs were saved before some sections existed (e.g. 'interactions').
         # Fill the missing section with its default; interactions rows use the same fixed ids
         # as Rules.backfillDesign in www/rules.js so the page's edits land on the right rows.
-        if section not in faction["design"]:
-            defaults = self.new_design()
-            if section in defaults:
-                sec = defaults[section]
-                if section == 'interactions':
-                    for row, rid in zip(sec["rows"], ('ia-sleeper', 'ia-neutral', 'ia-bubastis')):
-                        row["id"] = rid
-                faction["design"][section] = sec
+        self.backfill_section(faction["design"], section)
 
         # Determine if this is an addition or change
         is_addition = self.is_addition(faction, op)
@@ -4170,6 +4177,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
 
             # Apply admin notes directly (not through versioning)
             for op in admin_note_ops:
+                # Don't leave a stub {adminNotes} section in an older design that lacks it
+                self.backfill_section(faction["design"], op.get('path', '').split('.')[0], None)
                 if not self.apply_op_to_design(faction["design"], op):
                     return
 
@@ -4433,6 +4442,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
 
             # Apply admin notes directly (not through versioning)
             for op in admin_note_ops:
+                # Don't leave a stub {adminNotes} section in an older design that lacks it
+                self.backfill_section(unit["design"], op.get('path', '').split('.')[0], None)
                 if not self.apply_op_to_design(unit["design"], op):
                     return
 
@@ -4482,6 +4493,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
 
             # Apply admin notes directly (not through versioning)
             for op in admin_note_ops:
+                # Don't leave a stub {adminNotes} section in an older design that lacks it
+                self.backfill_section(map_obj["design"], op.get('path', '').split('.')[0], self.new_map_design())
                 if not self.apply_op_to_design(map_obj["design"], op):
                     return
 

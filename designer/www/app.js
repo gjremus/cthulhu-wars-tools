@@ -679,8 +679,17 @@
       return r;
     }
 
+    // Admin token: the admin console opens #/admin-view/<token>/<fid> (stored as cw_designer_admin_view),
+    // older links use #/admin/factions/<fid> with cw_designer_admin_token. Accept either.
+    adminTok() {
+      if (this.state.adminToken) return this.state.adminToken;
+      const t = sessionStorage.getItem('cw_designer_admin_token');
+      if (t) return t;
+      return typeof this.state.adminView === 'string' ? this.state.adminView : null;
+    }
+
     async submitAdminNote(id, section, noteContent, kind = 'faction') {
-      const adminToken = sessionStorage.getItem('cw_designer_admin_token');
+      const adminToken = this.adminTok();
       if (!adminToken) throw new Error('Admin token not available');
 
       const endpoint = `/admin/${adminToken}/${kind}s/${id}/submit-note`;
@@ -1144,9 +1153,11 @@
         try {
           if (mode === 'admin') {
             // Admin notes use admin patch endpoint
-            if (kind === 'unit') await this.api('POST', `/admin/${this.state.adminToken}/units/${fid}/patch`, {ops});
-            else if (kind === 'map') await this.api('POST', `/admin/${this.state.adminToken}/maps/${fid}/patch`, {ops});
-            else await this.api('POST', `/admin/${this.state.adminToken}/factions/${fid}/patch`, {ops});
+            if (!this.adminTok()) throw new Error('Admin token not available');
+            console.log('[adminNotes] PATCH', kind, fid, ops);
+            if (kind === 'unit') await this.api('POST', `/admin/${this.adminTok()}/units/${fid}/patch`, {ops});
+            else if (kind === 'map') await this.api('POST', `/admin/${this.adminTok()}/maps/${fid}/patch`, {ops});
+            else await this.api('POST', `/admin/${this.adminTok()}/factions/${fid}/patch`, {ops});
           } else {
             // Regular user patches
             if (kind === 'unit') await this.api('POST', `/units/${fid}/patch`, {ops});
@@ -1161,7 +1172,7 @@
           // Retry after delay
           setTimeout(() => {
             for (const op of ops) {
-              this.saveQueue.set(`${kind}:${fid}:${op.path}`, {fid, path: op.path, value: op.value, kind});
+              this.saveQueue.set(`${kind}:${fid}:${op.path}`, {fid, path: op.path, value: op.value, kind, isAdminNotes: mode === 'admin'});
             }
             this.flushSaves();
           }, 5000);
@@ -2890,7 +2901,8 @@
         reference: this.state.reference,
         adminView: this.state.adminView ? true : false,  // Mark admin view for UI styling/messaging
         set: (path, value) => {
-          if (this.isReadOnly()) return;
+          // Admin notes are writable in the (read-only) admin view
+          if (this.isReadOnly() && !(this.state.adminView && path.endsWith('.adminNotes'))) return;
           this.setDesignValue(design, path, value);
           this.scheduleSave(faction.id, path, value);
           // Greyed-out fields are decided at render time, so checkboxes, selects and radios must
@@ -4011,7 +4023,8 @@
         reference: this.state.reference,
         adminView: this.state.adminView ? true : false,
         set: (path, value) => {
-          if (this.isReadOnly()) return;
+          // Admin notes are writable in the (read-only) admin view
+          if (this.isReadOnly() && !(this.state.adminView && path.endsWith('.adminNotes'))) return;
           this.setDesignValue(design, path, value);
           this.scheduleSave(map.id, path, value, 'map');
           const ev = window.event;

@@ -3090,7 +3090,12 @@
         container.appendChild(h('div', {style: 'margin-top: 40px;'}, label('Claude questions'), questionsBox));
 
         const answersDiv = h('div', {style: 'margin-top: 20px;'});
-        if (ctx.readOnly && !qa.answers) {
+        // Only "awaiting an answer" when Claude actually asked something on this section,
+        // so it always agrees with the "No questions from Claude" box above.
+        const hasQs = !!(qa.questions && qa.questions.trim());
+        if (ctx.readOnly && !hasQs) {
+          // nothing to answer
+        } else if (ctx.readOnly && !(qa.answers && qa.answers.trim())) {
           const placeholder = h('p', {style: 'color: #888; font-style: italic; padding: 8px;'},
             'Awaiting designer\'s answer');
           answersDiv.appendChild(placeholder);

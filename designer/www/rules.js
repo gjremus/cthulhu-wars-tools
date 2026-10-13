@@ -63,11 +63,13 @@
     if (!design || typeof design !== 'object') return design;
     const defaults = newDesign();
     Object.keys(defaults).forEach(key => {
-      if (design[key] == null) {
-        const sec = defaults[key];
+      const sec = defaults[key];
+      // A section that only holds an admin note (stub left by an older admin-notes save) counts as missing
+      const stub = design[key] && typeof design[key] === 'object' && sec && Array.isArray(sec.rows) && !Array.isArray(design[key].rows);
+      if (design[key] == null || stub) {
         const ids = BACKFILL_IDS[key];
         if (ids && sec && Array.isArray(sec.rows)) sec.rows.forEach((r, i) => { if (ids[i]) r.id = ids[i]; });
-        design[key] = sec;
+        design[key] = stub ? Object.assign(sec, design[key], {rows: sec.rows}) : sec;
       }
     });
     return design;
