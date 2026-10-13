@@ -115,6 +115,35 @@ the matching section's Claude questions box. If the faction is complete and play
 build-status <fid> built "HB <commit>" before done. Otherwise just mark done after writing the
 questions (it then shows "Waiting for your answers").
 
+**CRITICAL FACTION BUILD CHECKLIST** (added 2026-10-13 after FM/PRM/DGT crash):
+After building ANY new faction, you MUST verify ALL of these steps before deploying. Missing even ONE
+step will cause the faction to crash when players try to select it:
+
+1. **FactionXXX.scala created** with all units, abilities, spellbooks, and bot
+2. **FactionXXXExpansion object** defined extending Expansion with proper hooks
+3. **Game.scala registration**: Add faction to expansions() match block:
+   case XXX => $(XXXExpansion)
+4. **CthulhuWarsSolo.scala THREE required changes:**
+   a. Add "XXX" to homebrewOnlyFactions Set (line ~6340) — **THIS IS THE MOST COMMON MISSING STEP**
+   b. Add XXX to altPickerFactions list (line ~5987)
+   c. Add "XXX" -> "alpha" to builtInStability Map (line ~6002)
+5. **Assets uploaded** with --assets flag: faction card, unit images, spellbook images
+6. **Overlay info function** defined for faction card display
+7. **Setup option** added for selecting the faction in game setup
+8. **Simple bot** implemented with faction logic
+
+AUDIT PROCESS BEFORE DEPLOYING:
+After coding the faction, run this grep audit to verify all registrations:
+  cd ~/Claude-Projects/cw-homebrew-wt/solo
+  grep "XXX" Game.scala                     # Should show expansion registration
+  grep "XXX" CthulhuWarsSolo.scala          # Should show THREE hits: homebrewOnlyFactions, altPickerFactions, builtInStability
+If any grep returns ZERO results, the registration is MISSING and the faction will CRASH when selected.
+
+The owner explicitly reported: "Permeation, Tribulation, Flesh Mason - all 3 are fucking broken" because
+the agent missed step 4a (homebrewOnlyFactions). The memory file feedback_alt_picker_categorization.md
+says "CRITICAL: add faction to homebrewOnlyFactions set, not just comments". Follow this checklist for
+EVERY faction build to prevent crashes.
+
 ABILITY LOOKUP SYSTEM (added 2026-10-12): Before building any new ability (unit, spellbook, UFA, or
 faction power), check the abilities reference spreadsheet for similar existing implementations:
 
