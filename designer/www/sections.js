@@ -347,6 +347,53 @@
 
     adminNotesDiv.appendChild(label);
     adminNotesDiv.appendChild(textarea);
+
+    // Add submit button (only in admin mode)
+    const buttonDiv = document.createElement('div');
+    buttonDiv.style.cssText = 'margin-top: 8px; display: flex; gap: 8px; align-items: center;';
+
+    const submitBtn = document.createElement('button');
+    submitBtn.textContent = 'Submit to Queue (Immediate)';
+    submitBtn.style.cssText = 'padding: 8px 16px; background: #dc2626; color: #fff; border: 1px solid #991b1b; cursor: pointer; font-weight: bold; border-radius: 3px;';
+    submitBtn.onmouseover = () => submitBtn.style.background = '#b91c1c';
+    submitBtn.onmouseout = () => submitBtn.style.background = '#dc2626';
+
+    const statusSpan = document.createElement('span');
+    statusSpan.style.cssText = 'font-size: 12px; color: #666;';
+    statusSpan.textContent = '';
+
+    submitBtn.onclick = async () => {
+      const noteContent = textarea.value.trim();
+      if (!noteContent) {
+        statusSpan.textContent = 'Error: Note cannot be empty';
+        statusSpan.style.color = '#dc2626';
+        return;
+      }
+
+      submitBtn.disabled = true;
+      statusSpan.textContent = 'Submitting...';
+      statusSpan.style.color = '#666';
+
+      try {
+        await ctx.submitAdminNote(sectionPath, noteContent);
+        statusSpan.textContent = 'Submitted to queue ✓';
+        statusSpan.style.color = '#16a34a';
+        textarea.value = '';
+        ctx.set(`${sectionPath}.adminNotes`, '');
+        setTimeout(() => {
+          statusSpan.textContent = '';
+          submitBtn.disabled = false;
+        }, 3000);
+      } catch (err) {
+        statusSpan.textContent = `Error: ${err.message}`;
+        statusSpan.style.color = '#dc2626';
+        submitBtn.disabled = false;
+      }
+    };
+
+    buttonDiv.appendChild(submitBtn);
+    buttonDiv.appendChild(statusSpan);
+    adminNotesDiv.appendChild(buttonDiv);
     container.appendChild(adminNotesDiv);
   }
 

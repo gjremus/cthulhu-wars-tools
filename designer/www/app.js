@@ -679,6 +679,15 @@
       return r;
     }
 
+    async submitAdminNote(id, section, noteContent, kind = 'faction') {
+      const adminToken = sessionStorage.getItem('cw_designer_admin_token');
+      if (!adminToken) throw new Error('Admin token not available');
+
+      const endpoint = `/admin/${adminToken}/${kind}s/${id}/submit-note`;
+      const r = await this.api('POST', endpoint, {section, note: noteContent});
+      return r;
+    }
+
     async getRequests(fid) {
       return await this.api('GET', `/factions/${fid}/requests`);
     }
@@ -2840,6 +2849,7 @@
         imgUrl: (id) => this.imgUrl(id),
         confirm: (msg, yes, no) => this.confirm(msg, yes, no),
         readOnly: false,
+        submitAdminNote: (section, noteContent) => this.submitAdminNote(uid, section, noteContent, 'unit'),
         rerender: () => {
           const y = window.scrollY;
           container.innerHTML = '';
@@ -2928,6 +2938,7 @@
         confirm: (msg, yes, no) => this.confirm(msg, yes, no),
         readOnly: this.isReadOnly(),
         createRequest: (type, text, data) => this.isReadOnly() ? Promise.resolve(null) : this.createRequest(faction.id, type, text, data),
+        submitAdminNote: (section, noteContent) => this.submitAdminNote(faction.id, section, noteContent, 'faction'),
         rerender: () => {
           const y = window.scrollY;
           container.innerHTML = '';
@@ -4044,6 +4055,7 @@
         confirm: (msg, yes, no) => this.confirm(msg, yes, no),
         readOnly: this.isReadOnly(),
         createRequest: (type, text, data) => this.isReadOnly() ? Promise.resolve(null) : this.createMapRequest(map.id, type, text, data),
+        submitAdminNote: (section, noteContent) => this.submitAdminNote(map.id, section, noteContent, 'map'),
         rerender: () => {
           const y = window.scrollY;
           container.innerHTML = '';

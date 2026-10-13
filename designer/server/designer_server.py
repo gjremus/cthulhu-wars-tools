@@ -3592,6 +3592,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                     self.handle_admin_viewers(fid)
                 elif action == 'qa':
                     self.handle_admin_post_qa(fid, 'faction')
+                elif action == 'submit-note':
+                    self.handle_admin_submit_note(fid, 'faction')
                 else:
                     self.send_error_json("Unknown admin endpoint", 404)
             else:
@@ -3606,6 +3608,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                     self.handle_admin_unit_build_status(uid)
                 elif action == 'qa':
                     self.handle_admin_post_qa(uid, 'unit')
+                elif action == 'submit-note':
+                    self.handle_admin_submit_note(uid, 'unit')
                 else:
                     self.send_error_json("Unknown admin endpoint", 404)
             else:
@@ -3620,6 +3624,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                     self.handle_admin_map_build_status(mid)
                 elif action == 'qa':
                     self.handle_admin_post_qa(mid, 'map')
+                elif action == 'submit-note':
+                    self.handle_admin_submit_note(mid, 'map')
                 else:
                     self.send_error_json("Unknown admin endpoint", 404)
             else:
@@ -4616,6 +4622,59 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             atomic_write(entity_file, entity)
 
         self.send_json({"claudeQA": entity["claudeQA"]})
+
+    def handle_admin_submit_note(self, entity_id: str, entity_type: str):
+        """POST admin/factions/<fid>/submit-note or admin/units/<uid>/submit-note or admin/maps/<mid>/submit-note
+        {section, note} -> Create immediate high-priority task in admin queue"""
+        body = self.read_json_body()
+        if body is None:
+            return
+
+        section = body.get('section', '').strip()
+        note = body.get('note', '').strip()
+
+        if not section:
+            self.send_error_json("section is required")
+            return
+        if not note:
+            self.send_error_json("note is required")
+            return
+
+        # Load entity to get its name
+        if entity_type == "faction":
+            entity = self.load_faction(entity_id)
+            entity_name = entity.get('name', entity_id) if entity else entity_id
+            type_label = 'Faction'
+        elif entity_type == "unit":
+            entity = self.load_unit(entity_id)
+            entity_name = entity.get('name', entity_id) if entity else entity_id
+            type_label = 'Unit'
+        else:  # map
+            entity = self.load_map(entity_id)
+            entity_name = entity.get('name', entity_id) if entity else entity_id
+            type_label = 'Map'
+
+        if not entity:
+            self.send_error_json(f"{type_label} not found", 404)
+            return
+
+        # Create queue entry in ~/.cw-admin-queue/pending/
+        queue_dir = Path.home() / '.cw-admin-queue' / 'pending'
+        queue_dir.mkdir(parents=True, exist_ok=True)
+
+        # Generate timestamp and random suffix
+        timestamp = int(time.time() * 1000)
+        random_suffix = secrets.token_hex(2)
+        queue_file = queue_dir / f"{timestamp}-{random_suffix}"
+
+        # Format: ADMIN-NOTE {entity_id}: [Type: {type}] [Section: {section}] IMMEDIATE: {note}
+        queue_content = f"ADMIN-NOTE {entity_id}: [{type_label}: {entity_name}] [Section: {section}] IMMEDIATE: {note}"
+
+        with WRITE_LOCK:
+            with open(queue_file, 'w', encoding='utf-8') as f:
+                f.write(queue_content)
+
+        self.send_json({"success": True, "queue_file": queue_file.name, "entity_id": entity_id, "section": section})
 
     # ---- Read-only sharing, admin import, Claude terminal log ----
 
