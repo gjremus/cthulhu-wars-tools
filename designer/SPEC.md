@@ -481,3 +481,30 @@ ctx.confirm(message, yesLabel, noLabel) -> Promise<boolean>   // the "are you su
 ctx.rerender()        // re-draw the current section
 ctx.openOverlay(nodeOrHtml) / ctx.closeOverlay()  // full-window overlay used by image viewers
 ```
+
+## §5 Admin Read-Only View
+
+Admins with valid admin tokens can view any faction, unit, or map exactly as designers see it, but in read-only mode. This includes:
+
+- **All form fields** (visible but disabled)
+- **Validation indicators** (red borders on incomplete required fields)
+- **Claude Q&A sections** (when buildAttempted=true; answers visible, new answers cannot be submitted)
+- **Build feedback** (if any exists)
+- **Section status** (Complete, Incomplete, or Awaiting Answers)
+- **Custom logic** (free-text notes)
+
+**URL Pattern:** `#/admin/factions/<id>` or `#/admin/maps/<id>` (with valid admin token)
+
+**Visibility:**
+- Admins see the exact same rendering pipeline as designers
+- Context flag `ctx.adminView=true` marks admin viewing for UI messaging
+- All form interactions are disabled via `ctx.readOnly=true`
+- Banner shows "Admin view (read-only)" to clarify the context
+
+**What is NOT visible to admins:**
+- Edit buttons (disabled)
+- Image upload dialogs (disabled)
+- Delete/create dialogs (disabled)
+- Answer submission form (hidden when readOnly)
+
+**Implementation:** Uses same `Sections.render()` pipeline as designer view; `ctx.readOnly` flag handles the read-only rendering.

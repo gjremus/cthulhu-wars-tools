@@ -271,6 +271,14 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         if m:
             self.handle_patch_unit(m.group(1))
             return
+        m = re.fullmatch(r'/designer/api/units/([A-Za-z0-9_-]+)/copy', path)
+        if m:
+            self.handle_copy_unit(m.group(1))
+            return
+        m = re.fullmatch(r'/designer/api/units/([A-Za-z0-9_-]+)/rename', path)
+        if m:
+            self.handle_rename_unit(m.group(1))
+            return
         m = re.fullmatch(r'/designer/api/units/([A-Za-z0-9_-]+)/close-session', path)
         if m:
             self.handle_close_unit_session(m.group(1))
@@ -328,6 +336,12 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                     elif action == 'answers':
                         self.handle_submit_map_answers(mid)
                         return
+                    elif action == 'copy':
+                        self.handle_copy_map(mid)
+                        return
+                    elif action == 'rename':
+                        self.handle_rename_map(mid)
+                        return
 
         if path.startswith('/designer/api/factions/'):
             parts = path.split('/')
@@ -338,7 +352,13 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                     if action == 'stability':
                         self.handle_set_stability(fid)
                         return
-                    if action == 'patch':
+                    elif action == 'copy':
+                        self.handle_copy_faction(fid)
+                        return
+                    elif action == 'rename':
+                        self.handle_rename_faction(fid)
+                        return
+                    elif action == 'patch':
                         self.handle_patch_faction(fid)
                         return
                     elif action == 'close-session':
@@ -543,20 +563,22 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                     continue
                 faction = load_json(faction_file)
 
-                # Base factions: owned by "base" system user, visible to everyone read-only
+                # Base factions: owned by "base" system user, visible to everyone read-only (except cavysupreme)
                 if faction.get("base") or faction.get("owner") == "base":
-                    base_factions.append({
+                    base_item = {
                         "id": faction["id"],
                         "name": faction["name"],
                         "acronym": faction["acronym"],
                         "current": faction["current"],
                         "buildStatus": faction.get("build", {}).get("status", "none"),
                         "updated": faction["updated"],
-                        "readOnly": True,
                         "base": True,
                         "owner": "base",
                         "ownerName": "Base Faction"
-                    })
+                    }
+                    if username != "cavysupreme":
+                        base_item["readOnly"] = True
+                    base_factions.append(base_item)
                 elif faction.get("owner") == username:
                     factions.append({
                         "id": faction["id"],
@@ -659,6 +681,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             "session": {"n": 1, "sections": [], "last": now},
             "build": {"status": "none", "liveVersion": None, "requestedAt": None, "builtAt": None, "history": []},
             "liveGameVersions": [],
+            "adminNotes": "",
+            "bugHistory": [],
             "design": self.new_design()
         }
 
@@ -715,7 +739,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         row = self.blank_unit()
         row.pop("relatedSb", None)       # spellbooks belong to a faction
         row.pop("relatedSbNames", None)
-        return {"meta": {"color": None}, "units": {"rows": [row], "customLogic": ""}}
+        return {"meta": {"color": None, "adminNotes": ""}, "units": {"rows": [row], "customLogic": "", "adminNotes": ""}}
 
     def new_map_design(self) -> Dict:
         """Create a blank map design matching frontend schema (rules.js newMapDesign)."""
@@ -724,40 +748,48 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 "items": [],  # NOT "images"
                 "layout": {"type": None, "columns": 2, "order": [], "notes": ""},  # NOT null at top level
                 "regions": {"rows": []},  # NOT just []
-                "customLogic": ""
+                "customLogic": "",
+                "adminNotes": ""
             },
             "bitmaps": {
                 "items": [],
-                "customLogic": ""
+                "customLogic": "",
+                "adminNotes": ""
             },
             "adjacency": {
                 "cols": 32,
                 "rows": 16,
                 "cells": [],
                 "special": {"rows": []},  # NOT "specialTypes"
-                "customLogic": ""
+                "customLogic": "",
+                "adminNotes": ""
             },
             "units": {
                 "wikiUrl": "",
                 "rows": [],
-                "customLogic": ""
+                "customLogic": "",
+                "adminNotes": ""
             },
             "tokens": {
                 "rows": [],
-                "customLogic": ""
+                "customLogic": "",
+                "adminNotes": ""
             },
             "sb": {
                 "requirements": {"rows": []},  # NOT "multiText" + "rows"
                 "books": {"rows": []},  # NOT just "books"
-                "customLogic": ""
+                "customLogic": "",
+                "adminNotes": ""
             },
             "glyphs": {
                 "rows": [],
-                "customLogic": ""
+                "customLogic": "",
+                "adminNotes": ""
             },
             "abilities": {
                 "rows": [],
-                "customLogic": ""
+                "customLogic": "",
+                "adminNotes": ""
             }
         }
 
@@ -832,6 +864,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 "owner": username,
                 "created": now,
                 "updated": now,
+                "adminNotes": "",
+                "bugHistory": [],
                 "design": design,
                 "build": {"status": "none", "liveVersion": None, "requestedAt": None, "builtAt": None}
             }
@@ -871,7 +905,101 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         # Include claudeQA if it exists
         if "claudeQA" not in unit:
             unit["claudeQA"] = {}
+        # Ensure bugHistory exists
+        if "bugHistory" not in unit:
+            unit["bugHistory"] = []
         self.send_json(unit)
+
+    def handle_copy_unit(self, uid: str):
+        """POST /designer/api/units/<uid>/copy - Create a duplicate of this unit"""
+        username = self.verify_session()
+        if not username:
+            self.send_error_json("Unauthorized", 401)
+            return
+
+        with WRITE_LOCK:
+            unit = self.load_unit(uid)
+            if not unit:
+                self.send_error_json("Unit not found", 404)
+                return
+
+            if unit.get("owner") != username:
+                self.send_error_json("Forbidden", 403)
+                return
+
+            # Generate new ID
+            new_uid = self.new_id()
+            while (self.units_dir() / new_uid).exists():
+                new_uid = self.new_id()
+
+            # Get the unit name and create new one with "Copy of" prefix
+            unit_name = unit.get("design", {}).get("units", {}).get("rows", [{}])[0].get("name", "Unnamed Unit")
+            now = int(time.time())
+
+            # Create new design and set the copied name
+            new_design = json.loads(json.dumps(unit["design"]))  # Deep copy
+            if new_design.get("units", {}).get("rows"):
+                new_design["units"]["rows"][0]["name"] = f"Copy of {unit_name}"
+
+            new_unit = {
+                "id": new_uid,
+                "owner": username,
+                "created": now,
+                "updated": now,
+                "adminNotes": "",
+                "bugHistory": [],
+                "design": new_design,
+                "build": {"status": "none", "liveVersion": None, "requestedAt": None, "builtAt": None},
+                "current": 1,
+                "maxVersion": 1,
+                "versions": [{"n": 1, "from": None, "sections": ["unit"], "created": now, "deleted": False}],
+                "session": {"n": 1, "sections": [], "last": now}
+            }
+
+            # Create unit directory and save
+            (self.units_dir() / new_uid).mkdir(parents=True, exist_ok=True)
+            v_dir = self.units_dir() / new_uid / "v"
+            v_dir.mkdir(exist_ok=True)
+            atomic_write(self.units_dir() / new_uid / "unit.json", new_unit)
+            atomic_write(v_dir / "1.json", new_design)
+
+        self.send_json(new_unit)
+
+    def handle_rename_unit(self, uid: str):
+        """POST /designer/api/units/<uid>/rename {name} - Update unit name"""
+        username = self.verify_session()
+        if not username:
+            self.send_error_json("Unauthorized", 401)
+            return
+
+        body = self.read_json_body()
+        if not body:
+            return
+
+        new_name = body.get('name', '').strip()
+
+        if not new_name or len(new_name) > 60:
+            self.send_error_json("Unit name must be 1-60 characters")
+            return
+
+        with WRITE_LOCK:
+            unit = self.load_unit(uid)
+            if not unit:
+                self.send_error_json("Unit not found", 404)
+                return
+
+            if unit.get("owner") != username:
+                self.send_error_json("Forbidden", 403)
+                return
+
+            # Update unit name in design
+            if unit.get("design", {}).get("units", {}).get("rows"):
+                unit["design"]["units"]["rows"][0]["name"] = new_name
+
+            unit["updated"] = int(time.time())
+            atomic_write(self.units_dir() / uid / "unit.json", unit)
+
+        self.send_json({"ok": True, "name": new_name})
 
     def handle_patch_unit(self, uid: str):
         """POST /designer/api/units/<uid>/patch {ops: [{op: "set", path, value}]}"""
@@ -1223,6 +1351,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 "versions": [{"n": 1, "from": None, "sections": [], "created": now, "deleted": False}],
                 "session": {"n": 1, "sections": [], "last": now},
                 "build": {"status": "none", "liveVersion": None, "requestedAt": None, "builtAt": None},
+                "adminNotes": "",
+                "bugHistory": [],
                 "design": design
             }
             map_dir = self.maps_dir() / mid
@@ -1250,7 +1380,97 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         # Include claudeQA if it exists
         if "claudeQA" not in map_obj:
             map_obj["claudeQA"] = {}
+        # Ensure bugHistory exists
+        if "bugHistory" not in map_obj:
+            map_obj["bugHistory"] = []
         self.send_json(map_obj)
+
+    def handle_copy_map(self, mid: str):
+        """POST /designer/api/maps/<mid>/copy - Create a duplicate of this map"""
+        username = self.verify_session()
+        if not username:
+            self.send_error_json("Unauthorized", 401)
+            return
+
+        with WRITE_LOCK:
+            map_obj = self.load_map(mid)
+            if not map_obj:
+                self.send_error_json("Map not found", 404)
+                return
+
+            if map_obj.get("owner") != username:
+                self.send_error_json("Forbidden", 403)
+                return
+
+            # Generate new ID
+            new_mid = self.new_id()
+            while (self.maps_dir() / new_mid).exists():
+                new_mid = self.new_id()
+
+            # Get the map name
+            map_name = map_obj.get("name", "Unnamed Map")
+            now = int(time.time())
+
+            # Create deep copy of design
+            new_design = json.loads(json.dumps(map_obj["design"]))
+
+            new_map = {
+                "id": new_mid,
+                "owner": username,
+                "name": f"Copy of {map_name}",
+                "created": now,
+                "updated": now,
+                "adminNotes": "",
+                "bugHistory": [],
+                "design": new_design,
+                "build": {"status": "none", "liveVersion": None, "requestedAt": None, "builtAt": None},
+                "current": 1,
+                "maxVersion": 1,
+                "versions": [{"n": 1, "from": None, "sections": [], "created": now, "deleted": False}],
+                "session": {"n": 1, "sections": [], "last": now}
+            }
+
+            # Create map directory and save
+            (self.maps_dir() / new_mid).mkdir(parents=True, exist_ok=True)
+            v_dir = self.maps_dir() / new_mid / "v"
+            v_dir.mkdir(exist_ok=True)
+            atomic_write(self.maps_dir() / new_mid / "map.json", new_map)
+            atomic_write(v_dir / "1.json", new_design)
+
+        self.send_json(new_map)
+
+    def handle_rename_map(self, mid: str):
+        """POST /designer/api/maps/<mid>/rename {name} - Update map name"""
+        username = self.verify_session()
+        if not username:
+            self.send_error_json("Unauthorized", 401)
+            return
+
+        body = self.read_json_body()
+        if not body:
+            return
+
+        new_name = body.get('name', '').strip()
+
+        if not new_name:
+            self.send_error_json("Map name is required")
+            return
+
+        with WRITE_LOCK:
+            map_obj = self.load_map(mid)
+            if not map_obj:
+                self.send_error_json("Map not found", 404)
+                return
+
+            if map_obj.get("owner") != username:
+                self.send_error_json("Forbidden", 403)
+                return
+
+            map_obj["name"] = new_name
+            map_obj["updated"] = int(time.time())
+            atomic_write(self.maps_dir() / mid / "map.json", map_obj)
+
+        self.send_json({"ok": True, "name": new_name})
 
     def handle_patch_map(self, mid: str):
         """POST /designer/api/maps/<mid>/patch"""
@@ -1694,6 +1914,19 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                     request["status"] = "notified"
                     atomic_write(requests_file, requests_data)
 
+                # Add bug to bugHistory
+                if "bugHistory" not in map_obj:
+                    map_obj["bugHistory"] = []
+                bug_entry = {
+                    "bugNumber": req_id,
+                    "submittedAt": now,
+                    "description": data.get("description", ""),
+                    "response": None,
+                    "respondedAt": None
+                }
+                map_obj["bugHistory"].append(bug_entry)
+                atomic_write(self.maps_dir() / mid / "map.json", map_obj)
+
         self.send_json(request)
 
     def handle_get_map_requests(self, mid: str):
@@ -1888,6 +2121,34 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             entity["updated"] = int(time.time())
             atomic_write(f, entity)
 
+    def update_bug_history_response(self, request: Dict, response_text: str):
+        """Update bugHistory with response when bug request is marked done (caller holds WRITE_LOCK)."""
+        bug_id = request.get("id")
+        if not bug_id:
+            return
+        now = int(time.time())
+        if request.get("fid"):
+            entity = self.load_faction(request["fid"])
+            f = self.server.data_dir / "factions" / request["fid"] / "faction.json"
+        elif request.get("uid"):
+            entity = self.load_unit(request["uid"])
+            f = self.units_dir() / request["uid"] / "unit.json"
+        elif request.get("mid"):
+            entity = self.load_map(request["mid"])
+            f = self.maps_dir() / request["mid"] / "map.json"
+        else:
+            return
+        if not entity:
+            return
+        bugHistory = entity.get("bugHistory", [])
+        for entry in bugHistory:
+            if entry.get("bugNumber") == bug_id:
+                entry["response"] = response_text
+                entry["respondedAt"] = now
+                entity["updated"] = int(time.time())
+                atomic_write(f, entity)
+                return
+
     def has_build_attempt(self, entity: Dict, entity_id: str, entity_type: str) -> bool:
         """Check if a faction, unit, or map has had a build attempted."""
         build = entity.get("build", {})
@@ -1949,6 +2210,9 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         # Include claudeQA if it exists
         if "claudeQA" not in response:
             response["claudeQA"] = {}
+        # Ensure bugHistory exists
+        if "bugHistory" not in response:
+            response["bugHistory"] = []
         self.send_json(response)
 
     def extract_queue_position(self, fid: str) -> Optional[Dict]:
@@ -2054,6 +2318,167 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
 
         self.send_json({"ok": True, "stability": stability})
 
+    def handle_copy_faction(self, fid: str):
+        """POST /designer/api/factions/<fid>/copy - Create a duplicate of this faction"""
+        username = self.verify_session()
+        if not username:
+            self.send_error_json("Unauthorized", 401)
+            return
+
+        with WRITE_LOCK:
+            faction = self.load_faction(fid)
+            if not faction:
+                self.send_error_json("Faction not found", 404)
+                return
+
+            # Check if owner or if base faction (base cannot be copied)
+            if faction["owner"] != username:
+                self.send_error_json("Forbidden", 403)
+                return
+
+            if faction.get("base", False):
+                self.send_error_json("Cannot copy base factions", 403)
+                return
+
+            # Generate new ID
+            new_fid = secrets.token_urlsafe(9).replace('_', '').replace('-', '').lower()[:12]
+            while (self.server.data_dir / "factions" / new_fid).exists():
+                new_fid = secrets.token_urlsafe(9).replace('_', '').replace('-', '').lower()[:12]
+
+            # Create new faction with "Copy of" prefix
+            now = int(time.time())
+            new_faction = {
+                "id": new_fid,
+                "owner": username,
+                "name": f"Copy of {faction['name']}",
+                "acronym": self.generate_unique_acronym(faction.get('acronym', 'COP')),
+                "created": now,
+                "updated": now,
+                "current": 1,
+                "maxVersion": 1,
+                "versions": [{"n": 1, "from": None, "sections": [], "created": now, "deleted": False}],
+                "session": {"n": 1, "sections": [], "last": now},
+                "build": {"status": "none", "liveVersion": None, "requestedAt": None, "builtAt": None, "history": []},
+                "liveGameVersions": [],
+                "adminNotes": "",
+                "bugHistory": [],
+                "design": json.loads(json.dumps(faction["design"]))  # Deep copy
+            }
+
+            # Create faction directory
+            faction_dir = self.server.data_dir / "factions" / new_fid
+            faction_dir.mkdir(exist_ok=True)
+            (faction_dir / "v").mkdir(exist_ok=True)
+
+            # Save faction and initial version
+            atomic_write(faction_dir / "faction.json", new_faction)
+            atomic_write(faction_dir / "v" / "1.json", new_faction["design"])
+
+        self.send_json(new_faction)
+
+    def generate_unique_acronym(self, base_acronym: str) -> str:
+        """Generate a unique acronym based on the given base, appending numbers if needed."""
+        reserved = self.server.reserved_acronyms
+        acronym = base_acronym.upper()[:3]
+
+        # Ensure it's 2-3 chars
+        if len(acronym) < 2:
+            acronym = (acronym + 'X')[:3]
+
+        # Check if reserved or in use
+        original = acronym
+        counter = 1
+        while acronym in reserved or self.acronym_exists(acronym):
+            # Try base + number
+            candidate = (original + str(counter))[:3]
+            if candidate in reserved or self.acronym_exists(candidate):
+                counter += 1
+            else:
+                acronym = candidate
+                break
+
+        return acronym
+
+    def acronym_exists(self, acronym: str) -> bool:
+        """Check if an acronym is already in use."""
+        factions_dir = self.server.data_dir / "factions"
+        if not factions_dir.exists():
+            return False
+        for fid_dir in factions_dir.iterdir():
+            if not fid_dir.is_dir():
+                continue
+            faction_file = fid_dir / "faction.json"
+            if faction_file.exists():
+                existing = load_json(faction_file)
+                if existing.get("acronym") == acronym:
+                    return True
+        return False
+
+    def handle_rename_faction(self, fid: str):
+        """POST /designer/api/factions/<fid>/rename {name, acronym} - Update faction name and/or acronym"""
+        username = self.verify_session()
+        if not username:
+            self.send_error_json("Unauthorized", 401)
+            return
+
+        body = self.read_json_body()
+        if not body:
+            return
+
+        new_name = body.get('name', '').strip()
+        new_acronym = body.get('acronym', '').strip().upper()
+
+        errors = []
+        if new_name and len(new_name) < 5:
+            errors.append("Name must be at least 5 characters")
+        if new_acronym and not re.match(r'^[A-Z0-9]{2,3}$', new_acronym):
+            errors.append("Acronym must be 2-3 letters or digits")
+
+        if errors:
+            self.send_error_json("; ".join(errors))
+            return
+
+        with WRITE_LOCK:
+            faction = self.load_faction(fid)
+            if not faction:
+                self.send_error_json("Faction not found", 404)
+                return
+
+            if faction["owner"] != username:
+                self.send_error_json("Forbidden", 403)
+                return
+
+            # Check if new acronym is reserved or in use by another faction
+            if new_acronym:
+                reserved = self.server.reserved_acronyms
+                if new_acronym in reserved:
+                    self.send_error_json(f"Acronym {new_acronym} is reserved")
+                    return
+
+                # Check other factions
+                factions_dir = self.server.data_dir / "factions"
+                for other_fid_dir in factions_dir.iterdir():
+                    if not other_fid_dir.is_dir() or other_fid_dir.name == fid:
+                        continue
+                    other_file = other_fid_dir / "faction.json"
+                    if other_file.exists():
+                        other = load_json(other_file)
+                        if other.get("acronym") == new_acronym:
+                            self.send_error_json(f"Acronym {new_acronym} is already in use")
+                            return
+
+            # Update faction
+            if new_name:
+                faction["name"] = new_name
+            if new_acronym:
+                faction["acronym"] = new_acronym
+
+            faction["updated"] = int(time.time())
+            faction_file = self.server.data_dir / "factions" / fid / "faction.json"
+            atomic_write(faction_file, faction)
+
+        self.send_json({"ok": True, "name": faction.get("name"), "acronym": faction.get("acronym")})
+
     def handle_patch_faction(self, fid: str):
         """POST /designer/api/factions/<fid>/patch"""
         username = self.verify_session()
@@ -2076,12 +2501,12 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 self.send_error_json("Faction not found", 404)
                 return
 
-            # Base factions are read-only for non-admin users
+            # Base factions are read-only for non-admin users (except cavysupreme)
             if self.is_base_faction(faction):
-                self.send_error_json("Base factions are read-only", 403)
-                return
-
-            if faction["owner"] != username:
+                if username != "cavysupreme":
+                    self.send_error_json("Base factions are read-only", 403)
+                    return
+            elif faction["owner"] != username:
                 self.send_error_json("Forbidden", 403)
                 return
 
@@ -2394,12 +2819,12 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 self.send_error_json("Faction not found", 404)
                 return
 
-            # Base factions are read-only for non-admin users
+            # Base factions are read-only for non-admin users (except cavysupreme)
             if self.is_base_faction(faction):
-                self.send_error_json("Base factions are read-only", 403)
-                return
-
-            if faction["owner"] != username:
+                if username != "cavysupreme":
+                    self.send_error_json("Base factions are read-only", 403)
+                    return
+            elif faction["owner"] != username:
                 self.send_error_json("Forbidden", 403)
                 return
 
@@ -2433,12 +2858,12 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 self.send_error_json("Faction not found", 404)
                 return
 
-            # Base factions are read-only for non-admin users
+            # Base factions are read-only for non-admin users (except cavysupreme)
             if self.is_base_faction(faction):
-                self.send_error_json("Base factions are read-only", 403)
-                return
-
-            if faction["owner"] != username:
+                if username != "cavysupreme":
+                    self.send_error_json("Base factions are read-only", 403)
+                    return
+            elif faction["owner"] != username:
                 self.send_error_json("Forbidden", 403)
                 return
 
@@ -2493,12 +2918,12 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 self.send_error_json("Faction not found", 404)
                 return
 
-            # Base factions are read-only for non-admin users
+            # Base factions are read-only for non-admin users (except cavysupreme)
             if self.is_base_faction(faction):
-                self.send_error_json("Base factions are read-only", 403)
-                return
-
-            if faction["owner"] != username:
+                if username != "cavysupreme":
+                    self.send_error_json("Base factions are read-only", 403)
+                    return
+            elif faction["owner"] != username:
                 self.send_error_json("Forbidden", 403)
                 return
 
@@ -2645,12 +3070,12 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             self.send_error_json("Faction not found", 404)
             return
 
-        # Base factions are read-only for non-admin users
+        # Base factions are read-only for non-admin users (except cavysupreme)
         if self.is_base_faction(faction):
-            self.send_error_json("Base factions are read-only", 403)
-            return
-
-        if faction["owner"] != username:
+            if username != "cavysupreme":
+                self.send_error_json("Base factions are read-only", 403)
+                return
+        elif faction["owner"] != username:
             self.send_error_json("Forbidden", 403)
             return
 
@@ -2726,6 +3151,21 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 faction_file = self.server.data_dir / "factions" / fid / "faction.json"
                 atomic_write(faction_file, faction)
 
+            # Add bug to bugHistory
+            if req_type == "bug":
+                if "bugHistory" not in faction:
+                    faction["bugHistory"] = []
+                bug_entry = {
+                    "bugNumber": req_id,
+                    "submittedAt": now,
+                    "description": data.get("description", ""),
+                    "response": None,
+                    "respondedAt": None
+                }
+                faction["bugHistory"].append(bug_entry)
+                faction_file = self.server.data_dir / "factions" / fid / "faction.json"
+                atomic_write(faction_file, faction)
+
         self.send_json(request)
 
     def handle_submit_answers(self, fid_or_uid: str, entity_type: str):
@@ -2792,9 +3232,14 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 entity["claudeQA"] = {}
             if section not in entity["claudeQA"]:
                 entity["claudeQA"][section] = {"questions": "", "answers": "", "updated": 0}
-            entity["claudeQA"][section]["answers"] = text
+
+            # Clean up whitespace-only strings for consistency
+            entity["claudeQA"][section]["answers"] = text if text.strip() else ""
             entity["claudeQA"][section]["updated"] = now
             entity["updated"] = now
+
+            # If answers were provided and questions still exist, those questions should be cleared
+            # by the admin queue agent after processing. For now just mark status appropriately.
             build = entity.get("build") or {}
             if build.get("status") == "needs_answers":
                 build["status"] = "requested"
@@ -2996,6 +3441,20 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 unit["build"]["requestedAt"] = now
                 atomic_write(self.units_dir() / uid / "unit.json", unit)
 
+            # Add bug to bugHistory
+            if req_type == "bug":
+                if "bugHistory" not in unit:
+                    unit["bugHistory"] = []
+                bug_entry = {
+                    "bugNumber": req_id,
+                    "submittedAt": now,
+                    "description": data.get("description", ""),
+                    "response": None,
+                    "respondedAt": None
+                }
+                unit["bugHistory"].append(bug_entry)
+                atomic_write(self.units_dir() / uid / "unit.json", unit)
+
         self.send_json(request)
 
     # ── Admin Endpoints ──────────────────────────────────────────────────────────
@@ -3074,6 +3533,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 if number_terminal_entries(log):
                     atomic_write(path, log)
             self.send_json({"entries": sorted(log.get("entries", []), key=lambda e: e.get("at", 0), reverse=True)})
+        elif endpoint == 'agent-output':
+            self.handle_admin_agent_output()
         else:
             self.send_error_json("Unknown admin endpoint", 404)
 
@@ -3127,7 +3588,9 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             uid = parts[6]
             if len(parts) >= 8:
                 action = parts[7]
-                if action == 'build-status':
+                if action == 'patch':
+                    self.handle_admin_patch_unit(uid)
+                elif action == 'build-status':
                     self.handle_admin_unit_build_status(uid)
                 elif action == 'qa':
                     self.handle_admin_post_qa(uid, 'unit')
@@ -3487,6 +3950,11 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                        "done": "Done.", "cancelled": "Cancelled.", "open": "Waiting to be picked up."}
             self.update_terminal_entry(rid, default.get(status, status), only_if_default=True)
 
+            # If marking bug request as done, update bugHistory with response
+            if status == "done" and request.get("type") == "bug":
+                response_text = body.get('response', '')
+                self.update_bug_history_response(request, response_text)
+
         self.send_json(request)
 
     # ---- Simple Update: fixed numbers pushed straight to the build (no ticker) ----
@@ -3595,7 +4063,39 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             self.send_error_json("Faction not found", 404)
             return
 
-        self.send_json(faction)
+        response = dict(faction)
+        response["pendingRequests"] = self.get_pending_requests_for_entity(fid, "faction")
+        self.send_json(response)
+
+    def get_pending_requests_for_entity(self, entity_id: str, entity_type: str = "faction"):
+        """Get all pending requests for an entity (faction/unit/map)"""
+        requests_file = self.server.data_dir / "requests.json"
+        requests_data = load_json(requests_file) or {"requests": []}
+        all_requests = requests_data.get("requests", [])
+
+        pending = []
+        for req in all_requests:
+            # Match based on entity type
+            if entity_type == "faction" and req.get("fid") == entity_id:
+                pass
+            elif entity_type == "unit" and req.get("uid") == entity_id:
+                pass
+            elif entity_type == "map" and req.get("mid") == entity_id:
+                pass
+            else:
+                continue
+
+            # Include if status is pending
+            if req.get("status") in ("open", "notified", "requested", "in_progress"):
+                pending.append({
+                    "id": req.get("id"),
+                    "type": req.get("type"),
+                    "status": req.get("status"),
+                    "text": (req.get("text") or f"{req.get('type')} request")[:200],
+                    "created": req.get("created")
+                })
+
+        return pending
 
     def handle_admin_view_faction(self, fid: str):
         """GET admin/view-faction/<fid> -- same shape the designer page gets, always read only"""
@@ -3611,6 +4111,15 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         response["builtDesign"] = self.built_design_with_overrides(fid, faction)
         response["liveValues"] = self.load_live_values(fid)
         response["extractQueue"] = self.extract_queue_position(fid)
+        response["buildAttempted"] = self.has_build_attempt(faction, fid, "faction")
+        response["pendingRequests"] = self.get_pending_requests_for_entity(fid, "faction")
+        if "claudeQA" not in response:
+            response["claudeQA"] = {}
+        # Admin inspector: expose build metadata
+        if "build" in faction:
+            response["requestId"] = faction["build"].get("requestId")
+            response["submittedAt"] = faction["build"].get("requestedAt")
+            response["buildHistory"] = faction["build"].get("history", [])
         self.send_json(response)
 
     def handle_admin_patch_faction(self, fid: str):
@@ -3782,7 +4291,9 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         if not unit:
             self.send_error_json("Unit not found", 404)
             return
-        self.send_json(unit)
+        response = dict(unit)
+        response["pendingRequests"] = self.get_pending_requests_for_entity(uid, "unit")
+        self.send_json(response)
 
     def handle_admin_unit_build_status(self, uid: str):
         """POST admin/units/<uid>/build-status"""
@@ -3837,7 +4348,9 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         if not map_obj:
             self.send_error_json("Map not found", 404)
             return
-        self.send_json(map_obj)
+        response = dict(map_obj)
+        response["pendingRequests"] = self.get_pending_requests_for_entity(mid, "map")
+        self.send_json(response)
 
     def handle_admin_view_map(self, mid: str):
         """GET admin/view-map/<mid> -- same shape the designer page gets, always read only"""
@@ -3850,7 +4363,44 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         response["readOnly"] = True
         response["adminView"] = True
         response["ownerName"] = self.display_name(map_obj["owner"])
+        response["buildAttempted"] = self.has_build_attempt(map_obj, mid, "map")
+        response["pendingRequests"] = self.get_pending_requests_for_entity(mid, "map")
+        if "claudeQA" not in response:
+            response["claudeQA"] = {}
         self.send_json(response)
+
+    def handle_admin_patch_unit(self, uid: str):
+        """POST admin/units/<uid>/patch"""
+        body = self.read_json_body()
+        if not body:
+            return
+
+        ops = body.get('ops', [])
+        if not isinstance(ops, list):
+            self.send_error_json("ops must be an array")
+            return
+
+        with WRITE_LOCK:
+            unit = self.load_unit(uid)
+            if not unit:
+                self.send_error_json("Unit not found", 404)
+                return
+
+            # Apply ops (same as user patch)
+            for op in ops:
+                if not self.apply_patch_op(unit, op, uid):
+                    return
+
+            unit["updated"] = int(time.time())
+            unit_file = self.server.data_dir / "units" / uid / "unit.json"
+            atomic_write(unit_file, unit)
+
+            # Always rewrite current version snapshot
+            v_file = self.server.data_dir / "units" / uid / "v" / f"{unit['current']}.json"
+            v_file.parent.mkdir(parents=True, exist_ok=True)
+            atomic_write(v_file, unit["design"])
+
+            self.send_json({"ok": True})
 
     def handle_admin_patch_map(self, mid: str):
         """POST admin/maps/<mid>/patch"""
@@ -4232,6 +4782,58 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             atomic_write(path, log)
         return entry
 
+    def handle_admin_agent_output(self):
+        """GET admin/agent-output: returns live JSONL output from the admin queue agent.
+        Returns {running: bool, requestId: str|null, output: str}."""
+        # Check if there's a running agent output file in ~/.cw-admin-queue/running/*.jsonl
+        queue_dir = Path.home() / ".cw-admin-queue" / "running"
+        if not queue_dir.exists():
+            self.send_json({"running": False, "requestId": None, "output": ""})
+            return
+
+        # Find the newest JSONL file
+        jsonl_files = sorted(queue_dir.glob("*.jsonl"), key=lambda p: p.stat().st_mtime, reverse=True)
+        if not jsonl_files:
+            self.send_json({"running": False, "requestId": None, "output": ""})
+            return
+
+        jsonl_file = jsonl_files[0]
+        try:
+            # Read the file and get the last ~200 lines or ~50KB
+            with open(jsonl_file, 'r', encoding='utf-8', errors='ignore') as f:
+                content = f.read()
+
+            # Limit to last 50KB
+            if len(content) > 50000:
+                content = content[-50000:]
+                # Try to find the start of a line (skip partial line)
+                newline_idx = content.find('\n')
+                if newline_idx >= 0:
+                    content = content[newline_idx + 1:]
+
+            # Split into lines and keep last 200
+            lines = content.split('\n')
+            if len(lines) > 200:
+                lines = lines[-200:]
+                output = '\n'.join(lines)
+            else:
+                output = content.rstrip('\n')
+
+            # Extract request ID from filename (e.g., "1791866264-001.jsonl" -> "1791866264-001")
+            request_id = jsonl_file.stem
+
+            self.send_json({
+                "running": True,
+                "requestId": request_id,
+                "output": output
+            })
+        except Exception as e:
+            self.send_json({
+                "running": False,
+                "requestId": None,
+                "output": f"Error reading agent output: {str(e)}"
+            })
+
     def handle_admin_terminal_log(self, entry_id: Optional[str]):
         """POST admin/terminal-log {type,user,prompt,summary,[id],[at]} adds a row;
         POST admin/terminal-log/<id> {summary?,cost?,add?,costNote?} updates that row."""
@@ -4282,7 +4884,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
     def new_design(self) -> Dict:
         """Create a blank design with defaults."""
         design = {
-            "meta": {"color": None},
+            "meta": {"color": None, "adminNotes": ""},
             "card": {"image": None, "glyph": None},
             "sbImages": {"mode": None, "all": None, "each": [None]*6},
             "sbImagesB": {"mode": None, "all": None, "each": [None]*6},
@@ -4290,7 +4892,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 "enabled": False,
                 "name": "",
                 "acronym": "",
-                "rows": [{"id": self.new_id(), "sign": "+", "kind": "fixed", "qty": None, "calc": "", "desc": ""}]
+                "rows": [{"id": self.new_id(), "sign": "+", "kind": "fixed", "qty": None, "calc": "", "desc": ""}],
+                "adminNotes": ""
             },
             "ufa": {
                 "name": "",
@@ -4300,7 +4903,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 "cost": None,
                 "hasEffect": False,
                 "effect": None,
-                "text": ""
+                "text": "",
+                "adminNotes": ""
             },
             "setup": {
                 "text": "",
@@ -4322,34 +4926,43 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 "gate": None,
                 "units": [{"id": self.new_id(), "onMap": True, "name": "", "qty": None}],
                 "power": 8,
-                "aeStart": 0
+                "aeStart": 0,
+                "adminNotes": ""
             },
-            "units": {"rows": [self.blank_unit(), self.blank_unit(), self.blank_unit()]},
+            "units": {"rows": [self.blank_unit(), self.blank_unit(), self.blank_unit()], "adminNotes": ""},
             "sbr": {"multiText": "", "rows": [
-                {"id": self.new_id(), "text": "", "hasNum": False, "num": None} for _ in range(6)
-            ]},
+                {"id": self.new_id(), "text": "", "hasNum": False, "num": None, "shortText": ""} for _ in range(6)
+            ], "adminNotes": ""},
             "sb": {"twoSided": False, "rows": [
                 {"id": self.new_id(), "name": "", "type": None, "cost": 0, "hasEffect": False, "effect": None, "text": "",
                  "nameB": "", "typeB": None, "costB": 0, "hasEffectB": False, "effectB": None, "textB": "",
                  "dual": False, "name2": "", "type2": None, "cost2": 0, "hasEffect2": False, "effect2": None, "text2": "",
                  "dualB": False, "nameB2": "", "typeB2": None, "costB2": 0, "hasEffectB2": False, "effectB2": None,
                  "textB2": ""} for _ in range(6)
-            ]},
+            ], "adminNotes": ""},
             # Each table starts with one blank row (same as Rules.newDesign in www/rules.js)
-            "region": {"rows": [{"id": self.new_id(), "name": "", "image": None, "restrictions": "", "adjacency": ""}]},
+            "region": {"rows": [{"id": self.new_id(), "name": "", "image": None, "restrictions": "", "adjacency": ""}], "adminNotes": ""},
             "tokens": {"rows": [{"id": self.new_id(), "name": "", "qty": None, "image": None, "placement": "",
-                                 "effects": "", "hasEffect": False, "effect": None}]},
+                                 "effects": "", "hasEffect": False, "effect": None}], "adminNotes": ""},
             "custom": {"rows": [{"id": self.new_id(), "name": "", "image": None, "placement": "", "usage": "",
-                                 "effects": "", "hasNum": False, "num": None}]},
+                                 "effects": "", "hasNum": False, "num": None}], "adminNotes": ""},
             "menus": {"rows": [{"id": self.new_id(), "name": "", "section": None, "item": None, "prompted": None,
                                 "title": "", "hasSubtitle": False, "subtitle": "", "button": "", "cancel": False,
                                 "skip": False, "done": False, "multiSelect": False, "repeat": False, "repeatCount": "",
                                 "numberPick": False, "numberMin": "", "numberMax": "", "greyedOptions": False,
                                 "greyedReason": "", "infoOnly": False, "confirm": False, "confirmText": "",
-                                "showPicked": False, "leadsToNext": False, "next": None, "nextTrigger": ""}]}
+                                "showPicked": False, "leadsToNext": False, "next": None, "nextTrigger": ""}], "adminNotes": ""},
+            "interactions": {"rows": [
+                {"id": self.new_id(), "otherFaction": "Sleeper", "abilityType": "Spellbook", "ability": "Ancient Sorcery",
+                 "abilityText": "", "yourAbility": "ufa", "interactionDesc": ""},
+                {"id": self.new_id(), "otherFaction": "Neutral Monsters", "abilityType": "Unit Special",
+                 "ability": "Blasphemous Obeisance", "abilityText": "", "yourAbility": "", "interactionDesc": ""},
+                {"id": self.new_id(), "otherFaction": "Bubastis", "abilityType": "Unit Special",
+                 "ability": "Moon", "abilityText": "", "yourAbility": "", "interactionDesc": ""}
+            ], "adminNotes": ""}
         }
         # Every design section ends with a free "Any custom logic or rules" box
-        for key in ("ae", "ufa", "setup", "units", "sbr", "sb", "region", "tokens", "custom"):
+        for key in ("ae", "ufa", "setup", "units", "sbr", "sb", "region", "tokens", "custom", "menus", "interactions"):
             design[key]["customLogic"] = ""
         return design
 

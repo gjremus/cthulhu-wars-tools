@@ -1,0 +1,1900 @@
+{
+  "factions": [
+    "Ancients",
+    "Black Goat",
+    "Bubastis",
+    "Colour Out of Space",
+    "Crawling Chaos",
+    "Daemon Sultan",
+    "Defilers Court",
+    "Faceless Blight",
+    "Firstborn",
+    "Great Cthulhu",
+    "Library at Celaeno",
+    "Mecha Cthulhu",
+    "Neutral",
+    "Neutral Cultists",
+    "Neutral Monsters",
+    "Opener of the Way",
+    "Sleeper",
+    "Tcho-Tcho",
+    "The Burrowers Beneath",
+    "The Invasion",
+    "Tombstalker",
+    "Windwalker",
+    "Xyrious Storm",
+    "Yellow Sign",
+    "iGOOs/iEGs"
+  ],
+  "abilities": [
+    {
+      "faction": "Ancients",
+      "unit": "N/A",
+      "name": "Brainless",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Ancients",
+      "unit": "N/A",
+      "name": "Consecration",
+      "type": "Doom Phase",
+      "text": ""
+    },
+    {
+      "faction": "Ancients",
+      "unit": "N/A",
+      "name": "Crusade",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Ancients",
+      "unit": "N/A",
+      "name": "Extinction",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Ancients",
+      "unit": "N/A",
+      "name": "Festival",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Ancients",
+      "unit": "N/A",
+      "name": "Holy Ground",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Ancients",
+      "unit": "N/A",
+      "name": "Sanguinessence",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Ancients",
+      "unit": "N/A",
+      "name": "Unholy Ground",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Ancients",
+      "unit": "N/A",
+      "name": "Worship Services",
+      "type": "Gather Power Phase",
+      "text": ""
+    },
+    {
+      "faction": "Ancients",
+      "unit": "N/A",
+      "name": "Dematerialization",
+      "type": "Doom Phase",
+      "text": ""
+    },
+    {
+      "faction": "Black Goat",
+      "unit": "N/A",
+      "name": "Blood Sacrifice",
+      "type": "Doom Phase",
+      "text": ""
+    },
+    {
+      "faction": "Black Goat",
+      "unit": "N/A",
+      "name": "Fertility Cult",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Black Goat",
+      "unit": "N/A",
+      "name": "Frenzy",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Black Goat",
+      "unit": "N/A",
+      "name": "Ghroth",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Black Goat",
+      "unit": "N/A",
+      "name": "Necrophagy",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Black Goat",
+      "unit": "N/A",
+      "name": "The Red Sign",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Black Goat",
+      "unit": "N/A",
+      "name": "The Thousand Young",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Black Goat",
+      "unit": "Shub-Niggurath",
+      "name": "Avatar",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Bubastis",
+      "unit": "N/A",
+      "name": "Ailurophobia",
+      "type": "Doom Phase",
+      "text": ""
+    },
+    {
+      "faction": "Bubastis",
+      "unit": "N/A",
+      "name": "Carnivore",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Bubastis",
+      "unit": "N/A",
+      "name": "Catabolism",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Bubastis",
+      "unit": "N/A",
+      "name": "Catnapping",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Bubastis",
+      "unit": "N/A",
+      "name": "Predator",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Bubastis",
+      "unit": "N/A",
+      "name": "Requires Attention",
+      "type": "Doom Phase",
+      "text": ""
+    },
+    {
+      "faction": "Bubastis",
+      "unit": "N/A",
+      "name": "Savagery",
+      "type": "Pre-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Bubastis",
+      "unit": "N/A",
+      "name": "Syzygy",
+      "type": "Doom Phase",
+      "text": ""
+    },
+    {
+      "faction": "Bubastis",
+      "unit": "N/A",
+      "name": "Zagazig",
+      "type": "Pre-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Bubastis",
+      "unit": "Earth Cat",
+      "name": "Lunacy",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Bubastis",
+      "unit": "Moon",
+      "name": "Moon",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Colour Out of Space",
+      "unit": "N/A",
+      "name": "Chromatic Perversion",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Colour Out of Space",
+      "unit": "N/A",
+      "name": "Core Exposure",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Colour Out of Space",
+      "unit": "N/A",
+      "name": "Corrupted Rending",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Colour Out of Space",
+      "unit": "N/A",
+      "name": "Cosmic Landfall",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Colour Out of Space",
+      "unit": "N/A",
+      "name": "Effulgent Sacrifice",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Colour Out of Space",
+      "unit": "N/A",
+      "name": "Insanity",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Colour Out of Space",
+      "unit": "N/A",
+      "name": "Spectral Collapse",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Colour Out of Space",
+      "unit": "N/A",
+      "name": "Vermiculite Hypertrophy",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Crawling Chaos",
+      "unit": "N/A",
+      "name": "Abduct",
+      "type": "Pre-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Crawling Chaos",
+      "unit": "N/A",
+      "name": "Emissary of the Outer Gods",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Crawling Chaos",
+      "unit": "N/A",
+      "name": "Invisibility",
+      "type": "Pre-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Crawling Chaos",
+      "unit": "N/A",
+      "name": "Madness",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Crawling Chaos",
+      "unit": "N/A",
+      "name": "Seek and Destroy",
+      "type": "Pre-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Crawling Chaos",
+      "unit": "N/A",
+      "name": "The Thousand Forms",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Crawling Chaos",
+      "unit": "N/A",
+      "name": "Flight",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Crawling Chaos",
+      "unit": "Nyarlathotep",
+      "name": "Harbinger",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Daemon Sultan",
+      "unit": "N/A",
+      "name": "Animate Matter",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Daemon Sultan",
+      "unit": "N/A",
+      "name": "Chaos Gate",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Daemon Sultan",
+      "unit": "N/A",
+      "name": "Consummation",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Daemon Sultan",
+      "unit": "Avatar Synthesis",
+      "name": "Cosmic Ruler",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Daemon Sultan",
+      "unit": "N/A",
+      "name": "Directed Energy",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Daemon Sultan",
+      "unit": "N/A",
+      "name": "Fiendish Growth",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Daemon Sultan",
+      "unit": "N/A",
+      "name": "Fiendish Spawn",
+      "type": "Pre-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Daemon Sultan",
+      "unit": "N/A",
+      "name": "Omnipotence",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Daemon Sultan",
+      "unit": "N/A",
+      "name": "Psychosis",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Daemon Sultan",
+      "unit": "N/A",
+      "name": "Traitors!",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Daemon Sultan",
+      "unit": "N/A",
+      "name": "Undirected Energy",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Defilers Court",
+      "unit": "N/A",
+      "name": "Dark Bargain",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Defilers Court",
+      "unit": "N/A",
+      "name": "Depravity",
+      "type": "Gather Power Phase",
+      "text": ""
+    },
+    {
+      "faction": "Defilers Court",
+      "unit": "N/A",
+      "name": "Eschar",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Defilers Court",
+      "unit": "N/A",
+      "name": "Lure",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Defilers Court",
+      "unit": "N/A",
+      "name": "Pilgrimage",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Defilers Court",
+      "unit": "N/A",
+      "name": "Proselytize",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Defilers Court",
+      "unit": "N/A",
+      "name": "Satiate",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Defilers Court",
+      "unit": "N/A",
+      "name": "Tenebrosum",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Faceless Blight",
+      "unit": "Byagoona",
+      "name": "Animated Rush",
+      "type": "Move",
+      "text": ""
+    },
+    {
+      "faction": "Faceless Blight",
+      "unit": "N/A",
+      "name": "Changeling Adherents",
+      "type": "Gather Power Phase",
+      "text": ""
+    },
+    {
+      "faction": "Faceless Blight",
+      "unit": "N/A",
+      "name": "Necromantic Spores",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Faceless Blight",
+      "unit": "N/A",
+      "name": "Overlord of Death",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Faceless Blight",
+      "unit": "N/A",
+      "name": "Self Consuming",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Faceless Blight",
+      "unit": "Byagoona",
+      "name": "Shapestealing",
+      "type": "Pre-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Faceless Blight",
+      "unit": "N/A",
+      "name": "Succor",
+      "type": "Doom Phase",
+      "text": ""
+    },
+    {
+      "faction": "Firstborn",
+      "unit": "N/A",
+      "name": "Augury",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Firstborn",
+      "unit": "N/A",
+      "name": "Call of the Faithful",
+      "type": "Unlimited Action",
+      "text": ""
+    },
+    {
+      "faction": "Firstborn",
+      "unit": "N/A",
+      "name": "Carnage",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Firstborn",
+      "unit": "N/A",
+      "name": "Cyclopean Gaze",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Firstborn",
+      "unit": "N/A",
+      "name": "Devil's Mark",
+      "type": "Doom Phase",
+      "text": ""
+    },
+    {
+      "faction": "Firstborn",
+      "unit": "N/A",
+      "name": "The Eye Opens",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Firstborn",
+      "unit": "N/A",
+      "name": "Writhe",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Great Cthulhu",
+      "unit": "N/A",
+      "name": "Absorb",
+      "type": "Pre-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Great Cthulhu",
+      "unit": "N/A",
+      "name": "Devolve",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Great Cthulhu",
+      "unit": "N/A",
+      "name": "Dreams",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Great Cthulhu",
+      "unit": "N/A",
+      "name": "Regenerate",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Great Cthulhu",
+      "unit": "N/A",
+      "name": "Submerge",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Great Cthulhu",
+      "unit": "N/A",
+      "name": "Y'ha Nthlei",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Great Cthulhu",
+      "unit": "N/A",
+      "name": "Immortal",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Great Cthulhu",
+      "unit": "Cthulhu",
+      "name": "Devour",
+      "type": "Pre-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Library at Celaeno",
+      "unit": "N/A",
+      "name": "All Doom Phases",
+      "type": "Doom Phase",
+      "text": ""
+    },
+    {
+      "faction": "Library at Celaeno",
+      "unit": "N/A",
+      "name": "All Gather Power Phases",
+      "type": "Gather Power Phase",
+      "text": ""
+    },
+    {
+      "faction": "Library at Celaeno",
+      "unit": "N/A",
+      "name": "First Doom Phase Only",
+      "type": "Doom Phase",
+      "text": ""
+    },
+    {
+      "faction": "Mecha Cthulhu",
+      "unit": "N/A",
+      "name": "Non-Euclidian Targeting",
+      "type": "Battle",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Daoloth",
+      "name": "Cosmic Unity",
+      "type": "Pre-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Azathoth",
+      "name": "Daemon Sultan",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Cthugha",
+      "name": "Fire Vampires",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Nyogtha",
+      "name": "From Below",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Bokrug",
+      "name": "Ghosts of Ib",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Ghatanothoa",
+      "name": "Mummify",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Y'Golonac",
+      "name": "Orifices",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Atlach-Nacha",
+      "name": "Place Spinneret",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Yig",
+      "name": "Snakebite",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Atlach-Nacha",
+      "name": "Spinnerets",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Mother Hydra",
+      "name": "The Agony Sting",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "The Bloated Woman",
+      "name": "The Velvet Fan",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Dire Yog-Sothoth",
+      "name": "To Rule Them All",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Gla'aki",
+      "name": "Tomb Herd",
+      "type": "Gather Power Phase",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Father Dagon",
+      "name": "Tsunami",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Tulzscha",
+      "name": "Undying Flame",
+      "type": "Gather Power Phase",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Shub-Niggurath (Glow)",
+      "name": "Avatar",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Nyarlathotep (Glow)",
+      "name": "Chaos",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Azathoth (Glow)",
+      "name": "Daemon Sultan",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Tsathoggua (Glow)",
+      "name": "Death from Below",
+      "type": "Doom Phase",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Rhan-Tegoth (Glow)",
+      "name": "Eternal",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "The King in Yellow (Glow)",
+      "name": "Feast",
+      "type": "Gather Power Phase",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Ithaqua (Glow)",
+      "name": "Ferox",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Ubbo-Sathla (Glow)",
+      "name": "Hell's Banquet",
+      "type": "Doom Phase",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Rhan-Tegoth (Glow)",
+      "name": "Herald",
+      "type": "Doom Phase",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Ithaqua (Glow)",
+      "name": "Hibernate",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Tsathoggua (Glow)",
+      "name": "Lethargy",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Azathoth (Glow)",
+      "name": "Nuclear Chaos",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Ubbo-Sathla (Glow)",
+      "name": "Sycophancy",
+      "type": "Doom Phase",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Yog-Sothoth (Glow)",
+      "name": "The Beyond One",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Nyarlathotep (Glow)",
+      "name": "The Harbinger",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Yog-Sothoth (Glow)",
+      "name": "The Key and the Gate",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Hastur (Glow)",
+      "name": "Vengeance",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Tulzscha",
+      "name": "Ceremony of Annihilation",
+      "type": "Doom Phase",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Atlach-Nacha",
+      "name": "Cosmic Web",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "The Bloated Woman",
+      "name": "Disaster Looms",
+      "type": "Gather Power Phase",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Bokrug",
+      "name": "Doom that Came to Sarnath",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Ghatanothoa",
+      "name": "Execration of Mu",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Cthugha",
+      "name": "Firestorm",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Gla'aki",
+      "name": "Green Decay",
+      "type": "Gather Power Phase",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Daoloth",
+      "name": "Interdimensional",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Dire Yog-Sothoth",
+      "name": "It Walks Unseen",
+      "type": "Move",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Yig",
+      "name": "Messenger of Yig",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Nyogtha",
+      "name": "Nightmare Web",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Azathoth",
+      "name": "Nuclear Chaos",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Father Dagon",
+      "name": "The Innsmouth Look",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Y'Golonac",
+      "name": "The Revelations",
+      "type": "Doom Phase",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Mother Hydra",
+      "name": "The Zygote",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "N/A",
+      "name": "Mao Ceremony",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "N/A",
+      "name": "Recriminations",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "N/A",
+      "name": "Shriveling",
+      "type": "Pre-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "N/A",
+      "name": "The Stars Are Right",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "N/A",
+      "name": "Umr at'Tawil",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "N/A",
+      "name": "Undimensioned",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Servitor of the Outer Gods",
+      "name": "Adulation",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Hound of Tindalos",
+      "name": "Angles of Time",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Gug",
+      "name": "Clumsy",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Brown Jenkin",
+      "name": "Familiar",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Abhoth",
+      "name": "Filth",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Byatis",
+      "name": "God of Forgetfulness",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Gnorri",
+      "name": "Grottos",
+      "type": "Doom Phase",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Ghast",
+      "name": "Hordeling",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Shantak",
+      "name": "Horror Steed",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Giant Blind Albino Penguins",
+      "name": "Laughingstock",
+      "type": "Pre-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Abhoth",
+      "name": "The Brood",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Byatis",
+      "name": "Toad of Berkeley",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "High Priest",
+      "name": "Unspeakable Oath",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Star Vampire",
+      "name": "Vampirism",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Voonith",
+      "name": "Vicious",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Dimensional Shambler",
+      "name": "Walk Between Worlds",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Moonbeast",
+      "name": "Blasphemous Obeisance",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Leng Spider",
+      "name": "Bloodthirst",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Lavinia Whateley",
+      "name": "Bride of the Old Ones",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Wizard Whateley",
+      "name": "Clan Patriarch",
+      "type": "Recruit Cultist Action",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Hound of Tindalos",
+      "name": "Cronophage",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Quachil Uttaus",
+      "name": "Dust to Dust",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Satyr",
+      "name": "Fecund",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Junior Whateley",
+      "name": "Growth",
+      "type": "Doom Phase",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "The Shadow Pharaoh",
+      "name": "Hebephrenia",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Brown Jenkin",
+      "name": "Loathsome Titter",
+      "type": "Gather Power Phase",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Wizard Whateley",
+      "name": "Magician",
+      "type": "Pre-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Elder Thing",
+      "name": "Mind Control",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Insects from Shaggai",
+      "name": "Mind Parasite",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Lavinia Whateley",
+      "name": "Mother of Monsters",
+      "type": "Doom Phase",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Wilbur Whateley",
+      "name": "Open the Way",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Dhole",
+      "name": "Planetary Destruction",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Great Race of Yith",
+      "name": "Possession",
+      "type": "Ongoing and Gather Power Phase",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Elder Shoggoth",
+      "name": "Prime Cause",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Junior Whateley",
+      "name": "Transmogrification",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Neutral",
+      "unit": "Wilbur Whateley",
+      "name": "Yr and Nhnngr",
+      "type": "Doom Phase",
+      "text": ""
+    },
+    {
+      "faction": "Opener of the Way",
+      "unit": "N/A",
+      "name": "Channel Power",
+      "type": "Battle",
+      "text": ""
+    },
+    {
+      "faction": "Opener of the Way",
+      "unit": "N/A",
+      "name": "Cheap Mutants + Harder SBR",
+      "type": "Setup Variant",
+      "text": ""
+    },
+    {
+      "faction": "Opener of the Way",
+      "unit": "N/A",
+      "name": "Dragon Ascending",
+      "type": "Once Only",
+      "text": ""
+    },
+    {
+      "faction": "Opener of the Way",
+      "unit": "N/A",
+      "name": "Dragon Descending",
+      "type": "Once Only",
+      "text": ""
+    },
+    {
+      "faction": "Opener of the Way",
+      "unit": "N/A",
+      "name": "Dread Curse of Azathoth",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Opener of the Way",
+      "unit": "N/A",
+      "name": "Easier Spellbook Requirements",
+      "type": "Setup Variant",
+      "text": ""
+    },
+    {
+      "faction": "Opener of the Way",
+      "unit": "N/A",
+      "name": "The Million Favored Ones",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Opener of the Way",
+      "unit": "N/A",
+      "name": "They Break Through",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Opener of the Way",
+      "unit": "N/A",
+      "name": "Yog Curse Die + DC GOO ES",
+      "type": "Setup Variant",
+      "text": ""
+    },
+    {
+      "faction": "Opener of the Way",
+      "unit": "N/A",
+      "name": "The Beyond One",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Opener of the Way",
+      "unit": "Yog-Sothoth",
+      "name": "The Key and the Gate",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Sleeper",
+      "unit": "N/A",
+      "name": "Ancient Sorcery",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Sleeper",
+      "unit": "N/A",
+      "name": "Burrow",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Sleeper",
+      "unit": "N/A",
+      "name": "Capture Monster",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Sleeper",
+      "unit": "N/A",
+      "name": "Cursed Slumber",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Sleeper",
+      "unit": "N/A",
+      "name": "Demand Sacrifice",
+      "type": "Pre-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Sleeper",
+      "unit": "N/A",
+      "name": "Easier Spellbook Requirements",
+      "type": "Setup Variant",
+      "text": ""
+    },
+    {
+      "faction": "Sleeper",
+      "unit": "N/A",
+      "name": "Energy Nexus",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Sleeper",
+      "unit": "N/A",
+      "name": "Energy Nexus - Pre Battle",
+      "type": "Setup Variant",
+      "text": ""
+    },
+    {
+      "faction": "Sleeper",
+      "unit": "N/A",
+      "name": "Death from Below",
+      "type": "Doom Phase",
+      "text": ""
+    },
+    {
+      "faction": "Sleeper",
+      "unit": "Tsathoggua",
+      "name": "Lethargy",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Tcho-Tcho",
+      "unit": "N/A",
+      "name": "Dark Rituals (Leng Tribe)",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Tcho-Tcho",
+      "unit": "N/A",
+      "name": "Doomsday (Sarkomand Tribe)",
+      "type": "Once Only",
+      "text": ""
+    },
+    {
+      "faction": "Tcho-Tcho",
+      "unit": "N/A",
+      "name": "Fulmination (Leng Tribe)",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Tcho-Tcho",
+      "unit": "N/A",
+      "name": "Hell's Banquet",
+      "type": "Doom Phase",
+      "text": ""
+    },
+    {
+      "faction": "Tcho-Tcho",
+      "unit": "N/A",
+      "name": "Hierophants (All Tribes)",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Tcho-Tcho",
+      "unit": "N/A",
+      "name": "Idolatry (Tsang Tribe)",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Tcho-Tcho",
+      "unit": "N/A",
+      "name": "Inerrant (Sarkomand Tribe)",
+      "type": "Doom Phase",
+      "text": ""
+    },
+    {
+      "faction": "Tcho-Tcho",
+      "unit": "N/A",
+      "name": "Martyrdom (Tsang Tribe)",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Tcho-Tcho",
+      "unit": "N/A",
+      "name": "Otherworld Alliances (Sarkomand Tribe)",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Tcho-Tcho",
+      "unit": "N/A",
+      "name": "Soulless (All Tribes)",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Tcho-Tcho",
+      "unit": "N/A",
+      "name": "Surprise! (Leng Tribe)",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Tcho-Tcho",
+      "unit": "N/A",
+      "name": "Sycophancy",
+      "type": "Doom Phase",
+      "text": ""
+    },
+    {
+      "faction": "Tcho-Tcho",
+      "unit": "N/A",
+      "name": "Tablets of the Gods (Tsang Tribe)",
+      "type": "Doom Phase",
+      "text": ""
+    },
+    {
+      "faction": "Tcho-Tcho",
+      "unit": "N/A",
+      "name": "Terror (All Tribes)",
+      "type": "Battle",
+      "text": ""
+    },
+    {
+      "faction": "The Burrowers Beneath",
+      "unit": "Shudde M'ell",
+      "name": "Autotomy",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "The Burrowers Beneath",
+      "unit": "N/A",
+      "name": "Behemoth",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "The Burrowers Beneath",
+      "unit": "N/A",
+      "name": "Ensnare",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "The Burrowers Beneath",
+      "unit": "N/A",
+      "name": "Grasp",
+      "type": "Battle",
+      "text": ""
+    },
+    {
+      "faction": "The Burrowers Beneath",
+      "unit": "N/A",
+      "name": "Psychic Shriek",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "The Burrowers Beneath",
+      "unit": "N/A",
+      "name": "Stalk",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "The Burrowers Beneath",
+      "unit": "N/A",
+      "name": "Subterrane",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "The Burrowers Beneath",
+      "unit": "N/A",
+      "name": "Thousand Writhing Maws",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "The Invasion",
+      "unit": "N/A",
+      "name": "Blood Offering",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "The Invasion",
+      "unit": "N/A",
+      "name": "Eclipse",
+      "type": "Once Only",
+      "text": ""
+    },
+    {
+      "faction": "The Invasion",
+      "unit": "N/A",
+      "name": "Entropy Siphon",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "The Invasion",
+      "unit": "N/A",
+      "name": "Eternal Servitude",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "The Invasion",
+      "unit": "N/A",
+      "name": "Hellgate",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "The Invasion",
+      "unit": "N/A",
+      "name": "Infernolatreia",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "The Invasion",
+      "unit": "Demon Larvae",
+      "name": "Larvae",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "The Invasion",
+      "unit": "Demon Larvae",
+      "name": "Portend",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "The Invasion",
+      "unit": "Baphomet",
+      "name": "Sacrament of Flesh",
+      "type": "Doom Phase",
+      "text": ""
+    },
+    {
+      "faction": "The Invasion",
+      "unit": "N/A",
+      "name": "Scavenge",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "The Invasion",
+      "unit": "Baphomet",
+      "name": "Unquenchable Thirst",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Tombstalker",
+      "unit": "N/A",
+      "name": "Eleven Revelations",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Tombstalker",
+      "unit": "N/A",
+      "name": "Grasping Dead",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Tombstalker",
+      "unit": "N/A",
+      "name": "Green Decay",
+      "type": "Gather Power Phase",
+      "text": ""
+    },
+    {
+      "faction": "Tombstalker",
+      "unit": "N/A",
+      "name": "Hecatomb",
+      "type": "Doom Phase",
+      "text": ""
+    },
+    {
+      "faction": "Tombstalker",
+      "unit": "N/A",
+      "name": "Oleaginous",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Tombstalker",
+      "unit": "N/A",
+      "name": "Undulate",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Tombstalker",
+      "unit": "N/A",
+      "name": "Death March",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Windwalker",
+      "unit": "N/A",
+      "name": "Arctic Wind",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Windwalker",
+      "unit": "N/A",
+      "name": "Berserkergang",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Windwalker",
+      "unit": "N/A",
+      "name": "Cannibalism",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Windwalker",
+      "unit": "N/A",
+      "name": "Herald of the Outer Gods",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Windwalker",
+      "unit": "N/A",
+      "name": "Howl",
+      "type": "Pre-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Windwalker",
+      "unit": "N/A",
+      "name": "Ice Age",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Windwalker",
+      "unit": "N/A",
+      "name": "Hibernate",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Windwalker",
+      "unit": "Rhan-Tegoth",
+      "name": "Eternal",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Windwalker",
+      "unit": "Ithaqua",
+      "name": "Ferox",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Xyrious Storm",
+      "unit": "N/A",
+      "name": "Cloud of Ashes",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Xyrious Storm",
+      "unit": "N/A",
+      "name": "Distant Thunderclap",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Xyrious Storm",
+      "unit": "N/A",
+      "name": "Frozen Solid",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Xyrious Storm",
+      "unit": "N/A",
+      "name": "Static Accumulator",
+      "type": "Pre-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Xyrious Storm",
+      "unit": "N/A",
+      "name": "Torrential Downpour",
+      "type": "Gather Power Phase",
+      "text": ""
+    },
+    {
+      "faction": "Xyrious Storm",
+      "unit": "N/A",
+      "name": "Tsunami",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Xyrious Storm",
+      "unit": "N/A",
+      "name": "Whirlwind",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Xyrious Storm",
+      "unit": "N/A",
+      "name": "Precipitation",
+      "type": "Post-Battle",
+      "text": ""
+    },
+    {
+      "faction": "Yellow Sign",
+      "unit": "N/A",
+      "name": "He Who is Not to be Named",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Yellow Sign",
+      "unit": "N/A",
+      "name": "Passion",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Yellow Sign",
+      "unit": "N/A",
+      "name": "Shriek",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Yellow Sign",
+      "unit": "N/A",
+      "name": "The Screaming Dead",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Yellow Sign",
+      "unit": "N/A",
+      "name": "The Third Eye",
+      "type": "Ongoing",
+      "text": ""
+    },
+    {
+      "faction": "Yellow Sign",
+      "unit": "N/A",
+      "name": "Zingaya",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Yellow Sign",
+      "unit": "N/A",
+      "name": "Feast",
+      "type": "Gather Power Phase",
+      "text": ""
+    },
+    {
+      "faction": "Yellow Sign",
+      "unit": "King in Yellow",
+      "name": "Desecrate",
+      "type": "Action",
+      "text": ""
+    },
+    {
+      "faction": "Yellow Sign",
+      "unit": "Hastur",
+      "name": "Vengeance",
+      "type": "Post-Battle",
+      "text": ""
+    }
+  ]
+}
