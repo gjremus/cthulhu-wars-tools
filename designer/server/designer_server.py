@@ -4151,8 +4151,24 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 self.send_error_json("Faction not found", 404)
                 return
 
-            # Apply ops (same as user patch)
+            # Separate admin notes from design patches
+            admin_note_ops = []
+            design_ops = []
+
             for op in ops:
+                path = op.get('path', '')
+                if path.endswith('.adminNotes'):
+                    admin_note_ops.append(op)
+                else:
+                    design_ops.append(op)
+
+            # Apply admin notes directly (not through versioning)
+            for op in admin_note_ops:
+                if not self.apply_op_to_design(faction["design"], op):
+                    return
+
+            # Apply design patches through normal versioning logic
+            for op in design_ops:
                 if not self.apply_patch_op(faction, op, fid):
                     return
 
@@ -4398,8 +4414,24 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 self.send_error_json("Unit not found", 404)
                 return
 
-            # Apply ops (same as user patch)
+            # Separate admin notes from design patches
+            admin_note_ops = []
+            design_ops = []
+
             for op in ops:
+                path = op.get('path', '')
+                if path.endswith('.adminNotes'):
+                    admin_note_ops.append(op)
+                else:
+                    design_ops.append(op)
+
+            # Apply admin notes directly (not through versioning)
+            for op in admin_note_ops:
+                if not self.apply_op_to_design(unit["design"], op):
+                    return
+
+            # Apply design patches through normal versioning logic
+            for op in design_ops:
                 if not self.apply_patch_op(unit, op, uid):
                     return
 
@@ -4431,8 +4463,24 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 self.send_error_json("Map not found", 404)
                 return
 
-            # Apply ops (same as user patch)
+            # Separate admin notes from design patches
+            admin_note_ops = []
+            design_ops = []
+
             for op in ops:
+                path = op.get('path', '')
+                if path.endswith('.adminNotes'):
+                    admin_note_ops.append(op)
+                else:
+                    design_ops.append(op)
+
+            # Apply admin notes directly (not through versioning)
+            for op in admin_note_ops:
+                if not self.apply_op_to_design(map_obj["design"], op):
+                    return
+
+            # Apply design patches through normal versioning logic
+            for op in design_ops:
                 if not self.apply_map_patch_op(map_obj, op, mid):
                     return
 
