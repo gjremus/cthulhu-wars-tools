@@ -1,0 +1,15 @@
+{
+  "ops": [
+    {"op": "set", "path": "units.rows.gcun0001.relatedSbNames", "value": ["Dreams"]},
+    {"op": "set", "path": "units.rows.gcun0002.relatedSbNames", "value": ["Devolve"]},
+    {"op": "set", "path": "units.rows.gcun0003.relatedSbNames", "value": ["Absorb"]},
+    {"op": "set", "path": "units.rows.gcun0004.relatedSbNames", "value": ["Regenerate"]},
+    {"op": "set", "path": "units.rows.gcun0005.relatedSbNames", "value": ["Submerge", "Y'ha Nthlei"]},
+    {"op": "set", "path": "sbr.rows.gcsr0002.hasNum", "value": true},
+    {"op": "set", "path": "sbr.rows.gcsr0002.num", "value": 1},
+    {"op": "set", "path": "sbr.rows.gcsr0003.hasNum", "value": true},
+    {"op": "set", "path": "sbr.rows.gcsr0003.num", "value": 2},
+    {"op": "set", "path": "sbr.rows.gcsr0005.hasNum", "value": true},
+    {"op": "set", "path": "sbr.rows.gcsr0005.num", "value": 3}
+  ]
+}

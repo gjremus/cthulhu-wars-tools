@@ -1,0 +1,39 @@
+{
+  "ops": [
+    {
+      "op": "set",
+      "path": "units.rows.ysun0001.relatedSbNames",
+      "value": ["Passion"]
+    },
+    {
+      "op": "set",
+      "path": "units.rows.ysun0002.relatedSbNames",
+      "value": ["Zingaya"]
+    },
+    {
+      "op": "set",
+      "path": "units.rows.ysun0003.relatedSbNames",
+      "value": ["Shriek of the Byakhee"]
+    },
+    {
+      "op": "set",
+      "path": "units.rows.ysun0004.relatedSbNames",
+      "value": ["The Screaming Dead"]
+    },
+    {
+      "op": "set",
+      "path": "units.rows.ysun0005.relatedSbNames",
+      "value": ["The Third Eye", "He Who is Not to be Named"]
+    },
+    {
+      "op": "set",
+      "path": "sbr.rows.yssr0001.hasNum",
+      "value": true
+    },
+    {
+      "op": "set",
+      "path": "sbr.rows.yssr0001.num",
+      "value": 3
+    }
+  ]
+}

@@ -280,7 +280,7 @@ for i in range(1, len(parts), 2):
     for name in ${(f)new}; do
         older=( "$Q"/running/<->-<->(N) )
         for a in "$Q"/pending/*(N); do [[ "${a:t}" < "$name" ]] && older+=( $a ); done
-        msg="(queued for the Opus agent"; (( ${#older} )) && msg+=" - ${#older} ahead of it"; msg+=")"
+        msg="(queued"; (( ${#older} )) && msg+=" - ${#older} ahead of it"; msg+=")"
         { cat "$Q/pending/$name"; echo "$msg"; } | post_output PROMPT || note "could not post queued notice"
         tlog add "$name"
     done

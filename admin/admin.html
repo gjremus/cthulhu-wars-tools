@@ -563,6 +563,35 @@
       line-height: 1.4;">
       <em style="color: #666;">No agent currently running</em>
     </div>
+
+    <h3 style="margin-top:24px;">Meta Agent (Watchdog)</h3>
+    <p style="color:var(--text-muted);font-size:9pt;">Submit requests to the meta agent watchdog. Monitored every 2 minutes by automated script.</p>
+
+    <div style="display:flex;gap:8px;align-items:stretch;margin-bottom:16px;">
+      <textarea id="meta-agent-input" rows="3" placeholder="Type a prompt for the meta agent watchdog…"
+                style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px 10px;font-family:inherit;font-size:11pt;resize:vertical;"></textarea>
+      <button class="primary" style="flex:0 0 auto;align-self:stretch;padding:0 18px;" onclick="submitMetaAgentPrompt()">Submit</button>
+    </div>
+    <p id="meta-agent-status" style="font-size:9pt;color:var(--text-muted);margin-top:0;"></p>
+
+    <h3 style="margin-top:24px;">Meta Agent Output</h3>
+    <pre id="meta-agent-output" class="sim-tail" style="height:30vh;max-height:30vh;">loading…</pre>
+    <button class="small" style="margin-top:6px;" onclick="refreshMetaAgentOutput()">Refresh</button>
+
+    <h3 style="margin-top:24px;">Agent Prompts</h3>
+    <p style="color:var(--text-muted);font-size:9pt;">System prompts for the automated agents. These files are sourced from <code>~/cthulhu-wars-tools/tickers/</code>.</p>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;">
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:10px 12px;">
+        <div style="font-weight:600;margin-bottom:4px;">Admin Queue Agent</div>
+        <div style="font-size:9pt;color:var(--text-muted);margin-bottom:6px;">Processes faction BUILD/EXTRACT/BUG requests from the designer queue</div>
+        <code style="background:var(--bg);padding:2px 6px;border-radius:3px;font-size:9pt;">~/cthulhu-wars-tools/tickers/prompt-admin-queue-system.txt</code>
+      </div>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:10px 12px;">
+        <div style="font-weight:600;margin-bottom:4px;">Meta Agent (Watchdog)</div>
+        <div style="font-size:9pt;color:var(--text-muted);margin-bottom:6px;">Monitors admin queue agent and restarts if stuck (checked every 2 min)</div>
+        <code style="background:var(--bg);padding:2px 6px;border-radius:3px;font-size:9pt;">~/cthulhu-wars-tools/tickers/prompt-meta-agent.txt</code>
+      </div>
+    </div>
   </div>
 
   <!-- Server Stats — host + JVM resource usage. -->
@@ -1006,6 +1035,43 @@ function refreshClaudeQueue() {
       if (!el) return;
       const wasAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 20;
       el.textContent = t || '(queue empty — Claude has caught up)';
+      if (wasAtBottom) el.scrollTop = el.scrollHeight;
+    })
+    .catch(() => {});
+}
+
+function submitMetaAgentPrompt() {
+  const ta = document.getElementById('meta-agent-input');
+  const text = ta.value.trim();
+  const status = document.getElementById('meta-agent-status');
+  if (!text) { status.textContent = 'Empty prompt — type something first.'; status.style.color = 'var(--danger)'; return; }
+  status.textContent = 'Sending…'; status.style.color = 'var(--text-muted)';
+  fetch(`${SERVER}/admin/${TOKEN}/meta-agent-prompt`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: text,
+  }).then(r => {
+    if (!r.ok) {
+      status.textContent = `Send failed (HTTP ${r.status}).`; status.style.color = 'var(--danger)';
+      return;
+    }
+    status.textContent = 'Queued. Meta agent checks every 2 minutes.';
+    status.style.color = 'var(--success)';
+    ta.value = '';
+    refreshMetaAgentOutput();
+  }).catch(e => {
+    status.textContent = `Network error: ${e.message || e}`; status.style.color = 'var(--danger)';
+  });
+}
+
+function refreshMetaAgentOutput() {
+  fetch(`${SERVER}/admin/${TOKEN}/meta-agent-output?lines=500`)
+    .then(r => r.text())
+    .then(t => {
+      const el = document.getElementById('meta-agent-output');
+      if (!el) return;
+      const wasAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 20;
+      el.textContent = t || '(empty)';
       if (wasAtBottom) el.scrollTop = el.scrollHeight;
     })
     .catch(() => {});

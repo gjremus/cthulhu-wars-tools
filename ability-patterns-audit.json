@@ -1,0 +1,830 @@
+[
+  {
+    "faction": "Great Cthulhu",
+    "unit": "n/a",
+    "type": "Post-awaken resource generation",
+    "ability_text": "Immortal: Gain 1 Elder Sign when Cthulhu awakens",
+    "code_pattern": "Check f.has(Immortal) in AwakenedAction(self, Cthulhu, r, cost) handler, call self.takeES(1)",
+    "files": ["FactionGC.scala"],
+    "location": "GCExpansion.perform, AwakenedAction case at lines ~183-192"
+  },
+  {
+    "faction": "Great Cthulhu",
+    "unit": "Cthulhu",
+    "type": "Combat ability - devour",
+    "ability_text": "Devour: Before battle, eliminate enemy cultist to add Kill result",
+    "code_pattern": "Pre-battle menu option added in Battle.scala prebattle() at line ~508, checks f.has(Devour) && vulnerable units exist, handler eliminates unit and adds Kill to rolls",
+    "files": ["FactionGC.scala", "Battle.scala"],
+    "location": "Battle.scala prebattle() lines ~508-509; handler in Battle.scala ~900+"
+  },
+  {
+    "faction": "Great Cthulhu",
+    "unit": "Shoggoth",
+    "type": "Pre-battle unit modification",
+    "ability_text": "Absorb: Before battle, add Absorbed marker to Shoggoth (counts as 3-strength unit)",
+    "code_pattern": "Pre-battle menu at Battle.scala ~514, handler adds Absorbed marker via unit.add(Absorbed); strength calculation in FactionGC.strength() counts Absorbed markers as +3",
+    "files": ["FactionGC.scala", "Battle.scala"],
+    "location": "Battle.scala prebattle() ~514; FactionGC.strength() ~68"
+  },
+  {
+    "faction": "Great Cthulhu",
+    "unit": "n/a",
+    "type": "Combat regeneration",
+    "ability_text": "Regenerate: After battle, pay 1 Power per Pain to heal",
+    "code_pattern": "Post-battle phase handler in Battle.scala checks f.can(Regenerate), offers healing actions, deducts power and clears Pain markers",
+    "files": ["FactionGC.scala", "Battle.scala"],
+    "location": "Battle.scala post-battle phases"
+  },
+  {
+    "faction": "Great Cthulhu",
+    "unit": "n/a",
+    "type": "Unit transformation",
+    "ability_text": "Devolve: Eliminate Acolyte to summon Deep One",
+    "code_pattern": "Main-action menu DevolveMainAction, handler eliminates Acolyte via game.eliminate(c), then f.place(DeepOne, r)",
+    "files": ["FactionGC.scala"],
+    "location": "DevolveAction handler lines ~204-216"
+  },
+  {
+    "faction": "Great Cthulhu",
+    "unit": "n/a",
+    "type": "Unit replacement at distance",
+    "ability_text": "Dreams: Pay 2 Power to replace enemy Acolyte with own Acolyte",
+    "code_pattern": "Main-action menu DreamsMainAction, handler eliminates enemy unit via game.eliminate(u), then e.place(Acolyte, r)",
+    "files": ["FactionGC.scala"],
+    "location": "DreamsAction handler lines ~250-265"
+  },
+  {
+    "faction": "Great Cthulhu",
+    "unit": "Cthulhu",
+    "type": "Special movement (submerge/surface)",
+    "ability_text": "Submerge: Move Cthulhu and court to off-map Deep region; later unsubmerge anywhere",
+    "code_pattern": "SubmergeMainAction moves units to GC.deep via u.region = GC.deep; UnsubmergeAction moves back via u.region = r (target region)",
+    "files": ["FactionGC.scala"],
+    "location": "SubmergeAction ~272-288, UnsubmergeAction ~293-310"
+  },
+  {
+    "faction": "Black Goat",
+    "unit": "n/a",
+    "type": "Ongoing summon discount",
+    "ability_text": "Fertility Cult: Always has +6 Cultists in Pool",
+    "code_pattern": "Not coded as discount; Pool capacity is checked via faction.pool(Acolyte) calls which include virtual cultists",
+    "files": ["FactionBG.scala", "Game.scala"],
+    "location": "Implicit in pool checks throughout codebase"
+  },
+  {
+    "faction": "Black Goat",
+    "unit": "n/a",
+    "type": "Summon cost discount",
+    "ability_text": "The Thousand Young: Monsters cost 1 less if Shub-Niggurath in play",
+    "code_pattern": "Override summonCost() in FactionBG: case Ghoul | Fungi | DarkYoung if f.can(ThousandYoung) && f.has(ShubNiggurath) => u.cost - 1",
+    "files": ["FactionBG.scala"],
+    "location": "summonCost() override lines ~64-67"
+  },
+  {
+    "faction": "Black Goat",
+    "unit": "Shub-Niggurath",
+    "type": "Dynamic combat strength",
+    "ability_text": "Shub-Niggurath combat = gates + cultists + (Dark Young * Red Sign multiplier)",
+    "code_pattern": "strength() method calculates: f.gates.num + f.cultists.num + f.all(DarkYoung).num * f.can(RedSign).??(1)",
+    "files": ["FactionBG.scala"],
+    "location": "strength() lines ~74-84"
+  },
+  {
+    "faction": "Black Goat",
+    "unit": "Acolyte",
+    "type": "Combat bonus",
+    "ability_text": "Frenzy: Acolytes add 1 combat strength each",
+    "code_pattern": "strength() adds: units(Acolyte).num * f.can(Frenzy).??(1)",
+    "files": ["FactionBG.scala"],
+    "location": "strength() line ~75"
+  },
+  {
+    "faction": "Black Goat",
+    "unit": "n/a",
+    "type": "Post-battle resource gain",
+    "ability_text": "Necrophagy: Gain 1 Power per enemy unit killed in battle",
+    "code_pattern": "Post-battle handler in Battle.scala checks f.can(Necrophagy), counts killed enemy units, adds power via f.power += count",
+    "files": ["FactionBG.scala", "Battle.scala"],
+    "location": "Battle.scala NecrophagyPhase"
+  },
+  {
+    "faction": "Black Goat",
+    "unit": "Shub-Niggurath",
+    "type": "Unit replacement (Avatar)",
+    "ability_text": "Avatar: Replace enemy Monster with own Monster",
+    "code_pattern": "AvatarAction eliminates enemy unit via game.eliminate(u), then places own monster f.place(replacementClass, r)",
+    "files": ["FactionBG.scala"],
+    "location": "AvatarReplacementAction handler in BGExpansion.perform"
+  },
+  {
+    "faction": "Black Goat",
+    "unit": "n/a",
+    "type": "Unit sacrifice for benefit",
+    "ability_text": "Blood Sacrifice: Doom phase, eliminate Cultist for 1 Power",
+    "code_pattern": "BloodSacrificeAction handler eliminates cultist via game.eliminate(u), adds f.power += 1",
+    "files": ["FactionBG.scala"],
+    "location": "BloodSacrificeAction handler in BGExpansion.perform"
+  },
+  {
+    "faction": "Black Goat",
+    "unit": "n/a",
+    "type": "Mass negotiation mechanic",
+    "ability_text": "Ghroth: Pay X Power, enemies negotiate Cultist elimination or pay tribute",
+    "code_pattern": "GhrothAction manages offer collection via GhrothAskAction for each enemy, then GhrothEliminateAction distributes eliminations or power",
+    "files": ["FactionBG.scala"],
+    "location": "GhrothAction through GhrothEliminateAction handlers in BGExpansion.perform"
+  },
+  {
+    "faction": "Crawling Chaos",
+    "unit": "Nyarlathotep",
+    "type": "Pre-battle auto kills",
+    "ability_text": "The Harbinger: At battle start, add Kills equal to enemy Cultists",
+    "code_pattern": "Battle.scala prebattle checks f.has(Harbinger) && f.forces(Nyarlathotep).any, adds Kill results to attacker.kills",
+    "files": ["FactionCC.scala", "Battle.scala"],
+    "location": "Battle.scala prebattle() ~646"
+  },
+  {
+    "faction": "Crawling Chaos",
+    "unit": "n/a",
+    "type": "Non-adjacency movement",
+    "ability_text": "Flight: Move to any area regardless of adjacency",
+    "code_pattern": "Override canMoveTo() or movement validation to allow non-adjacent moves when f.has(Flight)",
+    "files": ["FactionCC.scala", "Game.scala"],
+    "location": "Movement logic in Game.scala"
+  },
+  {
+    "faction": "Crawling Chaos",
+    "unit": "Nightgaunt",
+    "type": "Pre-battle unit capture",
+    "ability_text": "Abduct: Before battle, capture enemy unit",
+    "code_pattern": "Pre-battle menu AbductPreBattleAction at Battle.scala ~520, handler captures unit via game.capture(unit)",
+    "files": ["FactionCC.scala", "Battle.scala"],
+    "location": "Battle.scala prebattle() ~520-521"
+  },
+  {
+    "faction": "Crawling Chaos",
+    "unit": "Hunting Horror",
+    "type": "Battle join from distance",
+    "ability_text": "Seek and Destroy: Move Hunting Horrors into battle from anywhere",
+    "code_pattern": "Pre-battle menu SeekAndDestroyPreBattleAction at Battle.scala ~526-527, handler moves units into battle arena",
+    "files": ["FactionCC.scala", "Battle.scala"],
+    "location": "Battle.scala prebattle() ~526-527"
+  },
+  {
+    "faction": "Crawling Chaos",
+    "unit": "Flying Polyp",
+    "type": "Battle immunity marker",
+    "ability_text": "Invisibility: Mark Flying Polyps as immune to Kill/Pain assignment",
+    "code_pattern": "Pre-battle adds Invised marker via unit.add(Invised); battle assignment logic checks unit.has(Invised) to skip",
+    "files": ["FactionCC.scala", "Battle.scala"],
+    "location": "Battle.scala prebattle() ~529-530"
+  },
+  {
+    "faction": "Crawling Chaos",
+    "unit": "n/a",
+    "type": "Battle result modification",
+    "ability_text": "Madness: After battle, assign own Pains to enemy units",
+    "code_pattern": "Post-battle handler checks f.can(Madness), offers enemy unit targeting, changes unit.health to Pained",
+    "files": ["FactionCC.scala", "Battle.scala"],
+    "location": "Battle.scala post-battle phases"
+  },
+  {
+    "faction": "Firstborn",
+    "unit": "n/a",
+    "type": "Dice roll power with self-targeting",
+    "ability_text": "Writhe: Roll dice = Power; Kills eliminate own units (Acolytes become Desiccated), Pains relocate own units",
+    "code_pattern": "FBWritheRollAction rolls N dice, FBWritheApplyAction processes: Kills trigger FBWritheKillUnitAction (Acolyte -> Desiccated transformation via game.eliminate + f.place), Pains trigger FBWritheMoveOneAction (unit relocation via u.region = r)",
+    "files": ["FactionFB.scala"],
+    "location": "Writhe action chain lines ~122-300"
+  },
+  {
+    "faction": "Firstborn",
+    "unit": "n/a",
+    "type": "Dice manipulation",
+    "ability_text": "Augury: During Writhe, replace Misses with Kills",
+    "code_pattern": "FBWritheAuguryReplaceAction modifies rolls array, replacing Miss with Kill up to N times",
+    "files": ["FactionFB.scala"],
+    "location": "Augury actions lines ~139-142"
+  },
+  {
+    "faction": "Firstborn",
+    "unit": "n/a",
+    "type": "Spellbook flipping discount",
+    "ability_text": "Infernal Pact: Flip faceup spellbooks to reduce costs by 1 each",
+    "code_pattern": "FBInfernalPactChooseAction flips spellbook via sb.faceDown = true, increments game.fbInfernalPactCount, subsequent actions check game.fbEffectiveIPDiscount for cost reduction",
+    "files": ["FactionFB.scala"],
+    "location": "Infernal Pact actions lines ~179-212"
+  },
+  {
+    "faction": "Firstborn",
+    "unit": "Ghatanothoa",
+    "type": "Dynamic combat strength",
+    "ability_text": "Ghatanothoa combat = owner's current Power",
+    "code_pattern": "strength() returns: units(Ghatanothoa).not(Zeroed).num * f.power",
+    "files": ["FactionFB.scala"],
+    "location": "strength() lines ~91-112"
+  },
+  {
+    "faction": "Firstborn",
+    "unit": "Revenant of K'Naa",
+    "type": "Fixed combat value",
+    "ability_text": "Revenant of K'Naa combat = flat 3",
+    "code_pattern": "strength() returns: units(RevenantOfKnaa).not(Zeroed).num * 3",
+    "files": ["FactionFB.scala"],
+    "location": "strength() line ~105"
+  },
+  {
+    "faction": "Firstborn",
+    "unit": "n/a",
+    "type": "Post-opponent-action pain trigger",
+    "ability_text": "Cyclopean Gaze: After opponent acts/battles, pain enemy units in areas with Revenants/Ghatanothoa",
+    "code_pattern": "Triggered by afterAction() hook, FBCyclopeanGazeMainAction offers pain assignment per Revenant/Ghatanothoa source, handler assigns pains via unit.health = Pained",
+    "files": ["FactionFB.scala"],
+    "location": "Cyclopean Gaze action chain lines ~294+"
+  },
+  {
+    "faction": "Firstborn",
+    "unit": "n/a",
+    "type": "Post-battle spellbook flip",
+    "ability_text": "Carnage: After battle, flip enemy spellbook facedown",
+    "code_pattern": "Post-battle handler FBCarnagePostBattleAction offers enemy spellbook targeting, sets sb.faceDown = true",
+    "files": ["FactionFB.scala"],
+    "location": "Carnage post-battle lines ~430+"
+  },
+  {
+    "faction": "Firstborn",
+    "unit": "Crater",
+    "type": "Building that destroys gates",
+    "ability_text": "Devil's Mark: Place Crater building, destroys any non-Yog gate in region",
+    "code_pattern": "DevilsMarkAction places crater via game.fbCraters :+= r, gate destruction checked in triggers() or afterAction()",
+    "files": ["FactionFB.scala"],
+    "location": "Devil's Mark handlers in FBExpansion.perform"
+  },
+  {
+    "faction": "Opener of the Way",
+    "unit": "n/a",
+    "type": "Alternative capture mechanic",
+    "ability_text": "The Beyond One: Capture enemy Cultists onto gates instead of prison",
+    "code_pattern": "Override capture logic to place captured Acolyte on gate via u.onGate = true when f.has(BeyondOne)",
+    "files": ["FactionOW.scala", "Game.scala"],
+    "location": "Capture logic in Game.scala, BeyondOne checks"
+  },
+  {
+    "faction": "Opener of the Way",
+    "unit": "n/a",
+    "type": "Gate requirement modification",
+    "ability_text": "The Key and the Gate: Gates cost 0 if at enemy gate",
+    "code_pattern": "Override gateCost() or gate placement cost check: if enemy gate in region && f.has(KeyAndGate) then cost = 0",
+    "files": ["FactionOW.scala", "Game.scala"],
+    "location": "Gate cost logic in Game.scala"
+  },
+  {
+    "faction": "Opener of the Way",
+    "unit": "n/a",
+    "type": "Summon cost discount",
+    "ability_text": "They Break Through: Monsters cost 1 less at gates",
+    "code_pattern": "Override summonCost(): if r has gate && f.can(TheyBreakThrough) then reduce cost by 1",
+    "files": ["FactionOW.scala"],
+    "location": "summonCost() override lines ~74-77"
+  },
+  {
+    "faction": "Opener of the Way",
+    "unit": "Hunting Horror",
+    "type": "Combat bonus at gates",
+    "ability_text": "The Million Favored Ones: +1 combat per Hunting Horror at gates",
+    "code_pattern": "strength() adds conditional bonus: units at gates with f.can(MillionFavoredOnes) get +1",
+    "files": ["FactionOW.scala", "Battle.scala"],
+    "location": "Battle strength calculation"
+  },
+  {
+    "faction": "Opener of the Way",
+    "unit": "n/a",
+    "type": "Post-roll battle modification",
+    "ability_text": "Channel Power: After rolls, pay Power to add dice",
+    "code_pattern": "Post-roll phase ChannelPowerPhase offers ChannelPowerAction, handler adds dice to rolls array and deducts power",
+    "files": ["FactionOW.scala", "Battle.scala"],
+    "location": "Battle.scala ChannelPowerPhase"
+  },
+  {
+    "faction": "Opener of the Way",
+    "unit": "n/a",
+    "type": "Persistent curse marker",
+    "ability_text": "Dread Curse of Azathoth: Mark enemy faction, phantom Cultists appear during battles",
+    "code_pattern": "DreadCurseAction sets game.dreadCursed = enemy; battle prebattle() adds phantom cultist to cursed enemy's force count",
+    "files": ["FactionOW.scala", "Battle.scala"],
+    "location": "Dread Curse handlers in OWExpansion.perform"
+  },
+  {
+    "faction": "Sleeper",
+    "unit": "n/a",
+    "type": "Ongoing movement block",
+    "ability_text": "Death from Below: Enemy units cannot Move",
+    "code_pattern": "Movement validation checks f.has(DeathFromBelow) for enemy, returns false to block moves",
+    "files": ["FactionSL.scala", "Game.scala"],
+    "location": "Movement logic in Game.scala"
+  },
+  {
+    "faction": "Sleeper",
+    "unit": "n/a",
+    "type": "Ongoing action cost increase",
+    "ability_text": "Lethargy: Enemies pay +1 for all actions",
+    "code_pattern": "Cost calculation checks if SL.has(Lethargy) && enemy, adds +1 to all action costs",
+    "files": ["FactionSL.scala", "Game.scala"],
+    "location": "Cost calculations throughout Game.scala"
+  },
+  {
+    "faction": "Sleeper",
+    "unit": "n/a",
+    "type": "Alternative movement (non-adjacency)",
+    "ability_text": "Burrow: Move between any two areas (Lovecraft rulebook)",
+    "code_pattern": "Movement validation allows non-adjacent if f.can(Burrow)",
+    "files": ["FactionSL.scala", "Game.scala"],
+    "location": "Movement logic in Game.scala"
+  },
+  {
+    "faction": "Sleeper",
+    "unit": "Wizard",
+    "type": "Battle interrupt for full turn",
+    "ability_text": "Energy Nexus: Interrupt any battle with Wizard present to take full turn",
+    "code_pattern": "Pre-battle menu EnergyNexusPreBattleAction at Battle.scala ~554, handler routes to MainAction(SL), battle resumes after turn ends",
+    "files": ["FactionSL.scala", "Battle.scala"],
+    "location": "Battle.scala prebattle() ~554-555"
+  },
+  {
+    "faction": "Sleeper",
+    "unit": "Tsathoggua",
+    "type": "Pre-battle demand sacrifice",
+    "ability_text": "Demand Sacrifice: Before battle, force enemy to eliminate own Cultist",
+    "code_pattern": "Pre-battle menu DemandSacrificePreBattleAction at Battle.scala ~532-534, handler forces enemy to eliminate cultist via game.eliminate",
+    "files": ["FactionSL.scala", "Battle.scala"],
+    "location": "Battle.scala prebattle() ~532-534"
+  },
+  {
+    "faction": "Sleeper",
+    "unit": "n/a",
+    "type": "Battle result modification",
+    "ability_text": "Kills are Pains: Enemy Kills become Pains instead",
+    "code_pattern": "Assignment logic checks defender.can(KillsArePains), converts Kill to Pain when assigning to SL units",
+    "files": ["FactionSL.scala", "Battle.scala"],
+    "location": "Battle.scala assignment phases"
+  },
+  {
+    "faction": "Tcho-Tcho",
+    "unit": "n/a",
+    "type": "Ongoing Doom modification",
+    "ability_text": "Sycophancy: Start with 3 Doom, but only win at 30 Doom",
+    "code_pattern": "Initial setup sets TT.doom = 3; victory check requires TT.doom >= 30 instead of 30",
+    "files": ["FactionTT.scala", "Game.scala"],
+    "location": "Setup and victory logic"
+  },
+  {
+    "faction": "Tcho-Tcho",
+    "unit": "High Priest",
+    "type": "Alternative cultist recruitment",
+    "ability_text": "Hierophants: Can recruit High Priests instead of Acolytes",
+    "code_pattern": "Recruit menu offers HighPriest option when f.can(Hierophants), placement via f.place(HighPriest, r)",
+    "files": ["FactionTT.scala"],
+    "location": "Recruit logic in Game.scala with TT override"
+  },
+  {
+    "faction": "Tcho-Tcho",
+    "unit": "Proto-Shoggoth",
+    "type": "Pre-battle combat modification choice",
+    "ability_text": "Terror: Before battle, reduce enemy combat by 2 OR boost own combat by 2",
+    "code_pattern": "Pre-battle menu TTTerrorPreBattleAction offers two choices, handler sets marker f.tag(TTReduceEnemyCombat) or f.tag(TTBoostOwnCombat), strength calculation applies modifier",
+    "files": ["FactionTT.scala", "Battle.scala"],
+    "location": "Battle.scala prebattle() ~577-578"
+  },
+  {
+    "faction": "Tcho-Tcho",
+    "unit": "n/a",
+    "type": "Unit sacrifice for elder signs",
+    "ability_text": "Martyrdom: Doom phase, eliminate Cultist for Elder Sign",
+    "code_pattern": "MartyrdomAction handler eliminates cultist via game.eliminate(u), adds f.takeES(1)",
+    "files": ["FactionTT.scala"],
+    "location": "Martyrdom handlers in TTExpansion.perform"
+  },
+  {
+    "faction": "Tcho-Tcho",
+    "unit": "Ubbo-Sathla",
+    "type": "Post-battle ES generation",
+    "ability_text": "Fulmination: Gain 1 ES per enemy GOO killed in battle",
+    "code_pattern": "Post-battle EliminatePhase checks if Ubbo killed enemy GOO, counts at elimination phase, grants ES via f.takeES(count)",
+    "files": ["FactionTT.scala", "Battle.scala"],
+    "location": "Battle.scala EliminatePhase with TT checks"
+  },
+  {
+    "faction": "Windwalker",
+    "unit": "n/a",
+    "type": "Doom phase hibernation",
+    "ability_text": "Hibernate: Skip Doom phase to gain Power = ritual cost",
+    "code_pattern": "Doom phase offers HibernateAction, handler grants f.power += game.ritualCost, skips ritual",
+    "files": ["FactionWW.scala"],
+    "location": "DoomAction handler in WWExpansion.perform"
+  },
+  {
+    "faction": "Windwalker",
+    "unit": "Rhan-Tegoth",
+    "type": "Battle immunity",
+    "ability_text": "Eternal: Rhan-Tegoth cannot be killed (Pains only)",
+    "code_pattern": "Battle assignment checks unit.uclass == RhanTegoth && f.has(Eternal), converts Kill to Pain",
+    "files": ["FactionWW.scala", "Battle.scala"],
+    "location": "Battle.scala kill assignment ~664-667"
+  },
+  {
+    "faction": "Windwalker",
+    "unit": "n/a",
+    "type": "Ongoing recruitment bonus",
+    "ability_text": "Ferox: Recruit up to 2 Cultists per turn",
+    "code_pattern": "Recruit logic checks f.has(Ferox), allows second recruit action",
+    "files": ["FactionWW.scala", "Game.scala"],
+    "location": "Recruit logic in Game.scala"
+  },
+  {
+    "faction": "Windwalker",
+    "unit": "Wendigo",
+    "type": "Post-battle unit move",
+    "ability_text": "Howl: Before battle, move enemy units out of region",
+    "code_pattern": "Pre-battle menu HowlPreBattleAction at Battle.scala ~517-518, handler moves enemy units via u.region = targetRegion",
+    "files": ["FactionWW.scala", "Battle.scala"],
+    "location": "Battle.scala prebattle() ~517-518"
+  },
+  {
+    "faction": "Windwalker",
+    "unit": "Gnoph-Keh",
+    "type": "Unit sacrifice for combat bonus",
+    "ability_text": "Cannibalism: Eliminate own units during battle to add combat dice",
+    "code_pattern": "During-battle handler CannibalismAction eliminates own unit via game.eliminate(u), adds dice to rolls",
+    "files": ["FactionWW.scala", "Battle.scala"],
+    "location": "Battle.scala during-battle phases"
+  },
+  {
+    "faction": "Windwalker",
+    "unit": "n/a",
+    "type": "Post-battle retaliatory kills",
+    "ability_text": "Berserkergang: After battle, kill enemy units = own units eliminated",
+    "code_pattern": "Post-battle BerserkergangPhase counts WW units eliminated, offers kill assignment to enemy units equal to count",
+    "files": ["FactionWW.scala", "Battle.scala"],
+    "location": "Battle.scala BerserkergangPhase"
+  },
+  {
+    "faction": "Yellow Sign",
+    "unit": "n/a",
+    "type": "Ongoing power generation",
+    "ability_text": "Feast: Gain 1 Power per Cultist during Gather Power",
+    "code_pattern": "Gather Power phase checks f.has(Feast), adds f.power += f.cultists.num",
+    "files": ["FactionYS.scala", "Game.scala"],
+    "location": "Gather Power logic in Game.scala"
+  },
+  {
+    "faction": "Yellow Sign",
+    "unit": "n/a",
+    "type": "Combat ability blocker",
+    "ability_text": "Desecrate: Ongoing, enemies cannot use spellbooks",
+    "code_pattern": "Spellbook usage checks f.enemies.any(_.has(Desecrate)), blocks with Moonbeast-style suppression",
+    "files": ["FactionYS.scala", "Game.scala"],
+    "location": "Ability checks throughout codebase"
+  },
+  {
+    "faction": "Yellow Sign",
+    "unit": "Hastur",
+    "type": "Pre-battle auto pain",
+    "ability_text": "Vengeance: Before battle with Hastur, assign Pain to enemy GOO",
+    "code_pattern": "Pre-battle checks f.has(Vengeance) && f.forces(Hastur).any at Battle.scala ~656, assigns pain via unit.health = Pained",
+    "files": ["FactionYS.scala", "Battle.scala"],
+    "location": "Battle.scala prebattle() ~656-659"
+  },
+  {
+    "faction": "Yellow Sign",
+    "unit": "Byakhee",
+    "type": "Unit copy mechanic",
+    "ability_text": "Shriek of the Byakhee: Summon Byakhee copy anywhere a Byakhee exists",
+    "code_pattern": "SummonAction allows placing Byakhee at any region where f.at(r, Byakhee).any when f.can(Shriek)",
+    "files": ["FactionYS.scala"],
+    "location": "Summon logic in YSExpansion.perform"
+  },
+  {
+    "faction": "Yellow Sign",
+    "unit": "n/a",
+    "type": "Unit transformation on kill",
+    "ability_text": "The Screaming Dead: Enemy Cultists killed in battle become Undead (YS Cultists)",
+    "code_pattern": "Post-battle EliminatePhase checks f.can(ScreamingDead), replaces killed enemy cultist with YS Acolyte via game.eliminate(u) + f.place(Acolyte, r)",
+    "files": ["FactionYS.scala", "Battle.scala"],
+    "location": "Battle.scala EliminatePhase"
+  },
+  {
+    "faction": "Ancients",
+    "unit": "n/a",
+    "type": "Ongoing immunity to capture",
+    "ability_text": "Dematerialization: Cannot be captured",
+    "code_pattern": "Capture logic checks target.faction.has(Dematerialization), returns false to block capture",
+    "files": ["FactionAN.scala", "Game.scala"],
+    "location": "Capture logic in Game.scala"
+  },
+  {
+    "faction": "Ancients",
+    "unit": "n/a",
+    "type": "Special summon from enemy pool",
+    "ability_text": "Festival: Summon monsters from enemy pools",
+    "code_pattern": "FestivalAction offers enemy pool monsters, handler places monster via f.place(enemyMonster, r)",
+    "files": ["FactionAN.scala"],
+    "location": "Festival handlers in ANExpansion.perform"
+  },
+  {
+    "faction": "Ancients",
+    "unit": "Yothan",
+    "type": "Alternative summon cost",
+    "ability_text": "Extinction: Yothan costs 4 (down from 6) after using Extinction",
+    "code_pattern": "summonCost() override checks f.extinctionUsed flag: case Yothan if f.extinctionUsed => 4",
+    "files": ["FactionAN.scala"],
+    "location": "summonCost() override lines ~61+"
+  },
+  {
+    "faction": "Ancients",
+    "unit": "n/a",
+    "type": "Post-battle revive",
+    "ability_text": "Unholy Ground: After battle, return eliminated units to battlefield",
+    "code_pattern": "Post-battle UnholyGroundPhase offers unit revival, handler moves units from pool to battlefield via f.place(u.uclass, r)",
+    "files": ["FactionAN.scala", "Battle.scala"],
+    "location": "Battle.scala UnholyGroundPhase ~144"
+  },
+  {
+    "faction": "Ancients",
+    "unit": "Cathedral",
+    "type": "Building with ongoing benefits",
+    "ability_text": "Consecration: Place Cathedral buildings that provide bonuses",
+    "code_pattern": "ConsecrationAction places cathedral via game.cathedrals :+= r; various triggers check if cathedral present",
+    "files": ["FactionAN.scala"],
+    "location": "Consecration handlers in ANExpansion.perform"
+  },
+  {
+    "faction": "Dune Sphere",
+    "unit": "n/a",
+    "type": "Ongoing power tax",
+    "ability_text": "Psychosis: Enemies pay 1 Power to move into areas with DS units",
+    "code_pattern": "Movement cost checks if destination has DS units && DS.has(Psychosis), adds 1 to cost",
+    "files": ["FactionDS.scala", "Game.scala"],
+    "location": "Movement logic in Game.scala"
+  },
+  {
+    "faction": "Dune Sphere",
+    "unit": "Elder Thing",
+    "type": "Ability suppression",
+    "ability_text": "Cosmic Ruler: Elder Things suppress enemy GOO unique abilities in same region",
+    "code_pattern": "ElderThingMindControl.suppresses(unit) checks if unit in same region as enemy Elder Thing, used to block GOO abilities",
+    "files": ["FactionDS.scala", "Battle.scala", "Game.scala"],
+    "location": "ElderThingMindControl checks throughout codebase"
+  },
+  {
+    "faction": "Dune Sphere",
+    "unit": "Avatar",
+    "type": "Special unit spawning",
+    "ability_text": "Animate Matter: Create Avatar units (Antithesis/Synthesis) via Chaos Gates",
+    "code_pattern": "AnimateMatterAction creates Avatar units via f.place(AvatarAntithesis/AvatarSynthesis, r)",
+    "files": ["FactionDS.scala"],
+    "location": "Animate Matter handlers in DSExpansion.perform"
+  },
+  {
+    "faction": "Dune Sphere",
+    "unit": "n/a",
+    "type": "Pre-battle summon",
+    "ability_text": "Fiendish Spawn: Before battle, summon units into battle",
+    "code_pattern": "Pre-battle menu FiendishSpawnPreBattleAction at Battle.scala ~559-560, handler summons units into battle arena",
+    "files": ["FactionDS.scala", "Battle.scala"],
+    "location": "Battle.scala prebattle() ~559-560"
+  },
+  {
+    "faction": "Dune Sphere",
+    "unit": "n/a",
+    "type": "Post-battle power gain",
+    "ability_text": "Directed Energy: After battle, gain Power equal to enemy units eliminated",
+    "code_pattern": "Post-battle handler DirectedEnergyPostBattleAction counts eliminated enemies, adds f.power += count",
+    "files": ["FactionDS.scala", "Battle.scala"],
+    "location": "Battle.scala post-battle phases"
+  },
+  {
+    "faction": "Tomb Sleeper",
+    "unit": "n/a",
+    "type": "Ongoing unit spawn",
+    "ability_text": "Death March: Place free Tomb Herd during Gather Power",
+    "code_pattern": "Gather Power phase checks f.has(DeathMarch), offers free placement via f.place(TombHerd, r)",
+    "files": ["FactionTS.scala", "Game.scala"],
+    "location": "Gather Power logic in Game.scala"
+  },
+  {
+    "faction": "Tomb Sleeper",
+    "unit": "Gla'aki",
+    "type": "Battle retreat mechanic",
+    "ability_text": "Oleaginous: Gla'aki and Deep Tendril Pains become retreats instead",
+    "code_pattern": "Post-battle OleaginousPhase converts Pained units to retreat actions, moves units via u.region = targetRegion",
+    "files": ["FactionTS.scala", "Battle.scala"],
+    "location": "Battle.scala OleaginousPhase ~149"
+  },
+  {
+    "faction": "Tomb Sleeper",
+    "unit": "Grasping Dead",
+    "type": "Auto-battle trigger",
+    "ability_text": "Grasping Dead: Enemies entering area with Tomb Herd trigger auto-battle",
+    "code_pattern": "Movement triggers check if destination has TS.has(GraspingDead) && TS.at(r, TombHerd).any, queues battle",
+    "files": ["FactionTS.scala", "Game.scala"],
+    "location": "Movement logic in Game.scala"
+  },
+  {
+    "faction": "Bubastis",
+    "unit": "n/a",
+    "type": "Ongoing power generation from Moon",
+    "ability_text": "Lunacy: Gain 1 Power per unit on Moon during Gather Power",
+    "code_pattern": "Gather Power phase checks f.has(Lunacy), counts f.at(BB.moon).num, adds power via f.power += count",
+    "files": ["FactionBB.scala", "Game.scala"],
+    "location": "Gather Power logic in Game.scala"
+  },
+  {
+    "faction": "Bubastis",
+    "unit": "n/a",
+    "type": "Moon access mechanics",
+    "ability_text": "Multiple abilities involve Moon region: Catnapping costs 1 to enter/leave, Moon Beasts block, etc.",
+    "code_pattern": "Various movement and action cost checks for BB.moon region, special rules enforced via conditionals",
+    "files": ["FactionBB.scala", "Game.scala"],
+    "location": "Throughout codebase"
+  },
+  {
+    "faction": "Bubastis",
+    "unit": "Cat from Mars",
+    "type": "Pre-battle Kill/Pain swap",
+    "ability_text": "Zagazig: Before battle, choose to swap Kills and Pains",
+    "code_pattern": "Pre-battle menu ZagazigUseAction at Battle.scala ~585-588, post-roll swaps rolls via temp = kills; kills = pains; pains = temp",
+    "files": ["FactionBB.scala", "Battle.scala"],
+    "location": "Battle.scala prebattle() ~585-588"
+  },
+  {
+    "faction": "Bubastis",
+    "unit": "Cat from Saturn",
+    "type": "Pre-battle combat boost",
+    "ability_text": "Savagery: Pay 1 Power for +4 strength per Cat from Saturn",
+    "code_pattern": "Pre-battle menu SavageryUseAction at Battle.scala ~591-594, handler adds +4 * count to strength",
+    "files": ["FactionBB.scala", "Battle.scala"],
+    "location": "Battle.scala prebattle() ~591-594"
+  },
+  {
+    "faction": "Bubastis",
+    "unit": "n/a",
+    "type": "Post-battle kill counting",
+    "ability_text": "Predator: After battle, gain Power per Monster killed (count post-battle abilities)",
+    "code_pattern": "Post-battle handler counts monsters killed including post-battle effects, adds f.power += count",
+    "files": ["FactionBB.scala", "Battle.scala"],
+    "location": "Battle.scala post-battle phases"
+  },
+  {
+    "faction": "Bubastis",
+    "unit": "n/a",
+    "type": "Post-battle kill counting with type filter",
+    "ability_text": "Carnivore: Gain 1 ES per enemy GOO killed in battle",
+    "code_pattern": "Post-battle EliminatePhase checks killed GOOs, grants ES via f.takeES(count)",
+    "files": ["FactionBB.scala", "Battle.scala"],
+    "location": "Battle.scala EliminatePhase"
+  },
+  {
+    "faction": "Neutral",
+    "unit": "Byatis",
+    "type": "IGOO awakening",
+    "ability_text": "Byatis: Independent GOO with loyalty card, cost 4, combat 4",
+    "code_pattern": "IndependentGOOAction awakens IGOO via loyalty card mechanism, places via f.place(Byatis, r), tracks via f.loyaltyCards :+= ByatisCard",
+    "files": ["IGOOs.scala"],
+    "location": "IGOO awakening handlers ~206+"
+  },
+  {
+    "faction": "Neutral",
+    "unit": "Abhoth",
+    "type": "IGOO with Filth spawning",
+    "ability_text": "Abhoth: Can place Filth monsters (1-cost, no move/battle/capture)",
+    "code_pattern": "FilthAction places Filth via self.place(Filth, r); Filth unit has overrides: canMove/canBattle/canCapture return false",
+    "files": ["IGOOs.scala"],
+    "location": "Filth definition lines ~91-96, handlers ~221-222"
+  },
+  {
+    "faction": "Neutral",
+    "unit": "Daoloth",
+    "type": "Pre-battle combat equalization",
+    "ability_text": "Cosmic Unity: Before battle with Daoloth vs enemy GOO, set Daoloth combat = enemy GOO combat",
+    "code_pattern": "Pre-battle checks f.forces(Daoloth).any && opponent.forces.goos.any at Battle.scala ~563-564, sets Daoloth combat to match",
+    "files": ["IGOOs.scala", "Battle.scala"],
+    "location": "Battle.scala prebattle() ~563-564"
+  },
+  {
+    "faction": "Neutral",
+    "unit": "Y'Golonac",
+    "type": "Post-battle ownership transfer",
+    "ability_text": "Orifices: When killed in battle, eliminate enemy unit and transfer Y'Golonac to that faction",
+    "code_pattern": "Post-battle YgolonacOrificesPhase offers enemy unit targeting, handler eliminates target via game.eliminate(target), moves Ygolonac via u.faction = targetFaction, transfers loyalty card",
+    "files": ["IGOOs.scala", "Battle.scala"],
+    "location": "Battle.scala YgolonacOrificesPhase"
+  },
+  {
+    "faction": "Neutral",
+    "unit": "Yig",
+    "type": "Post-kill extra damage",
+    "ability_text": "Snakebite: When enemy unit killed in battle with Yig, assign extra Kill to another unit",
+    "code_pattern": "Post-battle YigSnakebitePhase offers additional kill assignment via YigSnakebiteAssignAction",
+    "files": ["IGOOs.scala", "Battle.scala"],
+    "location": "Battle.scala YigSnakebitePhase ~70"
+  },
+  {
+    "faction": "Neutral",
+    "unit": "Cthugha",
+    "type": "Dynamic combat matching",
+    "ability_text": "Cthugha combat = enemy GOO combat in same battle",
+    "code_pattern": "Battle strength calculation checks if Cthugha present, sets combat to max enemy GOO combat via CthughaCombatChoicePhase",
+    "files": ["IGOOs.scala", "Battle.scala"],
+    "location": "Battle.scala CthughaCombatChoicePhase ~52"
+  },
+  {
+    "faction": "Neutral",
+    "unit": "Cthugha",
+    "type": "Post-battle power-for-spare",
+    "ability_text": "Fire Vampires: Spare killed enemy for 1 Power",
+    "code_pattern": "Post-battle CthughaFireVampiresPhase offers FireVampiresSpareAction, handler sets unit.health = Spared(now), grants f.power += 1",
+    "files": ["IGOOs.scala", "Battle.scala"],
+    "location": "Battle.scala CthughaFireVampiresPhase ~73"
+  },
+  {
+    "faction": "Neutral",
+    "unit": "Azathoth",
+    "type": "Alternative kill mechanic",
+    "ability_text": "Daemon Sultan: When hit, roll d6 and lower glyph position instead of taking Kill",
+    "code_pattern": "Battle assignKill checks unit.uclass == AzathothIGOO, rolls die, reduces game.azathothGlyphPosition instead of killing",
+    "files": ["IGOOs.scala", "Battle.scala"],
+    "location": "Battle.scala assignKill() lines ~414-431"
+  },
+  {
+    "faction": "Neutral",
+    "unit": "Bloated Woman",
+    "type": "Post-battle capture mechanic",
+    "ability_text": "Velvet Fan: After battle, capture killed enemy unit onto Loyalty Card",
+    "code_pattern": "Post-battle BloatedWomanVelvetFanPhase offers VelvetFanCaptureAction, handler captures unit via special loyalty card mechanism",
+    "files": ["IGOOs.scala", "Battle.scala"],
+    "location": "Battle.scala BloatedWomanVelvetFanPhase ~74"
+  },
+  {
+    "faction": "Neutral",
+    "unit": "Quachil Uttaus",
+    "type": "Post-battle permanent removal",
+    "ability_text": "Dust to Dust: After battle, permanently remove killed unit from game OR give owner 1 ES",
+    "code_pattern": "Post-battle QuachilDustToDustPhase offers choice via QuachilDustToDustRemoveAction (permanent removal) or QuachilDustToDustESAction (ES grant)",
+    "files": ["IGOOs.scala", "Battle.scala"],
+    "location": "Battle.scala QuachilDustToDustPhase ~71"
+  },
+  {
+    "faction": "Neutral",
+    "unit": "Elder Shoggoth",
+    "type": "Post-battle unit replacement",
+    "ability_text": "Prime Cause: Replace killed ally unit with different unit from pool",
+    "code_pattern": "Post-battle ElderShoggothPrimeCausePhase offers PrimeCauseChooseUnitAction, then PrimeCauseChooseReplacementAction, handler eliminates old unit and places new via game.eliminate + f.place",
+    "files": ["IGOOs.scala", "Battle.scala"],
+    "location": "Battle.scala ElderShoggothPrimeCausePhase ~72"
+  },
+  {
+    "faction": "Neutral",
+    "unit": "Dhole",
+    "type": "Post-battle doom grant",
+    "ability_text": "Planetary Destruction: After battle, grant Dhole owner 1 Doom",
+    "code_pattern": "Post-battle DholePlanetaryDestructionPhase offers DholePlanetaryDestructionDoomAction, handler grants f.doom += 1",
+    "files": ["IGOOs.scala", "Battle.scala"],
+    "location": "Battle.scala DholePlanetaryDestructionPhase ~67"
+  },
+  {
+    "faction": "Neutral",
+    "unit": "Leng Spider",
+    "type": "Post-battle conditional kill",
+    "ability_text": "Bloodthirst: If Leng Spider survived, kill 1 enemy Cultist",
+    "code_pattern": "Post-battle LengSpiderBloodthirstPhase checks if Leng Spider alive, offers kill assignment to enemy cultist",
+    "files": ["IGOOs.scala", "Battle.scala"],
+    "location": "Battle.scala LengSpiderBloodthirstPhase ~69"
+  },
+  {
+    "faction": "Map",
+    "unit": "n/a",
+    "type": "Region-based power generation",
+    "ability_text": "Gates provide 2 Power during Gather Power phase",
+    "code_pattern": "Gather Power phase iterates f.gates, adds 2 power per gate via f.power += f.gates.num * 2",
+    "files": ["Game.scala"],
+    "location": "Gather Power logic in Game.scala"
+  },
+  {
+    "faction": "Map",
+    "unit": "n/a",
+    "type": "Ritual cost progression",
+    "ability_text": "Ritual cost increases each Doom phase based on ritual track position",
+    "code_pattern": "game.ritualCost calculated from game.ritualTrack position, increases based on cumulative rituals performed",
+    "files": ["Game.scala"],
+    "location": "Ritual logic in Game.scala"
+  },
+  {
+    "faction": "Map",
+    "unit": "n/a",
+    "type": "Battle dice mechanics",
+    "ability_text": "Roll d6: 6 = Kill, 4-5 = Pain, 1-3 = Miss",
+    "code_pattern": "BattleRoll.roll() returns randomInRange(1,6) mapped to Kill/Pain/Miss",
+    "files": ["Battle.scala"],
+    "location": "BattleRoll.roll() lines ~20-25"
+  }
+]

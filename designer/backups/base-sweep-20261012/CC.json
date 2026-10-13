@@ -1,0 +1,540 @@
+{
+  "id": "w53yakj7wmjg",
+  "owner": "base",
+  "name": "Crawling Chaos",
+  "acronym": "CC",
+  "created": 1791760309,
+  "updated": 1791816057,
+  "current": 2,
+  "maxVersion": 2,
+  "versions": [
+    {
+      "n": 1,
+      "from": null,
+      "sections": [
+        "meta",
+        "card",
+        "sbImages",
+        "ae",
+        "ufa",
+        "setup",
+        "units",
+        "sbr",
+        "sb",
+        "region",
+        "tokens",
+        "custom",
+        "menus"
+      ],
+      "created": 1791760309,
+      "deleted": false
+    },
+    {
+      "n": 2,
+      "from": 1,
+      "sections": [
+        "meta",
+        "ae",
+        "ufa",
+        "setup",
+        "units",
+        "sbr",
+        "sb",
+        "region",
+        "tokens",
+        "custom",
+        "menus"
+      ],
+      "created": 1791816057,
+      "deleted": false
+    }
+  ],
+  "session": {
+    "n": 1,
+    "sections": [],
+    "last": 0
+  },
+  "build": {
+    "status": "built",
+    "liveVersion": 2,
+    "requestedAt": null,
+    "builtAt": 1791816057,
+    "history": [
+      {
+        "version": 1,
+        "builtAt": 1791760309
+      },
+      {
+        "version": 2,
+        "builtAt": 1791816057
+      }
+    ]
+  },
+  "liveGameVersions": [],
+  "viewers": [],
+  "imported": true,
+  "design": {
+    "meta": {
+      "color": "#ff6600"
+    },
+    "card": {
+      "image": null,
+      "glyph": null
+    },
+    "sbImages": {
+      "mode": null,
+      "all": null,
+      "each": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    "ae": {
+      "enabled": false,
+      "name": "",
+      "acronym": "",
+      "rows": [],
+      "customLogic": ""
+    },
+    "ufa": {
+      "name": "Flight / The Harbinger",
+      "phase": "Action",
+      "type": "Ongoing",
+      "hasCost": false,
+      "cost": null,
+      "hasEffect": false,
+      "effect": null,
+      "text": "Flight: Move to any region with a Gate. The Harbinger: Nyarlathotep can Battle after moving.",
+      "customLogic": ""
+    },
+    "setup": {
+      "text": "Place 6 Acolytes and your Gate in the region you choose. Place your other units in your play area.",
+      "location": "multi",
+      "earthRegion": null,
+      "libraryRegion": null,
+      "constraints": {
+        "follows": "0",
+        "water": true,
+        "land": true,
+        "emptyFactionGlyph": true,
+        "thorn": true,
+        "dragon": true,
+        "chevron": true,
+        "noneOf3": true,
+        "proximity": "N/A",
+        "custom": ""
+      },
+      "gate": true,
+      "units": [
+        {
+          "id": "setup001",
+          "onMap": true,
+          "name": "Acolyte",
+          "qty": 6
+        }
+      ],
+      "power": 5,
+      "aeStart": 0,
+      "customLogic": ""
+    },
+    "units": {
+      "rows": [
+        {
+          "id": "unit0001",
+          "type": "Cultist",
+          "name": "Acolyte",
+          "mapImage": null,
+          "mapScale": 1.0,
+          "silhouette": null,
+          "qty": 6,
+          "costType": "Fixed",
+          "cost": 1,
+          "costCalc": "",
+          "awakenReq": "",
+          "awakenPower": null,
+          "awakenRegion": "",
+          "combatType": "N/A",
+          "dice": null,
+          "diceCalc": "",
+          "pains": null,
+          "kills": null,
+          "resultsCalc": "",
+          "relatedSb": [],
+          "relatedSbNames": [],
+          "hasAbility": false,
+          "abilityName": "",
+          "abilityText": ""
+        },
+        {
+          "id": "unit0002",
+          "type": "Monster",
+          "name": "Nightgaunt",
+          "mapImage": null,
+          "mapScale": 1.0,
+          "silhouette": null,
+          "qty": 3,
+          "costType": "Fixed",
+          "cost": 1,
+          "costCalc": "",
+          "awakenReq": "",
+          "awakenPower": null,
+          "awakenRegion": "",
+          "combatType": "Fixed Dice",
+          "dice": 1,
+          "diceCalc": "",
+          "pains": null,
+          "kills": null,
+          "resultsCalc": "",
+          "relatedSb": [],
+          "relatedSbNames": [
+            "Abduct"
+          ],
+          "hasAbility": false,
+          "abilityName": "",
+          "abilityText": ""
+        },
+        {
+          "id": "unit0003",
+          "type": "Monster",
+          "name": "Flying Polyp",
+          "mapImage": null,
+          "mapScale": 1.0,
+          "silhouette": null,
+          "qty": 3,
+          "costType": "Fixed",
+          "cost": 2,
+          "costCalc": "",
+          "awakenReq": "",
+          "awakenPower": null,
+          "awakenRegion": "",
+          "combatType": "Fixed Dice",
+          "dice": 1,
+          "diceCalc": "",
+          "pains": null,
+          "kills": null,
+          "resultsCalc": "",
+          "relatedSb": [],
+          "relatedSbNames": [
+            "Invisibility"
+          ],
+          "hasAbility": false,
+          "abilityName": "",
+          "abilityText": ""
+        },
+        {
+          "id": "unit0004",
+          "type": "Monster",
+          "name": "Hunting Horror",
+          "mapImage": null,
+          "mapScale": 1.0,
+          "silhouette": null,
+          "qty": 2,
+          "costType": "Fixed",
+          "cost": 3,
+          "costCalc": "",
+          "awakenReq": "",
+          "awakenPower": null,
+          "awakenRegion": "",
+          "combatType": "Fixed Dice",
+          "dice": 2,
+          "diceCalc": "",
+          "pains": null,
+          "kills": null,
+          "resultsCalc": "",
+          "relatedSb": [],
+          "relatedSbNames": [
+            "Seek and Destroy"
+          ],
+          "hasAbility": false,
+          "abilityName": "",
+          "abilityText": ""
+        },
+        {
+          "id": "unit0005",
+          "type": "Great Old One",
+          "name": "Nyarlathotep",
+          "mapImage": null,
+          "mapScale": 1.0,
+          "silhouette": null,
+          "qty": 1,
+          "costType": "Awakening",
+          "cost": null,
+          "costCalc": "",
+          "awakenReq": "In region with a Gate",
+          "awakenPower": 10,
+          "awakenRegion": "Same region as your Gate",
+          "combatType": "Variable Dice",
+          "dice": null,
+          "diceCalc": "Total spellbooks (yours + opponent's)",
+          "pains": null,
+          "kills": null,
+          "resultsCalc": "",
+          "relatedSb": [],
+          "relatedSbNames": [
+            "The Harbinger",
+            "The Thousand Forms"
+          ],
+          "hasAbility": false,
+          "abilityName": "",
+          "abilityText": ""
+        }
+      ],
+      "customLogic": ""
+    },
+    "sbr": {
+      "multiText": "",
+      "rows": [
+        {
+          "id": "sbr00001",
+          "text": "Pay 4 Power",
+          "hasNum": true,
+          "num": 4
+        },
+        {
+          "id": "sbr00002",
+          "text": "Pay 6 Power",
+          "hasNum": true,
+          "num": 6
+        },
+        {
+          "id": "sbr00003",
+          "text": "Control 3 Gates or have 12 Power",
+          "hasNum": true,
+          "num": 3
+        },
+        {
+          "id": "sbr00004",
+          "text": "Control 4 Gates or have 15 Power",
+          "hasNum": true,
+          "num": 4
+        },
+        {
+          "id": "sbr00005",
+          "text": "Capture an enemy Cultist",
+          "hasNum": false,
+          "num": null
+        },
+        {
+          "id": "sbr00006",
+          "text": "Awaken Nyarlathotep",
+          "hasNum": false,
+          "num": null
+        }
+      ],
+      "customLogic": ""
+    },
+    "sb": {
+      "twoSided": false,
+      "rows": [
+        {
+          "id": "sb000001",
+          "name": "Abduct",
+          "type": "Battle",
+          "cost": 0,
+          "hasEffect": false,
+          "effect": null,
+          "text": "After battle, capture one enemy Cultist in the battle region.",
+          "nameB": "",
+          "typeB": null,
+          "costB": 0,
+          "hasEffectB": false,
+          "effectB": null,
+          "textB": "",
+          "dual": false,
+          "name2": "",
+          "type2": null,
+          "cost2": 0,
+          "hasEffect2": false,
+          "effect2": null,
+          "text2": "",
+          "dualB": false,
+          "nameB2": "",
+          "typeB2": null,
+          "costB2": 0,
+          "hasEffectB2": false,
+          "effectB2": null,
+          "textB2": ""
+        },
+        {
+          "id": "sb000002",
+          "name": "Invisibility",
+          "type": "Battle",
+          "cost": 0,
+          "hasEffect": false,
+          "effect": null,
+          "text": "Assign all of opponent's Kill results to your Flying Polyps first.",
+          "nameB": "",
+          "typeB": null,
+          "costB": 0,
+          "hasEffectB": false,
+          "effectB": null,
+          "textB": "",
+          "dual": false,
+          "name2": "",
+          "type2": null,
+          "cost2": 0,
+          "hasEffect2": false,
+          "effect2": null,
+          "text2": "",
+          "dualB": false,
+          "nameB2": "",
+          "typeB2": null,
+          "costB2": 0,
+          "hasEffectB2": false,
+          "effectB2": null,
+          "textB2": ""
+        },
+        {
+          "id": "sb000003",
+          "name": "Seek and Destroy",
+          "type": "Battle",
+          "cost": 0,
+          "hasEffect": false,
+          "effect": null,
+          "text": "Each Hunting Horror may be assigned one additional Kill or Pain result.",
+          "nameB": "",
+          "typeB": null,
+          "costB": 0,
+          "hasEffectB": false,
+          "effectB": null,
+          "textB": "",
+          "dual": false,
+          "name2": "",
+          "type2": null,
+          "cost2": 0,
+          "hasEffect2": false,
+          "effect2": null,
+          "text2": "",
+          "dualB": false,
+          "nameB2": "",
+          "typeB2": null,
+          "costB2": 0,
+          "hasEffectB2": false,
+          "effectB2": null,
+          "textB2": ""
+        },
+        {
+          "id": "sb000004",
+          "name": "Emissary of the Outer Gods",
+          "type": "Battle",
+          "cost": 0,
+          "hasEffect": false,
+          "effect": null,
+          "text": "After you reveal your spellbooks, you may immediately capture one enemy Cultist per region where you have a Gate.",
+          "nameB": "",
+          "typeB": null,
+          "costB": 0,
+          "hasEffectB": false,
+          "effectB": null,
+          "textB": "",
+          "dual": false,
+          "name2": "",
+          "type2": null,
+          "cost2": 0,
+          "hasEffect2": false,
+          "effect2": null,
+          "text2": "",
+          "dualB": false,
+          "nameB2": "",
+          "typeB2": null,
+          "costB2": 0,
+          "hasEffectB2": false,
+          "effectB2": null,
+          "textB2": ""
+        },
+        {
+          "id": "sb000005",
+          "name": "The Thousand Forms",
+          "type": "Action",
+          "cost": 0,
+          "hasEffect": false,
+          "effect": null,
+          "text": "Once per turn, if Nyarlathotep is in play, roll a die and demand that many Power from each opponent. They may negotiate to pay less.",
+          "nameB": "",
+          "typeB": null,
+          "costB": 0,
+          "hasEffectB": false,
+          "effectB": null,
+          "textB": "",
+          "dual": false,
+          "name2": "",
+          "type2": null,
+          "cost2": 0,
+          "hasEffect2": false,
+          "effect2": null,
+          "text2": "",
+          "dualB": false,
+          "nameB2": "",
+          "typeB2": null,
+          "costB2": 0,
+          "hasEffectB2": false,
+          "effectB2": null,
+          "textB2": ""
+        },
+        {
+          "id": "sb000006",
+          "name": "Madness",
+          "type": "Battle",
+          "cost": 0,
+          "hasEffect": false,
+          "effect": null,
+          "text": "You may eliminate one of your Cultists before combat to roll 2 additional dice.",
+          "nameB": "",
+          "typeB": null,
+          "costB": 0,
+          "hasEffectB": false,
+          "effectB": null,
+          "textB": "",
+          "dual": false,
+          "name2": "",
+          "type2": null,
+          "cost2": 0,
+          "hasEffect2": false,
+          "effect2": null,
+          "text2": "",
+          "dualB": false,
+          "nameB2": "",
+          "typeB2": null,
+          "costB2": 0,
+          "hasEffectB2": false,
+          "effectB2": null,
+          "textB2": ""
+        }
+      ],
+      "customLogic": ""
+    },
+    "region": {
+      "rows": [],
+      "customLogic": ""
+    },
+    "tokens": {
+      "rows": [],
+      "customLogic": ""
+    },
+    "custom": {
+      "rows": [],
+      "customLogic": ""
+    },
+    "menus": {
+      "rows": [],
+      "customLogic": ""
+    },
+    "sbImagesB": {
+      "mode": null,
+      "all": null,
+      "each": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    }
+  },
+  "base": true
+}

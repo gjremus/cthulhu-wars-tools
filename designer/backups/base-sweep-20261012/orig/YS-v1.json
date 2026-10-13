@@ -1,0 +1,624 @@
+{
+  "meta": {
+    "color": "#f9c531"
+  },
+  "card": {
+    "image": null,
+    "glyph": "1aac9133dea0265e8f90a3aded3941dba84b74b3628e834b24cd5935b4d3bf23.webp"
+  },
+  "sbImages": {
+    "mode": null,
+    "all": null,
+    "each": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "sbImagesB": {
+    "mode": null,
+    "all": null,
+    "each": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "ae": {
+    "enabled": false,
+    "name": "",
+    "acronym": "",
+    "rows": [
+      {
+        "id": "ysae0001",
+        "sign": "+",
+        "kind": "fixed",
+        "qty": null,
+        "calc": "",
+        "desc": ""
+      }
+    ],
+    "customLogic": ""
+  },
+  "ufa": {
+    "name": "Feast",
+    "phase": "Gather Power",
+    "type": "Gather Power Phase",
+    "hasCost": false,
+    "cost": null,
+    "hasEffect": false,
+    "effect": null,
+    "text": "During Gather Power, you gain 1 Power for each Area containing both a Desecration Token and one or more of your units."
+  },
+  "setup": {
+    "text": "Start with 8 Power. Place 6 Acolytes and a Controlled Gate in Europe.",
+    "location": "single",
+    "earthRegion": "Europe",
+    "libraryRegion": null,
+    "constraints": {
+      "follows": "0",
+      "water": true,
+      "land": true,
+      "emptyFactionGlyph": true,
+      "thorn": true,
+      "dragon": true,
+      "chevron": true,
+      "noneOf3": true,
+      "proximity": "N/A",
+      "custom": ""
+    },
+    "gate": true,
+    "units": [
+      {
+        "id": "yssu0001",
+        "onMap": true,
+        "name": "Acolyte",
+        "qty": 6
+      }
+    ],
+    "power": 8,
+    "aeStart": 0,
+    "customLogic": ""
+  },
+  "units": {
+    "rows": [
+      {
+        "id": "ysun0001",
+        "type": "Cultist",
+        "name": "Acolyte",
+        "mapImage": "a97c7c50e531cf1d0280dd2173c4ad3348271a4d89fe3d493bd33426974f20c0.webp",
+        "mapScale": 1.0,
+        "silhouette": null,
+        "qty": 6,
+        "costType": "Fixed",
+        "cost": 1,
+        "costCalc": "",
+        "awakenReq": "",
+        "awakenPower": null,
+        "awakenRegion": "",
+        "combatType": "Fixed Dice",
+        "dice": 0,
+        "diceCalc": "",
+        "pains": null,
+        "kills": null,
+        "resultsCalc": "",
+        "relatedSb": [
+          "yssb0001"
+        ],
+        "relatedSbNames": [],
+        "abilityName": "",
+        "abilityText": "Spellbook: Passion."
+      },
+      {
+        "id": "ysun0002",
+        "type": "Monster",
+        "name": "Undead",
+        "mapImage": "e32f17fa700c0791cc1c8bb76aeb0d6e098c3b9c5717bee32e5d186ed096469e.webp",
+        "mapScale": 1.0,
+        "silhouette": null,
+        "qty": 6,
+        "costType": "Fixed",
+        "cost": 1,
+        "costCalc": "",
+        "awakenReq": "",
+        "awakenPower": null,
+        "awakenRegion": "",
+        "combatType": "Variable Dice",
+        "dice": null,
+        "diceCalc": "1-",
+        "pains": null,
+        "kills": null,
+        "resultsCalc": "",
+        "relatedSb": [
+          "yssb0002"
+        ],
+        "relatedSbNames": [],
+        "abilityName": "",
+        "abilityText": "Combat: Roll 1 die less than the total Undead in the area. Spellbook: Zingaya."
+      },
+      {
+        "id": "ysun0003",
+        "type": "Monster",
+        "name": "Byakhee",
+        "mapImage": "03e9cfe23e7f16424147b2098cbee90dcb339a7b465005ef5e9781c777eb8fe8.webp",
+        "mapScale": 1.0,
+        "silhouette": null,
+        "qty": 4,
+        "costType": "Fixed",
+        "cost": 2,
+        "costCalc": "",
+        "awakenReq": "",
+        "awakenPower": null,
+        "awakenRegion": "",
+        "combatType": "Variable Dice",
+        "dice": null,
+        "diceCalc": "1+",
+        "pains": null,
+        "kills": null,
+        "resultsCalc": "",
+        "relatedSb": [
+          "yssb0003"
+        ],
+        "relatedSbNames": [],
+        "abilityName": "",
+        "abilityText": "Combat: Roll 1 die more than the total Byakhee in the area. Spellbook: Shriek of the Byakhee."
+      },
+      {
+        "id": "ysun0004",
+        "type": "Great Old One",
+        "name": "King in Yellow",
+        "mapImage": "d6fd6a223aa14087aad959d440ba9c395b0b230bead6e477376c33e208d5d874.webp",
+        "mapScale": 1.0,
+        "silhouette": null,
+        "qty": 1,
+        "costType": "Awakening",
+        "cost": null,
+        "costCalc": "",
+        "awakenReq": "You must have a Unit in an Area lacking a Gate. Pay 4 Power. King in Yellow appears in that Area.",
+        "awakenPower": 4,
+        "awakenRegion": "Any area with a Unit and no Gate",
+        "combatType": "Fixed Dice",
+        "dice": 0,
+        "diceCalc": "",
+        "pains": null,
+        "kills": null,
+        "resultsCalc": "",
+        "relatedSb": [
+          "yssb0004"
+        ],
+        "relatedSbNames": [],
+        "abilityName": "Desecrate",
+        "abilityText": "(Action: Cost 2, or Cost 1 with The Third Eye): If the King is in an Area with no Desecration Token, roll 1 die and compare to your total units in the Area (including the King). On a roll equal or less than your unit total, place a Desecration Token in the Area. If you succeed or fail, place a Monster or Cultist with a cost of 2 or less in the Area. With The Third Eye active, you also gain 1 Elder Sign on success. Spellbook: The Screaming Dead."
+      },
+      {
+        "id": "ysun0005",
+        "type": "Great Old One",
+        "name": "Hastur",
+        "mapImage": "0ba0795b304ee4bd37899c385fbe9e11083cda9d76eeb9262645a14be8e249ad.webp",
+        "mapScale": 1.0,
+        "silhouette": null,
+        "qty": 1,
+        "costType": "Awakening",
+        "cost": null,
+        "costCalc": "",
+        "awakenReq": "You must have a Controlled Gate and the King in Yellow in the same area. Pay 10 Power. Hastur appears in the King's Area.",
+        "awakenPower": 10,
+        "awakenRegion": "Area with Controlled Gate and King in Yellow",
+        "combatType": "Variable Dice",
+        "dice": null,
+        "diceCalc": "Current Cost of a Ritual of Annihilation",
+        "pains": null,
+        "kills": null,
+        "resultsCalc": "",
+        "relatedSb": [
+          "yssb0005",
+          "yssb0006"
+        ],
+        "relatedSbNames": [],
+        "abilityName": "Vengeance",
+        "abilityText": "(Post-Battle): If Hastur is involved in a Battle, choose which Combat results are applied to which enemy Unit. Spellbooks: The Third Eye, He Who is Not to be Named."
+      }
+    ],
+    "customLogic": ""
+  },
+  "sbr": {
+    "multiText": "",
+    "rows": [
+      {
+        "id": "yssr0001",
+        "text": "As your Action for a round, select another player. That player gains three Doom points.",
+        "hasNum": false,
+        "num": null
+      },
+      {
+        "id": "yssr0002",
+        "text": "Awaken the King in Yellow.",
+        "hasNum": false,
+        "num": null
+      },
+      {
+        "id": "yssr0003",
+        "text": "Place a Desecration Token in an Area marked with the /^\\ Glyph.",
+        "hasNum": false,
+        "num": null
+      },
+      {
+        "id": "yssr0004",
+        "text": "Place a Desecration Token in an Area marked with the (*) Glyph.",
+        "hasNum": false,
+        "num": null
+      },
+      {
+        "id": "yssr0005",
+        "text": "Place a Desecration Token in an Area marked with the ||| Glyph.",
+        "hasNum": false,
+        "num": null
+      },
+      {
+        "id": "yssr0006",
+        "text": "Awaken Hastur. Also receive 1 Elder Sign.",
+        "hasNum": true,
+        "num": 1
+      }
+    ],
+    "customLogic": ""
+  },
+  "sb": {
+    "twoSided": false,
+    "rows": [
+      {
+        "id": "yssb0001",
+        "name": "Passion",
+        "type": "Ongoing",
+        "cost": 0,
+        "hasEffect": false,
+        "effect": null,
+        "text": "When one or more of your Cultists are Eliminated by an enemy (Killed, Captured, etc.), gain 1 Power total."
+      },
+      {
+        "id": "yssb0002",
+        "name": "Zingaya",
+        "type": "Action",
+        "cost": 1,
+        "hasEffect": false,
+        "effect": null,
+        "text": "If Undead are in an Area with enemy Acolyte Cultists, your enemy must Eliminate an Acolyte Cultist. Then, place an Undead in the Area."
+      },
+      {
+        "id": "yssb0003",
+        "name": "Shriek of the Byakhee",
+        "type": "Action",
+        "cost": 1,
+        "hasEffect": false,
+        "effect": null,
+        "text": "Move any or all Byakhee from their current Area(s) to any one Area on the Map."
+      },
+      {
+        "id": "yssb0004",
+        "name": "The Screaming Dead",
+        "type": "Action",
+        "cost": 1,
+        "hasEffect": false,
+        "effect": null,
+        "text": "Move the King in Yellow to an adjacent Area. Any Undead in the same Area can move with him for free. You may then take a second, different Action. You may NOT take He Who is Not to be Named as your second Action."
+      },
+      {
+        "id": "yssb0005",
+        "name": "The Third Eye",
+        "type": "Ongoing",
+        "cost": 0,
+        "hasEffect": false,
+        "effect": null,
+        "text": "If Hastur is in play, the cost of Desecration is reduced to 1. If the Desecration succeeds, you also get 1 Elder Sign."
+      },
+      {
+        "id": "yssb0006",
+        "name": "He Who is Not to be Named",
+        "type": "Action",
+        "cost": 1,
+        "hasEffect": false,
+        "effect": null,
+        "text": "Move Hastur to any Area containing a Cultist of any Faction. You may then take a second, different Action. You may NOT take The Screaming Dead as your second Action."
+      }
+    ],
+    "customLogic": ""
+  },
+  "region": {
+    "rows": [],
+    "customLogic": ""
+  },
+  "tokens": {
+    "rows": [
+      {
+        "id": "ystk0001",
+        "name": "Desecration Token",
+        "qty": 13,
+        "image": "3bc775460230b15509ac6034e0bc1f448de4e9cac232bafbac3b2d903b4cc983.webp",
+        "placement": "Placed in an Area by the King in Yellow's Desecrate ability",
+        "effects": "During Gather Power, Yellow Sign gains 1 Power for each Area containing both a Desecration Token and one or more of their units (Feast ability).",
+        "hasEffect": false,
+        "effect": null
+      }
+    ],
+    "customLogic": ""
+  },
+  "custom": {
+    "rows": [],
+    "customLogic": ""
+  },
+  "menus": {
+    "rows": [
+      {
+        "id": "menu001",
+        "name": "Setup - Pick Start Area",
+        "section": "setup",
+        "item": null,
+        "prompted": "Own",
+        "title": "Yellow Sign starts in",
+        "hasSubtitle": false,
+        "subtitle": "",
+        "button": "[Area]",
+        "cancel": true,
+        "skip": false,
+        "leadsToNext": false,
+        "next": null,
+        "nextTrigger": ""
+      },
+      {
+        "id": "menu002",
+        "name": "Awaken King in Yellow - Pick Area",
+        "section": "units",
+        "item": "ysun0004",
+        "prompted": "Own",
+        "title": "Awaken King in Yellow",
+        "hasSubtitle": false,
+        "subtitle": "",
+        "button": "[Area] with Unit, no Gate (Cost 4)",
+        "cancel": true,
+        "skip": false,
+        "leadsToNext": false,
+        "next": null,
+        "nextTrigger": ""
+      },
+      {
+        "id": "menu003",
+        "name": "Awaken Hastur - Pick Area",
+        "section": "units",
+        "item": "ysun0005",
+        "prompted": "Own",
+        "title": "Awaken Hastur",
+        "hasSubtitle": false,
+        "subtitle": "",
+        "button": "[Area] with Controlled Gate & King in Yellow (Cost 10)",
+        "cancel": true,
+        "skip": false,
+        "leadsToNext": false,
+        "next": null,
+        "nextTrigger": ""
+      },
+      {
+        "id": "menu004",
+        "name": "Desecrate - Roll Die",
+        "section": "units",
+        "item": "ysun0004",
+        "prompted": "Own",
+        "title": "Desecrate (Cost 2, or 1 with Third Eye)",
+        "hasSubtitle": true,
+        "subtitle": "[Number] units in area",
+        "button": "Roll [Die]",
+        "cancel": true,
+        "skip": false,
+        "leadsToNext": true,
+        "next": "menu005",
+        "nextTrigger": "Die rolled"
+      },
+      {
+        "id": "menu005",
+        "name": "Desecrate - Result",
+        "section": "units",
+        "item": "ysun0004",
+        "prompted": "Own",
+        "title": "Desecrate result",
+        "hasSubtitle": false,
+        "subtitle": "",
+        "button": "[Success/Failure]",
+        "cancel": false,
+        "skip": false,
+        "leadsToNext": true,
+        "next": "menu006",
+        "nextTrigger": "Result shown"
+      },
+      {
+        "id": "menu006",
+        "name": "Desecrate - Pick Unit to Place",
+        "section": "units",
+        "item": "ysun0004",
+        "prompted": "Own",
+        "title": "Desecrate: place unit in [Area]",
+        "hasSubtitle": false,
+        "subtitle": "",
+        "button": "[Unit] (cost 2 or less)",
+        "cancel": false,
+        "skip": false,
+        "leadsToNext": false,
+        "next": null,
+        "nextTrigger": ""
+      },
+      {
+        "id": "menu007",
+        "name": "The Screaming Dead - Pick Destination",
+        "section": "sb",
+        "item": "yssb0004",
+        "prompted": "Own",
+        "title": "The Screaming Dead (Cost 1)",
+        "hasSubtitle": false,
+        "subtitle": "",
+        "button": "[Adjacent Area]",
+        "cancel": true,
+        "skip": false,
+        "leadsToNext": true,
+        "next": "menu008",
+        "nextTrigger": "Destination selected"
+      },
+      {
+        "id": "menu008",
+        "name": "The Screaming Dead - Pick Undead to Follow",
+        "section": "sb",
+        "item": "yssb0004",
+        "prompted": "Own",
+        "title": "The Screaming Dead: move Undead with King",
+        "hasSubtitle": false,
+        "subtitle": "",
+        "button": "[Undead]",
+        "cancel": false,
+        "skip": false,
+        "done": true,
+        "multiSelect": true,
+        "showPicked": true,
+        "leadsToNext": false,
+        "next": null,
+        "nextTrigger": ""
+      },
+      {
+        "id": "menu009",
+        "name": "He Who is Not to be Named - Pick Area",
+        "section": "sb",
+        "item": "yssb0006",
+        "prompted": "Own",
+        "title": "He Who is Not to be Named (Cost 1)",
+        "hasSubtitle": false,
+        "subtitle": "",
+        "button": "[Area] with enemy Cultist",
+        "cancel": true,
+        "skip": false,
+        "leadsToNext": false,
+        "next": null,
+        "nextTrigger": ""
+      },
+      {
+        "id": "menu010",
+        "name": "Shriek - Pick Destination",
+        "section": "sb",
+        "item": "yssb0003",
+        "prompted": "Own",
+        "title": "Shriek of the Byakhee (Cost 1)",
+        "hasSubtitle": false,
+        "subtitle": "",
+        "button": "[Area]",
+        "cancel": true,
+        "skip": false,
+        "leadsToNext": true,
+        "next": "menu011",
+        "nextTrigger": "Destination selected"
+      },
+      {
+        "id": "menu011",
+        "name": "Shriek - Pick Byakhee to Move",
+        "section": "sb",
+        "item": "yssb0003",
+        "prompted": "Own",
+        "title": "Shriek: move Byakhee to [Area]",
+        "hasSubtitle": false,
+        "subtitle": "",
+        "button": "[Byakhee] from [Area]",
+        "cancel": false,
+        "skip": false,
+        "done": true,
+        "multiSelect": true,
+        "showPicked": true,
+        "leadsToNext": false,
+        "next": null,
+        "nextTrigger": ""
+      },
+      {
+        "id": "menu012",
+        "name": "Zingaya - Pick Area",
+        "section": "sb",
+        "item": "yssb0002",
+        "prompted": "Own",
+        "title": "Zingaya (Cost 1)",
+        "hasSubtitle": false,
+        "subtitle": "",
+        "button": "[Area] with Undead & enemy Acolyte",
+        "cancel": true,
+        "skip": false,
+        "leadsToNext": true,
+        "next": "menu013",
+        "nextTrigger": "Area selected"
+      },
+      {
+        "id": "menu013",
+        "name": "Zingaya - Pick Enemy Faction",
+        "section": "sb",
+        "item": "yssb0002",
+        "prompted": "Own",
+        "title": "Zingaya: choose enemy Faction",
+        "hasSubtitle": false,
+        "subtitle": "",
+        "button": "[Faction]",
+        "cancel": false,
+        "skip": false,
+        "leadsToNext": true,
+        "next": "menu014",
+        "nextTrigger": "Faction selected"
+      },
+      {
+        "id": "menu014",
+        "name": "Zingaya - Enemy Picks Cultist",
+        "section": "sb",
+        "item": "yssb0002",
+        "prompted": "1 Enemy",
+        "title": "Zingaya: choose Acolyte to eliminate",
+        "hasSubtitle": false,
+        "subtitle": "",
+        "button": "[Acolyte]",
+        "cancel": false,
+        "skip": false,
+        "leadsToNext": false,
+        "next": null,
+        "nextTrigger": ""
+      },
+      {
+        "id": "menu015",
+        "name": "Provide 3 Doom - Pick Faction",
+        "section": "sbr",
+        "item": "yssr0001",
+        "prompted": "Own",
+        "title": "Provide 3 Doom",
+        "hasSubtitle": false,
+        "subtitle": "",
+        "button": "[Faction] gains 3 Doom",
+        "cancel": true,
+        "skip": false,
+        "leadsToNext": false,
+        "next": null,
+        "nextTrigger": ""
+      },
+      {
+        "id": "menu016",
+        "name": "Vengeance - Assign Results",
+        "section": "units",
+        "item": "ysun0005",
+        "prompted": "Own",
+        "title": "Vengeance: assign combat results",
+        "hasSubtitle": true,
+        "subtitle": "[Number] results to assign",
+        "button": "[Result] to [Enemy Unit]",
+        "cancel": false,
+        "skip": false,
+        "leadsToNext": false,
+        "next": null,
+        "nextTrigger": "",
+        "repeat": true,
+        "repeatCount": "Once per combat result"
+      }
+    ],
+    "customLogic": ""
+  }
+}

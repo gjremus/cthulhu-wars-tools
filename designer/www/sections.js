@@ -3094,10 +3094,8 @@
     }
   }
 
-  window.Sections = {render};
-})();
-// Temporary file - will be integrated into sections.js
-function renderInteractions(container, ctx) {
+  // renderInteractions - integrated from temporary file
+  function renderInteractions(container, ctx) {
   const d = ctx.design.interactions;
   const missing = window.Rules.missingFields('interactions', ctx.design);
   const isMissing = path => missing.includes(path);
@@ -3317,3 +3315,6 @@ function renderInteractions(container, ctx) {
   renderClaudeQA(container, ctx, 'interactions');
   renderAdminNotes(container, ctx, 'interactions');
 }
+
+  window.Sections = {render};
+})();

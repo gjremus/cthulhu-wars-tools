@@ -1,0 +1,838 @@
+{
+  "id": "0ciymclfvfr",
+  "owner": "base",
+  "name": "Black Goat",
+  "acronym": "BG",
+  "created": 1791760309,
+  "updated": 1791817077,
+  "current": 15,
+  "maxVersion": 15,
+  "versions": [
+    {
+      "n": 1,
+      "from": null,
+      "sections": [
+        "meta",
+        "card",
+        "ae",
+        "ufa",
+        "setup",
+        "units",
+        "sbr",
+        "sb",
+        "region",
+        "tokens",
+        "custom",
+        "menus"
+      ],
+      "created": 1791760309,
+      "deleted": false
+    },
+    {
+      "n": 2,
+      "from": 1,
+      "sections": [
+        "meta",
+        "ae",
+        "ufa",
+        "setup",
+        "units",
+        "sbr",
+        "sb",
+        "region",
+        "tokens",
+        "custom",
+        "menus"
+      ],
+      "created": 1791816167,
+      "deleted": false
+    },
+    {
+      "n": 3,
+      "from": 2,
+      "sections": [
+        "units"
+      ],
+      "created": 1791816182,
+      "deleted": false
+    },
+    {
+      "n": 4,
+      "from": 3,
+      "sections": [
+        "meta",
+        "card",
+        "sbImages",
+        "sbImagesB"
+      ],
+      "created": 1791816842,
+      "deleted": false
+    },
+    {
+      "n": 5,
+      "from": 4,
+      "sections": [
+        "ae"
+      ],
+      "created": 1791816842,
+      "deleted": false
+    },
+    {
+      "n": 6,
+      "from": 5,
+      "sections": [
+        "ufa"
+      ],
+      "created": 1791816842,
+      "deleted": false
+    },
+    {
+      "n": 7,
+      "from": 6,
+      "sections": [
+        "setup"
+      ],
+      "created": 1791816842,
+      "deleted": false
+    },
+    {
+      "n": 8,
+      "from": 7,
+      "sections": [
+        "units"
+      ],
+      "created": 1791816842,
+      "deleted": false
+    },
+    {
+      "n": 9,
+      "from": 8,
+      "sections": [
+        "sbr"
+      ],
+      "created": 1791816842,
+      "deleted": false
+    },
+    {
+      "n": 10,
+      "from": 9,
+      "sections": [
+        "sb"
+      ],
+      "created": 1791816842,
+      "deleted": false
+    },
+    {
+      "n": 11,
+      "from": 10,
+      "sections": [
+        "region"
+      ],
+      "created": 1791816842,
+      "deleted": false
+    },
+    {
+      "n": 12,
+      "from": 11,
+      "sections": [
+        "tokens"
+      ],
+      "created": 1791816842,
+      "deleted": false
+    },
+    {
+      "n": 13,
+      "from": 12,
+      "sections": [
+        "custom"
+      ],
+      "created": 1791816842,
+      "deleted": false
+    },
+    {
+      "n": 14,
+      "from": 13,
+      "sections": [
+        "menus",
+        "units"
+      ],
+      "created": 1791816842,
+      "deleted": false
+    },
+    {
+      "n": 15,
+      "from": 14,
+      "sections": [
+        "sbr"
+      ],
+      "created": 1791817077,
+      "deleted": false
+    }
+  ],
+  "session": {
+    "n": 15,
+    "sections": [
+      "sbr"
+    ],
+    "last": 1791817077
+  },
+  "build": {
+    "status": "built",
+    "liveVersion": 2,
+    "requestedAt": null,
+    "builtAt": 1791816167,
+    "history": [
+      {
+        "version": 1,
+        "builtAt": 1791760309
+      },
+      {
+        "version": 2,
+        "builtAt": 1791816167
+      }
+    ]
+  },
+  "liveGameVersions": [],
+  "viewers": [],
+  "imported": true,
+  "design": {
+    "meta": {
+      "color": "#cd3233"
+    },
+    "card": {
+      "image": null,
+      "glyph": "c741115fcc21515ae35d9ebba8ef1a77949fa02f2102081139ec022d8c9623be.webp"
+    },
+    "sbImages": {
+      "mode": null,
+      "all": null,
+      "each": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    "sbImagesB": {
+      "mode": null,
+      "all": null,
+      "each": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    "ae": {
+      "enabled": false,
+      "name": "",
+      "acronym": "",
+      "rows": [
+        {
+          "id": "bgae0001",
+          "sign": "+",
+          "kind": "fixed",
+          "qty": null,
+          "calc": "",
+          "desc": ""
+        }
+      ],
+      "customLogic": ""
+    },
+    "ufa": {
+      "name": "Fertility Cult",
+      "phase": "Ongoing",
+      "type": "Ongoing",
+      "hasCost": false,
+      "cost": null,
+      "hasEffect": false,
+      "effect": null,
+      "text": "You may Summon Monsters as an Unlimited Action."
+    },
+    "setup": {
+      "text": "Start with 8 Power. Place 6 Acolytes and a Controlled Gate in Africa.",
+      "location": "single",
+      "earthRegion": "Africa",
+      "libraryRegion": null,
+      "constraints": {
+        "follows": "0",
+        "water": true,
+        "land": true,
+        "emptyFactionGlyph": true,
+        "thorn": true,
+        "dragon": true,
+        "chevron": true,
+        "noneOf3": true,
+        "proximity": "N/A",
+        "custom": ""
+      },
+      "gate": true,
+      "units": [
+        {
+          "id": "bgsu0001",
+          "onMap": true,
+          "name": "Acolyte",
+          "qty": 6
+        }
+      ],
+      "power": 8,
+      "aeStart": 0,
+      "customLogic": ""
+    },
+    "units": {
+      "rows": [
+        {
+          "id": "bgun0001",
+          "type": "Cultist",
+          "name": "Acolyte",
+          "mapImage": "b93b472a97c59208dc2749a807f352360a9aaea36b01e2052cd991828ffe1ccb.webp",
+          "mapScale": 1.0,
+          "silhouette": null,
+          "qty": 6,
+          "costType": "Fixed",
+          "cost": 1,
+          "costCalc": "",
+          "awakenReq": "",
+          "awakenPower": null,
+          "awakenRegion": "",
+          "combatType": "Variable Dice",
+          "dice": null,
+          "diceCalc": "0 (1 with Frenzy)",
+          "pains": null,
+          "kills": null,
+          "resultsCalc": "",
+          "relatedSb": [
+            "bgsb0002"
+          ],
+          "relatedSbNames": [
+            "Frenzy"
+          ],
+          "abilityName": "",
+          "abilityText": "Combat: 0 (1 with Frenzy)."
+        },
+        {
+          "id": "bgun0002",
+          "type": "Monster",
+          "name": "Ghoul",
+          "mapImage": "b6e919174063c406e47f79fb0ecef1f7f491d40848c70b56e6b89b5d6d0b140e.webp",
+          "mapScale": 1.0,
+          "silhouette": null,
+          "qty": 2,
+          "costType": "Variable",
+          "cost": 1,
+          "costCalc": "0 with The Thousand Young",
+          "awakenReq": "",
+          "awakenPower": null,
+          "awakenRegion": "",
+          "combatType": "Fixed Dice",
+          "dice": 0,
+          "diceCalc": "",
+          "pains": null,
+          "kills": null,
+          "resultsCalc": "",
+          "relatedSb": [
+            "bgsb0001",
+            "bgsb0003"
+          ],
+          "relatedSbNames": [
+            "The Thousand Young",
+            "Necrophagy"
+          ],
+          "abilityName": "",
+          "abilityText": "Cost: 0 with The Thousand Young. Spellbook: Necrophagy."
+        },
+        {
+          "id": "bgun0003",
+          "type": "Monster",
+          "name": "Fungi from Yuggoth",
+          "mapImage": "1baa32cfec34e38f865f387fa9590a47cbb3a41e66fa7d19b91194150bdcccd6.webp",
+          "mapScale": 1.0,
+          "silhouette": null,
+          "qty": 4,
+          "costType": "Variable",
+          "cost": 2,
+          "costCalc": "1 with The Thousand Young",
+          "awakenReq": "",
+          "awakenPower": null,
+          "awakenRegion": "",
+          "combatType": "Fixed Dice",
+          "dice": 1,
+          "diceCalc": "",
+          "pains": null,
+          "kills": null,
+          "resultsCalc": "",
+          "relatedSb": [
+            "bgsb0001",
+            "bgsb0004"
+          ],
+          "relatedSbNames": [
+            "The Thousand Young",
+            "Ghroth"
+          ],
+          "abilityName": "",
+          "abilityText": "Cost: 1 with The Thousand Young. Spellbook: Ghroth."
+        },
+        {
+          "id": "bgun0004",
+          "type": "Monster",
+          "name": "Dark Young",
+          "mapImage": "739a09f4f8c25ad5467bf8fc14f5921b133d10e9693532bd5e9f19cafbdfd2ba.webp",
+          "mapScale": 1.0,
+          "silhouette": null,
+          "qty": 3,
+          "costType": "Variable",
+          "cost": 3,
+          "costCalc": "2 with The Thousand Young",
+          "awakenReq": "",
+          "awakenPower": null,
+          "awakenRegion": "",
+          "combatType": "Fixed Dice",
+          "dice": 2,
+          "diceCalc": "",
+          "pains": null,
+          "kills": null,
+          "resultsCalc": "",
+          "relatedSb": [
+            "bgsb0001",
+            "bgsb0005"
+          ],
+          "relatedSbNames": [
+            "The Thousand Young",
+            "The Red Sign"
+          ],
+          "abilityName": "",
+          "abilityText": "Cost: 2 with The Thousand Young. Spellbook: The Red Sign."
+        },
+        {
+          "id": "bgun0005",
+          "type": "Great Old One",
+          "name": "Shub-Niggurath",
+          "mapImage": "0316c74b262380b30b5fe3947a496399826202d62067a13d6bdaec0ea7115c0d.webp",
+          "mapScale": 1.0,
+          "silhouette": null,
+          "qty": 1,
+          "costType": "Awakening",
+          "cost": null,
+          "costCalc": "",
+          "awakenReq": "You must have a Controlled Gate, and at least 2 Cultists on the Map \u2014 they can be in any Area(s). Pay 8 Power. Remove your 2 Cultists, then place Shub-Niggurath at your Controlled Gate.",
+          "awakenPower": 8,
+          "awakenRegion": "Any area with a Controlled Gate",
+          "combatType": "Variable Dice",
+          "dice": null,
+          "diceCalc": "Sum of Controlled Gates + in-play Cultists + Dark Young (if The Red Sign)",
+          "pains": null,
+          "kills": null,
+          "resultsCalc": "",
+          "relatedSb": [],
+          "relatedSbNames": [],
+          "abilityName": "Avatar",
+          "abilityText": "(Action: Cost 1): Choose an Area and a Faction. Swap the location of Shub-Niggurath with that of a Monster or Cultist in the chosen Area. The owner of the chosen Faction chooses which Unit to relocate."
+        }
+      ],
+      "customLogic": ""
+    },
+    "sbr": {
+      "multiText": "",
+      "rows": [
+        {
+          "id": "bgsr0001",
+          "text": "Have units in 4 Areas.",
+          "hasNum": true,
+          "num": 4
+        },
+        {
+          "id": "bgsr0002",
+          "text": "Have units in 6 Areas.",
+          "hasNum": true,
+          "num": 6
+        },
+        {
+          "id": "bgsr0003",
+          "text": "Have units in 8 Areas.",
+          "hasNum": true,
+          "num": 8
+        },
+        {
+          "id": "bgsr0004",
+          "text": "Share Areas with all enemies. Gain 1 Power per enemy player.",
+          "hasNum": false,
+          "num": null
+        },
+        {
+          "id": "bgsr0005",
+          "text": "As your Action, for a Round, Eliminate 2 of your Cultists from any Area(s) on the Map.",
+          "hasNum": true,
+          "num": 2
+        },
+        {
+          "id": "bgsr0006",
+          "text": "Awaken Shub-Niggurath.",
+          "hasNum": false,
+          "num": null
+        }
+      ],
+      "customLogic": ""
+    },
+    "sb": {
+      "twoSided": false,
+      "rows": [
+        {
+          "id": "bgsb0001",
+          "name": "The Thousand Young",
+          "type": "Ongoing",
+          "cost": 0,
+          "hasEffect": false,
+          "effect": null,
+          "text": "If Shub-Niggurath is in play, Ghouls, Fungi, and Dark Young cost 1 fewer Power each to Summon."
+        },
+        {
+          "id": "bgsb0002",
+          "name": "Frenzy",
+          "type": "Battle",
+          "cost": 0,
+          "hasEffect": false,
+          "effect": null,
+          "text": "Your Cultists now have 1 Combat."
+        },
+        {
+          "id": "bgsb0003",
+          "name": "Necrophagy",
+          "type": "Post-Battle",
+          "cost": 0,
+          "hasEffect": false,
+          "effect": null,
+          "text": "Move any or all Ghouls (who did not partecipate in the Battle) from any Area to the Battle Area, even if your Faction was not involved in the Battle. For each Ghoul so moved, both sides in the Battle suffer an additional Pain result."
+        },
+        {
+          "id": "bgsb0004",
+          "name": "Ghroth",
+          "type": "Action",
+          "cost": 2,
+          "hasEffect": false,
+          "effect": null,
+          "text": "Roll a die. If the roll is less than or equal to the number of Areas containing Fungi, your enemies must collectively Eliminate Cultists equal to the die roll. They have 1 minute to decide how to distribute these Eliminations. If time runs out, you choose for them. If the roll is greater than the number of Areas with Fungi, place 1 Acolyte from any Faction's pool anywhere on the map."
+        },
+        {
+          "id": "bgsb0005",
+          "name": "The Red Sign",
+          "type": "Ongoing",
+          "cost": 0,
+          "hasEffect": false,
+          "effect": null,
+          "text": "Dark Young can Create and Control Gates. Each Dark Young adds 1 to Shub-Niggurath's Combat and each provides 1 Power during the Gather Power Phase. They do not act as Cultists with respect to any other purpose."
+        },
+        {
+          "id": "bgsb0006",
+          "name": "Blood Sacrifice",
+          "type": "Doom Phase",
+          "cost": 0,
+          "hasEffect": false,
+          "effect": null,
+          "text": "If Shub-Niggurath is in play during the Doom Phase, you can choose to Eliminate one of your Cultists (from anywhere on the map). If you do, gain 1 Elder Sign."
+        }
+      ],
+      "customLogic": ""
+    },
+    "region": {
+      "rows": [],
+      "customLogic": ""
+    },
+    "tokens": {
+      "rows": [],
+      "customLogic": ""
+    },
+    "custom": {
+      "rows": [],
+      "customLogic": ""
+    },
+    "menus": {
+      "rows": [
+        {
+          "id": "menu001",
+          "name": "Setup - Pick Start Area",
+          "section": "setup",
+          "item": null,
+          "prompted": "Own",
+          "title": "Black Goat starts in",
+          "hasSubtitle": false,
+          "subtitle": "",
+          "button": "[Area]",
+          "cancel": true,
+          "skip": false,
+          "leadsToNext": false,
+          "next": null,
+          "nextTrigger": ""
+        },
+        {
+          "id": "menu002",
+          "name": "Awaken Shub-Niggurath - Pick Gate",
+          "section": "units",
+          "item": "bgun0005",
+          "prompted": "Own",
+          "title": "Awaken Shub-Niggurath",
+          "hasSubtitle": false,
+          "subtitle": "",
+          "button": "[Area] with Controlled Gate (Cost 8)",
+          "cancel": true,
+          "skip": false,
+          "leadsToNext": true,
+          "next": "menu003",
+          "nextTrigger": "Gate selected"
+        },
+        {
+          "id": "menu003",
+          "name": "Awaken Shub-Niggurath - Pick First Cultist",
+          "section": "units",
+          "item": "bgun0005",
+          "prompted": "Own",
+          "title": "Eliminate first Cultist",
+          "hasSubtitle": false,
+          "subtitle": "",
+          "button": "[Cultist] in [Area]",
+          "cancel": false,
+          "skip": false,
+          "leadsToNext": true,
+          "next": "menu004",
+          "nextTrigger": "First cultist selected"
+        },
+        {
+          "id": "menu004",
+          "name": "Awaken Shub-Niggurath - Pick Second Cultist",
+          "section": "units",
+          "item": "bgun0005",
+          "prompted": "Own",
+          "title": "Eliminate second Cultist",
+          "hasSubtitle": false,
+          "subtitle": "",
+          "button": "[Cultist] in [Area]",
+          "cancel": false,
+          "skip": false,
+          "leadsToNext": false,
+          "next": null,
+          "nextTrigger": ""
+        },
+        {
+          "id": "menu005",
+          "name": "Avatar - Pick Target Area",
+          "section": "units",
+          "item": "bgun0005",
+          "prompted": "Own",
+          "title": "Avatar (Cost 1)",
+          "hasSubtitle": false,
+          "subtitle": "",
+          "button": "[Area] with enemy units",
+          "cancel": true,
+          "skip": false,
+          "leadsToNext": true,
+          "next": "menu006",
+          "nextTrigger": "Area selected"
+        },
+        {
+          "id": "menu006",
+          "name": "Avatar - Pick Faction",
+          "section": "units",
+          "item": "bgun0005",
+          "prompted": "Own",
+          "title": "Avatar: choose Faction",
+          "hasSubtitle": false,
+          "subtitle": "",
+          "button": "[Faction] in [Area]",
+          "cancel": false,
+          "skip": false,
+          "leadsToNext": true,
+          "next": "menu007",
+          "nextTrigger": "Faction selected"
+        },
+        {
+          "id": "menu007",
+          "name": "Avatar - Replacement Unit",
+          "section": "units",
+          "item": "bgun0005",
+          "prompted": "All enemies (at the same time)",
+          "title": "Avatar: choose Unit to swap",
+          "hasSubtitle": false,
+          "subtitle": "",
+          "button": "[Unit]",
+          "cancel": false,
+          "skip": false,
+          "leadsToNext": false,
+          "next": null,
+          "nextTrigger": ""
+        },
+        {
+          "id": "menu008",
+          "name": "Ghroth - Roll Die",
+          "section": "sb",
+          "item": "bgsb0004",
+          "prompted": "Own",
+          "title": "Ghroth (Cost 2)",
+          "hasSubtitle": false,
+          "subtitle": "",
+          "button": "Roll [Die]",
+          "cancel": true,
+          "skip": false,
+          "leadsToNext": true,
+          "next": "menu009",
+          "nextTrigger": "Die rolled"
+        },
+        {
+          "id": "menu009",
+          "name": "Ghroth - Success or Failure",
+          "section": "sb",
+          "item": "bgsb0004",
+          "prompted": "Own",
+          "title": "Ghroth result",
+          "hasSubtitle": false,
+          "subtitle": "",
+          "button": "Result: [Success/Failure]",
+          "cancel": false,
+          "skip": false,
+          "leadsToNext": false,
+          "next": null,
+          "nextTrigger": ""
+        },
+        {
+          "id": "menu010",
+          "name": "Ghroth Success - Enemies Negotiate",
+          "section": "sb",
+          "item": "bgsb0004",
+          "prompted": "All enemies (at the same time)",
+          "title": "Ghroth: offer Cultists",
+          "hasSubtitle": true,
+          "subtitle": "[Number] Cultists needed, [Time] remaining",
+          "button": "Offer [Number] Cultists",
+          "cancel": false,
+          "skip": false,
+          "leadsToNext": true,
+          "next": "menu011",
+          "nextTrigger": "Offers made",
+          "repeat": true,
+          "repeatCount": "Until time runs out or agreement reached"
+        },
+        {
+          "id": "menu011",
+          "name": "Ghroth Success - Pick Cultists to Eliminate",
+          "section": "sb",
+          "item": "bgsb0004",
+          "prompted": "All enemies (at the same time)",
+          "title": "Ghroth: eliminate Cultists",
+          "hasSubtitle": false,
+          "subtitle": "",
+          "button": "[Cultist] in [Area]",
+          "cancel": false,
+          "skip": false,
+          "leadsToNext": false,
+          "next": null,
+          "nextTrigger": "",
+          "repeat": true,
+          "repeatCount": "Once per Cultist to eliminate"
+        },
+        {
+          "id": "menu012",
+          "name": "Ghroth Failure - Pick Faction",
+          "section": "sb",
+          "item": "bgsb0004",
+          "prompted": "Own",
+          "title": "Place Acolyte from any Faction's pool",
+          "hasSubtitle": false,
+          "subtitle": "",
+          "button": "[Faction]",
+          "cancel": false,
+          "skip": false,
+          "leadsToNext": true,
+          "next": "menu013",
+          "nextTrigger": "Faction selected"
+        },
+        {
+          "id": "menu013",
+          "name": "Ghroth Failure - Pick Area",
+          "section": "sb",
+          "item": "bgsb0004",
+          "prompted": "Own",
+          "title": "Place Acolyte in",
+          "hasSubtitle": false,
+          "subtitle": "",
+          "button": "[Area]",
+          "cancel": false,
+          "skip": false,
+          "leadsToNext": false,
+          "next": null,
+          "nextTrigger": ""
+        },
+        {
+          "id": "menu014",
+          "name": "Eliminate Two Cultists - Pick First",
+          "section": "sbr",
+          "item": "bgsr0005",
+          "prompted": "Own",
+          "title": "Eliminate 2 Cultists for spellbook",
+          "hasSubtitle": false,
+          "subtitle": "",
+          "button": "[Cultist] in [Area]",
+          "cancel": true,
+          "skip": false,
+          "leadsToNext": true,
+          "next": "menu015",
+          "nextTrigger": "First cultist selected"
+        },
+        {
+          "id": "menu015",
+          "name": "Eliminate Two Cultists - Pick Second",
+          "section": "sbr",
+          "item": "bgsr0005",
+          "prompted": "Own",
+          "title": "Eliminate second Cultist",
+          "hasSubtitle": false,
+          "subtitle": "",
+          "button": "[Cultist] in [Area]",
+          "cancel": false,
+          "skip": false,
+          "leadsToNext": false,
+          "next": null,
+          "nextTrigger": ""
+        },
+        {
+          "id": "menu016",
+          "name": "Blood Sacrifice - Pick Cultist",
+          "section": "sb",
+          "item": "bgsb0006",
+          "prompted": "Own",
+          "title": "Blood Sacrifice",
+          "hasSubtitle": false,
+          "subtitle": "",
+          "button": "[Cultist] in [Area]",
+          "cancel": true,
+          "skip": false,
+          "leadsToNext": false,
+          "next": null,
+          "nextTrigger": ""
+        },
+        {
+          "id": "menu017",
+          "name": "Necrophagy - Pick Ghouls",
+          "section": "sb",
+          "item": "bgsb0003",
+          "prompted": "Own",
+          "title": "Necrophagy: move Ghouls to Battle Area",
+          "hasSubtitle": false,
+          "subtitle": "",
+          "button": "[Ghoul] in [Area]",
+          "cancel": false,
+          "skip": false,
+          "done": true,
+          "multiSelect": true,
+          "showPicked": true,
+          "leadsToNext": false,
+          "next": null,
+          "nextTrigger": ""
+        }
+      ],
+      "customLogic": ""
+    }
+  },
+  "base": true
+}

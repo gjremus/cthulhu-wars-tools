@@ -1,0 +1,3227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0d1117" />
+<title>CWO Admin</title>
+<style>
+  /* 2026-05-22: Admin modernization — GitHub-dark palette + mobile-first layout.
+     Palette cribbed from github.com's dark theme (Primer):
+       --bg            #0d1117  page background
+       --bg-card       #161b22  cards / header / left rail
+       --bg-subtle     #21262d  hover / active surface
+       --border        #30363d  default border
+       --border-strong #484f58  emphasized border
+       --text          #e6edf3  primary text
+       --text-muted    #7d8590  muted / meta text
+       --accent        #2f81f7  primary action / link
+       --success       #3fb950  ok / saved
+       --warn          #d29922  attention (used for selected game)
+       --danger        #f85149  destructive / broken */
+  :root {
+    color-scheme: dark;
+    --bg: #0d1117; --bg-card: #161b22; --bg-subtle: #21262d;
+    --border: #30363d; --border-strong: #484f58;
+    --text: #e6edf3; --text-muted: #7d8590;
+    --accent: #2f81f7; --success: #3fb950; --warn: #d29922; --danger: #f85149;
+  }
+  /* Hard-clip horizontal scroll at the document level. The faction-state
+     table can still scroll horizontally within its own wrapper (.table-wrap);
+     only the OUTER page is locked. This fixes the mobile bug where the wide
+     stats table was forcing the whole layout to pan left-right. */
+  html, body { max-width: 100%; overflow-x: hidden; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+         background: var(--bg); color: var(--text); margin: 0; padding: 0;
+         -webkit-text-size-adjust: 100%; }
+  .col, .col-wrap { max-width: 100%; }
+
+  /* Horizontally scrollable wrapper for wide tables (faction state). The
+     table inside is allowed to overflow; ONLY this container scrolls. */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch;
+                max-width: 100%; border: 1px solid var(--border);
+                border-radius: 6px; background: var(--bg-card); }
+  .table-wrap table { min-width: 100%; border-collapse: collapse;
+                      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                      font-size: 9pt; }
+  .table-wrap th, .table-wrap td { white-space: nowrap; }
+  .table-wrap thead th { position: sticky; top: 0; background: var(--bg-subtle);
+                         border-bottom: 1px solid var(--border); }
+  header { background: var(--bg-card); padding: 14px 20px; border-bottom: 1px solid var(--border);
+           display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 16pt; color: var(--text); font-weight: 600; }
+
+  /* Mobile-first: single column. Desktop override widens to two columns at ≥720px. */
+  .col-wrap { display: grid; grid-template-columns: 1fr; min-height: calc(100vh - 60px); }
+  .col { padding: 14px 18px; overflow-y: auto; }
+  .col.left { background: var(--bg-card); border-right: 1px solid var(--border); }
+  .col.right { background: var(--bg); display: none; }
+  .col-wrap.show-detail .col.left { display: none; }
+  .col-wrap.show-detail .col.right { display: block; }
+  .back-btn { display: inline-block; margin-bottom: 10px; }
+  @media (min-width: 720px) {
+    .col-wrap { grid-template-columns: 320px 1fr; height: calc(100vh - 60px); }
+    .col.left, .col.right { display: block !important; }
+    .col-wrap.show-detail .col.left { display: none !important; }
+    .col-wrap.show-detail .col.right { display: block !important; }
+    .col-wrap.show-detail { grid-template-columns: 1fr; }
+    .back-btn { display: inline-block; }
+  }
+
+  h2 { color: var(--text); font-size: 14pt; margin-top: 0; border-bottom: 1px solid var(--border);
+       padding-bottom: 8px; font-weight: 600; }
+  h3 { color: var(--text); font-size: 11pt; margin-top: 20px; margin-bottom: 6px; font-weight: 600; }
+  label { display: block; margin-top: 8px; font-size: 9pt; color: var(--text-muted); }
+  input[type=text], input[type=password] {
+    width: 100%; box-sizing: border-box; padding: 7px 10px; background: var(--bg);
+    border: 1px solid var(--border); color: var(--text); font-family: monospace; font-size: 10pt;
+    border-radius: 6px;
+  }
+  input[type=text]:focus, input[type=password]:focus {
+    outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(47,129,247,0.3);
+  }
+  button { padding: 6px 14px; background: var(--bg-subtle); color: var(--text);
+           border: 1px solid var(--border); cursor: pointer; font-size: 10pt; border-radius: 6px;
+           font-weight: 500; }
+  button:hover { background: var(--border); border-color: var(--border-strong); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover { background: #1f6feb; border-color: #1f6feb; }
+  button.danger { background: rgba(248,81,73,0.15); border-color: var(--danger); color: var(--danger); }
+  button.danger:hover { background: var(--danger); color: #fff; }
+  button.small { padding: 3px 10px; font-size: 9pt; }
+
+  .game-row { padding: 10px 12px; margin-bottom: 6px; background: var(--bg-card);
+              border: 1px solid var(--border); border-radius: 6px; cursor: pointer;
+              display: flex; gap: 8px; justify-content: space-between; align-items: center; }
+  .game-row:hover { background: var(--bg-subtle); border-color: var(--border-strong); }
+  .game-row.active { background: var(--bg-subtle); border-color: var(--warn); }
+  .broken-flag { flex: 0 0 auto; padding: 3px 8px; font-size: 9pt; border-radius: 6px;
+                 border: 1px solid var(--border); background: var(--bg); color: var(--text-muted); cursor: pointer; }
+  .broken-flag:hover { background: var(--bg-subtle); color: var(--text); }
+  .broken-flag.on { background: rgba(248,81,73,0.15); border-color: var(--danger); color: var(--danger); }
+  .live-flag { flex: 0 0 auto; padding: 3px 8px; font-size: 9pt; border-radius: 6px;
+               border: 1px solid var(--border); background: var(--bg); color: var(--text-muted); cursor: pointer; }
+  .live-flag:hover { background: var(--bg-subtle); color: var(--text); }
+  .live-flag.on { background: rgba(63,185,80,0.15); border-color: var(--success); color: var(--success); }
+  .game-row.broken .game-name { color: var(--danger); text-decoration: line-through; }
+  .game-row.broken { border-color: var(--danger); }
+  .game-row.completed { opacity: 0.55; }
+  .game-row.completed .game-name { color: var(--text-muted); }
+  .completed-badge { display: inline-block; font-size: 8pt; padding: 1px 8px;
+                     background: rgba(63,185,80,0.15); color: var(--success); border: 1px solid var(--success);
+                     border-radius: 999px; vertical-align: middle; }
+  /* 2026-06-01: Errored-out auto-flag. Distinct from manual "broken" — errored
+     games are inferred client-side (stale > 6h, not completed, lastWriteMs > 0).
+     Styled like broken but with a warn-colored border so the user can tell
+     them apart at a glance. */
+  .game-row.errored { border-color: var(--warn); }
+  .game-row.errored .game-name { color: var(--warn); }
+  .errored-badge { display: inline-block; font-size: 8pt; padding: 1px 8px;
+                   background: rgba(210,153,34,0.15); color: var(--warn); border: 1px solid var(--warn);
+                   border-radius: 999px; vertical-align: middle; }
+  /* 2026-06-01: Replay link pill in game rows + Generate replay button. */
+  .replay-badge { display: inline-block; font-size: 8pt; padding: 1px 8px;
+                  background: rgba(47,129,247,0.12); color: var(--accent); border: 1px solid var(--accent);
+                  border-radius: 999px; vertical-align: middle; text-decoration: none; margin-left: 4px; }
+  .replay-badge:hover { background: rgba(47,129,247,0.25); }
+  .replay-pending { color: var(--text-muted); font-size: 8pt; margin-left: 4px; font-style: italic; }
+  /* 2026-06-01: Filter pill toolbar above the games list. */
+  .filter-pills { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
+  .filter-pill { padding: 4px 10px; font-size: 9pt; border-radius: 999px;
+                 background: var(--bg-card); border: 1px solid var(--border); color: var(--text-muted);
+                 cursor: pointer; user-select: none; }
+  .filter-pill:hover { background: var(--bg-subtle); color: var(--text); }
+  .filter-pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .game-name { font-weight: 600; color: var(--text); }
+  .game-meta { color: var(--text-muted); font-size: 9pt; }
+
+  .notes-box textarea { width: 100%; box-sizing: border-box; min-height: 80px;
+                        padding: 8px 10px; background: var(--bg); border: 1px solid var(--border);
+                        color: var(--text); font-family: inherit; font-size: 10pt;
+                        line-height: 1.5; resize: vertical; border-radius: 6px; }
+  .notes-box textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(47,129,247,0.3); }
+  .notes-box .saved-tag { color: var(--success); font-size: 9pt; margin-left: 8px; }
+  .notes-box .saving-tag { color: var(--warn); font-size: 9pt; margin-left: 8px; }
+
+  .log-entry { padding: 6px 10px; margin-bottom: 3px; background: var(--bg-card);
+               border-left: 3px solid var(--border); border-radius: 0 6px 6px 0;
+               font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 9pt;
+               display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .log-entry .idx { color: var(--text-muted); min-width: 40px; text-align: right; }
+  .log-entry .role { color: var(--accent); min-width: 60px; }
+  .log-entry .actor { color: #c89b3c; min-width: 40px; }
+  .log-entry .val { flex: 1; word-break: break-word; }
+  .log-header { padding: 6px 10px; margin-bottom: 3px; display: flex; gap: 10px;
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 8pt;
+                color: var(--text-muted); border-bottom: 1px solid var(--border); font-weight: bold; }
+  .log-header .idx { min-width: 40px; text-align: right; }
+  .log-header .role { min-width: 60px; }
+  .log-header .actor { min-width: 40px; }
+  .log-header .val { flex: 1; }
+  .log-entry.permanent { border-left-color: var(--danger); background: rgba(248,81,73,0.08); }
+
+  .role-link { display: inline-block; margin-right: 8px; }
+  .role-link a { color: var(--accent); text-decoration: none; }
+  .role-link a:hover { text-decoration: underline; }
+
+  .err { color: var(--danger); padding: 10px 12px; background: rgba(248,81,73,0.1);
+         border: 1px solid var(--danger); border-radius: 6px; margin: 10px 0; font-size: 10pt; }
+  .ok { color: var(--success); padding: 10px 12px; background: rgba(63,185,80,0.1);
+        border: 1px solid var(--success); border-radius: 6px; margin: 10px 0; font-size: 10pt; }
+  /* Login progress bar — appears after 2s of waiting */
+  #login-progress-wrap { display: none; margin: 14px 0 6px; }
+  #login-progress-wrap .bar-track {
+    height: 4px; border-radius: 2px; background: var(--bg-subtle);
+    overflow: hidden; position: relative;
+  }
+  #login-progress-wrap .bar-fill {
+    position: absolute; inset: 0; width: 30%;
+    background: var(--accent); border-radius: 2px;
+    animation: login-slide 1.4s ease-in-out infinite;
+  }
+  @keyframes login-slide {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(400%); }
+  }
+  #login-progress-wrap .bar-label {
+    font-size: 9pt; color: var(--text-muted); margin-top: 5px;
+  }
+  #login-timing { display: none; font-size: 9pt; color: var(--text-muted);
+                  margin-top: 8px; padding: 6px 10px; background: var(--bg-subtle);
+                  border-radius: 6px; border: 1px solid var(--border); }
+  .empty { color: var(--text-muted); font-style: italic; padding: 10px; }
+  .toolbar { padding: 10px 12px; background: var(--bg-card); border: 1px solid var(--border);
+             border-radius: 6px; margin-bottom: 12px; display: flex; gap: 10px; align-items: center;
+             flex-wrap: wrap; }
+
+  /* Code blocks in the Build / SimRunner runbook pages. Click anywhere on the
+     block to copy the command to clipboard; a small toast fades in to confirm. */
+  pre.cmd { background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+            padding: 10px 12px; margin: 8px 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 9pt; white-space: pre-wrap; word-break: break-all; color: var(--text);
+            cursor: pointer; position: relative; }
+  pre.cmd:hover { border-color: var(--accent); }
+  pre.cmd::after { content: "copy"; position: absolute; right: 8px; top: 6px;
+                   color: var(--text-muted); font-size: 8pt; font-family: -apple-system, sans-serif; }
+  pre.cmd.copied::after { content: "copied!"; color: var(--success); }
+  .runbook-section { margin: 16px 0 24px; }
+  .runbook-section h3 { margin-bottom: 4px; }
+  .runbook-section p { color: var(--text-muted); margin: 4px 0 8px; font-size: 10pt; line-height: 1.5; }
+
+  /* Section panes — only one of these is visible at a time via showSection(). */
+  .section-pane { display: none; }
+  .section-pane.active { display: block; }
+
+  /* Build switcher cards — big tappable buttons. The currently-selected
+     build gets the .selected class which paints it accent-colored. */
+  button.build-card { flex: 1 1 280px; text-align: left; padding: 18px 20px;
+                      background: var(--bg-card); border: 2px solid var(--border);
+                      border-radius: 10px; cursor: pointer; color: var(--text); }
+  button.build-card:hover { border-color: var(--border-strong); background: var(--bg-subtle); }
+  button.build-card.selected { border-color: var(--accent); background: rgba(47,129,247,0.08); }
+
+  /* Per-faction / option checkboxes in the SimRunner wizard. Tighter than
+     default label spacing so the columns line up cleanly on mobile. */
+  .sim-checkbox { display: inline-flex; align-items: center; gap: 4px;
+                  font-size: 10pt; color: var(--text); cursor: pointer;
+                  padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px;
+                  background: var(--bg-card); user-select: none; }
+  .sim-checkbox:hover { background: var(--bg-subtle); }
+  .sim-checkbox input { margin: 0; cursor: pointer; }
+
+  /* Live tail of the current sim run. Monospace, dark, capped height with
+     a scroll so really long runs don't blow up the page. */
+  .sim-tail { background: #000; color: #b3e6ff; padding: 8px 10px; border-radius: 6px;
+              max-height: 320px; overflow: auto; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+              font-size: 9pt; line-height: 1.4; white-space: pre-wrap; }
+
+  /* Past-runs list rows. */
+  .sim-past-row { display: flex; align-items: center; gap: 10px; padding: 6px 8px;
+                  background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px;
+                  margin-bottom: 4px; }
+  .sim-past-row .name { flex: 1 1 auto; color: var(--text); font-family: ui-monospace, monospace; font-size: 9pt; }
+  .sim-past-row .size { color: var(--text-muted); font-size: 8.5pt; }
+  .sim-past-row button { padding: 3px 10px; font-size: 9pt; }
+
+  /* Hamburger nav (mobile-first) — visible <720px, hidden ≥720px since the
+     desktop view shows the games list inline in the left rail. */
+  .hamburger-btn { display: inline-flex; align-items: center; justify-content: center;
+                   width: 32px; height: 32px; padding: 0; background: transparent;
+                   border: 1px solid var(--border); border-radius: 6px; color: var(--text);
+                   font-size: 14pt; line-height: 1; cursor: pointer; }
+  .hamburger-btn:hover { background: var(--bg-subtle); }
+  .nav-drawer { position: fixed; top: 0; left: 0; bottom: 0; width: 260px;
+                background: var(--bg-card); border-right: 1px solid var(--border);
+                transform: translateX(-100%); transition: transform 0.18s ease-out;
+                z-index: 1000; padding: 18px 0; display: flex; flex-direction: column; gap: 4px; }
+  .nav-drawer.open { transform: translateX(0); }
+  .nav-drawer a { color: var(--text); padding: 10px 18px; text-decoration: none; font-size: 11pt; }
+  .nav-drawer a:hover { background: var(--bg-subtle); }
+  .nav-drawer a.section { color: var(--text-muted); font-size: 9pt; text-transform: uppercase;
+                          letter-spacing: 0.08em; padding-top: 16px; padding-bottom: 4px; cursor: default; }
+  .nav-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999;
+                 display: none; }
+  .nav-overlay.open { display: block; }
+  /* 2026-05-26: desktop view used to hide both the hamburger AND the drawer,
+     which left desktop users with NO way to navigate sections — they were
+     stuck on whichever section showSection() landed on at load. Now keep
+     the hamburger visible at all widths so the drawer is reachable on
+     desktop too. (Drawer overlay still hides itself on click.) */
+  @media (min-width: 720px) {
+    .hamburger-btn { display: inline-flex; }
+    /* drawer + overlay still allowed; they pop on demand via openNav() */
+  }
+</style>
+</head>
+<body>
+
+<!-- Mobile hamburger drawer (hidden ≥720px). Build/Games/Bot games/SimRunner
+     placeholders — Games is the only one wired up today; the rest are
+     placeholders pending the SimRunner status page and Build admin tooling. -->
+<div id="nav-overlay" class="nav-overlay" onclick="closeNav()"></div>
+<nav id="nav-drawer" class="nav-drawer" aria-label="Primary">
+  <a class="section">Sections</a>
+  <a href="#" onclick="showSection('games'); closeNav(); return false;">Games</a>
+  <a href="#" onclick="showSection('simrunner'); closeNav(); return false;">SimRunner</a>
+  <a href="#" onclick="showSection('build'); closeNav(); return false;">Build</a>
+  <a href="#" onclick="showSection('claude'); closeNav(); return false;">Claude Terminal</a>
+  <a href="#" onclick="showSection('serverstats'); loadServerStats(); closeNav(); return false;">Server Stats</a>
+</nav>
+
+<header>
+  <button class="hamburger-btn" onclick="openNav()" aria-label="Open navigation">☰</button>
+  <h1>CWO Admin</h1>
+  <span id="server-indicator" style="color:var(--text-muted);font-size:10pt;"></span>
+</header>
+
+<div id="login-pane" style="padding: 30px;">
+  <h2>Sign in</h2>
+  <label>Server URL</label>
+  <input type="text" id="server-url" value="https://cwo.freeddns.org" />
+  <label>Owner admin token</label>
+  <input type="password" id="owner-token" placeholder="paste from owner-admin-token.txt" />
+  <p><button class="primary" onclick="signIn()">Sign in</button></p>
+  <p id="login-err" class="err" style="display:none;"></p>
+  <div id="login-progress-wrap">
+    <div class="bar-track"><div class="bar-fill"></div></div>
+    <div class="bar-label">Connecting to server and loading games...</div>
+  </div>
+  <div id="login-timing"></div>
+</div>
+
+<div id="main-pane" style="display:none;">
+
+  <!-- Games section (default view) — the existing two-column game-list + detail. -->
+  <div id="section-games" class="section-pane active col-wrap">
+    <div class="col left">
+      <h2>Live Games</h2>
+      <p>
+        <button class="small" onclick="loadGames()">Refresh</button>
+        <label style="margin-left:10px;color:var(--text-muted);font-size:9pt;">
+          <input type="checkbox" id="show-bots-cb" onchange="loadGames()" />
+          Show bot games
+        </label>
+      </p>
+      <!-- 2026-06-02: Filter pyramid + sort + search toolbar.
+           User spec (2026-06-02 11:03 directive):
+             - Filter pyramid icon expands a true filter set: replays y/n,
+               errored y/n, player count (3/4/5), all bots y/n, any bots y/n.
+             - Sort by name / start date / last action date.
+             - Search by game name.
+           Pyramid is collapsible to keep the rail compact on mobile. -->
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:6px 0 8px;">
+        <button class="small" id="filter-pyramid-btn" onclick="toggleFilterPyramid()" title="Show / hide filters" style="padding:4px 10px;">
+          <span style="font-size:11pt;">&#9650;</span> Filters
+          <span id="filter-active-count" style="color:var(--accent);font-size:9pt;margin-left:4px;"></span>
+        </button>
+        <select id="games-sort" onchange="applyGamesSortSearch()" style="padding:4px 8px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:9pt;">
+          <option value="last">Sort: last action (newest first)</option>
+          <option value="default">Sort: status, then activity</option>
+          <option value="name">Sort: name (A→Z)</option>
+          <option value="start">Sort: start date (newest first)</option>
+        </select>
+        <input type="text" id="games-search" oninput="applyGamesSortSearch()" placeholder="Search game name…" style="flex:1;min-width:120px;padding:4px 8px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:9pt;" />
+      </div>
+      <div id="filter-pyramid" style="display:none;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-bottom:10px;font-size:9pt;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;">
+          <div>
+            <div style="color:var(--text-muted);margin-bottom:4px;">Replays</div>
+            <label class="sim-checkbox" style="margin-right:6px;"><input type="checkbox" id="flt-rep-yes" onchange="applyGamesSortSearch()"/>Has replay</label>
+            <label class="sim-checkbox"><input type="checkbox" id="flt-rep-no" onchange="applyGamesSortSearch()"/>No replay</label>
+          </div>
+          <div>
+            <div style="color:var(--text-muted);margin-bottom:4px;">Errored</div>
+            <label class="sim-checkbox" style="margin-right:6px;"><input type="checkbox" id="flt-err-yes" onchange="applyGamesSortSearch()"/>Errored</label>
+            <label class="sim-checkbox"><input type="checkbox" id="flt-err-no" onchange="applyGamesSortSearch()"/>Not errored</label>
+          </div>
+          <div>
+            <div style="color:var(--text-muted);margin-bottom:4px;">Player count</div>
+            <label class="sim-checkbox" style="margin-right:4px;"><input type="checkbox" id="flt-pc-3" onchange="applyGamesSortSearch()"/>3</label>
+            <label class="sim-checkbox" style="margin-right:4px;"><input type="checkbox" id="flt-pc-4" onchange="applyGamesSortSearch()"/>4</label>
+            <label class="sim-checkbox" style="margin-right:4px;"><input type="checkbox" id="flt-pc-5" onchange="applyGamesSortSearch()"/>5</label>
+            <label class="sim-checkbox"><input type="checkbox" id="flt-pc-unknown" onchange="applyGamesSortSearch()"/>?</label>
+          </div>
+          <div>
+            <div style="color:var(--text-muted);margin-bottom:4px;">Bots</div>
+            <label class="sim-checkbox" style="margin-right:6px;"><input type="checkbox" id="flt-allhumans-yes" onchange="applyGamesSortSearch()"/>All humans</label>
+            <label class="sim-checkbox" style="margin-right:6px;"><input type="checkbox" id="flt-allbots-yes" onchange="applyGamesSortSearch()"/>All bots</label>
+            <label class="sim-checkbox"><input type="checkbox" id="flt-anybots-yes" onchange="applyGamesSortSearch()"/>Any bots</label>
+          </div>
+          <div>
+            <div style="color:var(--text-muted);margin-bottom:4px;">Build</div>
+            <label class="sim-checkbox" style="margin-right:4px;"><input type="checkbox" id="flt-build-library" onchange="applyGamesSortSearch()"/>Library</label>
+            <label class="sim-checkbox" style="margin-right:4px;"><input type="checkbox" id="flt-build-mnu" onchange="applyGamesSortSearch()"/>MNU</label>
+            <label class="sim-checkbox" style="margin-right:4px;"><input type="checkbox" id="flt-build-tt" onchange="applyGamesSortSearch()"/>TT</label>
+            <label class="sim-checkbox" style="margin-right:4px;"><input type="checkbox" id="flt-build-bb" onchange="applyGamesSortSearch()"/>BB</label>
+            <label class="sim-checkbox"><input type="checkbox" id="flt-build-hb" onchange="applyGamesSortSearch()"/>HB</label>
+          </div>
+          <div style="margin-top:6px;">
+            <label class="sim-checkbox"><input type="checkbox" id="flt-live-yes" onchange="applyGamesSortSearch()"/>Live (monitored)</label>
+          </div>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:6px;align-items:center;">
+          <button class="small" onclick="clearAllFilters()">Clear all filters</button>
+          <span style="color:var(--text-muted);font-size:8.5pt;">Checked filters AND together. Within a group (e.g. player count 3 + 4), an OR.</span>
+        </div>
+      </div>
+      <!-- 2026-06-04: RL-tuning bulk toolbar. Per-row checkboxes only render on
+           finished library/mnu rows; "Select all" picks every visible eligible
+           row. Bulk submit POSTs to /admin/<t>/submit-for-rl-tuning. -->
+      <div id="rl-bulk-toolbar" style="display:flex;gap:8px;align-items:center;margin:0 0 8px;font-size:9pt;color:var(--text-muted);">
+        <label class="sim-checkbox" style="margin:0;">
+          <input type="checkbox" id="rl-select-all" onchange="toggleAllRLSelection(this)" />
+          Select all eligible (finished library/mnu)
+        </label>
+        <button class="small" onclick="submitSelectedToRL()" id="rl-bulk-submit-btn">Submit selected to RL tuning</button>
+        <span id="rl-bulk-status" style="font-size:9pt;"></span>
+      </div>
+      <div id="games-count" style="font-size:9pt;color:var(--text-muted);margin:0 0 6px;"></div>
+      <div id="games-list"></div>
+    </div>
+
+    <div class="col right">
+      <div id="game-detail">
+        <p class="empty">Pick a game from the left to view its factions and log.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SimRunner section — wizard for kicking off online sims directly from
+       the admin tool via /admin/<t>/sim-run, plus past-runs list and live tail. -->
+  <div id="section-simrunner" class="section-pane" style="padding: 18px;">
+    <h2>SimRunner — current build: <span id="sim-build-label" style="color:var(--accent);">…</span></h2>
+    <p style="color:var(--text-muted);">Pick the bot recipe, hit <b>Run sim</b>. The orchestrator runs on the VM and writes a log under <code>/tmp/online-sim-&lt;build&gt;-&lt;timestamp&gt;.log</code>. Use the Build menu to switch between the Library and MNU jars.</p>
+
+    <h3>1. Force factions (leave all unchecked for random)</h3>
+    <div id="sim-faction-checkboxes" style="display:flex;flex-wrap:wrap;gap:6px 14px;"></div>
+
+    <h3>2. Game settings</h3>
+    <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;">
+      <label style="flex:0 0 auto;">Players<br/><input type="number" id="sim-players" min="2" max="11" value="4" style="width:80px;"/></label>
+      <label style="flex:0 0 auto;">Games<br/><input type="number" id="sim-games" min="1" max="500" value="30" style="width:80px;"/></label>
+    </div>
+
+    <h3>3. Maps (random pick per game across checked)</h3>
+    <div id="sim-map-checkboxes" style="display:flex;flex-wrap:wrap;gap:6px 14px;"></div>
+
+    <h3>4. Options</h3>
+    <p style="font-size:9pt;color:var(--text-muted);margin:0 0 6px;">Toggles</p>
+    <div id="sim-toggle-opts" style="display:flex;flex-wrap:wrap;gap:6px 14px;"></div>
+    <p style="font-size:9pt;color:var(--text-muted);margin:10px 0 6px;">Neutral monsters</p>
+    <div id="sim-nm-opts" style="display:flex;flex-wrap:wrap;gap:6px 14px;"></div>
+    <p style="font-size:9pt;color:var(--text-muted);margin:10px 0 6px;">iGOOs</p>
+    <div id="sim-igoo-opts" style="display:flex;flex-wrap:wrap;gap:6px 14px;"></div>
+
+    <p style="margin-top:16px;">
+      <button class="primary" onclick="runSim()">Run sim</button>
+      <button class="small" onclick="setSimPresetLibrary()">Preset: Library 30g crash test</button>
+      <button class="small" onclick="setSimPresetMnu()">Preset: MNU 30g full options</button>
+    </p>
+
+    <h3 style="margin-top:24px;">Current / latest run</h3>
+    <div id="sim-current-run" style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:10px 12px;">
+      <p class="empty">No run kicked off yet this session.</p>
+    </div>
+
+    <h3 style="margin-top:24px;">Past runs <button class="small" style="margin-left:8px;" onclick="loadSimRuns()">Refresh</button></h3>
+    <div id="sim-past-runs"><p class="empty">Loading…</p></div>
+  </div>
+
+  <!-- Build section — switch the admin's active build. Other
+       menus (SimRunner) read this localStorage value and adapt. -->
+  <div id="section-build" class="section-pane" style="padding: 18px;">
+    <h2>Build</h2>
+    <p style="color:var(--text-muted);">Four builds share this admin tool. Pick the active one — SimRunner and other build-dependent menus read this setting. Use the ↗ link inside each card to open the corresponding game in a new tab.</p>
+
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin:24px 0;">
+      <button id="build-btn-library" class="build-card" onclick="setBuild('library')">
+        <div style="font-size:13pt;font-weight:600;margin-bottom:4px;">Library at Celaeno</div>
+        <div style="font-size:9pt;color:var(--text-muted);">Stable build · served at <code>cwo.freeddns.org</code> <a href="https://cwo.freeddns.org/" target="_blank" rel="noopener" onclick="event.stopPropagation();">↗</a></div>
+      </button>
+      <button id="build-btn-mnu" class="build-card" onclick="setBuild('mnu')">
+        <div style="font-size:13pt;font-weight:600;margin-bottom:4px;">More Neutral Units (MNU)</div>
+        <div style="font-size:9pt;color:var(--text-muted);">Beta build · served at <code>cwo.freeddns.org/mnu/</code> <a href="https://cwo.freeddns.org/mnu/" target="_blank" rel="noopener" onclick="event.stopPropagation();">↗</a></div>
+      </button>
+      <button id="build-btn-tt" class="build-card" onclick="setBuild('tt')">
+        <div style="font-size:13pt;font-weight:600;margin-bottom:4px;">TchoTcho (TT)</div>
+        <div style="font-size:9pt;color:var(--text-muted);">Beta build · served at <code>cwo.freeddns.org/TchoTcho/</code> <a href="https://cwo.freeddns.org/TchoTcho/" target="_blank" rel="noopener" onclick="event.stopPropagation();">↗</a></div>
+      </button>
+      <button id="build-btn-bb" class="build-card" onclick="setBuild('bb')">
+        <div style="font-size:13pt;font-weight:600;margin-bottom:4px;">Bubastis (BB)</div>
+        <div style="font-size:9pt;color:var(--text-muted);">Beta build · served at <code>cwo.freeddns.org/BB/</code> <a href="https://cwo.freeddns.org/BB/" target="_blank" rel="noopener" onclick="event.stopPropagation();">↗</a></div>
+      </button>
+      <button id="build-btn-hb" class="build-card" onclick="setBuild('hb')">
+        <div style="font-size:13pt;font-weight:600;margin-bottom:4px;">Homebrew (HB)</div>
+        <div style="font-size:9pt;color:var(--text-muted);">Served at <code>cwo.freeddns.org/HB/</code> <a href="https://cwo.freeddns.org/HB/" target="_blank" rel="noopener" onclick="event.stopPropagation();">↗</a></div>
+      </button>
+    </div>
+
+    <p>Currently active build: <span id="build-current" style="color:var(--accent);font-weight:600;">…</span></p>
+  </div>
+
+  <!-- Claude Terminal — submit textbox + terminal log (TOP, what's been
+       processed: prompts + my output) + prompt queue (BELOW, submitted
+       but not yet picked up). Both polled independently; polling continues
+       even when this section isn't visible (the user wanted to keep
+       context loaded). -->
+  <div id="section-claude" class="section-pane" style="padding: 18px;">
+    <h2>Claude Terminal</h2>
+    <p style="color:var(--text-muted);">Type a prompt and hit Submit. It's queued to <code>/tmp/claude-prompts.log</code> on the VM. Claude drains the queue every tick, appends to <code>/tmp/claude-output.log</code> with prompts + responses interleaved, and the terminal log below polls that for the recent history.</p>
+
+    <div style="display:flex;gap:8px;align-items:stretch;margin-bottom:16px;">
+      <textarea id="claude-prompt-input" rows="3" placeholder="Type a prompt for Claude…"
+                style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px 10px;font-family:inherit;font-size:11pt;resize:vertical;"></textarea>
+      <button class="primary" style="flex:0 0 auto;align-self:stretch;padding:0 18px;" onclick="submitClaudePrompt()">Submit</button>
+    </div>
+    <p id="claude-prompt-status" style="font-size:9pt;color:var(--text-muted);margin-top:0;"></p>
+
+    <h3 style="margin-top:24px;">Terminal log (last 36 hours of prompts + Claude output)
+        <button class="small" style="margin-left:8px;" onclick="refreshClaudeOutput()">Refresh</button>
+        <button class="small" style="margin-left:6px;" onclick="document.getElementById('claude-output').scrollTop = 0">Jump to top</button>
+    </h3>
+    <pre id="claude-output" class="sim-tail" style="height:50vh;max-height:50vh;">loading…</pre>
+    <button class="small" style="margin-top:6px;" onclick="(function(el){ el.scrollTop = el.scrollHeight; })(document.getElementById('claude-output'))">Jump to bottom</button>
+
+    <h3 style="margin-top:24px;">Queue (prompts submitted but not yet picked up) <button class="small" style="margin-left:8px;" onclick="refreshClaudeQueue()">Refresh</button></h3>
+    <pre id="claude-queue" class="sim-tail" style="height:20vh;max-height:20vh;">loading…</pre>
+  </div>
+
+  <!-- Server Stats — host + JVM resource usage. -->
+  <div id="section-serverstats" class="section-pane" style="padding: 18px;">
+    <h2>Server Stats <button class="small" style="margin-left:8px;" onclick="loadServerStats()">Refresh</button></h2>
+    <p style="color:var(--text-muted);font-size:10pt;">Game statistics computed from the games list and cached game metadata.</p>
+    <div id="server-stats-content" style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:14px;">
+      <div>
+        <h3>Server info</h3>
+        <div id="ss-host-mem" class="sim-tail" style="height:auto;max-height:none;padding:10px;">loading…</div>
+      </div>
+      <div>
+        <h3>Game counts</h3>
+        <div id="ss-jvm" class="sim-tail" style="height:auto;max-height:none;padding:10px;">loading…</div>
+      </div>
+      <div>
+        <h3>By build</h3>
+        <div id="ss-cpu" class="sim-tail" style="height:auto;max-height:none;padding:10px;">loading…</div>
+      </div>
+      <div>
+        <h3>Player breakdown</h3>
+        <div id="ss-games" class="sim-tail" style="height:auto;max-height:none;padding:10px;">loading…</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let SERVER = '';
+let TOKEN = '';
+let CURRENT_GAME = null;
+
+// 2026-06-02: Deep-link auto-jump. The admin-console submit-to-terminal payload
+// includes URLs like `cwo.freeddns.org/admin.html#game=42`. On page load we
+// parse `#game=<id>` out of location.hash and stash it; once the user signs in
+// and the games list renders (populateGames), tryDeepLinkJump() finds the
+// matching .game-row, scrolls it into view, briefly highlights it, and clicks
+// it to open the detail pane. The pending id is one-shot: cleared on first
+// successful jump OR on the first populateGames where no matching row exists
+// (to avoid replaying the jump on every Refresh). The URL hash is cleared at
+// the same moment so later in-page navigation never re-fires the jump.
+let PENDING_DEEP_LINK_GAME_ID = (function () {
+  try {
+    const m = (location.hash || '').match(/^#game=(\d+)$/);
+    return m ? m[1] : null;
+  } catch (_) { return null; }
+})();
+
+function tryDeepLinkJump() {
+  if (!PENDING_DEEP_LINK_GAME_ID) return;
+  const target = PENDING_DEEP_LINK_GAME_ID;
+  const row = document.querySelector(`.game-row[data-game-id="${target}"]`);
+  if (!row) {
+    // No matching row — could be an invalid id OR the game is hidden by the
+    // current filter set. We don't surface a UI error; we just give up after
+    // this populate, because re-firing on every Refresh would be surprising.
+    console.warn(`Deep-link #game=${target}: no matching row in current games list.`);
+    PENDING_DEEP_LINK_GAME_ID = null;
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (_) {}
+    return;
+  }
+  PENDING_DEEP_LINK_GAME_ID = null;
+  try { history.replaceState(null, '', location.pathname + location.search); } catch (_) {}
+  // Scroll the row into view, flash a highlight, and click it (selectGame
+  // handles the active class + mobile detail-pane switch).
+  try { row.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {}
+  const prevOutline = row.style.outline;
+  const prevShadow = row.style.boxShadow;
+  row.style.outline = '2px solid var(--accent)';
+  row.style.boxShadow = '0 0 0 4px rgba(47,129,247,0.35)';
+  setTimeout(() => { row.style.outline = prevOutline; row.style.boxShadow = prevShadow; }, 1600);
+  row.click();
+}
+
+// Mobile hamburger drawer — slides in from the left at <720px. The drawer +
+// overlay are mutually exclusive show states; closeNav() also fires when the
+// overlay is tapped (its onclick handler in markup).
+function openNav() {
+  document.getElementById('nav-drawer').classList.add('open');
+  document.getElementById('nav-overlay').classList.add('open');
+}
+function closeNav() {
+  document.getElementById('nav-drawer').classList.remove('open');
+  document.getElementById('nav-overlay').classList.remove('open');
+}
+
+// Section switcher — show one of "games" / "simrunner" / "build" panes inside
+// #main-pane, hide the others. Sections are mutually exclusive so only one is
+// .active at any time.
+function showSection(name) {
+  document.querySelectorAll('#main-pane .section-pane').forEach(pane => {
+    pane.classList.toggle('active', pane.id === 'section-' + name);
+  });
+}
+
+// Click-to-copy on <pre class="cmd"> blocks in the runbook sections. Falls
+// back to a textarea + execCommand on browsers without the async Clipboard API.
+function copyCmd(el) {
+  const text = el.textContent.trim();
+  const done = () => {
+    el.classList.add('copied');
+    setTimeout(() => el.classList.remove('copied'), 1500);
+  };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+  } else {
+    fallbackCopy(text, done);
+  }
+}
+function fallbackCopy(text, done) {
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); done(); } catch (e) {}
+  document.body.removeChild(ta);
+}
+
+// ========== Build switcher ==========
+// Persisted in localStorage("cwo_admin_build"). Default "library". Other
+// menus (SimRunner) read this via getBuild().
+function getBuild() {
+  return localStorage.getItem('cwo_admin_build') || 'library';
+}
+const BUILD_LABELS = {
+  library: { short: 'Library', full: 'Library at Celaeno' },
+  mnu:     { short: 'MNU',     full: 'More Neutral Units (MNU)' },
+  tt:      { short: 'TT',      full: 'TchoTcho (TT)' },
+  bb:      { short: 'BB',      full: 'Bubastis (BB)' },
+  hb:      { short: 'HB',      full: 'Homebrew (HB)' },
+};
+const BUILD_PATH_PREFIX = { library: '', mnu: '/mnu', tt: '/TchoTcho', bb: '/BB', hb: '/HB' };
+function buildPlayUrl(secret) {
+  return `${SERVER}${BUILD_PATH_PREFIX[getBuild()] || ''}/play/${secret}`;
+}
+function gamePlayUrl(secret, build) {
+  const b = build || getBuild();
+  return `${SERVER}${BUILD_PATH_PREFIX[b] || ''}/play/${secret}`;
+}
+function setBuild(name) {
+  if (!(name in BUILD_LABELS)) return;
+  localStorage.setItem('cwo_admin_build', name);
+  refreshBuildIndicator();
+  // Re-render SimRunner header so the active build chip updates.
+  const lbl = document.getElementById('sim-build-label');
+  if (lbl) lbl.textContent = BUILD_LABELS[name].short;
+  // (top-of-page build label removed — Build page has zero effect on games list)
+  // 2026-07-21 (row 6): the Build switcher screen must have ZERO effect on the
+  // game list. The game list is filtered SOLELY by its own Build checkboxes
+  // (flt-build-*). We intentionally do NOT re-render the games list here — the
+  // switcher only drives SimRunner jar selection and the play-URL prefix.
+}
+function refreshBuildIndicator() {
+  const b = getBuild();
+  const cur = document.getElementById('build-current');
+  if (cur) cur.textContent = (BUILD_LABELS[b] || BUILD_LABELS.library).full;
+  for (const key of Object.keys(BUILD_LABELS)) {
+    const btn = document.getElementById('build-btn-' + key);
+    if (btn) btn.classList.toggle('selected', b === key);
+  }
+}
+
+// ========== SimRunner wizard ==========
+// [2026-06-04] FIX 60 — Path B faction coverage: TT (Tcho-Tcho, 12th) and BB (Bubastis, 13th)
+// added so the sim-launcher faction picker can target these factions. The SimRunner backend
+// reflectively resolves TT/BB and silently ignores them when the build doesn't define them.
+const SIM_FACTIONS = ['GC','CC','BG','YS','SL','WW','OW','AN','TS','FB','DS','TT','BB'];
+const SIM_MAPS = ['Earth33','Earth35','Earth53','Earth55','Library33','Library35','Library53','Library55'];
+const SIM_TOGGLE_OPTS = ['HighPriests','GateDiplomacy','AsyncActions','DemandTsathoggua','NeutralSpellbooks','IceAgeAffectsLethargy','Opener4P10Gates'];
+const SIM_NM_OPTS = ['UseGhast','UseGug','UseShantak','UseStarVampire','UseVoonith','UseDimensionalShamblers','UseGnorri'];
+const SIM_IGOO_OPTS = ['UseByatis','UseAbhoth','UseDaoloth','UseNyogtha','UseTulzscha','UseYgolonac'];
+
+// Build the checkbox UI for each option group. Called once on sign-in.
+function renderSimWizard() {
+  const mkCheck = (id, label, checked = false) =>
+    `<label class="sim-checkbox"><input type="checkbox" id="${id}" ${checked ? 'checked' : ''}/>${label}</label>`;
+  document.getElementById('sim-faction-checkboxes').innerHTML =
+    SIM_FACTIONS.map(f => mkCheck('sim-f-' + f, f)).join('');
+  document.getElementById('sim-map-checkboxes').innerHTML =
+    SIM_MAPS.map(m => mkCheck('sim-m-' + m, m, m === 'Earth35' || m === 'Earth53')).join('');
+  document.getElementById('sim-toggle-opts').innerHTML =
+    SIM_TOGGLE_OPTS.map(o => mkCheck('sim-o-' + o, o)).join('');
+  document.getElementById('sim-nm-opts').innerHTML =
+    SIM_NM_OPTS.map(o => mkCheck('sim-o-' + o, o.replace(/^Use/, ''))).join('');
+  document.getElementById('sim-igoo-opts').innerHTML =
+    SIM_IGOO_OPTS.map(o => mkCheck('sim-o-' + o, o.replace(/^Use/, ''))).join('');
+}
+
+function collectChecked(prefix, list) {
+  return list.filter(x => document.getElementById(prefix + x)?.checked);
+}
+function setChecked(prefix, list, on) {
+  list.forEach(x => { const el = document.getElementById(prefix + x); if (el) el.checked = on; });
+}
+
+// Convenience presets matching the two recent runs.
+function setSimPresetLibrary() {
+  setBuild('library');
+  setChecked('sim-f-', SIM_FACTIONS, false);
+  ['FB','TS','DS'].forEach(f => { const el = document.getElementById('sim-f-' + f); if (el) el.checked = true; });
+  document.getElementById('sim-players').value = 4;
+  document.getElementById('sim-games').value = 30;
+  setChecked('sim-m-', SIM_MAPS, false); ['Earth35','Earth53'].forEach(m => document.getElementById('sim-m-' + m).checked = true);
+  setChecked('sim-o-', SIM_TOGGLE_OPTS.concat(SIM_NM_OPTS).concat(SIM_IGOO_OPTS), false);
+  ['AsyncActions','GateDiplomacy','DemandTsathoggua'].forEach(o => document.getElementById('sim-o-' + o).checked = true);
+}
+function setSimPresetMnu() {
+  setBuild('mnu');
+  setChecked('sim-f-', SIM_FACTIONS, false);
+  document.getElementById('sim-players').value = 4;
+  document.getElementById('sim-games').value = 30;
+  setChecked('sim-m-', SIM_MAPS, false); ['Earth35','Earth53'].forEach(m => document.getElementById('sim-m-' + m).checked = true);
+  setChecked('sim-o-', SIM_TOGGLE_OPTS.concat(SIM_NM_OPTS).concat(SIM_IGOO_OPTS), true);
+}
+
+// POST /admin/<t>/sim-run with the wizard's selections. Server spawns the
+// orchestrator in background and returns "<logName>\tpid=<pid>".
+function runSim() {
+  const build = getBuild();
+  const factions = collectChecked('sim-f-', SIM_FACTIONS);
+  const maps = collectChecked('sim-m-', SIM_MAPS);
+  const opts = collectChecked('sim-o-', SIM_TOGGLE_OPTS.concat(SIM_NM_OPTS).concat(SIM_IGOO_OPTS));
+  const players = parseInt(document.getElementById('sim-players').value, 10);
+  const games = parseInt(document.getElementById('sim-games').value, 10);
+  if (!maps.length) { alert('Pick at least one map.'); return; }
+  const params = new URLSearchParams();
+  params.set('build', build);
+  if (factions.length) params.set('factions', factions.join(','));
+  if (opts.length) params.set('opts', opts.join(','));
+  params.set('maps', maps.join(','));
+  params.set('games', String(games));
+  params.set('players', String(players));
+  const url = `${SERVER}/admin/${TOKEN}/sim-run?${params.toString()}`;
+  const div = document.getElementById('sim-current-run');
+  div.innerHTML = '<p>Starting run…</p>';
+  fetch(url, { method: 'POST' }).then(r => r.text().then(t => ({ok: r.ok, status: r.status, body: t}))).then(res => {
+    if (!res.ok) {
+      div.innerHTML = `<div class="err">Sim spawn failed (HTTP ${res.status}): ${esc(res.body)}</div>`;
+      return;
+    }
+    const [logName, pidPart] = res.body.split('\t');
+    div.innerHTML =
+      `<div class="ok">Started <code>${esc(logName)}</code> (${esc(pidPart || '')}). Tailing every 5s.</div>
+       <div style="margin-top:8px;"><b>Build:</b> ${esc(build)} · <b>Factions:</b> ${esc(factions.join(',') || 'random')} ·
+       <b>Maps:</b> ${esc(maps.join(','))} · <b>Players:</b> ${players} · <b>Games:</b> ${games}</div>
+       <pre class="sim-tail" id="sim-current-tail" style="margin-top:8px;">loading…</pre>`;
+    startTail(logName);
+    loadSimRuns();
+  }).catch(e => {
+    div.innerHTML = `<div class="err">Sim spawn network error: ${esc(e.message || e)}</div>`;
+  });
+}
+
+let SIM_TAIL_TIMER = null;
+function startTail(logName) {
+  stopTail();
+  const pull = () => {
+    fetch(`${SERVER}/admin/${TOKEN}/sim-run-log/${encodeURIComponent(logName)}?lines=80`)
+      .then(r => r.text())
+      .then(t => {
+        const el = document.getElementById('sim-current-tail');
+        if (!el) { stopTail(); return; }
+        el.textContent = t;
+        el.scrollTop = el.scrollHeight;
+        // Stop polling if the run finished (orchestrator's done line shows).
+        if (/=== done\./.test(t)) stopTail();
+      })
+      .catch(() => {});
+  };
+  pull();
+  SIM_TAIL_TIMER = setInterval(pull, 5000);
+}
+function stopTail() {
+  if (SIM_TAIL_TIMER) { clearInterval(SIM_TAIL_TIMER); SIM_TAIL_TIMER = null; }
+}
+
+function loadSimRuns() {
+  fetch(`${SERVER}/admin/${TOKEN}/sim-runs`).then(r => r.text()).then(t => {
+    const div = document.getElementById('sim-past-runs');
+    if (!t.trim()) { div.innerHTML = '<p class="empty">No past runs.</p>'; return; }
+    const rows = t.split('\n').filter(l => l).map(line => {
+      const [name, size, mtime] = line.split('\t');
+      const sizeStr = (parseInt(size, 10) / 1024).toFixed(1) + ' KB';
+      const dt = new Date(parseInt(mtime, 10)).toLocaleString();
+      return `<div class="sim-past-row">
+        <span class="name">${esc(name)}</span>
+        <span class="size">${esc(sizeStr)} · ${esc(dt)}</span>
+        <button class="small" onclick="loadPastRun('${esc(name)}')">View tail</button>
+      </div>`;
+    }).join('');
+    div.innerHTML = rows;
+  });
+}
+function loadPastRun(name) {
+  const div = document.getElementById('sim-current-run');
+  div.innerHTML =
+    `<div><b>Viewing past run:</b> <code>${esc(name)}</code></div>
+     <pre class="sim-tail" id="sim-current-tail" style="margin-top:8px;">loading…</pre>`;
+  stopTail();
+  fetch(`${SERVER}/admin/${TOKEN}/sim-run-log/${encodeURIComponent(name)}?lines=400`)
+    .then(r => r.text())
+    .then(t => {
+      const el = document.getElementById('sim-current-tail');
+      if (el) { el.textContent = t; el.scrollTop = el.scrollHeight; }
+    });
+}
+
+// ========== Claude Terminal ==========
+// Two parallel views:
+//   claude-output  — terminal log (prompts + my response output, interleaved)
+//                    pulls /tmp/claude-output.log via the claude-output-log endpoint
+//   claude-queue   — pending prompts not yet picked up (drained every tick)
+//                    pulls /tmp/claude-prompts.log via the claude-prompts-log endpoint
+// Polling is global (started once at sign-in) so the log stays warm even if
+// you navigate to the Games view and come back.
+let CLAUDE_POLL_TIMER = null;
+
+function submitClaudePrompt() {
+  const ta = document.getElementById('claude-prompt-input');
+  const text = ta.value.trim();
+  const status = document.getElementById('claude-prompt-status');
+  if (!text) { status.textContent = 'Empty prompt — type something first.'; status.style.color = 'var(--danger)'; return; }
+  status.textContent = 'Sending…'; status.style.color = 'var(--text-muted)';
+  fetch(`${SERVER}/admin/${TOKEN}/claude-prompt`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: text,
+  }).then(r => {
+    if (!r.ok) {
+      status.textContent = `Send failed (HTTP ${r.status}).`; status.style.color = 'var(--danger)';
+      return;
+    }
+    status.textContent = 'Queued. Claude picks it up on the next ticker tick.';
+    status.style.color = 'var(--success)';
+    ta.value = '';
+    refreshClaudeQueue();
+  }).catch(e => {
+    status.textContent = `Network error: ${e.message || e}`; status.style.color = 'var(--danger)';
+  });
+}
+
+function refreshClaudeOutput() {
+  fetch(`${SERVER}/admin/${TOKEN}/claude-output-log?lines=500`)
+    .then(r => r.text())
+    .then(t => {
+      const el = document.getElementById('claude-output');
+      if (!el) return;
+      const wasAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 20;
+      el.textContent = t || '(empty)';
+      // Keep auto-scroll only if the user was already at the bottom; if they
+      // scrolled up to read older context, don't yank them to the new tail.
+      if (wasAtBottom) el.scrollTop = el.scrollHeight;
+    })
+    .catch(() => {});
+}
+
+function refreshClaudeQueue() {
+  fetch(`${SERVER}/admin/${TOKEN}/claude-prompts-log?lines=200`)
+    .then(r => r.text())
+    .then(t => {
+      const el = document.getElementById('claude-queue');
+      if (!el) return;
+      const wasAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 20;
+      el.textContent = t || '(queue empty — Claude has caught up)';
+      if (wasAtBottom) el.scrollTop = el.scrollHeight;
+    })
+    .catch(() => {});
+}
+
+function startClaudePolling() {
+  if (CLAUDE_POLL_TIMER) return;
+  refreshClaudeOutput();
+  refreshClaudeQueue();
+  CLAUDE_POLL_TIMER = setInterval(() => {
+    refreshClaudeOutput();
+    refreshClaudeQueue();
+  }, 4000);
+}
+
+const PERMANENT_KEYWORDS = ['rolled', 'Elder Sign', 'Silence Token', 'captured'];
+
+function signIn() {
+  const s = document.getElementById('server-url').value.replace(/\/+$/, '');
+  const t = document.getElementById('owner-token').value.trim();
+  if (!t) {
+    showErr('login-err', 'Owner token required.');
+    return;
+  }
+  SERVER = s; TOKEN = t;
+
+  // Hide any previous error, reset progress UI
+  document.getElementById('login-err').style.display = 'none';
+  const progressWrap = document.getElementById('login-progress-wrap');
+  const timingEl = document.getElementById('login-timing');
+  progressWrap.style.display = 'none';
+  timingEl.style.display = 'none';
+
+  // Show progress bar after 2 seconds if still loading
+  const t0 = performance.now();
+  const progressTimer = setTimeout(() => {
+    progressWrap.style.display = 'block';
+  }, 2000);
+
+  fetch(`${SERVER}/admin/${TOKEN}/games`).then(r => {
+    clearTimeout(progressTimer);
+    progressWrap.style.display = 'none';
+    const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
+
+    if (r.status === 200) {
+      // Record login time in localStorage
+      const logEntry = { ts: new Date().toISOString(), secs: parseFloat(elapsed) };
+      try {
+        const log = JSON.parse(localStorage.getItem('cwo-login-times') || '[]');
+        log.push(logEntry);
+        // Keep last 50 entries
+        if (log.length > 50) log.splice(0, log.length - 50);
+        localStorage.setItem('cwo-login-times', JSON.stringify(log));
+      } catch(e) { /* localStorage unavailable */ }
+
+      // Show timing briefly
+      timingEl.textContent = `Login took ${elapsed}s`;
+      timingEl.style.display = 'block';
+      setTimeout(() => { timingEl.style.display = 'none'; }, 5000);
+
+      document.getElementById('login-pane').style.display = 'none';
+      document.getElementById('main-pane').style.display = 'block';
+      // Build switcher + SimRunner wizard need to populate on first show.
+      refreshBuildIndicator();
+      renderSimWizard();
+      setBuild(getBuild()); // updates the sim-build-label
+      loadSimRuns();
+      // Start Claude terminal polling immediately so the log stays warm
+      // whether or not the user navigates to the Claude Terminal section.
+      startClaudePolling();
+      // Make the server URL in the header a clickable link that opens a new
+      // game lobby in a fresh tab. Was previously plain text.
+      const ind = document.getElementById('server-indicator');
+      ind.innerHTML = '';
+      const a = document.createElement('a');
+      a.href = SERVER;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = SERVER;
+      a.style.cssText = 'color:#b8a378;text-decoration:none;';
+      a.onmouseover = () => { a.style.textDecoration = 'underline'; a.style.color = '#d9b97e'; };
+      a.onmouseout = () => { a.style.textDecoration = 'none'; a.style.color = '#b8a378'; };
+      a.title = 'Open a new game lobby in a fresh tab';
+      ind.appendChild(a);
+      return r.text().then(populateGames);
+    } else {
+      showErr('login-err', `Sign-in failed (HTTP ${r.status}). Check the server URL and token.`);
+    }
+  }).catch(e => {
+    clearTimeout(progressTimer);
+    progressWrap.style.display = 'none';
+    showErr('login-err', `Sign-in failed: ${e.message}`);
+  });
+}
+
+function showErr(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg; el.style.display = 'block';
+}
+
+function loadGames() {
+  // 2026-06-01: Clear replay-existence cache so each refresh re-probes /replays/<id>.html.
+  // If the user just queued a build, a refresh after a minute or two should
+  // surface the new replay link automatically.
+  REPLAY_EXISTS = {};
+  fetch(`${SERVER}/admin/${TOKEN}/games`).then(r => r.text()).then(text => {
+    populateGames(text);
+    fetchFrozenList();
+  });
+}
+function fetchFrozenList() {
+  fetch(`${SERVER}/admin/${TOKEN}/frozen-list`).then(r => r.text()).then(text => {
+    const frozenIds = new Set(text.trim().split('\n').filter(l => l).map(l => l.trim()));
+    document.querySelectorAll('.game-row').forEach(row => {
+      const id = row.dataset.gameId;
+      const btn = row.querySelector('.freeze-flag');
+      if (!btn) return;
+      const isFrozen = frozenIds.has(id);
+      btn.classList.toggle('on', isFrozen);
+      btn.textContent = isFrozen ? '❄ Frozen' : 'Freeze';
+      btn.style.background = isFrozen ? '#1a3a5a' : '';
+      btn.style.borderColor = isFrozen ? '#3080aa' : '';
+      btn.style.color = isFrozen ? '#fff' : '';
+      btn.title = isFrozen
+        ? 'Game is FROZEN (player writes blocked). Click to unfreeze.'
+        : 'Freeze this game (blocks player writes/rollbacks)';
+    });
+  }).catch(() => {});
+}
+
+// ── Server Stats ─────────────────────────────────────────────────────
+function loadServerStats() {
+  ['ss-host-mem','ss-jvm','ss-cpu','ss-games'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.textContent = 'loading…';
+  });
+  // Compute stats from the games list (client-side — no server endpoint needed)
+  fetch(`${SERVER}/admin/${TOKEN}/games`).then(r => r.text()).then(text => {
+    const lines = text.split('\n').filter(l => l.trim());
+    const total = lines.length;
+    const now = Date.now();
+    const DAY = 86400000;
+    let active7d = 0, active24h = 0, broken = 0, completed = 0;
+    const builds = { library: 0, mnu: 0, tt: 0, bb: 0, hb: 0, unknown: 0 };
+    let totalHumans = 0, totalBots = 0;
+    lines.forEach(line => {
+      const p = line.split('\t');
+      const lastWrite = parseInt(p[3] || '0', 10);
+      if (lastWrite > 0 && (now - lastWrite) < 7 * DAY) active7d++;
+      if (lastWrite > 0 && (now - lastWrite) < DAY) active24h++;
+      if ((p[4] || '0').trim() === '1') broken++;
+      if ((p[5] || '0').trim() === '1') completed++;
+      const id = p[0];
+      const meta = GAME_META_CACHE[id];
+      if (meta && meta.build && meta.build !== 'unknown') {
+        builds[meta.build] = (builds[meta.build] || 0) + 1;
+      } else {
+        const serverBuild = (p[10] || '').trim().toLowerCase();
+        if (['library','mnu','tt','bb','hb'].includes(serverBuild)) builds[serverBuild]++;
+        else builds.unknown++;
+      }
+      if (meta) { totalHumans += meta.humanCount; totalBots += meta.botCount; }
+    });
+    const active = total - completed - broken;
+
+    document.getElementById('ss-host-mem').innerHTML =
+      `<span style="color:var(--text-muted);">Host memory/JVM stats require a server-side endpoint<br>that is not yet implemented.</span><br><br>` +
+      `VM: Oracle Cloud, 1 vCPU, 1 GB RAM<br>` +
+      `JVM: -Xmx450m (systemd cwo.service)`;
+
+    document.getElementById('ss-jvm').innerHTML =
+      `Total games:     <b>${total}</b><br>` +
+      `Active (24h):    ${active24h}<br>` +
+      `Active (7d):     ${active7d}<br>` +
+      `In progress:     ${active}<br>` +
+      `Completed:       ${completed}<br>` +
+      `Broken:          ${broken}`;
+
+    document.getElementById('ss-cpu').innerHTML =
+      `<b>By build:</b><br>` +
+      `Library:  ${builds.library}<br>` +
+      `MNU:      ${builds.mnu}<br>` +
+      `TT:       ${builds.tt}<br>` +
+      `BB:       ${builds.bb}<br>` +
+      `HB:       ${builds.hb}<br>` +
+      `Unknown:  ${builds.unknown}`;
+
+    document.getElementById('ss-games').innerHTML =
+      `<b>Players:</b><br>` +
+      `Total human slots:  ${totalHumans}<br>` +
+      `Total bot slots:    ${totalBots}<br>` +
+      `Human games:        ${lines.filter(l => { const id = l.split('\t')[0]; const m = GAME_META_CACHE[id]; return m && m.humanCount > 0 && m.botCount === 0; }).length}<br>` +
+      `Bot-only games:     ${lines.filter(l => { const id = l.split('\t')[0]; const m = GAME_META_CACHE[id]; return m && m.botCount > 0 && m.humanCount === 0; }).length}<br>` +
+      `Mixed games:        ${lines.filter(l => { const id = l.split('\t')[0]; const m = GAME_META_CACHE[id]; return m && m.humanCount > 0 && m.botCount > 0; }).length}`;
+  }).catch(e => {
+    ['ss-host-mem','ss-jvm','ss-cpu','ss-games'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.textContent = 'error: ' + e;
+    });
+  });
+}
+
+// 2026-06-02: Replaced single-pill GAMES_FILTER with multi-axis filter pyramid.
+// Each filter is an independent checkbox; checked filters AND together (a game
+// must satisfy every checked group), groups OR within (e.g. player-count 3 OR 4).
+// Kept GAMES_FILTER (now unused at runtime) only as a fossil for backwards-compat
+// in any console snippets / old localStorage; nothing else reads it.
+let GAMES_FILTER = 'all';
+// Filter state read on demand from the checkbox elements in #filter-pyramid.
+// readFilters() returns a plain object for use in the row-visibility predicate.
+function readFilters() {
+  const g = id => !!(document.getElementById(id) && document.getElementById(id).checked);
+  return {
+    repYes:    g('flt-rep-yes'),
+    repNo:     g('flt-rep-no'),
+    errYes:    g('flt-err-yes'),
+    errNo:     g('flt-err-no'),
+    pc3:       g('flt-pc-3'),
+    pc4:       g('flt-pc-4'),
+    pc5:       g('flt-pc-5'),
+    pcUnknown: g('flt-pc-unknown'),
+    allHumans: g('flt-allhumans-yes'),
+    allBots:   g('flt-allbots-yes'),
+    anyBots:   g('flt-anybots-yes'),
+    liveOnly:  g('flt-live-yes'),
+    buildLibrary: g('flt-build-library'),
+    buildMNU:     g('flt-build-mnu'),
+    buildTT:      g('flt-build-tt'),
+    buildBB:      g('flt-build-bb'),
+    buildHB:      g('flt-build-hb'),
+    search:    (document.getElementById('games-search')?.value || '').trim().toLowerCase(),
+    sort:      document.getElementById('games-sort')?.value || 'last',
+  };
+}
+
+// Count of currently-active filter checkboxes (for the toolbar chip).
+function activeFilterCount() {
+  const f = readFilters();
+  let n = 0;
+  if (f.repYes) n++; if (f.repNo) n++;
+  if (f.errYes) n++; if (f.errNo) n++;
+  if (f.pc3) n++; if (f.pc4) n++; if (f.pc5) n++; if (f.pcUnknown) n++;
+  if (f.allHumans) n++; if (f.allBots) n++; if (f.anyBots) n++;
+  if (f.liveOnly) n++;
+  if (f.buildLibrary) n++; if (f.buildMNU) n++; if (f.buildTT) n++; if (f.buildBB) n++; if (f.buildHB) n++;
+  if (f.search) n++;
+  return n;
+}
+
+// Show / hide the filter pyramid panel. The toolbar icon shows the active count.
+function toggleFilterPyramid() {
+  const p = document.getElementById('filter-pyramid');
+  if (!p) return;
+  p.style.display = (p.style.display === 'none' ? 'block' : 'none');
+}
+
+function clearAllFilters() {
+  ['flt-rep-yes','flt-rep-no','flt-err-yes','flt-err-no',
+   'flt-pc-3','flt-pc-4','flt-pc-5','flt-pc-unknown','flt-allhumans-yes','flt-allbots-yes','flt-anybots-yes','flt-live-yes',
+   'flt-build-library','flt-build-mnu','flt-build-tt','flt-build-bb','flt-build-hb']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.checked = false; });
+  const s = document.getElementById('games-search'); if (s) s.value = '';
+  const so = document.getElementById('games-sort'); if (so) so.value = 'last';
+  applyGamesSortSearch();
+}
+
+function updateFilterCounts(games) {
+  const allHuman = games.filter(g => g.humanCount > 0 && g.botCount === 0 && !g.isBot).length;
+  const allBots = games.filter(g => g.isBot || (g.playerCount > 0 && g.botCount === g.playerCount)).length;
+  const anyBots = games.filter(g => g.isBot || g.botCount > 0).length;
+  const pc3 = games.filter(g => g.playerCount === 3).length;
+  const pc4 = games.filter(g => g.playerCount === 4).length;
+  const pc5 = games.filter(g => g.playerCount === 5).length;
+  const pcUnknown = games.filter(g => g.playerCount < 3 || g.playerCount > 5).length;
+  const errYes = games.filter(g => g.errored).length;
+  const errNo = games.filter(g => !g.errored).length;
+  const liveYes = games.filter(g => g.isLive).length;
+  const repYes = games.filter(g => REPLAY_EXISTS[g.id] === true).length;
+  const repNo = games.filter(g => REPLAY_EXISTS[g.id] === false).length;
+  const buildLib = games.filter(g => g.build === 'library').length;
+  const buildMNU = games.filter(g => g.build === 'mnu').length;
+  const buildTT = games.filter(g => g.build === 'tt').length;
+  const buildBB = games.filter(g => g.build === 'bb').length;
+  const buildHB = games.filter(g => g.build === 'hb').length;
+  const setCount = (id, n) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const lbl = el.closest('label');
+    if (!lbl) return;
+    let sp = lbl.querySelector('.flt-count');
+    if (!sp) { sp = document.createElement('span'); sp.className = 'flt-count'; sp.style.cssText = 'color:var(--text-muted);font-size:8pt;margin-left:3px;'; lbl.appendChild(sp); }
+    sp.textContent = `(${n})`;
+  };
+  setCount('flt-allhumans-yes', allHuman);
+  setCount('flt-allbots-yes', allBots);
+  setCount('flt-anybots-yes', anyBots);
+  setCount('flt-pc-3', pc3);
+  setCount('flt-pc-4', pc4);
+  setCount('flt-pc-5', pc5);
+  setCount('flt-pc-unknown', pcUnknown);
+  setCount('flt-err-yes', errYes);
+  setCount('flt-err-no', errNo);
+  setCount('flt-live-yes', liveYes);
+  setCount('flt-rep-yes', repYes);
+  setCount('flt-rep-no', repNo);
+  setCount('flt-build-library', buildLib);
+  setCount('flt-build-mnu', buildMNU);
+  setCount('flt-build-tt', buildTT);
+  setCount('flt-build-bb', buildBB);
+  setCount('flt-build-hb', buildHB);
+}
+
+// Predicate: does this game row pass the current filter set?
+function gamePassesFilters(g, f) {
+  // Build axis. If any build checkbox is checked, the game must match one of them.
+  // If no build checkboxes are checked, all games pass. Unknown/empty builds always pass.
+  const buildChecked = f.buildLibrary || f.buildMNU || f.buildTT || f.buildBB || f.buildHB;
+  if (buildChecked && g.build && g.build !== 'unknown' && g.build !== '') {
+    const ok = (f.buildLibrary && g.build === 'library') ||
+               (f.buildMNU && g.build === 'mnu') ||
+               (f.buildTT && g.build === 'tt') ||
+               (f.buildBB && g.build === 'bb') ||
+               (f.buildHB && g.build === 'hb');
+    if (!ok) return false;
+  }
+  // Replay axis. Filter passes if either checkbox is off, or if the game's
+  // replay-existence (from REPLAY_EXISTS cache) matches the checked option.
+  // For unknown (probe pending), let it through so the user isn't blocked.
+  const hasReplay = REPLAY_EXISTS[g.id];
+  if (f.repYes && hasReplay !== true) return false;
+  if (f.repNo  && hasReplay === true) return false;
+  // Errored axis.
+  if (f.errYes && !g.errored) return false;
+  if (f.errNo  &&  g.errored) return false;
+  // Player count axis. If any of {3,4,5,?} checked, game must match one of them.
+  const pcChecked = f.pc3 || f.pc4 || f.pc5 || f.pcUnknown;
+  if (pcChecked) {
+    const isUnknown = g.playerCount < 3 || g.playerCount > 5;
+    const ok = (f.pc3 && g.playerCount === 3) || (f.pc4 && g.playerCount === 4) || (f.pc5 && g.playerCount === 5) || (f.pcUnknown && isUnknown);
+    if (!ok) return false;
+  }
+  // Bot axes. Use isBot flag (BotGames table) as authoritative override:
+  // SimRunner labels all factions ":Human" in the roster, so roster-based
+  // humanCount/botCount is unreliable for bot-created games.
+  const effectivelyAllBots = g.isBot || (g.playerCount > 0 && g.botCount === g.playerCount);
+  const effectivelyAnyBots = g.isBot || g.botCount > 0;
+  // "all humans": zero bots AND not a bot-flagged game.
+  if (f.allHumans && !(g.humanCount > 0 && g.botCount === 0 && !g.isBot)) return false;
+  // "all bots": every faction is a bot.
+  if (f.allBots && !effectivelyAllBots) return false;
+  // "any bots": at least one bot among factions.
+  if (f.anyBots && !effectivelyAnyBots) return false;
+  // Live-game filter.
+  if (f.liveOnly && !g.isLive) return false;
+  // Name search.
+  if (f.search && !String(g.name).toLowerCase().includes(f.search)) return false;
+  return true;
+}
+
+// Apply current sort + search + filter to the cached games list and re-render.
+// Called from every filter-pyramid checkbox onchange and from the sort dropdown.
+function applyGamesSortSearch() {
+  // Update the active-filter count chip.
+  const chip = document.getElementById('filter-active-count');
+  if (chip) {
+    const n = activeFilterCount();
+    chip.textContent = n > 0 ? `(${n})` : '';
+  }
+  if (LAST_GAMES_TEXT !== null) populateGames(LAST_GAMES_TEXT);
+}
+// Cache of game id → replay-existence (true/false). Filled lazily by HEAD probes;
+// reset on every loadGames() call so we re-check after replay-generation runs.
+let REPLAY_EXISTS = {};
+// 2026-06-01: Auto-error threshold. A non-completed game whose last log write
+// is older than this is inferred to have errored out (the engine crashed or
+// the game stalled). Bots tend to either finish in minutes or hard-crash; if
+// nothing has been written for 6 hours and the game isn't marked Completed,
+// it's almost certainly dead. We keep this generous to avoid false positives
+// on slow async games.
+const AUTO_ERROR_STALE_MS = 6 * 60 * 60 * 1000;
+
+// Heuristic: a game is "errored" when it isn't completed, has been written to
+// at least once (lastWriteMs > 0), and has gone stale beyond AUTO_ERROR_STALE_MS.
+// A manually-broken game ALSO counts as errored for the filter so the user can
+// pull up everything that needs attention from one filter pill.
+function isErrored(g) {
+  if (g.broken) return true;
+  if (g.completed) return false;
+  if (!g.lastWriteMs || g.lastWriteMs <= 0) return false;
+  return (Date.now() - g.lastWriteMs) > AUTO_ERROR_STALE_MS;
+}
+
+function setGamesFilter(name) {
+  GAMES_FILTER = name;
+  document.querySelectorAll('#games-filter-pills .filter-pill').forEach(p => {
+    p.classList.toggle('active', p.dataset.filter === name);
+  });
+  // Re-render with the cached games list (no refetch).
+  if (LAST_GAMES_TEXT !== null) populateGames(LAST_GAMES_TEXT);
+}
+
+// Cache the most recent raw games-list payload so filter pill clicks can
+// re-render without re-fetching. Set every populateGames() call.
+let LAST_GAMES_TEXT = null;
+
+// ========== Game metadata enrichment ==========
+// The server's games TSV has unreliable build/humanCount/botCount fields (most
+// are blank or wrong). We detect the real values from each game's log:
+//   Line 0 = version string → determines build
+//   Line 2 = "FACTION:Human/FACTION:Normal ..." → determines human/bot counts
+// Results are cached in localStorage so we only fetch each game once.
+// IMPORTANT: bump this key's version suffix whenever detectBuildFromVersion (or
+// parsePlayersFromLine2) changes classification logic. enrichGames() skips any
+// game already present in the cache, so stale values are otherwise frozen
+// forever. v3→v4 (2026-08-04): the 'homebrew'→'hb' branch was only added to
+// detectBuildFromVersion on 2026-07-31; every HB game enriched before that fell
+// through to the 'cthulhu wars hrf'→'library' fallback and was cached as
+// 'library', so HB games showed up misfiled under Library with wrong /play
+// links. Bumping the key discards those stale entries and re-enriches every
+// game with the corrected logic.
+const GAME_META_CACHE_KEY = 'cwo_admin_game_meta_v4';
+let GAME_META_CACHE = {};
+try { GAME_META_CACHE = JSON.parse(localStorage.getItem(GAME_META_CACHE_KEY) || '{}'); } catch(e) {}
+
+function detectBuildFromVersion(versionLine) {
+  const v = (versionLine || '').toLowerCase();
+  if (v.includes('library-at-celaeno') || v.includes('library at celaeno')) return 'library';
+  if (v.includes('more-neutral-units') || v.includes('more neutral units') || v.includes('mnu')) return 'mnu';
+  if (v.includes('tcho-tcho') || v.includes('tcho tcho') || v.includes('tchotcho')) return 'tt';
+  if (v.includes('bubastis')) return 'bb';
+  if (v.includes('homebrew')) return 'hb';
+  if (v.includes('cthulhu wars hrf')) return 'library';
+  return 'unknown';
+}
+
+function parsePlayersFromLine2(line2) {
+  // Format: "FACTION:Human/FACTION:Normal/FACTION:Bot ... MapXXX ..."
+  // Split on space, take the first token (faction assignments), split on /
+  const token = (line2 || '').split(/\s+/)[0] || '';
+  const parts = token.split('/').filter(p => p.includes(':'));
+  let humans = 0, bots = 0;
+  parts.forEach(p => {
+    const kind = p.split(':')[1] || '';
+    if (kind.toLowerCase() === 'human') humans++;
+    else bots++;
+  });
+  const total = humans + bots;
+  // Only valid player counts are 3, 4, 5. If the log didn't populate
+  // all factions (game died early), treat as unknown rather than wrong.
+  if (total < 3 || total > 5) return { humanCount: 0, botCount: 0, playerCount: 0 };
+  return { humanCount: humans, botCount: bots, playerCount: total };
+}
+
+function getGameMeta(gameId) {
+  return GAME_META_CACHE[gameId] || null;
+}
+
+function saveGameMetaCache() {
+  try { localStorage.setItem(GAME_META_CACHE_KEY, JSON.stringify(GAME_META_CACHE)); } catch(e) {}
+}
+
+let ENRICH_QUEUE = [];
+let ENRICH_RUNNING = false;
+let ENRICH_REFRESHING = false;
+
+function enrichGames(games) {
+  if (ENRICH_RUNNING || ENRICH_REFRESHING) return;
+  const needEnrich = games.filter(g => !GAME_META_CACHE[g.id]);
+  if (!needEnrich.length) return;
+  ENRICH_QUEUE = needEnrich.map(g => g.id);
+  ENRICH_RUNNING = true;
+  runEnrichBatch();
+}
+
+function runEnrichBatch() {
+  if (!ENRICH_QUEUE.length) {
+    ENRICH_RUNNING = false;
+    saveGameMetaCache();
+    ENRICH_REFRESHING = true;
+    if (LAST_GAMES_TEXT !== null) populateGames(LAST_GAMES_TEXT);
+    ENRICH_REFRESHING = false;
+    return;
+  }
+  const batch = ENRICH_QUEUE.splice(0, 8);
+  Promise.all(batch.map(id =>
+    fetch(`${SERVER}/admin/${TOKEN}/log/${id}`)
+      .then(r => r.ok ? r.text() : '')
+      .then(text => {
+        const lines = text.split('\n');
+        const line0parts = (lines[0] || '').split('\t');
+        const versionStr = line0parts[line0parts.length - 1] || '';
+        const line2parts = (lines[2] || '').split('\t');
+        const playerStr = line2parts[line2parts.length - 1] || '';
+        const build = detectBuildFromVersion(versionStr);
+        const players = parsePlayersFromLine2(playerStr);
+        GAME_META_CACHE[id] = { build, ...players };
+      })
+      .catch(() => { GAME_META_CACHE[id] = { build: 'unknown', humanCount: 0, botCount: 0, playerCount: 0 }; })
+  )).then(() => {
+    saveGameMetaCache();
+    ENRICH_REFRESHING = true;
+    if (LAST_GAMES_TEXT !== null) populateGames(LAST_GAMES_TEXT);
+    ENRICH_REFRESHING = false;
+    setTimeout(runEnrichBatch, 100);
+  });
+}
+
+// HEAD probe for a replay HTML at /replays/<gameid>.html. Updates REPLAY_EXISTS
+// and re-renders the row's replay UI when the answer comes back. Async/lazy.
+function probeReplay(gameId, rowElem) {
+  if (REPLAY_EXISTS[gameId] !== undefined) {
+    paintReplayCell(gameId, rowElem);
+    return;
+  }
+  // GET with Range:bytes=0-0 — akka-http's getFromDirectory honors Range so this
+  // costs ~1 byte over the wire AND akka-http doesn't auto-route HEAD requests
+  // (returns 405), so HEAD is not an option here.
+  fetch(`${SERVER}/replays/${gameId}.html`, { headers: { 'Range': 'bytes=0-0' } })
+    .then(r => { REPLAY_EXISTS[gameId] = (r.status === 200 || r.status === 206); paintReplayCell(gameId, rowElem); })
+    .catch(() => { REPLAY_EXISTS[gameId] = false; paintReplayCell(gameId, rowElem); });
+}
+
+// Render the replay cell (link vs Generate button vs "queued") into the row.
+function paintReplayCell(gameId, rowElem) {
+  if (!rowElem) rowElem = document.querySelector(`.game-row[data-game-id="${gameId}"]`);
+  if (!rowElem) return;
+  const cell = rowElem.querySelector('.replay-cell');
+  if (!cell) return;
+  const queued = REPLAY_QUEUED.has(String(gameId));
+  if (REPLAY_EXISTS[gameId]) {
+    cell.innerHTML = `<a class="replay-badge" href="${SERVER}/replays/${gameId}.html" target="_blank" onclick="event.stopPropagation();">▶ Replay</a>` +
+      `<button class="small" style="margin-top:4px;" onclick="event.stopPropagation(); requestReplay('${gameId}', this)">Regenerate</button>`;
+  } else if (queued) {
+    cell.innerHTML = `<span class="replay-pending">replay queued…</span>`;
+  } else {
+    cell.innerHTML = `<button class="small" onclick="event.stopPropagation(); requestReplay('${gameId}', this)">Generate replay</button>`;
+  }
+  // 2026-06-02: If a replay-axis filter is engaged in the new filter pyramid,
+  // recompute row visibility now that we know whether this game has a replay.
+  // (Other axes don't depend on async probes, so they're already settled by
+  // the initial gamePassesFilters() pass in populateGames.)
+  const f = readFilters();
+  if (f.repYes || f.repNo) {
+    const hasReplay = !!REPLAY_EXISTS[gameId];
+    let pass = true;
+    if (f.repYes && !hasReplay) pass = false;
+    if (f.repNo  &&  hasReplay) pass = false;
+    rowElem.style.display = pass ? '' : 'none';
+  }
+}
+
+// Set of game ids the user has just queued a replay for, so we show "queued…"
+// until the next page refresh resolves the actual HTML existence. Kept in
+// localStorage so a hard-refresh doesn't lose the in-flight state.
+const REPLAY_QUEUED = (() => {
+  try {
+    const raw = localStorage.getItem('cwo_admin_replay_queued') || '[]';
+    return new Set(JSON.parse(raw));
+  } catch (e) { return new Set(); }
+})();
+function persistReplayQueued() {
+  localStorage.setItem('cwo_admin_replay_queued', JSON.stringify(Array.from(REPLAY_QUEUED)));
+}
+
+// Submit a replay-build request via the existing claude-prompts queue. The
+// ticker picks this up and runs build-replay.py, which writes the HTML to the
+// server-accessible /opt/cwo/solo/replays/ dir. Async — the user can wait or
+// come back later; populateGames() re-probes existence on every refresh.
+function requestReplay(gameId, btn) {
+  const promptText = `ADMIN-GENERATE-REPLAY game_id=${gameId} — run /Users/gremus/My\\ Drive/Personal/Games/Cthulhu\\ Wars/Replay/build-replay.py for this game and scp the resulting HTML to oracle-cw-server:/opt/cwo/solo/replays/${gameId}.html so the admin console can link to it at /replays/${gameId}.html.`;
+  if (btn) { btn.disabled = true; btn.textContent = 'queuing…'; }
+  fetch(`${SERVER}/admin/${TOKEN}/claude-prompt`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: promptText,
+  }).then(r => {
+    if (!r.ok) {
+      alert(`Replay queue failed (HTTP ${r.status}).`);
+      if (btn) { btn.disabled = false; btn.textContent = 'Generate replay'; }
+      return;
+    }
+    REPLAY_QUEUED.add(String(gameId));
+    persistReplayQueued();
+    paintReplayCell(gameId, null);
+  }).catch(e => {
+    alert(`Replay queue network error: ${e.message || e}`);
+    if (btn) { btn.disabled = false; btn.textContent = 'Generate replay'; }
+  });
+}
+
+// 2026-06-14: Queue a console-check for one game. Mirrors requestReplay: it
+// POSTs a single tagged line to the shared admin queue (no server change). A
+// local launchd ticker (console-grab poll) watches the queue, loads the game
+// in headless Chromium via tools/console-grab.py, and writes the captured
+// console errors back into the game's annotation Notes (prefixed "CONSOLE @ …"),
+// which the Notes box on row-select already displays.
+function requestConsoleGrab(gameId, build, btn) {
+  const line = `CONSOLE-CHECK game=${gameId} build=${build}`;
+  if (btn) { btn.disabled = true; btn.textContent = 'queuing…'; }
+  fetch(`${SERVER}/admin/${TOKEN}/claude-prompt`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: line,
+  }).then(r => {
+    if (!r.ok) {
+      alert(`Console-check queue failed (HTTP ${r.status}).`);
+      if (btn) { btn.disabled = false; btn.textContent = 'Grab console'; }
+      return;
+    }
+    if (btn) { btn.textContent = 'checking…'; btn.title = 'Console-check queued. The result appears in this game’s Notes once the ticker runs (within ~2 min).'; }
+  }).catch(e => {
+    alert(`Console-check network error: ${e.message || e}`);
+    if (btn) { btn.disabled = false; btn.textContent = 'Grab console'; }
+  });
+}
+
+function populateGames(text) {
+  LAST_GAMES_TEXT = text;
+  const list = document.getElementById('games-list');
+  list.innerHTML = '';
+  if (!text.trim()) {
+    list.innerHTML = '<p class="empty">No live games.</p>';
+    const countEl = document.getElementById('games-count');
+    if (countEl) countEl.textContent = '0 games';
+    return;
+  }
+  // Parse all rows first so we can sort before rendering.
+  // Sort order, per user spec:
+  //   1. broken (broken=1)            — at top
+  //   2. active (broken=0, completed=0)
+  //   3. completed (completed=1)      — at bottom
+  // Within each group: lastWriteMs ascending (oldest first).
+  const showBots = !!(document.getElementById('show-bots-cb') && document.getElementById('show-bots-cb').checked);
+  const games = text.split('\n').filter(l => l).map(line => {
+    const parts = line.split('\t');
+    // 2026-06-02: columns 7-9 are playerCount, botCount, hasFixResponse.
+    // 2026-06-03 15:55: col 10 = build (library|mnu|tt|bb|unknown) — added so
+    // the Build switcher can actually filter the games list. col 11 reserved
+    // for future startMs once the server stamps it.
+    // Old server responses pad with 0 / '' so the indexing stays stable.
+    return {
+      id: parts[0],
+      name: parts[1],
+      secret: parts[2],
+      lastWriteMs: parseInt(parts[3] || '0', 10),
+      broken: (parts[4] || '0').trim() === '1',
+      completed: (parts[5] || '0').trim() === '1',
+      isBot: (parts[6] || '0').trim() === '1',
+      humanCount: parseInt(parts[7] || '0', 10),
+      botCount: parseInt(parts[8] || '0', 10),
+      isLive: (parts[9] || '0').trim() === '1',
+      build: (['library','mnu','tt','bb','hb'].includes((parts[10]||'').trim().toLowerCase()) ? parts[10].trim().toLowerCase() : ''),
+      hasFixResp: false,
+      frozen: (parts[11] || '').trim() === '1' || getFrozenLocal(parts[0]),
+      startMs: 0,
+      rlSubmittedMs: 0,
+    };
+  }).filter(g => g.id).filter(g => showBots || !g.isBot);
+  // Apply cached metadata (build, humanCount, botCount) from log enrichment
+  games.forEach(g => {
+    const meta = getGameMeta(g.id);
+    if (meta) {
+      if (!g.build || g.build === 'unknown') g.build = meta.build;
+      g.humanCount = meta.humanCount;
+      g.botCount = meta.botCount;
+      g.playerCount = meta.playerCount;
+    } else {
+      g.playerCount = g.humanCount + g.botCount;
+    }
+  });
+  // 2026-06-01: Auto-error inference. Pure client-side; no server change.
+  games.forEach(g => { g.errored = isErrored(g); });
+  function groupKey(g) {
+    if (g.broken || g.errored) return 0;
+    if (g.completed) return 2;
+    return 1;
+  }
+  // 2026-06-02: New sort dropdown. 'default' = legacy 3-bucket sort (status,
+  // then last activity). 'name' / 'start' / 'last' override that with simple
+  // single-key sorts. Start date is approximated via id (HSQLDB autoinc → id
+  // monotonically increases with creation), since the server doesn't track
+  // createdMs separately yet (Meta only carries lastWriteMs).
+  const f = readFilters();
+  if (f.sort === 'name') {
+    games.sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  } else if (f.sort === 'start') {
+    games.sort((a, b) => (parseInt(b.id, 10) || 0) - (parseInt(a.id, 10) || 0));
+  } else if (f.sort === 'last') {
+    games.sort((a, b) => (b.lastWriteMs || 0) - (a.lastWriteMs || 0));
+  } else {
+    games.sort((a, b) => groupKey(a) - groupKey(b) || a.lastWriteMs - b.lastWriteMs);
+  }
+  // 2026-06-02: Apply filter-pyramid predicates (replay/errored/playerCount/bots/search).
+  // gamePassesFilters is async-tolerant for the replay axis: if REPLAY_EXISTS for
+  // this game id is undefined (HEAD probe pending), the predicate lets the row
+  // through. paintReplayCell re-evaluates and hides the row when the answer
+  // arrives. This matches the previous single-pill behaviour.
+  const visible = games.filter(g => gamePassesFilters(g, f));
+  const countEl = document.getElementById('games-count');
+  if (countEl) {
+    const total = games.length;
+    const shown = visible.length;
+    countEl.textContent = shown === total ? `${total} games` : `${shown} of ${total} games`;
+  }
+  updateFilterCounts(visible);
+  if (!visible.length) {
+    list.innerHTML = '<p class="empty">No games match the current filter.</p>';
+    return;
+  }
+  visible.forEach(g => {
+    const { id, name, secret, lastWriteMs, broken, completed, errored } = g;
+    const classes = ['game-row'];
+    if (broken) classes.push('broken');
+    else if (errored) classes.push('errored');
+    if (completed) classes.push('completed');
+    const row = document.createElement('div');
+    row.className = classes.join(' ');
+    row.dataset.gameId = id;
+    row.dataset.gameName = name;
+    row.dataset.masterSecret = secret;
+    row.dataset.lastWriteMs = String(lastWriteMs);
+    row.dataset.broken = broken ? '1' : '0';
+    row.dataset.completed = completed ? '1' : '0';
+    row.dataset.errored = errored ? '1' : '0';
+    row.dataset.build = g.build || getBuild();
+    const brokenLabel = broken ? '✖ Broken' : 'Mark broken';
+    const brokenTitle = broken ? 'Click to clear the broken flag' : 'Click to mark this game as broken';
+    const isLive = g.isLive;
+    const liveLabel = isLive ? '● Live' : 'Mark live';
+    const liveTitle = isLive ? 'This game is monitored every 15 min. Click to stop monitoring.' : 'Flag for automatic 15-min health checks';
+    // Status badge — completed > errored > nothing. Manual broken is already
+    // surfaced by the row border + broken-flag button, so no separate badge.
+    let statusLabel = '';
+    if (completed) statusLabel = `<span class="completed-badge">Completed</span>`;
+    else if (errored && !broken) statusLabel = `<span class="errored-badge" title="No activity for >6h on a non-completed game — likely crashed">⚠ Errored</span>`;
+    // Generate-replay button appears for completed OR errored/broken games
+    // (i.e. anything that's not actively in progress). For active games it'd
+    // be premature since the log isn't final.
+    const replayEligible = completed || broken || errored;
+    const replayCell = replayEligible
+      ? `<div class="replay-cell" style="font-size:9pt;">probing…</div>`
+      : '';
+    // 2026-06-04: RL-tuning submission. Eligible iff finished AND build is
+    // library or mnu (BB Claude owns tt/bb). Already-submitted rows show a
+    // green badge with a submitted-at tooltip.
+    const rlEligible = completed && (g.build === 'library' || g.build === 'mnu');
+    const rlBadge = (g.rlSubmittedMs && g.rlSubmittedMs > 0)
+      ? `<span class="rl-submitted-badge" title="Submitted to RL tuning corpus at ${new Date(g.rlSubmittedMs).toLocaleString()}" style="display:inline-block;font-size:8pt;padding:1px 8px;background:#1d4d24;color:#9fe5a8;border-radius:8px;margin-left:6px;">✓ RL-tuning</span>`
+      : '';
+    const rlCell = rlEligible
+      ? `<div class="rl-cell" style="font-size:9pt;display:flex;gap:4px;align-items:center;">` +
+          `<label title="Select for bulk RL-tuning submission" style="display:inline-flex;align-items:center;gap:3px;font-size:8.5pt;color:var(--text-muted);">` +
+            `<input type="checkbox" class="rl-select-cb" data-game-id="${id}" data-build="${esc(g.build)}" onclick="event.stopPropagation();" />` +
+            `sel</label>` +
+          `<button class="small" onclick="event.stopPropagation(); submitOneToRL('${id}', this)" title="Submit this finished game into the FB BC training corpus (weight_tier 1).">Submit RL</button>` +
+        `</div>`
+      : '';
+    // Fix 67 (2026-06-04): owner-side "Mark finished" override. Shows on rows
+    // that are NOT broken/errored, NOT already completed, and where the build
+    // is library or mnu (RL-tuning ineligible builds get no value from this).
+    // Clicking POSTs /admin/<TOK>/force-finished/<id> body "1" and re-renders
+    // the row as completed so the Submit RL button appears. Use this only
+    // when the player judges the game finished but the engine never logged
+    // GameOverPhaseAction (e.g. browser closed before the next action-phase
+    // check ran — game 508 root cause).
+    const forceFinishedEligible = !completed && !broken && !errored && (g.build === 'library' || g.build === 'mnu');
+    const forceFinishedCell = forceFinishedEligible
+      ? `<button class="small" style="background:#3a3a1a;border-color:#7a7a3a;color:#fff;" onclick="event.stopPropagation(); markFinishedOverride('${id}', this)" title="Override: mark this game as finished even though the engine never logged GameOverPhaseAction. Use only when the game truly ended from the player's perspective. Enables Submit RL on this row.">Mark finished</button>`
+      : '';
+    row.innerHTML =
+      `<button class="broken-flag ${broken ? 'on' : ''}" title="${brokenTitle}" ` +
+        `onclick="event.stopPropagation(); toggleBrokenFromList('${id}', this)">${brokenLabel}</button>` +
+      `<button class="live-flag ${isLive ? 'on' : ''}" title="${liveTitle}" ` +
+        `onclick="event.stopPropagation(); toggleLiveFromList('${id}', this)">${liveLabel}</button>` +
+      `<div style="flex:1;">` +
+        `<span class="game-name">${esc(name)}</span> ${statusLabel}${rlBadge}<br/>` +
+        `<span class="game-meta">${(g.build || 'unknown').toUpperCase()} ${id} · ${g.humanCount}H${g.botCount > 0 ? ' '+g.botCount+'B' : ''} · ${inactivityLabel(lastWriteMs)}</span>` +
+      `</div>` +
+      `<div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">` +
+        replayCell +
+        rlCell +
+        forceFinishedCell +
+        // 2026-06-14: "Grab console" — queues a CONSOLE-CHECK line to the admin
+        // queue. The local console-grab ticker loads this game in a headless
+        // browser, captures console errors/pageerrors, and writes a "CONSOLE @ …"
+        // note into the game's annotation (visible in the Notes box on row select).
+        `<button class="small console-grab-btn" title="Load this game in a headless browser and capture console errors into its Notes." onclick="event.stopPropagation(); requestConsoleGrab('${id}', '${esc(g.build)}', this)">Grab console</button>` +
+        `<button class="small freeze-flag ${g.frozen ? 'on' : ''}" style="${g.frozen ? 'background:#1a3a5a;border-color:#3080aa;color:#fff;' : ''}" title="${g.frozen ? 'Game is FROZEN (player writes blocked). Click to unfreeze.' : 'Freeze this game (blocks player writes/rollbacks)'}" ` +
+        `onclick="event.stopPropagation(); toggleFreezeFromList('${id}', this)">${g.frozen ? '❄ Frozen' : 'Freeze'}</button>` +
+      `<button class="small" style="background:#5a2222;border-color:#8a3030;color:#fff;" onclick="event.stopPropagation(); confirmDeleteGame('${id}','${esc(name).replace(/'/g, "\\'")}')">Delete</button>` +
+      `</div>`;
+    row.onclick = () => selectGame(row, id, name, secret);
+    list.appendChild(row);
+    if (replayEligible) probeReplay(id, row);
+    // 2026-06-02: For replay-axis filters in the pyramid, hide rows that aren't
+    // eligible at all (active games can't have a replay yet by definition).
+    // Same gate as before, just keyed on the new filter checkboxes.
+    const filt = readFilters();
+    if ((filt.repYes || filt.repNo) && !replayEligible) {
+      row.style.display = 'none';
+    }
+  });
+  // 2026-06-02: After rows are in the DOM, honor any pending #game=N deep
+  // link from location.hash. No-op when there is no pending id.
+  tryDeepLinkJump();
+  // Kick off lazy enrichment for games missing cached metadata
+  if (!ENRICH_RUNNING && !ENRICH_REFRESHING) enrichGames(games);
+}
+
+// Toggle the broken flag from the left-side list (no game selection required).
+// Round-trips through the server: GET current annotation to preserve notes, then
+// POST the flipped broken flag back. Updates row class + button immediately on
+// success so feedback is instant; if the POST fails, the UI rolls back.
+function toggleBrokenFromList(gameId, btn) {
+  fetch(`${SERVER}/admin/${TOKEN}/annotation/${gameId}`).then(r => r.text()).then(text => {
+    // Body: "0|1\tnotes" — preserve notes verbatim.
+    const tab = text.indexOf('\t');
+    const curBroken = (tab >= 0 ? text.substring(0, tab) : text).trim() === '1';
+    const notes = tab >= 0 ? text.substring(tab + 1) : '';
+    const newBroken = !curBroken;
+    fetch(`${SERVER}/admin/${TOKEN}/annotation/${gameId}`, {
+      method: 'POST',
+      body: (newBroken ? '1' : '0') + '\t' + notes,
+    }).then(r => {
+      if (!r.ok) { alert(`Could not update broken flag (HTTP ${r.status})`); return; }
+      const row = btn.closest('.game-row');
+      if (row) {
+        row.classList.toggle('broken', newBroken);
+        row.dataset.broken = newBroken ? '1' : '0';
+        btn.classList.toggle('on', newBroken);
+        btn.textContent = newBroken ? '✖ Broken' : 'Mark broken';
+        btn.title = newBroken ? 'Click to clear the broken flag' : 'Click to mark this game as broken';
+      }
+      // If the toggled game is the currently-selected one, sync the detail-pane checkbox.
+      if (CURRENT_GAME && CURRENT_GAME.id === gameId) {
+        const cb = document.getElementById('broken-cb');
+        if (cb) cb.checked = newBroken;
+      }
+    });
+  });
+}
+
+// Toggle the "live game" flag — marks a game for periodic 15-min health checks.
+function toggleLiveFromList(gameId, btn) {
+  const isCurrentlyLive = btn.classList.contains('on');
+  const endpoint = isCurrentlyLive ? 'unmark-live' : 'mark-live';
+  fetch(`${SERVER}/admin/${TOKEN}/${endpoint}/${gameId}`, { method: 'POST' }).then(r => {
+    if (!r.ok) { alert(`Could not toggle live flag (HTTP ${r.status})`); return; }
+    const newLive = !isCurrentlyLive;
+    btn.classList.toggle('on', newLive);
+    btn.textContent = newLive ? '● Live' : 'Mark live';
+    btn.title = newLive
+      ? 'This game is monitored every 15 min. Click to stop monitoring.'
+      : 'Flag for automatic 15-min health checks';
+  });
+}
+
+// Freeze state localStorage — persists freeze toggles across page reloads since
+// the server TSV may not include frozen state in its response yet.
+function getFrozenLocal(gameId) {
+  try { return JSON.parse(localStorage.getItem('cwo_admin_frozen') || '{}')[gameId] || false; }
+  catch(e) { return false; }
+}
+function setFrozenLocal(gameId, frozen) {
+  try {
+    const m = JSON.parse(localStorage.getItem('cwo_admin_frozen') || '{}');
+    if (frozen) m[gameId] = true; else delete m[gameId];
+    localStorage.setItem('cwo_admin_frozen', JSON.stringify(m));
+  } catch(e) {}
+}
+
+// Toggle the frozen flag for a game — POSTs to server to block player writes.
+function toggleFreezeFromList(gameId, btn) {
+  const isCurrentlyFrozen = btn.classList.contains('on');
+  const endpoint = isCurrentlyFrozen ? 'unfreeze' : 'freeze';
+  fetch(`${SERVER}/admin/${TOKEN}/${endpoint}/${gameId}`, { method: 'POST' }).then(r => {
+    if (!r.ok) { alert(`Could not toggle freeze (HTTP ${r.status})`); return; }
+    const newFrozen = !isCurrentlyFrozen;
+    setFrozenLocal(gameId, newFrozen);
+    btn.classList.toggle('on', newFrozen);
+    btn.textContent = newFrozen ? '❄ Frozen' : 'Freeze';
+    btn.style.background = newFrozen ? '#1a3a5a' : '';
+    btn.style.borderColor = newFrozen ? '#3080aa' : '';
+    btn.style.color = newFrozen ? '#fff' : '';
+    btn.title = newFrozen
+      ? 'Game is FROZEN (player writes blocked). Click to unfreeze.'
+      : 'Freeze this game (blocks player writes/rollbacks)';
+  });
+}
+
+// ========== Fix 67 (2026-06-04): Mark-finished override ==========
+// POST /admin/<TOK>/force-finished/<id> body "1" to flag a game as finished
+// even though the engine never logged GameOverPhaseAction. On success the
+// row is re-rendered (renderGames called from within applyAndRender) so the
+// Submit RL button appears immediately.
+function markFinishedOverride(gameId, btn) {
+  if (!confirm(`Mark game ${gameId} as finished?\n\nUse this ONLY when the game truly ended from the player's perspective but the engine never logged GameOverPhaseAction (e.g. browser closed at end-of-game).\n\nThis enables the Submit RL button on this row.`)) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'marking…'; }
+  fetch(`${SERVER}/admin/${TOKEN}/force-finished/${gameId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: '1',
+  }).then(r => {
+    if (!r.ok) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Mark finished'; }
+      alert(`Mark-finished failed (HTTP ${r.status})`);
+      return;
+    }
+    // Server now reports completed=1 for this game. Refresh the games list so
+    // the row picks up the completed badge and the Submit RL button renders.
+    if (typeof loadGames === 'function') loadGames();
+    else if (typeof refreshGames === 'function') refreshGames();
+    else window.location.reload();
+  }).catch(err => {
+    if (btn) { btn.disabled = false; btn.textContent = 'Mark finished'; }
+    alert(`Mark-finished error: ${err}`);
+  });
+}
+
+// ========== 2026-06-04: RL-tuning corpus submission ==========
+// Per-row + bulk submission of finished library/mnu games into the FB BC
+// training corpus (weight_tier 1). Server endpoint:
+//   POST /admin/<TOK>/submit-for-rl-tuning
+// Body: newline-separated game ids.
+// Response: TSV per game ("OK ..." or "ERROR ...").
+function submitOneToRL(gameId, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'submitting…'; }
+  fetch(`${SERVER}/admin/${TOKEN}/submit-for-rl-tuning`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: String(gameId),
+  }).then(r => r.text().then(t => ({ok: r.ok, status: r.status, body: t}))).then(res => {
+    if (!res.ok) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Submit RL'; }
+      alert(`RL-tuning submit failed (HTTP ${res.status}): ${res.body}`);
+      return;
+    }
+    const row = btn && btn.closest('.game-row');
+    const line = (res.body || '').split('\n')[0] || '';
+    if (line.indexOf('\tOK\t') !== -1) {
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = '✓ submitted';
+        btn.style.background = '#1d4d24';
+        btn.style.borderColor = '#2e7d3a';
+        btn.style.color = '#9fe5a8';
+      }
+      // Flash a transient green tick on the row.
+      if (row) {
+        const flash = document.createElement('span');
+        flash.textContent = '✓ submitted';
+        flash.style.cssText = 'display:inline-block;font-size:8pt;padding:1px 8px;background:#1d4d24;color:#9fe5a8;border-radius:8px;margin-left:6px;';
+        const nameSpan = row.querySelector('.game-name');
+        if (nameSpan && nameSpan.parentNode) nameSpan.parentNode.insertBefore(flash, nameSpan.nextSibling);
+      }
+    } else {
+      if (btn) { btn.disabled = false; btn.textContent = 'Submit RL'; }
+      alert(`RL-tuning submit: ${line}`);
+    }
+  }).catch(err => {
+    if (btn) { btn.disabled = false; btn.textContent = 'Submit RL'; }
+    alert(`RL-tuning submit error: ${err}`);
+  });
+}
+
+function toggleAllRLSelection(masterCb) {
+  const cbs = document.querySelectorAll('.rl-select-cb');
+  cbs.forEach(cb => { cb.checked = masterCb.checked; });
+}
+
+function submitSelectedToRL() {
+  const cbs = document.querySelectorAll('.rl-select-cb:checked');
+  if (!cbs.length) { alert('No games selected. Tick a "sel" box on finished library/mnu rows first.'); return; }
+  const ids = Array.from(cbs).map(cb => cb.dataset.gameId);
+  const status = document.getElementById('rl-bulk-status');
+  const btn = document.getElementById('rl-bulk-submit-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'submitting…'; }
+  if (status) { status.textContent = `submitting ${ids.length}…`; status.style.color = 'var(--text-muted)'; }
+  fetch(`${SERVER}/admin/${TOKEN}/submit-for-rl-tuning`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: ids.join('\n'),
+  }).then(r => r.text().then(t => ({ok: r.ok, status: r.status, body: t}))).then(res => {
+    if (btn) { btn.disabled = false; btn.textContent = 'Submit selected to RL tuning'; }
+    if (!res.ok) {
+      if (status) { status.textContent = `HTTP ${res.status}: ${res.body}`; status.style.color = 'var(--danger)'; }
+      return;
+    }
+    const lines = (res.body || '').split('\n').filter(l => l);
+    const ok = lines.filter(l => l.indexOf('\tOK\t') !== -1).length;
+    const err = lines.length - ok;
+    if (status) {
+      status.textContent = `submitted: ${ok} OK${err > 0 ? `, ${err} error(s)` : ''}`;
+      status.style.color = err > 0 ? 'var(--warn)' : '#9fe5a8';
+    }
+    // Mark rows: per-row OK → green badge + disable button.
+    lines.forEach(line => {
+      const parts = line.split('\t');
+      const gid = parts[0]; const verdict = parts[1];
+      const row = document.querySelector(`.game-row[data-game-id="${gid}"]`);
+      if (!row) return;
+      const cb = row.querySelector('.rl-select-cb');
+      if (cb) cb.checked = false;
+      const submitBtn = row.querySelector('.rl-cell button');
+      if (verdict === 'OK' && submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = '✓ submitted';
+        submitBtn.style.background = '#1d4d24';
+        submitBtn.style.borderColor = '#2e7d3a';
+        submitBtn.style.color = '#9fe5a8';
+      }
+    });
+    const master = document.getElementById('rl-select-all');
+    if (master) master.checked = false;
+  }).catch(err => {
+    if (btn) { btn.disabled = false; btn.textContent = 'Submit selected to RL tuning'; }
+    if (status) { status.textContent = `error: ${err}`; status.style.color = 'var(--danger)'; }
+  });
+}
+
+// Convert a lastWriteMs epoch into "X days since last action" / "X hours since"
+// / "—" for unknown. Days are rounded down; under 24h shows hours; under 1h shows "<1h".
+function inactivityLabel(lastWriteMs) {
+  if (!lastWriteMs || lastWriteMs <= 0) return 'last action: —';
+  const deltaMs = Date.now() - lastWriteMs;
+  if (deltaMs < 0) return 'last action: just now';
+  const minutes = Math.floor(deltaMs / 60000);
+  if (minutes < 60) return minutes < 1 ? 'last action: <1m ago' : `last action: ${minutes}m ago`;
+  const hours = Math.floor(deltaMs / 3600000);
+  if (hours < 24) return `last action: ${hours}h ago`;
+  const days = Math.floor(deltaMs / 86400000);
+  return `last action: ${days}d ago`;
+}
+
+function confirmDeleteGame(gameId, gameName) {
+  if (!confirm(`Permanently delete game "${gameName}" (id ${gameId})? This removes all logs, roles, and the game itself. Cannot be undone.`)) return;
+  fetch(`${SERVER}/admin/${TOKEN}/delete/${gameId}`, { method: 'POST' }).then(r => {
+    if (r.ok) {
+      // If the deleted game was selected, clear the detail pane.
+      if (CURRENT_GAME && CURRENT_GAME.id === gameId) {
+        CURRENT_GAME = null;
+        document.getElementById('game-detail').innerHTML = '<p class="empty">Select a game to view details.</p>';
+        document.querySelector('.col-wrap').classList.remove('show-detail');
+      }
+      loadGames();
+    }
+    else {
+      alert(`Delete failed: HTTP ${r.status}`);
+    }
+  });
+}
+
+function selectGame(rowElem, gameId, gameName, masterSecret) {
+  document.querySelectorAll('.game-row').forEach(r => r.classList.remove('active'));
+  rowElem.classList.add('active');
+  const lastWriteMs = parseInt(rowElem.dataset.lastWriteMs || '0', 10);
+  const build = rowElem.dataset.build || getBuild();
+  CURRENT_GAME = { id: gameId, name: gameName, masterSecret, lastWriteMs, build };
+  // On mobile, switch to detail pane.
+  document.querySelector('.col-wrap').classList.add('show-detail');
+  refreshDetail();
+}
+
+function backToGames() {
+  document.querySelector('.col-wrap').classList.remove('show-detail');
+}
+
+function refreshDetail() {
+  if (!CURRENT_GAME) return;
+  const { id, name, masterSecret, lastWriteMs } = CURRENT_GAME;
+  document.getElementById('game-detail').innerHTML = `
+    <button class="back-btn small" onclick="backToGames()">← Games</button>
+    <h2>${esc(name)} <span class="game-meta" style="font-size:10pt;">(game id ${id})</span></h2>
+    <div class="toolbar">
+      <button class="small" onclick="refreshDetail()">Refresh</button>
+      <button class="small" style="background:#5a2222;border-color:#8a3030;color:#fff;" onclick="confirmDeleteGame('${id}','${esc(name).replace(/'/g, "\\'")}')">Delete game</button>
+      <button class="small" id="freeze-detail-btn" onclick="toggleFreezeFromDetail()">Freeze</button>
+      <label style="display:inline-flex;align-items:center;gap:6px;margin:0 0 0 12px;color:#aaa;font-size:10pt;">
+        <input type="checkbox" id="broken-cb" onchange="toggleBrokenFromDetail()" />
+        Mark game broken
+      </label>
+    </div>
+    <p class="game-meta" style="margin:6px 0 12px 0;">${inactivityLabel(lastWriteMs || 0)}</p>
+    <h3>Factions / Player links</h3>
+    <div id="roles-list"><p class="empty">Loading...</p></div>
+
+    <!-- 2026-06-02: Submit-to-terminal + Fix response box. Per user spec
+         (2026-06-02 11:03 directive):
+           - "Error description" textarea + "Submit to terminal" button.
+             Posts a structured prompt (game URL + description + admin link)
+             to the same /tmp/claude-prompts.log queue Claude drains every tick.
+           - "Fix response" field below, populated from /admin/fix-response.
+             Scrollable; has a Clear button. Claude POSTs to /admin/fix-response
+             after triaging the game (its reply lands here).
+    -->
+    <h3>Browser console errors (auto-captured)
+      <button class="small" style="margin-left:8px;" onclick="refreshConsoleErrors()">Refresh</button>
+      <button class="small" style="margin-left:4px;" onclick="clearConsoleErrors()">Clear</button>
+    </h3>
+    <p style="color:#888;font-size:9pt;">Auto-captured by the /play page (window.onerror, unhandled promise rejection, console.error). Most recent first. Auto-included in the Submit-broken-game prompt below.</p>
+    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:8px 10px;">
+      <pre id="console-errors-feed" class="sim-tail" style="height:18vh;max-height:24vh;">loading…</pre>
+    </div>
+
+    <h3>Submit broken game to Claude</h3>
+    <p style="color:#888;font-size:9pt;">Type an error description (optional). The auto-captured browser console errors above (if any) are folded into the submission automatically; an extra textarea below is available for anything DevTools shows that didn't get auto-captured. Claude picks it up on the next ticker tick and posts a fix response.</p>
+    <div class="notes-box">
+      <textarea id="error-description" rows="3" placeholder="Error description (optional)…"></textarea>
+    </div>
+    <div class="notes-box" style="margin-top:6px;">
+      <textarea id="console-output" rows="3" placeholder="Extra console output (optional — auto-captured errors above are already included)…"></textarea>
+    </div>
+    <p style="margin:6px 0;">
+      <button class="primary" onclick="submitGameToTerminal()">Submit to terminal</button>
+      <span id="submit-terminal-status" style="font-size:9pt;color:var(--text-muted);margin-left:8px;"></span>
+    </p>
+
+    <h3>Fix response
+      <button class="small" style="margin-left:8px;" onclick="refreshFixResponse()">Refresh</button>
+      <button class="small" style="margin-left:4px;" onclick="clearFixResponse()">Clear</button>
+    </h3>
+    <p style="color:#888;font-size:9pt;">Claude's reply / explanation lands here. Either from a Submit-to-terminal request OR from Claude's proactive broken-game diagnosis polling (Phase A, 2026-06-03). When a proactive proposal is here, use Proceed / Discuss / Dismiss below to direct Claude's next action.</p>
+    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:8px 10px;">
+      <pre id="fix-response" class="sim-tail" style="height:24vh;max-height:30vh;">loading…</pre>
+    </div>
+    <p style="margin:8px 0;">
+      <button class="primary" onclick="sendFixAction('proceed')" title="Claude implements the proposed fix end-to-end, with full doc fold-in (TT Parallel Fixes Guide entry, neutral units guide update, rollback log entry).">Proceed</button>
+      <button class="primary" style="margin-left:6px;" onclick="sendFixAction('discuss')" title="Sends proposal to library tasks docx as an Open bullet so we can discuss before any code lands.">Discuss</button>
+      <button class="small" style="margin-left:6px;" onclick="sendFixAction('dismiss')" title="Marks this game's proposal as dismissed; Claude won't re-analyze it.">Dismiss</button>
+      <span id="fix-action-status" style="font-size:9pt;color:var(--text-muted);margin-left:8px;"></span>
+    </p>
+
+    <h3>Notes <span id="notes-status" class="saved-tag" style="display:none;">saved</span></h3>
+    <p style="color:#888;font-size:9pt;">Free-text admin notes for this game. Saves automatically a moment after you stop typing. Not part of the game state — only visible in this admin console.</p>
+    <div class="notes-box"><textarea id="game-notes" oninput="onNotesInput()" placeholder="Notes about this game..."></textarea></div>
+    <h3>Faction state (derived from log)</h3>
+    <p style="color:#888;font-size:9pt;">Action tallies parsed from the raw action log. Counts are heuristic — for live unit positions and exact power use "Open game (Owner view)" above.</p>
+    <div id="faction-state"><p class="empty">Loading...</p></div>
+    <h3>Stashed actions (for replay / force same outcome)</h3>
+    <p style="color:#888;font-size:9pt;">When you roll back the log, the deleted action strings are stashed here (per game, in localStorage). Click "Re-insert" on any stashed line to write it back into the live log at a chosen index — useful for forcing the original dice / Elder Sign outcome after rolling back past it.</p>
+    <div id="stash-list"></div>
+    <h3>Log (most recent at top)</h3>
+    <p style="color:#888;font-size:9pt;">Lines highlighted in red contain dice rolls, Elder Signs, Silence Tokens, or captures — undoing past them is normally blocked for regular players. As the owner you can roll back past any line.</p>
+    <div id="log-list"><p class="empty">Loading...</p></div>
+  `;
+  fetch(`${SERVER}/admin/${TOKEN}/roles/${id}`).then(r => r.text()).then(populateRoles);
+  fetch(`${SERVER}/admin/${TOKEN}/log/${id}`).then(r => r.text()).then(t => { LAST_LOG_RAW = t; populateLog(t); populateFactionState(t); });
+  // 2026-06-02: also pull the per-game fix response into the new scrollable field.
+  refreshFixResponse();
+  // 2026-06-03 21:25: pull auto-captured browser console errors into the new feed.
+  refreshConsoleErrors();
+  fetch(`${SERVER}/admin/${TOKEN}/annotation/${id}`).then(r => r.text()).then(populateAnnotation);
+  // Sync freeze button state from the list row.
+  const row = document.querySelector(`.game-row[data-game-id="${id}"]`);
+  const listFreezeBtn = row && row.querySelector('.freeze-flag');
+  const detailFreezeBtn = document.getElementById('freeze-detail-btn');
+  if (detailFreezeBtn && listFreezeBtn) {
+    const isFrozen = listFreezeBtn.classList.contains('on');
+    detailFreezeBtn.classList.toggle('on', isFrozen);
+    detailFreezeBtn.textContent = isFrozen ? '❄ Frozen' : 'Freeze';
+    detailFreezeBtn.style.background = isFrozen ? '#1a3a5a' : '';
+    detailFreezeBtn.style.borderColor = isFrozen ? '#3080aa' : '';
+    detailFreezeBtn.style.color = isFrozen ? '#fff' : '';
+  }
+  renderStash();
+}
+
+// ========== 2026-06-02: Submit broken game to terminal + Fix response ==========
+// Wires the new "Submit to terminal" button and the per-game fix-response field.
+// Payload format (verbatim user spec):
+//
+//   Error in this game: <game URL>
+//   Error description (if any): <text>
+//   Fix. Console errors and game log both can be found at <admin link>
+//
+// The admin link points at the admin console with the game pre-selected via
+// the URL hash, so Claude (or the user later) can jump straight to the game's
+// log and JVM-error tail. The whole thing is appended to the existing
+// /tmp/claude-prompts.log queue so the ticker picks it up on the next tick.
+function submitGameToTerminal() {
+  if (!CURRENT_GAME) return;
+  const desc = (document.getElementById('error-description')?.value || '').trim();
+  const cons = (document.getElementById('console-output')?.value || '').trim();
+  // 2026-06-03 21:25: also fetch auto-captured console errors and fold them
+  // into the prompt body. We do this synchronously inline so the submission
+  // body is complete on the first POST (no second tick needed).
+  const status = document.getElementById('submit-terminal-status');
+  const build = CURRENT_GAME.build || 'unknown';
+  const gameUrl = gamePlayUrl(CURRENT_GAME.masterSecret, build);
+  const adminUrl = `${SERVER}/admin.html#game=${CURRENT_GAME.id}`;
+  if (status) { status.textContent = 'Sending…'; status.style.color = 'var(--text-muted)'; }
+  // First fetch the auto-captured stored errors, then build the full body, then submit.
+  fetch(`${SERVER}/admin/${TOKEN}/console-errors/${CURRENT_GAME.id}`)
+    .then(r => r.ok ? r.text() : '')
+    .catch(() => '')
+    .then(autoCaptured => {
+      const auto = decodeConsoleErrorsTsv(autoCaptured);
+      const body =
+        `ADMIN-CONSOLE-ERROR build=${build} game_id=${CURRENT_GAME.id}\n` +
+        `Error in this game: ${gameUrl}\n` +
+        `Error description (if any): ${desc}\n` +
+        (auto ? `Auto-captured browser console errors (most recent first):\n${auto}\n\n` : '') +
+        (cons ? `Extra console output (user-pasted):\n${cons}\n\n` : '') +
+        `Fix. Game log: ${adminUrl}\n`;
+      return sendClaudePromptBody(body);
+    })
+    .then(res => {
+      if (!res || !res.ok) {
+        if (status) { status.textContent = `Submit failed (HTTP ${res ? res.status : '?'}).`; status.style.color = 'var(--danger)'; }
+        return;
+      }
+      if (status) { status.textContent = 'Queued. Claude picks it up on the next tick.'; status.style.color = 'var(--success)'; }
+      if (typeof refreshClaudeQueue === 'function') refreshClaudeQueue();
+    })
+    .catch(e => {
+      if (status) { status.textContent = `Network error: ${e.message || e}`; status.style.color = 'var(--danger)'; }
+    });
+  if (status) { status.textContent = 'Sending…'; status.style.color = 'var(--text-muted)'; }
+  fetch(`${SERVER}/admin/${TOKEN}/claude-prompt`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body,
+  }).then(r => {
+    if (!r.ok) {
+      if (status) { status.textContent = `Submit failed (HTTP ${r.status}).`; status.style.color = 'var(--danger)'; }
+      return;
+    }
+    if (status) { status.textContent = 'Queued. Claude picks it up on the next tick.'; status.style.color = 'var(--success)'; }
+    // Refresh the queue panel in the Claude Terminal section if it's loaded.
+    if (typeof refreshClaudeQueue === 'function') refreshClaudeQueue();
+  }).catch(e => {
+    if (status) { status.textContent = `Network error: ${e.message || e}`; status.style.color = 'var(--danger)'; }
+  });
+}
+
+// Helpers for the new console-capture pipeline.
+// TSV from /admin/$TOK/console-errors/$ID is "capturedMs\tpayload" per row,
+// most-recent first; payload has \n and \t backslash-escaped. Decode for display
+// and prefix each row with a human timestamp.
+function decodeConsoleErrorsTsv(text) {
+  if (!text || !text.trim()) return '';
+  const out = [];
+  for (const line of text.split('\n')) {
+    if (!line.trim()) continue;
+    const tab = line.indexOf('\t');
+    if (tab < 0) continue;
+    const ts = parseInt(line.substring(0, tab), 10);
+    let payload = line.substring(tab + 1);
+    // Unescape \\, \n, \t.
+    payload = payload.replace(/\\t/g, '\t').replace(/\\n/g, '\n').replace(/\\\\/g, '\\');
+    const stamp = isNaN(ts) ? '?' : new Date(ts).toISOString();
+    out.push(`[${stamp}]\n${payload}`);
+  }
+  return out.join('\n---\n');
+}
+
+function refreshConsoleErrors() {
+  if (!CURRENT_GAME) return;
+  const el = document.getElementById('console-errors-feed');
+  if (!el) return;
+  fetch(`${SERVER}/admin/${TOKEN}/console-errors/${CURRENT_GAME.id}`)
+    .then(r => r.text())
+    .then(t => { el.textContent = decodeConsoleErrorsTsv(t) || '(none captured yet)'; })
+    .catch(e => { el.textContent = `error: ${e.message || e}`; });
+}
+
+function clearConsoleErrors() {
+  if (!CURRENT_GAME) return;
+  if (!confirm('Clear all auto-captured console errors for this game? The /play page will start capturing fresh after this.')) return;
+  fetch(`${SERVER}/admin/${TOKEN}/console-errors-clear/${CURRENT_GAME.id}`, { method: 'POST' })
+    .then(r => { if (!r.ok) alert(`Clear failed (HTTP ${r.status}).`); refreshConsoleErrors(); });
+}
+
+// Shared body sender used by both the legacy textbox submit (Claude Terminal
+// section) and the new auto-fold-in submitGameToTerminal flow.
+function sendClaudePromptBody(body) {
+  return fetch(`${SERVER}/admin/${TOKEN}/claude-prompt`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body,
+  });
+}
+
+function refreshFixResponse() {
+  if (!CURRENT_GAME) return;
+  const el = document.getElementById('fix-response');
+  if (!el) return;
+  fetch(`${SERVER}/admin/${TOKEN}/fix-response/${CURRENT_GAME.id}`)
+    .then(r => r.text())
+    .then(t => { el.textContent = t || '(no fix response yet)'; })
+    .catch(e => { el.textContent = `error: ${e.message || e}`; });
+}
+
+function clearFixResponse() {
+  if (!CURRENT_GAME) return;
+  if (!confirm('Clear the fix response for this game? The text will be wiped from the server-side store.')) return;
+  fetch(`${SERVER}/admin/${TOKEN}/fix-response/${CURRENT_GAME.id}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: '',
+  }).then(r => {
+    if (!r.ok) { alert(`Clear failed (HTTP ${r.status}).`); return; }
+    refreshFixResponse();
+  });
+}
+
+// Proceed / Discuss / Dismiss on a proactive fix proposal. POSTs to
+// /admin/$TOK/fix-action/$ID with action=proceed|discuss|dismiss; Claude reads
+// the action on the next tick drain and either implements the fix (with doc
+// fold-in), opens a discussion bullet in the library tasks docx, or marks the
+// proposal dismissed.
+function sendFixAction(action) {
+  if (!CURRENT_GAME) return;
+  const allowed = ['proceed', 'discuss', 'dismiss'];
+  if (!allowed.includes(action)) return;
+  const status = document.getElementById('fix-action-status');
+  if (status) { status.textContent = `Sending ${action}…`; status.style.color = 'var(--text-muted)'; }
+  fetch(`${SERVER}/admin/${TOKEN}/fix-action/${CURRENT_GAME.id}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: action,
+  }).then(r => {
+    if (!r.ok) {
+      if (status) { status.textContent = `${action} failed (HTTP ${r.status}).`; status.style.color = 'var(--danger)'; }
+      return;
+    }
+    if (status) { status.textContent = `Queued ${action}. Claude picks it up next tick.`; status.style.color = 'var(--success)'; }
+    refreshFixResponse();
+  }).catch(e => {
+    if (status) { status.textContent = `Network error: ${e.message || e}`; status.style.color = 'var(--danger)'; }
+  });
+}
+
+// Populate the broken checkbox + notes textarea from the annotation endpoint.
+// Server returns "broken\tnotes" with broken=0|1.
+function populateAnnotation(text) {
+  const tab = text.indexOf('\t');
+  const broken = (tab >= 0 ? text.substring(0, tab) : text).trim() === '1';
+  const notes = tab >= 0 ? text.substring(tab + 1) : '';
+  const cb = document.getElementById('broken-cb');
+  const ta = document.getElementById('game-notes');
+  if (cb) cb.checked = broken;
+  if (ta) ta.value = notes;
+  const status = document.getElementById('notes-status');
+  if (status) status.style.display = 'none';
+}
+
+// Persist the current annotation (broken + notes) for the selected game.
+// Body format must match the server: "broken\tnotes" with broken=0|1.
+function saveAnnotation() {
+  if (!CURRENT_GAME) return Promise.resolve();
+  const cb = document.getElementById('broken-cb');
+  const ta = document.getElementById('game-notes');
+  const broken = cb && cb.checked ? '1' : '0';
+  const notes = ta ? ta.value : '';
+  return fetch(`${SERVER}/admin/${TOKEN}/annotation/${CURRENT_GAME.id}`, {
+    method: 'POST',
+    body: broken + '\t' + notes,
+  });
+}
+
+// Broken-checkbox in the detail pane. Save immediately and reflect the new
+// state in the left-side list row + the row's button so both views stay
+// in sync without a full reload.
+function toggleBrokenFromDetail() {
+  const cb = document.getElementById('broken-cb');
+  if (!cb || !CURRENT_GAME) return;
+  saveAnnotation().then(r => {
+    if (!r.ok) { alert(`Could not save (HTTP ${r.status})`); cb.checked = !cb.checked; return; }
+    const row = document.querySelector(`.game-row[data-game-id="${CURRENT_GAME.id}"]`);
+    if (row) {
+      row.classList.toggle('broken', cb.checked);
+      row.dataset.broken = cb.checked ? '1' : '0';
+      const btn = row.querySelector('.broken-flag');
+      if (btn) {
+        btn.classList.toggle('on', cb.checked);
+        btn.textContent = cb.checked ? '✖ Broken' : 'Mark broken';
+        btn.title = cb.checked ? 'Click to clear the broken flag' : 'Click to mark this game as broken';
+      }
+    }
+  });
+}
+
+function toggleFreezeFromDetail() {
+  if (!CURRENT_GAME) return;
+  const btn = document.getElementById('freeze-detail-btn');
+  if (!btn) return;
+  const isCurrentlyFrozen = btn.classList.contains('on');
+  const endpoint = isCurrentlyFrozen ? 'unfreeze' : 'freeze';
+  fetch(`${SERVER}/admin/${TOKEN}/${endpoint}/${CURRENT_GAME.id}`, { method: 'POST' }).then(r => {
+    if (!r.ok) { alert(`Could not toggle freeze (HTTP ${r.status})`); return; }
+    const newFrozen = !isCurrentlyFrozen;
+    setFrozenLocal(CURRENT_GAME.id, newFrozen);
+    btn.classList.toggle('on', newFrozen);
+    btn.textContent = newFrozen ? '❄ Frozen' : 'Freeze';
+    btn.style.background = newFrozen ? '#1a3a5a' : '';
+    btn.style.borderColor = newFrozen ? '#3080aa' : '';
+    btn.style.color = newFrozen ? '#fff' : '';
+    const row = document.querySelector(`.game-row[data-game-id="${CURRENT_GAME.id}"]`);
+    if (row) {
+      const listBtn = row.querySelector('.freeze-flag');
+      if (listBtn) {
+        listBtn.classList.toggle('on', newFrozen);
+        listBtn.textContent = newFrozen ? '❄ Frozen' : 'Freeze';
+        listBtn.style.background = newFrozen ? '#1a3a5a' : '';
+        listBtn.style.borderColor = newFrozen ? '#3080aa' : '';
+        listBtn.style.color = newFrozen ? '#fff' : '';
+      }
+    }
+  });
+}
+
+// Debounced auto-save on notes input. Saves ~600ms after the last keystroke
+// so we don't post on every character but the user still gets quick feedback.
+// `_notesTimer` is a hidden state on `window` — module scope.
+function onNotesInput() {
+  const status = document.getElementById('notes-status');
+  if (status) {
+    status.style.display = '';
+    status.textContent = 'saving…';
+    status.className = 'saving-tag';
+  }
+  if (window._notesTimer) clearTimeout(window._notesTimer);
+  window._notesTimer = setTimeout(() => {
+    saveAnnotation().then(r => {
+      if (!status) return;
+      if (r.ok) {
+        status.textContent = 'saved';
+        status.className = 'saved-tag';
+        // Fade the indicator after a couple seconds so it doesn't sit in the UI.
+        setTimeout(() => { if (status.textContent === 'saved') status.style.display = 'none'; }, 1500);
+      } else {
+        status.textContent = `save failed (HTTP ${r.status})`;
+        status.className = 'saving-tag';
+      }
+    });
+  }, 600);
+}
+
+// Parse raw action log into per-faction tallies. The log header line (index 2) carries
+// the faction roster, e.g. "GC:Normal/CC:Normal/TS:Human MapLibrary33". For every later
+// entry whose action string matches a known pattern, we increment the relevant counter
+// for the faction(s) involved.
+//
+// This is a HEURISTIC view: it counts action occurrences rather than reconstructing live
+// game state (which would require running the Scala.js engine). For exact power, doom,
+// units on map, etc. open the per-role player URLs in the "Factions / Player links" list.
+function populateFactionState(logText) {
+  const div = document.getElementById('faction-state');
+  if (!div) return;
+  if (!logText.trim()) { div.innerHTML = '<p class="empty">Empty log.</p>'; return; }
+  const lines = logText.split('\n').filter(l => l);
+  if (lines.length < 3) { div.innerHTML = '<p class="empty">Game not started yet.</p>'; return; }
+  // Header is at log index 2 (tab format: idx\trole\tvalue).
+  const header = (lines[2] || '').split('\t').slice(2).join('\t');
+  const factionsRoster = (header.split(' ')[0] || '').split('/');
+  const factions = factionsRoster.map(s => s.split(':')[0]).filter(Boolean);
+  if (factions.length === 0) { div.innerHTML = '<p class="empty">Could not parse faction roster.</p>'; return; }
+
+  // Initialize tally rows.
+  const tallies = {};
+  factions.forEach(f => {
+    tallies[f] = {
+      total: 0,
+      builds: 0,
+      captures: 0,
+      summons: 0,
+      kills: 0,
+      awakens: 0,
+      rituals: 0,
+      spellbooks: 0,
+      battles: 0,
+      moves: 0,
+      lastAction: '',
+    };
+  });
+
+  // Patterns: action class name → counter field. The faction is parsed from the first
+  // capture group of `(FACTION,` within the action string.
+  const patterns = [
+    { re: /^BuildGateAction\(([A-Z]+)/,                       field: 'builds' },
+    { re: /^CaptureGateAction\(([A-Z]+)/,                     field: 'captures' },
+    { re: /^CapturingGateAction\(([A-Z]+)/,                   field: 'captures' },
+    { re: /^Summon[A-Z][A-Za-z]*Action\(([A-Z]+)/,            field: 'summons' },
+    { re: /^Recruit[A-Z][A-Za-z]*Action\(([A-Z]+)/,           field: 'summons' },
+    { re: /^Kill[A-Z][A-Za-z]*Action\(([A-Z]+)/,              field: 'kills' },
+    { re: /^EliminateAction\(([A-Z]+)/,                       field: 'kills' },
+    { re: /^Awaken[A-Z][A-Za-z]*Action\(([A-Z]+)/,            field: 'awakens' },
+    { re: /^AwakenedAction\(([A-Z]+)/,                        field: 'awakens' },
+    { re: /^RitualAction\(([A-Z]+)/,                          field: 'rituals' },
+    { re: /^Ritual[A-Z][A-Za-z]*Action\(([A-Z]+)/,            field: 'rituals' },
+    { re: /^SpellbookAction\(([A-Z]+)/,                       field: 'spellbooks' },
+    { re: /^AttackMainAction\(([A-Z]+)/,                      field: 'battles' },
+    { re: /^AttackAction\(([A-Z]+)/,                          field: 'battles' },
+    { re: /^MoveAction\(([A-Z]+)/,                            field: 'moves' },
+    { re: /^MoveOneAction\(([A-Z]+)/,                         field: 'moves' },
+  ];
+
+  for (const line of lines) {
+    const tabs = line.split('\t');
+    const val = tabs.slice(2).join('\t');
+    // Generic faction tally: first ALL-CAPS token followed by comma/paren = faction code.
+    const factionMatch = val.match(/^[A-Za-z][A-Za-z0-9]*\(([A-Z]{2,4})[,\)]/);
+    if (factionMatch && tallies[factionMatch[1]]) {
+      tallies[factionMatch[1]].total += 1;
+      tallies[factionMatch[1]].lastAction = val.split('(')[0];
+    }
+    for (const p of patterns) {
+      const m = val.match(p.re);
+      if (m && tallies[m[1]]) tallies[m[1]][p.field] += 1;
+    }
+  }
+
+  const fieldOrder = ['total', 'builds', 'captures', 'summons', 'kills', 'awakens', 'rituals', 'spellbooks', 'battles', 'moves'];
+  const labels = {
+    total: 'Total actions', builds: 'Gates built', captures: 'Captures',
+    summons: 'Summons', kills: 'Kills', awakens: 'GOO awakens',
+    rituals: 'Rituals', spellbooks: 'Spellbooks taken', battles: 'Battles', moves: 'Move actions',
+  };
+  const rows = factions.map(f => {
+    const t = tallies[f];
+    const cells = fieldOrder.map(fld => `<td style="text-align:right;padding:2px 8px;">${t[fld]}</td>`).join('');
+    return `<tr><th style="text-align:left;padding:2px 8px;">${esc(f)}</th>${cells}<td style="padding:2px 8px;font-size:8.5pt;color:#aaa;">${esc(t.lastAction || '—')}</td></tr>`;
+  }).join('');
+  const headers = fieldOrder.map(fld => `<th style="text-align:right;padding:2px 8px;font-size:8.5pt;">${labels[fld]}</th>`).join('');
+
+  // High-level options line above the per-faction tally — extracted from the
+  // log's header at idx 2. Format is "F1:Kind1/F2:Kind2/... MapName Opt1 Opt2 ...".
+  // We surface: player count (= number of human-or-bot factions), map name,
+  // and any of the known boolean game flags that are present.
+  const tokens = header.split(' ').filter(Boolean);
+  const mapToken = tokens.find(t => t.startsWith('Map')) || '?';
+  const mapName = mapToken.replace('Map', '');
+  const optTokens = tokens.slice(1).filter(t => !t.startsWith('Map'));
+  const knownOpts = [
+    'Opener4P10Gates', 'DemandTsathoggua', 'GateDiplomacy', 'AsyncActions',
+    'HighPriests', 'NeutralSpellbooks', 'IceAgeAffectsLethargy',
+    'UseGhast', 'UseGug', 'UseShantak', 'UseStarVampire', 'UseVoonith',
+    'UseDimensionalShamblers', 'UseGnorri',
+    'UseByatis', 'UseAbhoth', 'UseDaoloth', 'UseNyogtha', 'UseTulzscha', 'UseYgolonac',
+  ];
+  const flagsOn = optTokens.filter(t => knownOpts.includes(t));
+  const unknownFlags = optTokens.filter(t => !knownOpts.includes(t));
+  const summaryRow = `<div style="margin-bottom:8px;padding:6px 8px;background:#222226;border:1px solid #3a3a40;border-radius:3px;font-size:9pt;">
+    <span style="color:#b8a378;">Player Count:</span> ${factions.length} ·
+    <span style="color:#b8a378;">Map:</span> ${esc(mapName)}
+    ${flagsOn.length ? '· <span style="color:#b8a378;">Flags:</span> ' + flagsOn.map(esc).join(', ') : ''}
+    ${unknownFlags.length ? ' <span style="color:#666;font-size:8.5pt;">(unparsed: ' + unknownFlags.map(esc).join(', ') + ')</span>' : ''}
+  </div>`;
+
+  // Wrap the wide table in .table-wrap so it scrolls horizontally on mobile
+  // without dragging the rest of the page along with it.
+  div.innerHTML = summaryRow + `<div class="table-wrap"><table>
+    <thead><tr><th style="padding:4px 10px;text-align:left;">Faction</th>${headers}<th style="padding:4px 10px;font-size:8.5pt;text-align:left;">Last action</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+function populateRoles(text) {
+  const div = document.getElementById('roles-list');
+  if (!text.trim()) { div.innerHTML = '<p class="empty">No roles.</p>'; return; }
+  const lines = text.split('\n').filter(l => l);
+  // Determine which factions are bots vs. human from the game log header
+  // (LAST_LOG_RAW is set in refreshDetail). The header at idx 2 has format
+  //   GC:Normal/CC:Normal/TS:Human MapLibrary33 [opts...]
+  // Anything other than ":Human" is a bot.
+  const factionType = {};
+  if (LAST_LOG_RAW) {
+    const headerLine = LAST_LOG_RAW.split('\n').filter(l => l)[2] || '';
+    const header = headerLine.split('\t').slice(2).join('\t');
+    const roster = (header.split(' ')[0] || '').split('/');
+    roster.forEach(s => {
+      const [code, kind] = s.split(':');
+      if (code) factionType[code] = (kind || '').toLowerCase();
+    });
+  }
+  div.innerHTML = lines.map(line => {
+    const [name, secret] = line.split('\t');
+    // Per user spec: drop the owner ($) link entirely. Keep spectator (#).
+    if (name === '$') return '';
+    const isSpectator = (name === '#');
+    const label = isSpectator ? 'Spectator (#)' : name;
+    // Bot factions get "(bot)" suffix and NO link (no clickable URL — they
+    // play themselves; no human takes that secret).
+    const kind = !isSpectator && factionType[name];
+    const isBot = kind && kind !== 'human';
+    if (isBot) {
+      return `<div class="role-link" style="color:#888;">${esc(label)} <span style="color:#666;">(bot)</span></div>`;
+    }
+    return `<div class="role-link"><a href="${gamePlayUrl(secret, CURRENT_GAME.build)}" target="_blank">${esc(label)}</a></div>`;
+  }).join('');
+}
+
+// Default-filtered log mode: hide engine-glue actions (state transitions, menu
+// continuations, info-only views) so the admin log resembles the in-game
+// player-facing log. The "Debug log" toggle shows everything.
+const ENGINE_GLUE_PATTERNS = [
+  /^MainAction\(/, /^PreMainAction\(/, /^MainGatesAction\(/,
+  /^EndAction\(/, /^EndTurnAction\(/, /^AfterAction\(/,
+  /^NextPlayerAction/, /^StartAction/, /^StartingRegionAction\(/,
+  /^PlayDirectionAction\(/, /^CheckSpellbooksAction\(/,
+  /^ProceedBattlesAction/, /^DoomDoneAction\(/,
+  /^PowerGatherAction\(/, /^EndPhasePromptsAction\(/,
+  /^AdjustGateControlAction\(/, /^DragonAscending/,
+  /^OutOfTurnRefresh\(/, /^GroupAction\(/,
+  /ContinueAction\(/, /ResumeAction\(/, /PromptAction\(/,
+  /^RevealESOutOfTurnAction\(/, /^RevealESMainAction\(/,
+  /^InfoESAction\(/, /^InfoESOutOfTurnAction\(/,
+  /^OutOfTurnReturn/, /^UnknownContinue/,
+];
+function isEngineGlue(val) { return ENGINE_GLUE_PATTERNS.some(p => p.test(val)); }
+
+// Pretty-print a unit reference like "FB/Acolyte/2" → "Acolyte" or "OW/Mutant/1" → "Mutant"
+function prettyUnit(ref) {
+  if (!ref) return ref;
+  const slash = ref.indexOf('/');
+  if (slash < 0) return ref.replace(/([A-Z])/g, ' $1').trim();
+  const parts = ref.split('/');
+  return parts[1] ? parts[1].replace(/([A-Z])/g, ' $1').trim() : ref;
+}
+
+// Human-readable action descriptions shown alongside the raw action string.
+// Covers all major player-visible actions to match what appears in the game's log panel.
+function humanizeAction(val) {
+  let m;
+  // --- CORE ACTIONS ---
+  if ((m = val.match(/^AttackAction\((\w+),\s*(\w+),\s*(\w+)/))) return `${m[1]} attacks ${m[3]} in ${m[2]}`;
+  if ((m = val.match(/^BattleRollAction\((\w+),\s*\[([^\]]*)\],\s*(\w+)/))) return `${m[1]} rolled [${m[2]}]`;
+  if ((m = val.match(/^BattleProceedAction\((\w+)\)/))) return `Battle → ${m[1].replace(/([A-Z])/g, ' $1').trim()}`;
+  if ((m = val.match(/^BattleDoneAction\((\w+)\)/))) return `Battle ended (${m[1]}'s attack)`;
+  if ((m = val.match(/^SummonAction\((\w+),\s*(\w+),\s*(\w+)\)/))) return `${m[1]} summoned ${m[2].replace(/([A-Z])/g, ' $1').trim()} in ${m[3]}`;
+  if ((m = val.match(/^MoveAction\((\w+),\s*([^,]+),\s*(\w+),\s*(\w+)/))) return `${m[1]} moved ${prettyUnit(m[2])} from ${m[3]} to ${m[4]}`;
+  if ((m = val.match(/^MoveDoneAction\((\w+)\)/))) return `${m[1]} finished moving`;
+  if ((m = val.match(/^AwakenAction\((\w+),\s*(\w+),\s*(\w+),\s*(\d+)\)/))) return `${m[1]} awakened ${m[2].replace(/([A-Z])/g, ' $1').trim()} in ${m[3]} for ${m[4]} power`;
+  if ((m = val.match(/^FBAwakenGhatanothoaAction\((\w+),\s*(\d+)\)/))) return `${m[1]} awakened Ghatanothoa for ${m[2]} power`;
+  if ((m = val.match(/^SpellbookAction\((\w+),\s*(\w+)/))) return `${m[1]} received spellbook: ${m[2].replace(/([A-Z])/g, ' $1').trim()}`;
+  if ((m = val.match(/^CaptureAction\((\w+),\s*([^,]+),\s*(\w+)\)/))) return `${m[1]} captured ${prettyUnit(m[2])} in ${m[3]}`;
+  if ((m = val.match(/^RitualAction\((\w+)/))) return `${m[1]} performed the Ritual of Annihilation`;
+  if ((m = val.match(/^ElderSignAction\((\w+)/))) return `${m[1]} drew an Elder Sign`;
+  if ((m = val.match(/^RevealESAction\((\w+)/))) return `${m[1]} revealed Elder Signs`;
+  if ((m = val.match(/^BuildGateAction\((\w+),\s*(\w+)\)/))) return `${m[1]} built a gate in ${m[2]}`;
+  if ((m = val.match(/^BuildAction\((\w+),\s*(\w+)\)/))) return `${m[1]} built a gate in ${m[2]}`;
+  if ((m = val.match(/^RecruitAction\((\w+),\s*(\w+),\s*(\w+)\)/))) return `${m[1]} recruited ${m[2].replace(/([A-Z])/g, ' $1').trim()} in ${m[3]}`;
+  if ((m = val.match(/^PassAction\((\w+)\)/))) return `${m[1]} passed and forfeited remaining power`;
+  if ((m = val.match(/^EndTurnAction\((\w+)\)/))) return `${m[1]} ended turn`;
+
+  // --- BATTLE ASSIGNMENT / RETREAT ---
+  if ((m = val.match(/^AssignKillAction\((\w+),\s*[^,]*,\s*[^,]*,\s*([^)]+)\)/))) return `${prettyUnit(m[2])} killed`;
+  if ((m = val.match(/^AssignPainAction\((\w+),\s*[^,]*,\s*[^,]*,\s*([^)]+)\)/))) return `${prettyUnit(m[2])} pained`;
+  if ((m = val.match(/^RetreatUnitAction\((\w+),\s*([^,]+),\s*(\w+)\)/))) return `${prettyUnit(m[2])} retreated to ${m[3]}`;
+  if ((m = val.match(/^RetreatAllAction\((\w+),\s*(\w+),\s*(\w+)\)/))) return `${m[2]}'s pained units retreated to ${m[3]}`;
+  if ((m = val.match(/^EliminateNoWayAction\((\w+),\s*([^)]+)\)/))) return `${prettyUnit(m[2])} eliminated (no retreat)`;
+  if ((m = val.match(/^PainAction\((\w+),\s*([^,]+),\s*(\w+),\s*(\w+)\)/))) return `${prettyUnit(m[2])} pained from ${m[3]} to ${m[4]}`;
+  if ((m = val.match(/^KillAction\((\w+),\s*([^,]+),\s*(\w+)\)/))) return `${prettyUnit(m[2])} killed in ${m[3]}`;
+
+  // --- GATE CONTROL ---
+  if ((m = val.match(/^GateControlAction\((\w+),\s*(\w+)\)/))) return `${m[1]} took control of gate in ${m[2]}`;
+
+  // --- PHASE / TURN MARKERS ---
+  if ((m = val.match(/^PreMainAction\((\w+)\)/))) return `── ${m[1]}'s turn ──`;
+  if ((m = val.match(/^GatherPowerAction\((\w+),\s*(\d+)\)/))) return `${m[1]} gathered ${m[2]} power`;
+  if ((m = val.match(/^DoomAction\((\w+),\s*(\d+)/))) return `${m[1]} scored ${m[2]} doom`;
+  if ((m = val.match(/^DoomPhaseAction\(/))) return `── Doom Phase ──`;
+  if ((m = val.match(/^ActionPhaseAction\(/))) return `── Action Phase ──`;
+  if ((m = val.match(/^PowerGatherAction\(/))) return `── Gather Power Phase ──`;
+  if ((m = val.match(/^NextPlayerAction\((\w+)\)/))) return `${m[1]} became first player`;
+  if ((m = val.match(/^PlayDirectionAction\((\w+),\s*\[([^\]]*)\]\)/))) return `Play order: ${m[2]}`;
+  if ((m = val.match(/^StartingRegionAction\((\w+),\s*(\w+)\)/))) return `${m[1]} started in ${m[2]}`;
+
+  // --- FACTION-SPECIFIC: TCHO-TCHO (TT) ---
+  if ((m = val.match(/^TTChooseTribeAction\((\w+),\s*(\w+)\)/))) return `${m[1]} chose tribe: ${m[2].replace(/([A-Z])/g, ' $1').trim()}`;
+  if ((m = val.match(/^TTAwakenUbboSathlaChooseHPAction\((\w+),\s*(\w+),\s*(\d+)\)/))) return `${m[1]} awakened Ubbo-Sathla in ${m[2]} (sacrificed ${m[3]} High Priests)`;
+  if ((m = val.match(/^TTHierophantsChooseGateAction\((\w+),\s*(\w+)\)/))) return `${m[1]} placed Hierophant gate in ${m[2]}`;
+  if ((m = val.match(/^TTHellsBanquetApplyAction\((\w+)/))) return `${m[1]} used Hell's Banquet`;
+
+  // --- FACTION-SPECIFIC: TIDAL SURGE (TS) ---
+  if ((m = val.match(/^TSDeathMarchAction\((\w+),\s*([^,]+),\s*(\w+)\)/))) return `${m[1]} death-marched ${prettyUnit(m[2])} to ${m[3]}`;
+  if ((m = val.match(/^TSUseTomeAction\((\w+)/))) return `${m[1]} used a Tome`;
+  if ((m = val.match(/^TSPlaceTomeUnitAction\((\w+),\s*([^,]+),\s*(\w+)\)/))) return `${m[1]} placed Tome unit ${prettyUnit(m[2])} in ${m[3]}`;
+  if ((m = val.match(/^TSShepherdGatherAction\((\w+)/))) return `${m[1]} used Shepherd to gather`;
+  if ((m = val.match(/^TSElevenRevelationsAction\((\w+)/))) return `${m[1]} used Eleven Revelations`;
+  if ((m = val.match(/^TSAwakenGlaakiPayAction\((\w+)/))) return `${m[1]} awakened Gla'aki`;
+
+  // --- FACTION-SPECIFIC: FIRSTBORN (FB) ---
+  if ((m = val.match(/^FBWritheMainAction\((\w+)\)/))) return `${m[1]} used Writhe`;
+  if ((m = val.match(/^FBWritheRollResultAction\((\w+),\s*(\d+),\s*\[([^\]]*)\]/))) return `${m[1]} Writhe rolled ${m[2]} dice: [${m[3]}]`;
+  if ((m = val.match(/^FBWritheRerollAction\((\w+)/))) return `${m[1]} rerolled Writhe`;
+  if ((m = val.match(/^FBWritheKillUnitAction\((\w+),\s*([^,]+)/))) return `${m[1]} Writhe killed ${prettyUnit(m[2])}`;
+  if ((m = val.match(/^FBWritheChoosePainUnitAction\((\w+),\s*([^,]+)/))) return `${m[1]} Writhe pained ${prettyUnit(m[2])}`;
+  if ((m = val.match(/^FBWritheMoveOneToRegionAction\((\w+),\s*([^,]+),\s*(\w+)/))) return `${m[1]} Writhe moved ${prettyUnit(m[2])} to ${m[3]}`;
+  if ((m = val.match(/^FBWritheMoveSeparatelyAction\((\w+)/))) return `${m[1]} chose to move Writhe units separately`;
+  if ((m = val.match(/^FBWritheKeepAction\((\w+)/))) return `${m[1]} kept Writhe results`;
+  if ((m = val.match(/^FBCallOfTheFaithfulAction\((\w+)/))) return `${m[1]} used Call of the Faithful`;
+  if ((m = val.match(/^FBInfernalPactChooseAction\((\w+),\s*(\w+)\)/))) return `${m[1]} chose ${m[2]} for Infernal Pact`;
+  if ((m = val.match(/^FBDevilsMarkDoomAction\((\w+)/))) return `${m[1]} gained doom from Devil's Mark`;
+  if ((m = val.match(/^FBDevilsMarkPlaceCraterAction\((\w+),\s*(\w+)\)/))) return `${m[1]} placed Crater in ${m[2]}`;
+
+  // --- NEUTRAL UNITS / IGOOs ---
+  if ((m = val.match(/^NeutralMonstersAction\((\w+),\s*(\w+),\s*(\w+)\)/))) return `${m[1]} recruited neutral ${m[2].replace(/([A-Z])/g, ' $1').trim()} in ${m[3]}`;
+  if ((m = val.match(/^LoyaltyCardSummonAction\((\w+),\s*([^,]+),\s*(\w+)\)/))) return `${m[1]} summoned ${prettyUnit(m[2])} in ${m[3]} (Loyalty)`;
+  if ((m = val.match(/^DragonAscendingInstantAction\((\w+)/))) return `${m[1]} used Dragon Ascending`;
+  if ((m = val.match(/^BeyondOneAction\((\w+),\s*([^,]+),\s*(\w+)\)/))) return `${m[1]} sent ${prettyUnit(m[2])} Beyond One to ${m[3]}`;
+  if ((m = val.match(/^MillionFavoredOnesXAction\((\w+)/))) return `${m[1]} used Million Favored Ones`;
+  if ((m = val.match(/^CaptureTargetAction\((\w+),\s*([^)]+)\)/))) return `${m[1]} targeted ${prettyUnit(m[2])} for capture`;
+
+  // --- PRIME CAUSE ---
+  if ((m = val.match(/^PrimeCauseChooseUnitAction\((\w+),\s*([^)]+)\)/))) return `${m[1]} targeted ${prettyUnit(m[2])} with Prime Cause`;
+  if ((m = val.match(/^PrimeCauseChooseReplacementAction\((\w+),\s*([^,]+),\s*(\w+)\)/))) return `${m[1]} replaced ${prettyUnit(m[2])} with ${m[3].replace(/([A-Z])/g, ' $1').trim()}`;
+  if ((m = val.match(/^PrimeCauseSkipAction\((\w+)\)/))) return `${m[1]} skipped Prime Cause`;
+  if ((m = val.match(/^PrimeCauseCancelReplacementAction\((\w+)\)/))) return `${m[1]} cancelled Prime Cause replacement`;
+
+  // --- AZATHOTH ---
+  if ((m = val.match(/^AzathothAwakenCommitAction\((\w+),\s*(\d+),\s*(\w+)\)/))) return `${m[1]} awakens Azathoth at ${m[3]}` + (m[2] !== '0' ? ` (roll: ${m[2]})` : '');
+  if ((m = val.match(/^AzathothAwakenCostAction\((\w+),\s*(\d+),\s*(\d+),\s*(\w+)\)/))) return `${m[1]} rolled ${m[2]}, awakened Azathoth for ${m[3]} power at ${m[4]}`;
+  if ((m = val.match(/^AzathothEnemyChooseAction\((\w+),\s*(\d+),\s*(\w+)\)/))) return `${m[3]} secretly chose ${m[2]} for Azathoth die`;
+
+  // --- NUCLEAR CHAOS ---
+  if ((m = val.match(/^NuclearChaosMainAction\((\w+)\)/))) return `${m[1]} used Nuclear Chaos`;
+  if ((m = val.match(/^NuclearChaosAdjustAction\((\w+),\s*Map\(([^)]+)\),\s*(\d+)\)/))) return `${m[1]} adjusted Nuclear Chaos (round ${m[3]})`;
+
+  // --- PRE-BATTLE ABILITIES ---
+  if ((m = val.match(/^PreBattleDoneAction\((\w+),\s*(\w+)\)/))) return `${m[1]} → ${m[2].replace(/([A-Z])/g, ' $1').trim()}`;
+  if ((m = val.match(/^DevourAction\((\w+),\s*([^)]+)\)/))) return `${m[1]} devoured ${prettyUnit(m[2])}`;
+  if ((m = val.match(/^AbsorbeeAction\((\w+),\s*([^,]+)/))) return `${m[1]} absorbed ${prettyUnit(m[2])}`;
+  if ((m = val.match(/^AbductAction\((\w+),\s*([^,]+)/))) return `${m[1]} abducted ${prettyUnit(m[2])}`;
+  if ((m = val.match(/^InvisibilityAction\((\w+),\s*([^,]+)/))) return `${m[1]} made ${prettyUnit(m[2])} invisible`;
+  if ((m = val.match(/^SeekAndDestroyAction\((\w+),\s*(\w+),\s*(\w+)\)/))) return `${m[1]} used Seek and Destroy: ${m[2].replace(/([A-Z])/g, ' $1').trim()} in ${m[3]}`;
+  if ((m = val.match(/^HowlAction\((\w+),\s*([^,]+),\s*(\w+)\)/))) return `${m[1]} Howled ${prettyUnit(m[2])} to ${m[3]}`;
+  if ((m = val.match(/^HarbingerPowerAction\((\w+),\s*([^,]+),\s*(\d+)\)/))) return `${m[1]} Harbinger drained ${m[3]} power from ${prettyUnit(m[2])}`;
+  if ((m = val.match(/^HarbingerESAction\((\w+),\s*([^,]+)/))) return `${m[1]} Harbinger stole Elder Sign from ${prettyUnit(m[2])}`;
+  if ((m = val.match(/^DemandSacrificeKillsArePainsAction\((\w+)\)/))) return `${m[1]}: Demand Sacrifice — kills become pains`;
+  if ((m = val.match(/^DemandSacrificeProvideESAction\((\w+)\)/))) return `${m[1]} provided Elder Sign to avoid sacrifice`;
+
+  // --- COMMANDS / PLANS (informational) ---
+  if ((m = val.match(/^CommandsAddAction\((\w+),\s*([^)]+)\)/))) return `${m[1]} gained ability: ${m[2].replace(/([A-Z])/g, ' $1').trim()}`;
+  if ((m = val.match(/^CommandsRemoveAction\((\w+),\s*([^)]+)\)/))) return `${m[1]} lost ability: ${m[2].replace(/([A-Z])/g, ' $1').trim()}`;
+
+  // --- BUBASTIS (BB) ---
+  if ((m = val.match(/^BBSatiateAction\((\w+)/))) return `${m[1]} used Satiate`;
+  if ((m = val.match(/^BBBastetSummonAction\((\w+),\s*(\w+)\)/))) return `${m[1]} summoned Bastet in ${m[2]}`;
+
+  // --- CATCH-ALL for other faction-prefixed actions ---
+  if ((m = val.match(/^(\w{2})(\w+)Action\((\w+)/))) {
+    const prefix = m[1], name = m[2], faction = m[3];
+    if (['FB','TS','TT','OW','GC','CC','BG','YS','WW','AN','SL','BB','DC'].includes(prefix)) {
+      return `${faction} — ${prefix} ${name.replace(/([A-Z])/g, ' $1').trim()}`;
+    }
+  }
+
+  return null;
+}
+
+// Toggle state. Default to filtered (game-log view) per user request.
+let LOG_VIEW_MODE = 'game';   // 'game' | 'debug'
+
+// Obscure Elder Sign values in ElderSignAction entries. Replaces the numeric ES
+// value (third parameter) with '***' for display. The actual value is only shown
+// when the user clicks "Edit ES" to edit it.
+function obscureESValue(actionStr) {
+  const m = actionStr.match(/^ElderSignAction\s*\(([^)]+)\)/);
+  if (!m) return actionStr;  // not an ES action, return unchanged
+  const inside = m[1];
+  const parts = inside.split(',').map(s => s.trim());
+  if (parts.length < 3) return actionStr;  // malformed, return unchanged
+  // Third parameter (index 2) is the ES value — replace with ***
+  const obscured = parts.slice();
+  obscured[2] = '***';
+  return `ElderSignAction(${obscured.join(', ')})`;
+}
+
+const FACTION_COLORS = {
+  GC:'#008000', CC:'#3344ff', BG:'#ff0000', YS:'#cccc00', SL:'#ef764b',
+  WW:'#a5cbe1', OW:'#995593', AN:'#30d5c8', TS:'#bfd8b9', FB:'#CB307E',
+  DS:'#8B4513', TT:'#fc9ca0', BB:'#c8a84b', DC:'#F0EDA8', FBE:'#3d5f1c',
+  XS:'#4a6b7a', TB:'#8b6914'
+};
+const ALL_FACTIONS = Object.keys(FACTION_COLORS);
+
+function extractActor(val) {
+  const m = val.match(/^\w+Action\((\w+)/);
+  if (m && FACTION_COLORS[m[1]]) return m[1];
+  return '';
+}
+
+function factionSpan(faction) {
+  if (!faction) return '';
+  const c = FACTION_COLORS[faction] || '#aaa';
+  return `<span style="color:${c};font-weight:bold;">${faction}</span>`;
+}
+
+function colorizeLogText(text) {
+  let html = esc(text);
+  ALL_FACTIONS.forEach(f => {
+    html = html.replace(new RegExp('\\b' + f + '\\b', 'g'),
+      `<span style="color:${FACTION_COLORS[f]};font-weight:bold;">${f}</span>`);
+  });
+  html = html.replace(/\b(Kill|Killed|killed)\b/g, '<span style="color:crimson;">$1</span>');
+  html = html.replace(/\b(Pain|Pained|pained)\b/g, '<span style="color:orange;">$1</span>');
+  html = html.replace(/\b(Miss|missed)\b/g, '<span style="color:darkturquoise;">$1</span>');
+  html = html.replace(/\b(Elder Sign|Elder Signs)\b/g, '<span style="color:olive;">$1</span>');
+  html = html.replace(/\b(\d+) (doom)\b/g, '<span style="color:#9F2344;">$1 $2</span>');
+  html = html.replace(/\b(\d+) (power)\b/g, '<span style="color:white;">$1 $2</span>');
+  html = html.replace(/\battack(s|ed)?\b/gi, '<span style="color:crimson;">$&</span>');
+  html = html.replace(/\brolled\b/g, '<span style="color:#d4a574;">$&</span>');
+  html = html.replace(/\b(retreated|retreat)\b/g, '<span style="color:orange;">$&</span>');
+  html = html.replace(/\beliminated\b/g, '<span style="color:crimson;">$&</span>');
+  html = html.replace(/\b(summoned|awakened|recruited)\b/g, '<span style="color:#d4a574;">$&</span>');
+  html = html.replace(/── (.+?) ──/g, '<span style="color:#888;font-style:italic;">── $1 ──</span>');
+  return html;
+}
+
+function populateLog(text) {
+  const div = document.getElementById('log-list');
+  if (!text.trim()) { div.innerHTML = '<p class="empty">Empty log.</p>'; return; }
+  const lines = text.split('\n').filter(l => l);
+  const toolbar = `<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;font-size:9pt;color:#aaa;">
+    <button class="small" onclick="toggleLogViewMode()">${LOG_VIEW_MODE === 'game' ? 'Show debug log' : 'Show player log'}</button>
+    <span>Currently: ${LOG_VIEW_MODE === 'game' ? 'player log view (shows what players see, engine-glue hidden)' : 'full debug log (all raw actions)'}</span>
+  </div>`;
+  const header = `<div class="log-header">
+    <span class="idx">Log #</span>
+    <span class="role">Viewer</span>
+    <span class="actor" style="min-width:40px;">Actor</span>
+    <span class="val">Game Log</span>
+  </div>`;
+  const filtered = LOG_VIEW_MODE === 'game'
+    ? lines.filter(line => {
+        const val = line.split('\t').slice(2).join('\t');
+        return val && !isEngineGlue(val);
+      })
+    : lines;
+  const body = filtered.reverse().map(line => {
+    const tabs = line.split('\t');
+    const idx = tabs[0]; const role = tabs[1] || ''; const val = tabs.slice(2).join('\t');
+    const actor = extractActor(val);
+    const isPerm = PERMANENT_KEYWORDS.some(k => val.includes(k));
+    const isES = /^ElderSignAction\(/.test(val);
+    const editEsBtn = isES
+      ? `<button class="small" onclick="startEditES(${idx}, this)" title="Edit ES value">Edit ES</button>`
+      : '';
+    const isBattleRoll = /^BattleRollAction\(/.test(val);
+    const editBattleBtn = isBattleRoll
+      ? `<button class="small" onclick="startEditBattle(${idx}, this)" title="Edit battle results">Edit Battle</button>`
+      : '';
+    const humanText = humanizeAction(val);
+    const displayVal = val;
+    let valHtml;
+    if (LOG_VIEW_MODE === 'game' && humanText) {
+      valHtml = `<span class="val"><span class="player-log" style="font-size:9.5pt;">${colorizeLogText(humanText)}</span><br><span style="color:#666;font-size:8pt;font-style:italic;">${esc(displayVal)}</span></span>`;
+    } else {
+      const humanSpan = humanText ? `<span class="human" style="font-size:8.5pt;margin-left:8px;opacity:0.85;">${colorizeLogText(humanText)}</span>` : '';
+      valHtml = `<span class="val">${esc(displayVal)}${humanSpan}</span>`;
+    }
+    return `<div class="log-entry ${isPerm ? 'permanent' : ''}" data-idx="${esc(idx)}" data-raw="${esc(val)}">
+      <span class="idx">${esc(idx)}</span>
+      <span class="role">${factionSpan(role)}</span>
+      <span class="actor">${factionSpan(actor)}</span>
+      ${valHtml}
+      ${editEsBtn}
+      ${editBattleBtn}
+      <button class="small" onclick="startEdit(${idx}, this)">Edit</button>
+      <button class="small danger" onclick="rollbackTo(${idx})">Roll back to here</button>
+    </div>`;
+  }).join('');
+  div.innerHTML = toolbar + header + body;
+}
+
+function toggleLogViewMode() {
+  LOG_VIEW_MODE = (LOG_VIEW_MODE === 'game' ? 'debug' : 'game');
+  if (LAST_LOG_RAW) populateLog(LAST_LOG_RAW);
+}
+
+// Parse the ES value from an ElderSignAction string. The format is
+// `ElderSignAction(FACTION, n, value, public, next)` — value is the third
+// comma-separated parameter (positional index 2). Returns null if it can't
+// be parsed. Note: we don't try to handle nested parens beyond stripping
+// the outer ones; ElderSignAction's first three params are simple atoms.
+function parseESValue(actionStr) {
+  const m = actionStr.match(/^ElderSignAction\s*\(([^)]+)\)/);
+  if (!m) return null;
+  const parts = m[1].split(',').map(s => s.trim());
+  if (parts.length < 3) return null;
+  const v = parseInt(parts[2], 10);
+  if (Number.isNaN(v)) return null;
+  return { value: v, parts };
+}
+
+// Inline editor: shows the current ES value in a small textbox to the LEFT
+// of the Edit ES button. The button label flips to Save. A Cancel button
+// is added alongside. On save, the new value is validated to be 1..3 (the
+// legal ES range) before being written back into the action string and
+// POSTed via the existing /admin/edit endpoint. The OLD value is stashed
+// in localStorage so the admin can audit and undo if needed.
+
+// Selectable error toast — replaces alert() for error text so the message can
+// be highlighted and copied (native alert() popups are not selectable). Shows a
+// dismissible box, bottom-right, with the text in a selectable region.
+function showSelectableError(msg) {
+  let box = document.getElementById('cwo-err-toast');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'cwo-err-toast';
+    box.style.cssText = 'position:fixed;right:16px;bottom:16px;max-width:520px;z-index:9999;'
+      + 'background:#2b1416;border:1px solid #d9534f;border-radius:8px;padding:12px 14px;'
+      + 'box-shadow:0 4px 16px rgba(0,0,0,0.5);color:#f2d0d0;font-size:10pt;line-height:1.5;';
+    document.body.appendChild(box);
+  }
+  box.innerHTML = '';
+  const pre = document.createElement('pre');
+  pre.textContent = msg;
+  pre.style.cssText = 'margin:0 0 8px 0;white-space:pre-wrap;word-break:break-word;'
+    + 'user-select:text;-webkit-user-select:text;cursor:text;font-family:inherit;';
+  const close = document.createElement('button');
+  close.textContent = 'Dismiss';
+  close.style.cssText = 'font-size:9pt;padding:2px 10px;cursor:pointer;';
+  close.onclick = () => box.remove();
+  box.appendChild(pre);
+  box.appendChild(close);
+}
+
+function startEditES(idx, btn) {
+  const row = btn.closest('.log-entry');
+  const valSpan = row.querySelector('.val');
+  const original = row.dataset.raw || valSpan.textContent;
+  const parsed = parseESValue(original);
+  if (!parsed) { alert('Could not parse ES value out of this action line.'); return; }
+  // Build the inline textbox.
+  const wrap = document.createElement('span');
+  wrap.style.cssText = 'display:inline-flex;gap:4px;align-items:center;margin-right:6px;';
+  wrap.innerHTML = `<input type="number" min="1" max="3" step="1" value="${parsed.value}" ` +
+    `class="es-edit-input" style="width:48px;background:#111;border:1px solid #888;color:#e6e6e6;padding:3px;font-family:monospace;font-size:9pt;" />`;
+  btn.parentNode.insertBefore(wrap, btn);
+  const input = wrap.querySelector('input');
+  input.focus(); input.select();
+  btn.textContent = 'Save';
+  btn.onclick = () => saveEditES(idx, original, input.value, row);
+  // Cancel reverts the row to its original display.
+  const cancel = document.createElement('button');
+  cancel.className = 'small'; cancel.textContent = 'Cancel';
+  cancel.onclick = () => { populateLog(LAST_LOG_RAW); };
+  btn.parentNode.insertBefore(cancel, btn.nextSibling);
+}
+
+function saveEditES(idx, originalLine, newValueStr, row) {
+  const v = parseInt(newValueStr, 10);
+  if (Number.isNaN(v) || v < 1 || v > 3) {
+    alert('ES value must be an integer 1, 2, or 3.'); return;
+  }
+  const parsed = parseESValue(originalLine);
+  if (!parsed) { alert('Could not re-parse ES value before save.'); return; }
+  if (parsed.value === v) { populateLog(LAST_LOG_RAW); return; }
+  parsed.parts[2] = String(v);
+  const newLine = `ElderSignAction(${parsed.parts.join(', ')})`;
+  // Save old value to localStorage for audit / undo.
+  const audit = JSON.parse(localStorage.getItem('cwo_admin_es_edits') || '[]');
+  const auditEntry = {
+    gameId: CURRENT_GAME && CURRENT_GAME.id,
+    gameName: CURRENT_GAME && CURRENT_GAME.name,
+    index: idx, old: originalLine, new: newLine, ts: Date.now(),
+  };
+  audit.push(auditEntry);
+  localStorage.setItem('cwo_admin_es_edits', JSON.stringify(audit));
+  // Save the new value directly. There is NO engine-replay gate: the only game
+  // mechanic an Elder Sign value affects is Ithaqua's combat dice when the sign
+  // is revealed, so an ES edit cannot make a later recorded move illegal. The
+  // old "validate-game" replay only checked whether the whole log still replays
+  // without crashing (unrelated to ES) and ran on a stale engine that did not
+  // know newer factions (Bubastis etc.), so it wrongly reverted valid edits.
+  // The authoritative check is the game replaying in the browser on next load.
+  const valSpan = row.querySelector('.val');
+  if (valSpan) valSpan.innerHTML = `<span style="color:#d9b97e;">saving…</span>`;
+  fetch(`${SERVER}/admin/${TOKEN}/edit/${CURRENT_GAME.id}/${idx}`, {
+    method: 'POST', body: newLine
+  }).then(r => {
+    if (!r.ok) { showSelectableError(`Edit ES failed (HTTP ${r.status}). Old value retained.`); return; }
+    fetch(`${SERVER}/admin/${TOKEN}/log/${CURRENT_GAME.id}`).then(r => r.text()).then(t => {
+      LAST_LOG_RAW = t; populateLog(t);
+    });
+  }).catch(err => {
+    showSelectableError(`Edit ES network error: ${err.message || err}. Refresh to check whether it saved.`);
+    fetch(`${SERVER}/admin/${TOKEN}/log/${CURRENT_GAME.id}`).then(r => r.text()).then(t => {
+      LAST_LOG_RAW = t; populateLog(t);
+    });
+  });
+}
+
+function parseBattleRoll(actionStr) {
+  const m = actionStr.match(/^BattleRollAction\(\s*(\w+)\s*,\s*\[([^\]]*)\]\s*,\s*(\w+)\s*\)/);
+  if (!m) return null;
+  const faction = m[1];
+  const rolls = m[2].split(',').map(s => s.trim()).filter(s => s);
+  const phase = m[3];
+  return { faction, rolls, phase };
+}
+
+function startEditBattle(idx, btn) {
+  const row = btn.closest('.log-entry');
+  const valSpan = row.querySelector('.val');
+  const orig = row.dataset.raw || valSpan.textContent;
+  const parsed = parseBattleRoll(orig);
+  if (!parsed) { alert('Could not parse BattleRollAction.'); return; }
+  const CYCLE = ['Miss', 'Pain', 'Kill'];
+  const chipColors = { Miss: '#666', Pain: '#c90', Kill: '#c33' };
+  const state = [...parsed.rolls];
+  const container = document.createElement('div');
+  container.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin:4px 0;';
+  function render() {
+    container.innerHTML = state.map((r, i) =>
+      `<span class="battle-chip" data-i="${i}" style="cursor:pointer;padding:2px 8px;border-radius:3px;font-size:9pt;font-weight:bold;background:${chipColors[r] || '#444'};color:#fff;user-select:none;">${r}</span>`
+    ).join('') + `<button class="small" style="margin-left:8px;" id="battle-save-btn">Save</button>` +
+      `<button class="small" style="margin-left:4px;" id="battle-cancel-btn">Cancel</button>`;
+    container.querySelectorAll('.battle-chip').forEach(chip => {
+      chip.onclick = () => {
+        const i = parseInt(chip.dataset.i, 10);
+        const cur = CYCLE.indexOf(state[i]);
+        state[i] = CYCLE[(cur + 1) % 3];
+        render();
+      };
+    });
+    container.querySelector('#battle-save-btn').onclick = () => {
+      const newLine = `BattleRollAction(${parsed.faction}, [${state.join(', ')}], ${parsed.phase})`;
+      fetch(`${SERVER}/admin/${TOKEN}/edit/${CURRENT_GAME.id}/${idx}`, {
+        method: 'POST', body: newLine
+      }).then(r => {
+        if (r.ok) { fetch(`${SERVER}/admin/${TOKEN}/log/${CURRENT_GAME.id}`).then(r => r.text()).then(t => { LAST_LOG_RAW = t; populateLog(t); }); }
+        else { alert(`Edit battle failed (HTTP ${r.status}).`); }
+      });
+    };
+    container.querySelector('#battle-cancel-btn').onclick = () => { populateLog(LAST_LOG_RAW); };
+  }
+  row.querySelectorAll('button').forEach(b => b.style.display = 'none');
+  valSpan.innerHTML = '';
+  valSpan.appendChild(container);
+  render();
+}
+
+function startEdit(idx, btn) {
+  const row = btn.closest('.log-entry');
+  const valSpan = row.querySelector('.val');
+  const orig = row.dataset.raw || valSpan.textContent;
+  valSpan.innerHTML = `<input type="text" class="edit-input" value="${esc(orig)}" style="width:100%;background:#111;border:1px solid #888;color:#e6e6e6;padding:4px;font-family:monospace;font-size:9pt;" />`;
+  const input = valSpan.querySelector('input');
+  input.focus();
+  input.select();
+  btn.textContent = 'Save';
+  btn.onclick = () => saveEdit(idx, input.value, row);
+  // Add a Cancel button alongside.
+  const cancel = document.createElement('button');
+  cancel.className = 'small'; cancel.textContent = 'Cancel';
+  cancel.onclick = () => { populateLog(LAST_LOG_RAW); };
+  btn.parentNode.insertBefore(cancel, btn.nextSibling);
+}
+
+function saveEdit(idx, newValue, row) {
+  if (!CURRENT_GAME) return;
+  // Trim newlines to keep single-line invariant.
+  const safe = newValue.replace(/\r?\n/g, ' ');
+  fetch(`${SERVER}/admin/${TOKEN}/edit/${CURRENT_GAME.id}/${idx}`, {
+    method: 'POST', body: safe
+  }).then(r => {
+    if (r.ok) { fetch(`${SERVER}/admin/${TOKEN}/log/${CURRENT_GAME.id}`).then(r => r.text()).then(populateLog); }
+    else { alert(`Edit failed (HTTP ${r.status}).`); }
+  });
+}
+
+let LAST_LOG_RAW = '';
+// Stash of action strings that were just rolled back. Per game id, keyed in localStorage
+// so it survives reloads of the admin tool. Each entry: { index, role, value }.
+function stashKey(gameId) { return `cwo_admin_stash_${gameId}`; }
+function getStash(gameId) {
+  try { return JSON.parse(localStorage.getItem(stashKey(gameId)) || '[]'); }
+  catch (e) { return []; }
+}
+function setStash(gameId, items) { localStorage.setItem(stashKey(gameId), JSON.stringify(items)); }
+
+function rollbackTo(index) {
+  if (!CURRENT_GAME) return;
+  // Find the rolled-back actions in the cached log so we can stash them.
+  const stashed = (LAST_LOG_RAW || '').split('\n').filter(Boolean).map(l => {
+    const tabs = l.split('\t');
+    return { index: parseInt(tabs[0], 10), role: tabs[1] || '', value: tabs.slice(2).join('\t') };
+  }).filter(e => Number.isFinite(e.index) && e.index >= index);
+  const conf = confirm(
+    `Roll back game "${CURRENT_GAME.name}" to log index ${index}?\n\n` +
+    `${stashed.length} action(s) will be deleted from the live log. ` +
+    `They will also be STASHED locally in the admin tool so you can re-insert ` +
+    `them later (useful for "force same dice outcome" replay).`
+  );
+  if (!conf) return;
+  // Merge into existing stash (most recent rollback at top, dedupe by index+value).
+  const existing = getStash(CURRENT_GAME.id);
+  const seen = new Set(existing.map(e => e.index + '|' + e.value));
+  const merged = stashed.filter(e => !seen.has(e.index + '|' + e.value)).concat(existing);
+  setStash(CURRENT_GAME.id, merged);
+  fetch(`${SERVER}/admin/${TOKEN}/rollback/${CURRENT_GAME.id}/${index}`, { method: 'POST' })
+    .then(r => {
+      if (r.ok) { refreshDetail(); }
+      else { alert(`Rollback failed (HTTP ${r.status}).`); }
+    });
+}
+
+// Write a stashed action back into the live log at a chosen index (defaults to the
+// stashed entry's original index). Uses the admin/write endpoint (writes as role "$").
+function reinsertStashed(stashIdx) {
+  if (!CURRENT_GAME) return;
+  const stash = getStash(CURRENT_GAME.id);
+  const entry = stash[stashIdx];
+  if (!entry) return;
+  const lines = (LAST_LOG_RAW || '').split('\n').filter(Boolean);
+  const nextIdx = lines.length ? Math.max(...lines.map(l => parseInt(l.split('\t')[0], 10) || 0)) + 1 : entry.index;
+  const target = prompt(
+    `Re-insert this action at which log index?\n\n` +
+    `[${entry.index}] ${entry.role}: ${entry.value}\n\n` +
+    `Original index was ${entry.index}. Next available index is ${nextIdx}.\n` +
+    `(Tip: use "Re-insert all" to put back everything in order after deleting the bad action.)`,
+    String(nextIdx)
+  );
+  if (target === null) return;
+  const idxNum = parseInt(target, 10);
+  if (!Number.isFinite(idxNum)) { alert('Invalid index.'); return; }
+  fetch(`${SERVER}/admin/${TOKEN}/write/${CURRENT_GAME.id}/${idxNum}`, {
+    method: 'POST',
+    body: entry.value,
+  }).then(r => {
+    if (r.ok) {
+      const newStash = stash.filter((_, i) => i !== stashIdx);
+      setStash(CURRENT_GAME.id, newStash);
+      refreshDetail();
+    }
+    else if (r.status === 409) { alert(`Re-insert conflict: log index ${idxNum} is already taken.`); }
+    else { alert(`Re-insert failed (HTTP ${r.status}).`); }
+  });
+}
+
+function clearStash() {
+  if (!CURRENT_GAME) return;
+  if (!confirm('Discard all stashed actions for this game?')) return;
+  setStash(CURRENT_GAME.id, []);
+  refreshDetail();
+}
+
+function editStashEntry(stashIdx, btn) {
+  if (!CURRENT_GAME) return;
+  const stash = getStash(CURRENT_GAME.id);
+  const entry = stash[stashIdx];
+  if (!entry) return;
+  const row = btn.closest('.stash-entry');
+  const valSpan = row.querySelector('.val');
+  valSpan.innerHTML = `<input type="text" class="edit-input" value="${esc(entry.value)}" style="width:100%;background:#111;border:1px solid #888;color:#e6e6e6;padding:4px;font-family:monospace;font-size:9pt;" />`;
+  const input = valSpan.querySelector('input');
+  input.focus(); input.select();
+  btn.textContent = 'Save';
+  btn.onclick = () => {
+    const newVal = input.value.replace(/\r?\n/g, ' ');
+    stash[stashIdx] = { ...entry, value: newVal };
+    setStash(CURRENT_GAME.id, stash);
+    renderStash();
+  };
+  const cancel = document.createElement('button');
+  cancel.className = 'small'; cancel.textContent = 'Cancel';
+  cancel.onclick = () => { renderStash(); };
+  btn.parentNode.insertBefore(cancel, btn.nextSibling);
+}
+
+function renderStash() {
+  const div = document.getElementById('stash-list');
+  if (!div) return;
+  if (!CURRENT_GAME) { div.innerHTML = ''; return; }
+  const stash = getStash(CURRENT_GAME.id);
+  if (stash.length === 0) {
+    div.innerHTML = '<p class="empty" style="font-size:9pt;">No stashed actions. Rolled-back actions land here so you can re-insert them ("force same dice outcome") later.</p>';
+    return;
+  }
+  const groups = groupStashEntries(stash);
+  div.innerHTML = `<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+      <strong>${stash.length} stashed action(s) in ${groups.length} turn(s)</strong>
+      <button class="small" onclick="reinsertAll()">Re-insert all</button>
+      <button class="small" onclick="clearStash()">Clear all</button>
+    </div>` +
+    groups.map((group, gi) => {
+      const label = groupLabel(group);
+      const playerActions = group.filter(e => !isEngineGlue(e.value));
+      const isExpanded = true;
+      const summary = playerActions.length > 0
+        ? playerActions.map(e => esc(e.value.substring(0, 70))).join('<br/>')
+        : esc(group[0].value.substring(0, 70));
+      const detailRows = isExpanded
+        ? group.map((e, ei) => {
+            const stashIdx = stash.indexOf(e);
+            return `<div class="log-entry stash-entry" data-stash-idx="${stashIdx}" style="margin-left:20px;opacity:${isEngineGlue(e.value) ? '0.5' : '1'};">
+            <span class="idx">${esc(String(e.index))}</span>
+            <span class="role">${esc(e.role)}</span>
+            <span class="val">${esc(e.value)}</span>
+            <button class="small" onclick="editStashEntry(${stashIdx}, this)">Edit</button>
+            <button class="small" onclick="reinsertStashed(${stashIdx})">Re-insert</button>
+          </div>`;
+          }).join('')
+        : '';
+      return `<div style="border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:6px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="idx" style="min-width:50px;">${esc(String(group[0].index))}–${esc(String(group[group.length-1].index))}</span>
+          <span style="flex:1;">${summary}</span>
+          <span style="color:var(--text-muted);font-size:9pt;">${group.length} action${group.length>1?'s':''}</span>
+          <button class="small" onclick="reinsertStashGroup(${gi})">Re-insert turn</button>
+          <button class="small danger" onclick="deleteStashGroup(${gi})">Delete turn</button>
+        </div>
+        ${detailRows}
+      </div>`;
+    }).join('');
+}
+
+function reinsertAll() {
+  if (!CURRENT_GAME) return;
+  const stash = getStash(CURRENT_GAME.id);
+  if (!stash.length) return;
+  const sorted = stash.slice().sort((a, b) => a.index - b.index);
+  // Find the next available index from the LIVE log (not the stash's original indices)
+  const lines = (LAST_LOG_RAW || '').split('\n').filter(Boolean);
+  const maxLiveIdx = lines.length ? Math.max(...lines.map(l => parseInt(l.split('\t')[0], 10) || 0)) : -1;
+  const startIdx = maxLiveIdx + 1;
+  if (!confirm(`Re-insert all ${sorted.length} stashed actions?\n\nWill write sequentially starting at index ${startIdx}.\n\nFirst action: ${sorted[0].value.substring(0, 60)}\nLast action: ${sorted[sorted.length-1].value.substring(0, 60)}`)) return;
+  // Chain sequential POSTs, writing at consecutive indices from startIdx
+  let chain = Promise.resolve();
+  sorted.forEach((entry, i) => {
+    chain = chain.then(() =>
+      fetch(`${SERVER}/admin/${TOKEN}/write/${CURRENT_GAME.id}/${startIdx + i}`, {
+        method: 'POST', body: entry.value
+      }).then(r => {
+        if (!r.ok) throw new Error(`Failed at index ${startIdx + i}: HTTP ${r.status}`);
+      })
+    );
+  });
+  chain.then(() => {
+    setStash(CURRENT_GAME.id, []);
+    refreshDetail();
+  }).catch(e => {
+    alert(`Re-insert all stopped: ${e.message}\nSome actions may have been written. Check the log and stash.`);
+    refreshDetail();
+  });
+}
+
+// Group stash entries into "turn segments" split at PreMainAction boundaries.
+// Each group = one player decision + all its setup glue and aftermath.
+// The Delete button removes the entire group (you can't break a turn in half).
+function groupStashEntries(stash) {
+  const sorted = stash.slice().sort((a, b) => a.index - b.index);
+  const groups = [];
+  let current = [];
+  for (const entry of sorted) {
+    // PreMainAction starts a new group (unless the current group is empty)
+    if (/^PreMainAction\(/.test(entry.value) && current.length > 0) {
+      groups.push(current);
+      current = [];
+    }
+    current.push(entry);
+  }
+  if (current.length > 0) groups.push(current);
+  return groups;
+}
+
+// Find the player-choice action in a group (the non-glue entry, or the most
+// important action if there are multiple non-glue entries like battle rolls).
+function groupLabel(group) {
+  const playerActions = group.filter(e => !isEngineGlue(e.value));
+  if (playerActions.length > 0) return playerActions[0];
+  return group[0];
+}
+
+function reinsertStashGroup(groupIdx) {
+  if (!CURRENT_GAME) return;
+  const stash = getStash(CURRENT_GAME.id);
+  const groups = groupStashEntries(stash);
+  const group = groups[groupIdx];
+  if (!group) return;
+  const label = groupLabel(group);
+  const lines = (LAST_LOG_RAW || '').split('\n').filter(Boolean);
+  const maxLiveIdx = lines.length ? Math.max(...lines.map(l => parseInt(l.split('\t')[0], 10) || 0)) : -1;
+  const startIdx = maxLiveIdx + 1;
+  if (!confirm(
+    `Re-insert this turn (${group.length} actions) starting at index ${startIdx}?\n\n` +
+    `Player action: ${label.value.substring(0, 70)}\n` +
+    `Original indices ${group[0].index}–${group[group.length-1].index}`
+  )) return;
+  const sorted = group.slice().sort((a, b) => a.index - b.index);
+  let chain = Promise.resolve();
+  sorted.forEach((entry, i) => {
+    chain = chain.then(() =>
+      fetch(`${SERVER}/admin/${TOKEN}/write/${CURRENT_GAME.id}/${startIdx + i}`, {
+        method: 'POST', body: entry.value
+      }).then(r => {
+        if (!r.ok) throw new Error(`Failed at index ${startIdx + i}: HTTP ${r.status}`);
+      })
+    );
+  });
+  chain.then(() => {
+    const toRemove = new Set(group.map(e => e.index + '|' + e.value));
+    const newStash = stash.filter(e => !toRemove.has(e.index + '|' + e.value));
+    setStash(CURRENT_GAME.id, newStash);
+    refreshDetail();
+  }).catch(e => {
+    alert(`Re-insert turn stopped: ${e.message}\nSome actions may have been written. Check the log and stash.`);
+    refreshDetail();
+  });
+}
+
+function deleteStashGroup(groupIdx) {
+  if (!CURRENT_GAME) return;
+  const stash = getStash(CURRENT_GAME.id);
+  const groups = groupStashEntries(stash);
+  const group = groups[groupIdx];
+  if (!group) return;
+  const label = groupLabel(group);
+  const playerActions = group.filter(e => !isEngineGlue(e.value));
+  if (!confirm(
+    `Delete this turn segment (${group.length} actions)?\n\n` +
+    `Player action: ${label.value.substring(0, 70)}\n` +
+    (playerActions.length > 1 ? `(+ ${playerActions.length - 1} more player actions in this segment)\n` : '') +
+    `Indices ${group[0].index}–${group[group.length-1].index}\n\n` +
+    `"Re-insert all" will then put back only the remaining turns.`
+  )) return;
+  const toRemove = new Set(group.map(e => e.index + '|' + e.value));
+  const newStash = stash.filter(e => !toRemove.has(e.index + '|' + e.value));
+  setStash(CURRENT_GAME.id, newStash);
+  renderStash();
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, ch => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'
+  }[ch]));
+}
+
+// [2026-06-11] Auto-poll games list every 15 minutes + surface crash reports.
+(function() {
+  loadGames();
+  setInterval(function() {
+    loadGames();
+    fetch(`${SERVER}/admin/${TOKEN}/games`).then(r => r.text()).then(text => {
+      text.split('\n').filter(l => l).forEach(line => {
+        const parts = line.split('\t');
+        const id = parts[0], broken = (parts[4] || '0').trim() === '1';
+        if (broken) {
+          fetch(`${SERVER}/admin/${TOKEN}/annotation/${id}`).then(r => r.text()).then(ann => {
+            if (ann && ann.indexOf('\t') > 0) {
+              const notes = ann.substring(ann.indexOf('\t') + 1);
+              if (notes.trim() && notes.indexOf('CRASH') >= 0) {
+                console.log(`[auto-poll] Game ${id} crash: ${notes.substring(0, 200)}`);
+              }
+            }
+          });
+        }
+      });
+    });
+  }, 15 * 60 * 1000);
+})();
+</script>
+
+</body>
+</html>

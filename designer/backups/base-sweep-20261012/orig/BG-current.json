@@ -1,0 +1,648 @@
+{
+  "id": "0ciymclfvfr",
+  "owner": "base",
+  "name": "Black Goat",
+  "acronym": "BG",
+  "created": 1791760309,
+  "updated": 1791816182,
+  "current": 3,
+  "maxVersion": 3,
+  "versions": [
+    {
+      "n": 1,
+      "from": null,
+      "sections": [
+        "meta",
+        "card",
+        "ae",
+        "ufa",
+        "setup",
+        "units",
+        "sbr",
+        "sb",
+        "region",
+        "tokens",
+        "custom",
+        "menus"
+      ],
+      "created": 1791760309,
+      "deleted": false
+    },
+    {
+      "n": 2,
+      "from": 1,
+      "sections": [
+        "meta",
+        "ae",
+        "ufa",
+        "setup",
+        "units",
+        "sbr",
+        "sb",
+        "region",
+        "tokens",
+        "custom",
+        "menus"
+      ],
+      "created": 1791816167,
+      "deleted": false
+    },
+    {
+      "n": 3,
+      "from": 2,
+      "sections": [
+        "units"
+      ],
+      "created": 1791816182,
+      "deleted": false
+    }
+  ],
+  "session": {
+    "n": 3,
+    "sections": [
+      "units"
+    ],
+    "last": 1791816182
+  },
+  "build": {
+    "status": "built",
+    "liveVersion": 2,
+    "requestedAt": null,
+    "builtAt": 1791816167,
+    "history": [
+      {
+        "version": 1,
+        "builtAt": 1791760309
+      },
+      {
+        "version": 2,
+        "builtAt": 1791816167
+      }
+    ]
+  },
+  "liveGameVersions": [],
+  "viewers": [],
+  "imported": true,
+  "design": {
+    "meta": {
+      "color": "#2d5016"
+    },
+    "card": {
+      "image": null,
+      "glyph": null
+    },
+    "sbImages": {
+      "mode": null,
+      "all": null,
+      "each": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    "sbImagesB": {
+      "mode": null,
+      "all": null,
+      "each": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    "ae": {
+      "enabled": false,
+      "name": "",
+      "acronym": "",
+      "rows": [
+        {
+          "id": "bgae0001",
+          "sign": "+",
+          "kind": "fixed",
+          "qty": null,
+          "calc": "",
+          "desc": ""
+        }
+      ],
+      "customLogic": ""
+    },
+    "ufa": {
+      "name": "Fertility Cult",
+      "phase": "Action",
+      "type": "Ongoing",
+      "hasCost": false,
+      "cost": null,
+      "hasEffect": false,
+      "effect": null,
+      "text": "You may Summon a Monster for free once per Action Phase (not once per action).",
+      "customLogic": ""
+    },
+    "setup": {
+      "text": "6 Acolytes + a Controlled Gate in an empty Area",
+      "location": "multi",
+      "earthRegion": null,
+      "libraryRegion": null,
+      "constraints": {
+        "follows": null,
+        "water": true,
+        "land": true,
+        "emptyFactionGlyph": true,
+        "thorn": true,
+        "dragon": true,
+        "chevron": true,
+        "noneOf3": true,
+        "proximity": "N/A",
+        "custom": ""
+      },
+      "gate": true,
+      "units": [
+        {
+          "id": "bgsu0001",
+          "onMap": true,
+          "name": "Acolyte",
+          "qty": 6
+        }
+      ],
+      "power": 8,
+      "aeStart": 0,
+      "customLogic": ""
+    },
+    "units": {
+      "rows": [
+        {
+          "id": "bgu00001",
+          "type": "Cultist",
+          "name": "Acolyte",
+          "mapImage": null,
+          "mapScale": 1.0,
+          "silhouette": null,
+          "qty": 6,
+          "costType": "Fixed",
+          "cost": 1,
+          "costCalc": "",
+          "awakenReq": "",
+          "awakenPower": null,
+          "awakenRegion": "",
+          "combatType": "Fixed Dice",
+          "dice": 0,
+          "diceCalc": "",
+          "pains": null,
+          "kills": null,
+          "resultsCalc": "",
+          "relatedSb": [
+            "bgsb0002"
+          ],
+          "relatedSbNames": [],
+          "abilityName": "",
+          "abilityText": "Spellbook: Frenzy (adds +1 die in Battle)"
+        },
+        {
+          "id": "bgu00002",
+          "type": "Monster",
+          "name": "Ghoul",
+          "mapImage": null,
+          "mapScale": 1.0,
+          "silhouette": null,
+          "qty": 2,
+          "costType": "Fixed",
+          "cost": 1,
+          "costCalc": "",
+          "awakenReq": "",
+          "awakenPower": null,
+          "awakenRegion": "",
+          "combatType": "Fixed Dice",
+          "dice": 1,
+          "diceCalc": "",
+          "pains": null,
+          "kills": null,
+          "resultsCalc": "",
+          "relatedSb": [
+            "bgsb0001"
+          ],
+          "relatedSbNames": [],
+          "abilityName": "",
+          "abilityText": "Spellbook: The Thousand Young (reduces cost by 1 when Shub-Niggurath is in play)"
+        },
+        {
+          "id": "bgu00003",
+          "type": "Monster",
+          "name": "Fungi from Yuggoth",
+          "mapImage": null,
+          "mapScale": 1.0,
+          "silhouette": null,
+          "qty": 4,
+          "costType": "Fixed",
+          "cost": 2,
+          "costCalc": "",
+          "awakenReq": "",
+          "awakenPower": null,
+          "awakenRegion": "",
+          "combatType": "Fixed Dice",
+          "dice": 1,
+          "diceCalc": "",
+          "pains": null,
+          "kills": null,
+          "resultsCalc": "",
+          "relatedSb": [
+            "bgsb0001",
+            "bgsb0006"
+          ],
+          "relatedSbNames": [],
+          "abilityName": "",
+          "abilityText": "Spellbook: The Thousand Young (reduces cost by 1 when Shub-Niggurath is in play)"
+        },
+        {
+          "id": "bgu00004",
+          "type": "Monster",
+          "name": "Dark Young",
+          "mapImage": null,
+          "mapScale": 1.0,
+          "silhouette": null,
+          "qty": 3,
+          "costType": "Fixed",
+          "cost": 3,
+          "costCalc": "",
+          "awakenReq": "",
+          "awakenPower": null,
+          "awakenRegion": "",
+          "combatType": "Fixed Dice",
+          "dice": 2,
+          "diceCalc": "",
+          "pains": null,
+          "kills": null,
+          "resultsCalc": "",
+          "relatedSb": [
+            "bgsb0001",
+            "bgsb0004"
+          ],
+          "relatedSbNames": [],
+          "abilityName": "",
+          "abilityText": "Spellbooks: The Thousand Young (reduces cost by 1 when Shub-Niggurath is in play); The Red Sign (can Control Gates)"
+        },
+        {
+          "id": "bgu00005",
+          "type": "Great Old One",
+          "name": "Shub-Niggurath",
+          "mapImage": null,
+          "mapScale": 1.0,
+          "silhouette": null,
+          "qty": 1,
+          "costType": "Awakening",
+          "cost": null,
+          "costCalc": "",
+          "awakenReq": "Requires a Gate you Control and at least 2 Cultists (yours or Parasitized). Eliminate 2 of those Cultists.",
+          "awakenPower": 8,
+          "awakenRegion": "Any Area with your Controlled Gate",
+          "combatType": "Variable Dice",
+          "dice": null,
+          "diceCalc": "Number of your Gates + your Cultists + your Dark Young (if The Red Sign)",
+          "pains": null,
+          "kills": null,
+          "resultsCalc": "",
+          "relatedSb": [
+            "bgsb0000",
+            "bgsb0001",
+            "bgsb0004",
+            "bgsb0005"
+          ],
+          "relatedSbNames": [],
+          "abilityName": "Avatar",
+          "abilityText": "(Unique Faction Power): Pay 1 Power. Shub-Niggurath moves to any Area. Choose an enemy Unit there and swap it back to the Area Shub-Niggurath came from."
+        }
+      ],
+      "customLogic": ""
+    },
+    "sbr": {
+      "multiText": "",
+      "rows": [
+        {
+          "id": "bgsbr001",
+          "text": "Have Units in 4 Areas",
+          "hasNum": true,
+          "num": 4
+        },
+        {
+          "id": "bgsbr002",
+          "text": "Have Units in 6 Areas",
+          "hasNum": true,
+          "num": 6
+        },
+        {
+          "id": "bgsbr003",
+          "text": "Have Units in 8 Areas",
+          "hasNum": true,
+          "num": 8
+        },
+        {
+          "id": "bgsbr004",
+          "text": "Share Areas with all enemies",
+          "hasNum": false,
+          "num": null
+        },
+        {
+          "id": "bgsbr005",
+          "text": "Eliminate two of your Cultists as an Action",
+          "hasNum": true,
+          "num": 2
+        },
+        {
+          "id": "bgsbr006",
+          "text": "Awaken Shub-Niggurath",
+          "hasNum": false,
+          "num": null
+        }
+      ],
+      "customLogic": ""
+    },
+    "sb": {
+      "twoSided": false,
+      "rows": [
+        {
+          "id": "bgsb0000",
+          "name": "Avatar",
+          "type": "Action",
+          "cost": 1,
+          "hasEffect": false,
+          "effect": null,
+          "text": "Shub-Niggurath moves to any Area. Choose an enemy Unit there and swap it back to the Area Shub-Niggurath came from.",
+          "nameB": "",
+          "typeB": null,
+          "costB": 0,
+          "hasEffectB": false,
+          "effectB": null,
+          "textB": "",
+          "dual": false,
+          "name2": "",
+          "type2": null,
+          "cost2": 0,
+          "hasEffect2": false,
+          "effect2": null,
+          "text2": "",
+          "dualB": false,
+          "nameB2": "",
+          "typeB2": null,
+          "costB2": 0,
+          "hasEffectB2": false,
+          "effectB2": null,
+          "textB2": ""
+        },
+        {
+          "id": "bgsb0001",
+          "name": "The Thousand Young",
+          "type": "Ongoing",
+          "cost": 0,
+          "hasEffect": false,
+          "effect": null,
+          "text": "When Shub-Niggurath is in play, Ghoul, Fungi from Yuggoth, and Dark Young each cost 1 less to Summon.",
+          "nameB": "",
+          "typeB": null,
+          "costB": 0,
+          "hasEffectB": false,
+          "effectB": null,
+          "textB": "",
+          "dual": false,
+          "name2": "",
+          "type2": null,
+          "cost2": 0,
+          "hasEffect2": false,
+          "effect2": null,
+          "text2": "",
+          "dualB": false,
+          "nameB2": "",
+          "typeB2": null,
+          "costB2": 0,
+          "hasEffectB2": false,
+          "effectB2": null,
+          "textB2": ""
+        },
+        {
+          "id": "bgsb0002",
+          "name": "Frenzy",
+          "type": "Battle",
+          "cost": 0,
+          "hasEffect": false,
+          "effect": null,
+          "text": "Your Acolytes add 1 die in Battle.",
+          "nameB": "",
+          "typeB": null,
+          "costB": 0,
+          "hasEffectB": false,
+          "effectB": null,
+          "textB": "",
+          "dual": false,
+          "name2": "",
+          "type2": null,
+          "cost2": 0,
+          "hasEffect2": false,
+          "effect2": null,
+          "text2": "",
+          "dualB": false,
+          "nameB2": "",
+          "typeB2": null,
+          "costB2": 0,
+          "hasEffectB2": false,
+          "effectB2": null,
+          "textB2": ""
+        },
+        {
+          "id": "bgsb0006",
+          "name": "Ghroth",
+          "type": "Action",
+          "cost": 2,
+          "hasEffect": false,
+          "effect": null,
+          "text": "Pay 2 Power. Roll a die. If the result is greater than the number of Areas containing your Fungi from Yuggoth, you fail and place an enemy Cultist anywhere. Otherwise, eliminate that many enemy Cultists (negotiated among enemies).",
+          "nameB": "",
+          "typeB": null,
+          "costB": 0,
+          "hasEffectB": false,
+          "effectB": null,
+          "textB": "",
+          "dual": false,
+          "name2": "",
+          "type2": null,
+          "cost2": 0,
+          "hasEffect2": false,
+          "effect2": null,
+          "text2": "",
+          "dualB": false,
+          "nameB2": "",
+          "typeB2": null,
+          "costB2": 0,
+          "hasEffectB2": false,
+          "effectB2": null,
+          "textB2": ""
+        },
+        {
+          "id": "bgsb0003",
+          "name": "Necrophagy",
+          "type": "Battle",
+          "cost": 0,
+          "hasEffect": false,
+          "effect": null,
+          "text": "Each Kill you score eliminates all Acolytes in the Battle Area (friend and foe).",
+          "nameB": "",
+          "typeB": null,
+          "costB": 0,
+          "hasEffectB": false,
+          "effectB": null,
+          "textB": "",
+          "dual": false,
+          "name2": "",
+          "type2": null,
+          "cost2": 0,
+          "hasEffect2": false,
+          "effect2": null,
+          "text2": "",
+          "dualB": false,
+          "nameB2": "",
+          "typeB2": null,
+          "costB2": 0,
+          "hasEffectB2": false,
+          "effectB2": null,
+          "textB2": ""
+        },
+        {
+          "id": "bgsb0004",
+          "name": "The Red Sign",
+          "type": "Ongoing",
+          "cost": 0,
+          "hasEffect": false,
+          "effect": null,
+          "text": "Dark Young can Control Gates. When Shub-Niggurath is in play, she adds +1 die per Dark Young you have in play.",
+          "nameB": "",
+          "typeB": null,
+          "costB": 0,
+          "hasEffectB": false,
+          "effectB": null,
+          "textB": "",
+          "dual": false,
+          "name2": "",
+          "type2": null,
+          "cost2": 0,
+          "hasEffect2": false,
+          "effect2": null,
+          "text2": "",
+          "dualB": false,
+          "nameB2": "",
+          "typeB2": null,
+          "costB2": 0,
+          "hasEffectB2": false,
+          "effectB2": null,
+          "textB2": ""
+        },
+        {
+          "id": "bgsb0005",
+          "name": "Blood Sacrifice",
+          "type": "Doom Phase",
+          "cost": 0,
+          "hasEffect": false,
+          "effect": null,
+          "text": "Once per Doom Phase, when Shub-Niggurath is in play, you may Eliminate one of your Cultists to gain 1 Elder Sign.",
+          "nameB": "",
+          "typeB": null,
+          "costB": 0,
+          "hasEffectB": false,
+          "effectB": null,
+          "textB": "",
+          "dual": false,
+          "name2": "",
+          "type2": null,
+          "cost2": 0,
+          "hasEffect2": false,
+          "effect2": null,
+          "text2": "",
+          "dualB": false,
+          "nameB2": "",
+          "typeB2": null,
+          "costB2": 0,
+          "hasEffectB2": false,
+          "effectB2": null,
+          "textB2": ""
+        }
+      ],
+      "customLogic": ""
+    },
+    "region": {
+      "rows": [
+        {
+          "id": "bgrg0001",
+          "name": "",
+          "image": null,
+          "restrictions": "",
+          "adjacency": ""
+        }
+      ],
+      "customLogic": ""
+    },
+    "tokens": {
+      "rows": [
+        {
+          "id": "bgtk0001",
+          "name": "",
+          "qty": null,
+          "image": null,
+          "placement": "",
+          "effects": "",
+          "hasEffect": false,
+          "effect": null
+        }
+      ],
+      "customLogic": ""
+    },
+    "custom": {
+      "rows": [
+        {
+          "id": "bgcs0001",
+          "name": "",
+          "image": null,
+          "placement": "",
+          "usage": "",
+          "effects": "",
+          "hasNum": false,
+          "num": null
+        }
+      ],
+      "customLogic": ""
+    },
+    "menus": {
+      "rows": [
+        {
+          "id": "bgmn0001",
+          "name": "",
+          "section": null,
+          "item": null,
+          "prompted": null,
+          "title": "",
+          "hasSubtitle": false,
+          "subtitle": "",
+          "button": "",
+          "cancel": false,
+          "skip": false,
+          "done": false,
+          "multiSelect": false,
+          "repeat": false,
+          "repeatCount": "",
+          "numberPick": false,
+          "numberMin": "",
+          "numberMax": "",
+          "greyedOptions": false,
+          "greyedReason": "",
+          "infoOnly": false,
+          "confirm": false,
+          "confirmText": "",
+          "showPicked": false,
+          "leadsToNext": false,
+          "next": null,
+          "nextTrigger": ""
+        }
+      ]
+    }
+  },
+  "base": true
+}

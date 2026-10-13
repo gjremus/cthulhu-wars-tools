@@ -1,0 +1,549 @@
+{
+  "id": "v5zdofjsevw5",
+  "owner": "base",
+  "name": "Great Cthulhu",
+  "acronym": "GC",
+  "created": 1791760308,
+  "updated": 1791760308,
+  "current": 1,
+  "maxVersion": 1,
+  "versions": [
+    {
+      "n": 1,
+      "from": null,
+      "sections": [
+        "meta",
+        "card",
+        "sbImages",
+        "ae",
+        "ufa",
+        "setup",
+        "units",
+        "sbr",
+        "sb",
+        "region",
+        "tokens",
+        "custom",
+        "menus"
+      ],
+      "created": 1791760308,
+      "deleted": false
+    }
+  ],
+  "session": {
+    "n": 1,
+    "sections": [],
+    "last": 0
+  },
+  "build": {
+    "status": "built",
+    "liveVersion": 1,
+    "requestedAt": null,
+    "builtAt": 1791760308,
+    "history": [
+      {
+        "version": 1,
+        "builtAt": 1791760308
+      }
+    ]
+  },
+  "liveGameVersions": [],
+  "viewers": [],
+  "imported": true,
+  "design": {
+    "meta": {
+      "color": "#77a055"
+    },
+    "card": {
+      "image": null,
+      "glyph": "0a9838c21c0cbaccc3d87aab2b6f2519abd9aa527bbf5986d1eb0ee4d595f5b5.webp"
+    },
+    "sbImages": {
+      "mode": "all",
+      "all": "e9ea7e9614871c57eed8b70537f13764c9a700f30d3820efcfc35cf90029c537.webp",
+      "each": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    "sbImagesB": {
+      "mode": null,
+      "all": null,
+      "each": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    "ae": {
+      "enabled": false,
+      "name": "",
+      "acronym": "",
+      "rows": [
+        {
+          "id": "DSYUuXFn",
+          "sign": "+",
+          "kind": "fixed",
+          "qty": null,
+          "calc": "",
+          "desc": ""
+        }
+      ],
+      "customLogic": ""
+    },
+    "ufa": {
+      "name": "Immortal",
+      "phase": "Ongoing",
+      "type": "Ongoing",
+      "hasCost": false,
+      "cost": null,
+      "hasEffect": false,
+      "effect": null,
+      "text": "Once Cthulhu has Awakened, he costs only 4 Power each subsequent time he is Awakened. Whenever you Awaken any Great Old One, gain 1 Elder Sign."
+    },
+    "setup": {
+      "text": "Start with 8 Power. Place 6 Acolytes and a Controlled Gate in the South Pacific (an Ocean area).",
+      "location": "single",
+      "earthRegion": "South Pacific",
+      "libraryRegion": null,
+      "constraints": {
+        "follows": "0",
+        "water": true,
+        "land": false,
+        "emptyFactionGlyph": false,
+        "thorn": false,
+        "dragon": false,
+        "chevron": false,
+        "noneOf3": false,
+        "proximity": "N/A",
+        "custom": ""
+      },
+      "gate": true,
+      "units": [
+        {
+          "id": "gcun0001",
+          "onMap": true,
+          "name": "Acolyte",
+          "qty": 6
+        }
+      ],
+      "power": 8,
+      "aeStart": 0,
+      "customLogic": ""
+    },
+    "units": {
+      "rows": [
+        {
+          "id": "gcun0001",
+          "type": "Cultist",
+          "name": "Acolyte",
+          "mapImage": "99cb7b30e2176d2a1502a10274c8921f4dcc83cc70cce945e00995b74b15851c.webp",
+          "mapScale": 1.0,
+          "silhouette": null,
+          "qty": 6,
+          "costType": "Fixed",
+          "cost": 1,
+          "costCalc": "",
+          "awakenReq": "",
+          "awakenPower": null,
+          "awakenRegion": "",
+          "combatType": "Fixed Dice",
+          "dice": 0,
+          "diceCalc": "",
+          "pains": null,
+          "kills": null,
+          "resultsCalc": "",
+          "relatedSb": [
+            "gcsb0001"
+          ],
+          "relatedSbNames": [],
+          "abilityName": "",
+          "abilityText": "Setup: 6 Acolytes + a Controlled Gate in the South Pacific."
+        },
+        {
+          "id": "gcun0002",
+          "type": "Monster",
+          "name": "Deep One",
+          "mapImage": "2bd6af7abcea0497ec80df0de2d846ee5a320f74614d4a059aa84c0b4f58f9f1.webp",
+          "mapScale": 1.0,
+          "silhouette": null,
+          "qty": 4,
+          "costType": "Fixed",
+          "cost": 1,
+          "costCalc": "",
+          "awakenReq": "",
+          "awakenPower": null,
+          "awakenRegion": "",
+          "combatType": "Fixed Dice",
+          "dice": 1,
+          "diceCalc": "",
+          "pains": null,
+          "kills": null,
+          "resultsCalc": "",
+          "relatedSb": [
+            "gcsb0002"
+          ],
+          "relatedSbNames": [],
+          "abilityName": "",
+          "abilityText": "Spellbook: Devolve."
+        },
+        {
+          "id": "gcun0003",
+          "type": "Monster",
+          "name": "Shoggoth",
+          "mapImage": "7d87578d65b37e8e199f695c8a0d87992d43e19c0c5371b4babe12003cdec685.webp",
+          "mapScale": 1.0,
+          "silhouette": null,
+          "qty": 2,
+          "costType": "Fixed",
+          "cost": 2,
+          "costCalc": "",
+          "awakenReq": "",
+          "awakenPower": null,
+          "awakenRegion": "",
+          "combatType": "Fixed Dice",
+          "dice": 2,
+          "diceCalc": "",
+          "pains": null,
+          "kills": null,
+          "resultsCalc": "",
+          "relatedSb": [
+            "gcsb0003"
+          ],
+          "relatedSbNames": [],
+          "abilityName": "",
+          "abilityText": "Spellbook: Absorb."
+        },
+        {
+          "id": "gcun0004",
+          "type": "Monster",
+          "name": "Starspawn",
+          "mapImage": "283f1c994cba842dc08bf80faef973bfeb7da3172d46e069b76b28fc0e62d6e6.webp",
+          "mapScale": 1.0,
+          "silhouette": null,
+          "qty": 2,
+          "costType": "Fixed",
+          "cost": 3,
+          "costCalc": "",
+          "awakenReq": "",
+          "awakenPower": null,
+          "awakenRegion": "",
+          "combatType": "Fixed Dice",
+          "dice": 3,
+          "diceCalc": "",
+          "pains": null,
+          "kills": null,
+          "resultsCalc": "",
+          "relatedSb": [
+            "gcsb0004"
+          ],
+          "relatedSbNames": [],
+          "abilityName": "",
+          "abilityText": "Spellbook: Regenerate."
+        },
+        {
+          "id": "gcun0005",
+          "type": "Great Old One",
+          "name": "Cthulhu",
+          "mapImage": "9280ff926b5e34db8c3128552421a8eca64ce1599c3cb22cdc46d1871bf93640.webp",
+          "mapScale": 1.0,
+          "silhouette": null,
+          "qty": 1,
+          "costType": "Awakening",
+          "cost": null,
+          "costCalc": "",
+          "awakenReq": "There must be a Gate in Great Cthulhu's starting Area (South Pacific). Pay 10 Power the first time, 4 Power subsequently. Cthulhu appears in its starting Area. Gain 1 Elder Sign (from Immortal).",
+          "awakenPower": 10,
+          "awakenRegion": "South Pacific (starting area)",
+          "combatType": "Fixed Dice",
+          "dice": 6,
+          "diceCalc": "",
+          "pains": null,
+          "kills": null,
+          "resultsCalc": "",
+          "relatedSb": [
+            "gcsb0005",
+            "gcsb0006"
+          ],
+          "relatedSbNames": [],
+          "abilityName": "Devour",
+          "abilityText": "Devour (Pre-Battle): The enemy player chooses and Eliminates one of his Monsters or Cultists in the Battle. Awakening: Pay 10 Power the first time (requires Gate in South Pacific). Pay 4 Power for subsequent awakenings."
+        }
+      ]
+    },
+    "sbr": {
+      "multiText": "",
+      "rows": [
+        {
+          "id": "gcsr0001",
+          "text": "Receive this Spellbook in the first Doom Phase. Receive 1 Elder Sign.",
+          "hasNum": false,
+          "num": null
+        },
+        {
+          "id": "gcsr0002",
+          "text": "Kill and/or Devour an enemy Unit in a Battle. (You may earn both Spellbooks in a single Battle, if you Kill and/or Devour 3 or more Units.)",
+          "hasNum": false,
+          "num": null
+        },
+        {
+          "id": "gcsr0003",
+          "text": "Kill and/or Devour 2 enemy Units in a Battle. (You may earn both Spellbooks in a single Battle, if you Kill and/or Devour 3 or more Units.)",
+          "hasNum": false,
+          "num": null
+        },
+        {
+          "id": "gcsr0004",
+          "text": "Awaken Cthulhu.",
+          "hasNum": false,
+          "num": null
+        },
+        {
+          "id": "gcsr0005",
+          "text": "Control 3 Gates in Ocean/sea Areas OR 4 Gates exist in Ocean/sea Areas.",
+          "hasNum": false,
+          "num": null
+        },
+        {
+          "id": "gcsr0006",
+          "text": "This must be the last Faction Spellbook you receive. It must be taken during the Doom Phase. Receive 1 Elder Sign.",
+          "hasNum": false,
+          "num": null
+        }
+      ]
+    },
+    "sb": {
+      "twoSided": false,
+      "rows": [
+        {
+          "id": "gcsb0001",
+          "name": "Dreams",
+          "type": "Action",
+          "cost": 2,
+          "hasEffect": false,
+          "effect": null,
+          "text": "Choose an Area containing an enemy's Acolyte Cultist. Your enemy must Eliminate one of his Acolyte Cultists from that Area and replace it with one from your Pool."
+        },
+        {
+          "id": "gcsb0002",
+          "name": "Devolve",
+          "type": "Ongoing",
+          "cost": 0,
+          "hasEffect": false,
+          "effect": null,
+          "text": "After any player's Action, replace one or more of your Acolyte Cultists anywhere on the Map with Deep Ones from your Pool."
+        },
+        {
+          "id": "gcsb0003",
+          "name": "Absorb",
+          "type": "Pre-Battle",
+          "cost": 0,
+          "hasEffect": false,
+          "effect": null,
+          "text": "If a Shoggoth is present, Eliminate one or more of your Monsters or Cultists in the Battle. For each Unit so removed, add 3 dice to the Shoggoth's Combat for that Battle."
+        },
+        {
+          "id": "gcsb0004",
+          "name": "Regenerate",
+          "type": "Post-Battle",
+          "cost": 0,
+          "hasEffect": false,
+          "effect": null,
+          "text": "Assign up to 2 Kill or Pain Battle results to the same Starspawn. If 2 Kills are applied, the Starspawn is Killed. On any other combination of Kill or Pain results, the Starspawn is only Pained."
+        },
+        {
+          "id": "gcsb0005",
+          "name": "Submerge",
+          "type": "Action",
+          "cost": 1,
+          "hasEffect": false,
+          "effect": null,
+          "text": "If Cthulhu is in an ocean or sea Area, remove him from the Map and place him on your Faction Card, along with any or all of your Units in the Area. Later, as a 0-cost Action, you may place Cthulhu, plus all accompanying Units, into any Area."
+        },
+        {
+          "id": "gcsb0006",
+          "name": "Y'ha Nthlei",
+          "type": "Gather Power Phase",
+          "cost": 0,
+          "hasEffect": false,
+          "effect": null,
+          "text": "During Gather Power, if Cthulhu is in play, gain 1 Power for each enemy-controlled Gate in an ocean or sea Area."
+        }
+      ],
+      "customLogic": ""
+    },
+    "region": {
+      "rows": []
+    },
+    "tokens": {
+      "rows": []
+    },
+    "custom": {
+      "rows": []
+    },
+    "menus": {
+      "rows": [
+        {
+          "id": "menu001",
+          "name": "Setup - Pick Start Area",
+          "section": "setup",
+          "item": null,
+          "prompted": "Own",
+          "title": "Great Cthulhu starts in",
+          "hasSubtitle": false,
+          "subtitle": "",
+          "button": "[South Pacific]",
+          "cancel": true,
+          "skip": false,
+          "leadsToNext": false,
+          "next": null,
+          "nextTrigger": ""
+        },
+        {
+          "id": "menu002",
+          "name": "Dreams - Pick Target Area",
+          "section": "sb",
+          "item": "gcsb0001",
+          "prompted": "Own",
+          "title": "Dreams (Cost 2)",
+          "hasSubtitle": false,
+          "subtitle": "",
+          "button": "[Area] with enemy Acolyte",
+          "cancel": true,
+          "skip": false,
+          "leadsToNext": true,
+          "next": "menu003",
+          "nextTrigger": "Area selected"
+        },
+        {
+          "id": "menu003",
+          "name": "Dreams - Pick Target Cultist",
+          "section": "sb",
+          "item": "gcsb0001",
+          "prompted": "Own",
+          "title": "Dreams: enemy eliminates Acolyte in [Area]",
+          "hasSubtitle": false,
+          "subtitle": "",
+          "button": "[Enemy Acolyte]",
+          "cancel": false,
+          "skip": false,
+          "leadsToNext": false,
+          "next": null,
+          "nextTrigger": ""
+        },
+        {
+          "id": "menu004",
+          "name": "Devolve - Pick Region",
+          "section": "sb",
+          "item": "gcsb0002",
+          "prompted": "Own",
+          "title": "Devolve",
+          "hasSubtitle": false,
+          "subtitle": "",
+          "button": "[Region] with your Acolyte",
+          "cancel": true,
+          "skip": false,
+          "leadsToNext": false,
+          "next": null,
+          "nextTrigger": "",
+          "repeat": true,
+          "repeatCount": "After any player's Action"
+        },
+        {
+          "id": "menu005",
+          "name": "Absorb - Eliminate Unit",
+          "section": "sb",
+          "item": "gcsb0003",
+          "prompted": "Own",
+          "title": "Absorb: Eliminate units for +3 dice each",
+          "hasSubtitle": false,
+          "subtitle": "",
+          "button": "[Your Unit]",
+          "cancel": true,
+          "skip": false,
+          "leadsToNext": false,
+          "next": null,
+          "nextTrigger": "",
+          "done": true,
+          "multiSelect": true
+        },
+        {
+          "id": "menu006",
+          "name": "Regenerate - Assign to Starspawn",
+          "section": "sb",
+          "item": "gcsb0004",
+          "prompted": "Own",
+          "title": "Regenerate: Assign results to Starspawn",
+          "hasSubtitle": false,
+          "subtitle": "",
+          "button": "[Kill/Pain] to Starspawn",
+          "cancel": false,
+          "skip": false,
+          "leadsToNext": false,
+          "next": null,
+          "nextTrigger": "",
+          "repeat": true,
+          "repeatCount": "Up to 2 results"
+        },
+        {
+          "id": "menu007",
+          "name": "Submerge - Pick Ocean Area",
+          "section": "sb",
+          "item": "gcsb0005",
+          "prompted": "Own",
+          "title": "Submerge (Cost 1)",
+          "hasSubtitle": false,
+          "subtitle": "",
+          "button": "[Ocean Area] with Cthulhu",
+          "cancel": true,
+          "skip": false,
+          "leadsToNext": true,
+          "next": "menu008",
+          "nextTrigger": "Area selected"
+        },
+        {
+          "id": "menu008",
+          "name": "Submerge - Pick Units",
+          "section": "sb",
+          "item": "gcsb0005",
+          "prompted": "Own",
+          "title": "Submerge: choose units to submerge with Cthulhu",
+          "hasSubtitle": false,
+          "subtitle": "",
+          "button": "[Unit] in [Area]",
+          "cancel": true,
+          "skip": false,
+          "leadsToNext": false,
+          "next": null,
+          "nextTrigger": "",
+          "done": true,
+          "multiSelect": true
+        },
+        {
+          "id": "menu009",
+          "name": "Unsubmerge - Pick Area",
+          "section": "sb",
+          "item": "gcsb0005",
+          "prompted": "Own",
+          "title": "Unsubmerge Cthulhu",
+          "hasSubtitle": false,
+          "subtitle": "",
+          "button": "[Any Area]",
+          "cancel": true,
+          "skip": false,
+          "leadsToNext": false,
+          "next": null,
+          "nextTrigger": ""
+        }
+      ]
+    }
+  },
+  "base": true
+}

@@ -1,0 +1,543 @@
+{
+  "meta": {
+    "color": "#4977b3"
+  },
+  "card": {
+    "image": null,
+    "glyph": "5930ee0517208981cd105e4fa5a30e1d873bfe4145f8f8c186e1c14a215428da.webp"
+  },
+  "sbImages": {
+    "mode": "all",
+    "all": "e9ea7e9614871c57eed8b70537f13764c9a700f30d3820efcfc35cf90029c537.webp",
+    "each": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "sbImagesB": {
+    "mode": null,
+    "all": null,
+    "each": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "ae": {
+    "enabled": false,
+    "name": "",
+    "acronym": "",
+    "rows": [
+      {
+        "id": "DSYUuXFn",
+        "sign": "+",
+        "kind": "fixed",
+        "qty": null,
+        "calc": "",
+        "desc": ""
+      }
+    ],
+    "customLogic": ""
+  },
+  "ufa": {
+    "name": "Flight",
+    "phase": "Ongoing",
+    "type": "Ongoing",
+    "hasCost": false,
+    "cost": null,
+    "hasEffect": false,
+    "effect": null,
+    "text": "All your units can fly (even Cultists). When moved, they can travel 2 Areas. They can fly over Areas containing enemy Units."
+  },
+  "setup": {
+    "text": "Start with 8 Power. Place 6 Acolytes and a Controlled Gate in Asia.",
+    "location": "single",
+    "earthRegion": "Asia",
+    "libraryRegion": null,
+    "constraints": {
+      "follows": "0",
+      "water": false,
+      "land": true,
+      "emptyFactionGlyph": false,
+      "thorn": false,
+      "dragon": false,
+      "chevron": false,
+      "noneOf3": false,
+      "proximity": "N/A",
+      "custom": ""
+    },
+    "gate": true,
+    "units": [
+      {
+        "id": "ccun0001",
+        "onMap": true,
+        "name": "Acolyte",
+        "qty": 6
+      }
+    ],
+    "power": 8,
+    "aeStart": 0,
+    "customLogic": ""
+  },
+  "units": {
+    "rows": [
+      {
+        "id": "ccun0001",
+        "type": "Cultist",
+        "name": "Acolyte",
+        "mapImage": "22af1c44990dba6955d2fef1550c81c5564e5d4fa7e848b2b85b9970d6cda47c.webp",
+        "mapScale": 1.0,
+        "silhouette": null,
+        "qty": 6,
+        "costType": "Fixed",
+        "cost": 1,
+        "costCalc": "",
+        "awakenReq": "",
+        "awakenPower": null,
+        "awakenRegion": "",
+        "combatType": "Fixed Dice",
+        "dice": 0,
+        "diceCalc": "",
+        "pains": null,
+        "kills": null,
+        "resultsCalc": "",
+        "relatedSb": [],
+        "relatedSbNames": [],
+        "abilityName": "",
+        "abilityText": "Setup: 6 Acolytes + a Controlled Gate in Asia."
+      },
+      {
+        "id": "ccun0002",
+        "type": "Monster",
+        "name": "Nightgaunt",
+        "mapImage": "7e04bfaeebd6a86e02b2a00f0b1aeeaf101d782f86e8be6b0b90488510b7bf95.webp",
+        "mapScale": 1.0,
+        "silhouette": null,
+        "qty": 3,
+        "costType": "Fixed",
+        "cost": 1,
+        "costCalc": "",
+        "awakenReq": "",
+        "awakenPower": null,
+        "awakenRegion": "",
+        "combatType": "Fixed Dice",
+        "dice": 0,
+        "diceCalc": "",
+        "pains": null,
+        "kills": null,
+        "resultsCalc": "",
+        "relatedSb": [
+          "ccsb0001"
+        ],
+        "relatedSbNames": [],
+        "abilityName": "",
+        "abilityText": "Spellbook: Abduct."
+      },
+      {
+        "id": "ccun0003",
+        "type": "Monster",
+        "name": "Flying Polyp",
+        "mapImage": "76184a175ed7091b40240eafafbfd2ebf2c1b3d616eef72417e47e6341c540bb.webp",
+        "mapScale": 1.0,
+        "silhouette": null,
+        "qty": 3,
+        "costType": "Fixed",
+        "cost": 2,
+        "costCalc": "",
+        "awakenReq": "",
+        "awakenPower": null,
+        "awakenRegion": "",
+        "combatType": "Fixed Dice",
+        "dice": 1,
+        "diceCalc": "",
+        "pains": null,
+        "kills": null,
+        "resultsCalc": "",
+        "relatedSb": [
+          "ccsb0002"
+        ],
+        "relatedSbNames": [],
+        "abilityName": "",
+        "abilityText": "Spellbook: Invisibility."
+      },
+      {
+        "id": "ccun0004",
+        "type": "Monster",
+        "name": "Hunting Horror",
+        "mapImage": "deb41283571407cf4657fa077b814a12a21c98ea9c069f0a804a6a9bf021dc08.webp",
+        "mapScale": 1.0,
+        "silhouette": null,
+        "qty": 2,
+        "costType": "Fixed",
+        "cost": 3,
+        "costCalc": "",
+        "awakenReq": "",
+        "awakenPower": null,
+        "awakenRegion": "",
+        "combatType": "Fixed Dice",
+        "dice": 2,
+        "diceCalc": "",
+        "pains": null,
+        "kills": null,
+        "resultsCalc": "",
+        "relatedSb": [
+          "ccsb0003"
+        ],
+        "relatedSbNames": [],
+        "abilityName": "",
+        "abilityText": "Spellbook: Seek and Destroy."
+      },
+      {
+        "id": "ccun0005",
+        "type": "Great Old One",
+        "name": "Nyarlathotep",
+        "mapImage": "aaae9445fa9b50be6398a906d4766e949be0bcea5f22fbbf5dfa541dc5093283.webp",
+        "mapScale": 1.0,
+        "silhouette": null,
+        "qty": 1,
+        "costType": "Awakening",
+        "cost": null,
+        "costCalc": "",
+        "awakenReq": "You must have a Controlled Gate. Pay 10 Power. Nyarlathotep appears at the Controlled Gate.",
+        "awakenPower": 10,
+        "awakenRegion": "Any area with your Controlled Gate",
+        "combatType": "Variable Dice",
+        "dice": null,
+        "diceCalc": "Your faction spellbooks + opponent's faction spellbooks in battle",
+        "pains": null,
+        "kills": null,
+        "resultsCalc": "",
+        "relatedSb": [
+          "ccsb0004",
+          "ccsb0005"
+        ],
+        "relatedSbNames": [],
+        "abilityName": "The Harbinger",
+        "abilityText": "The Harbinger (Post-Battle): If Nyarlathotep is in a Battle in which one or more enemy Great Old Ones are Pained or Killed, you receive Power equal to half the cost to Awaken those Great Old Ones. Per enemy Great Old One, you may choose to receive 2 Elder Signs instead of Power. This takes effect even if Nyarlathotep is Killed or Pained himself. Awakening: Pay 10 Power at a Controlled Gate."
+      }
+    ]
+  },
+  "sbr": {
+    "multiText": "",
+    "rows": [
+      {
+        "id": "ccsr0001",
+        "text": "As your Action, pay 4 Power. (You may earn both these Spellbooks in a single Round by paying 10 Power.)",
+        "hasNum": false,
+        "num": null
+      },
+      {
+        "id": "ccsr0002",
+        "text": "As your Action, pay 6 Power. (You may earn both these Spellbooks in a single Round by paying 10 Power.)",
+        "hasNum": false,
+        "num": null
+      },
+      {
+        "id": "ccsr0003",
+        "text": "Control three Gates OR have 12 Power.",
+        "hasNum": false,
+        "num": null
+      },
+      {
+        "id": "ccsr0004",
+        "text": "Control four Gates OR have 15 Power.",
+        "hasNum": false,
+        "num": null
+      },
+      {
+        "id": "ccsr0005",
+        "text": "Capture an enemy Cultist.",
+        "hasNum": false,
+        "num": null
+      },
+      {
+        "id": "ccsr0006",
+        "text": "Awaken Nyarlathotep.",
+        "hasNum": false,
+        "num": null
+      }
+    ]
+  },
+  "sb": {
+    "twoSided": false,
+    "rows": [
+      {
+        "id": "ccsb0001",
+        "name": "Abduct",
+        "type": "Pre-Battle",
+        "cost": 0,
+        "hasEffect": false,
+        "effect": null,
+        "text": "Eliminate one or more Nightgaunts from the Battle. For each one Eliminated, your enemy must Eliminate one of his own Monsters or Cultists from the Battle."
+      },
+      {
+        "id": "ccsb0002",
+        "name": "Invisibility",
+        "type": "Pre-Battle",
+        "cost": 0,
+        "hasEffect": false,
+        "effect": null,
+        "text": "Select one Monster or Cultist (from either Faction) for each Flying Polyp present and \"exempt\" it. The selected Unit does not participate in the rest of the Battle."
+      },
+      {
+        "id": "ccsb0003",
+        "name": "Seek and Destroy",
+        "type": "Pre-Battle",
+        "cost": 0,
+        "hasEffect": false,
+        "effect": null,
+        "text": "Immediately move any or all Hunting Horrors from any Area to the Battle Area."
+      },
+      {
+        "id": "ccsb0004",
+        "name": "Emissary of the Outer Gods",
+        "type": "Post-Battle",
+        "cost": 0,
+        "hasEffect": false,
+        "effect": null,
+        "text": "Unless an enemy Great Old One is involved in the Battle, a Kill applied to Nyarlathotep becomes a Pain. If Nyarlathotep cannot be Pained due to being surrounded, he is not Eliminated."
+      },
+      {
+        "id": "ccsb0005",
+        "name": "The Thousand Forms",
+        "type": "Action",
+        "cost": 0,
+        "hasEffect": false,
+        "effect": null,
+        "text": "If Nyarlathotep is in play, roll 1d6. Your foes lose that much Power between them; they have 1 minute to decide how much each loses. If they cannot agree, you get the rolled number as Power added to your total. This spellbook cannot be used again this Action Phase."
+      },
+      {
+        "id": "ccsb0006",
+        "name": "Madness",
+        "type": "Post-Battle",
+        "cost": 0,
+        "hasEffect": false,
+        "effect": null,
+        "text": "After all Pain results have been assigned, you, rather than the Units' owners, choose the Area(s) to which all Pained Units will go. You may apply these results in any order (rather than the normal 'attacker first, then defender'), but you must still follow all other rules. Do this even for Battles in which you did not participate."
+      }
+    ],
+    "customLogic": ""
+  },
+  "region": {
+    "rows": []
+  },
+  "tokens": {
+    "rows": []
+  },
+  "custom": {
+    "rows": []
+  },
+  "menus": {
+    "rows": [
+      {
+        "id": "menu001",
+        "name": "Setup - Pick Start Area",
+        "section": "setup",
+        "item": null,
+        "prompted": "Own",
+        "title": "Crawling Chaos starts in",
+        "hasSubtitle": false,
+        "subtitle": "",
+        "button": "[Asia]",
+        "cancel": true,
+        "skip": false,
+        "leadsToNext": false,
+        "next": null,
+        "nextTrigger": ""
+      },
+      {
+        "id": "menu002",
+        "name": "Nyarlathotep Awaken - Pick Gate",
+        "section": "units",
+        "item": "ccun0005",
+        "prompted": "Own",
+        "title": "Awaken Nyarlathotep",
+        "hasSubtitle": false,
+        "subtitle": "",
+        "button": "[Controlled Gate] (Cost 10)",
+        "cancel": true,
+        "skip": false,
+        "leadsToNext": false,
+        "next": null,
+        "nextTrigger": ""
+      },
+      {
+        "id": "menu003",
+        "name": "Pay 4 Power",
+        "section": "sbr",
+        "item": "ccsr0001",
+        "prompted": "Own",
+        "title": "Pay 4 Power for Spellbook",
+        "hasSubtitle": false,
+        "subtitle": "",
+        "button": "Pay 4 Power",
+        "cancel": true,
+        "skip": false,
+        "leadsToNext": false,
+        "next": null,
+        "nextTrigger": ""
+      },
+      {
+        "id": "menu004",
+        "name": "Pay 6 Power",
+        "section": "sbr",
+        "item": "ccsr0002",
+        "prompted": "Own",
+        "title": "Pay 6 Power for Spellbook",
+        "hasSubtitle": false,
+        "subtitle": "",
+        "button": "Pay 6 Power",
+        "cancel": true,
+        "skip": false,
+        "leadsToNext": false,
+        "next": null,
+        "nextTrigger": ""
+      },
+      {
+        "id": "menu005",
+        "name": "Pay 10 Power (Both)",
+        "section": "sbr",
+        "item": "ccsr0001",
+        "prompted": "Own",
+        "title": "Pay 10 Power for Both Spellbooks",
+        "hasSubtitle": false,
+        "subtitle": "",
+        "button": "Pay 10 Power",
+        "cancel": true,
+        "skip": false,
+        "leadsToNext": false,
+        "next": null,
+        "nextTrigger": ""
+      },
+      {
+        "id": "menu006",
+        "name": "Abduct - Eliminate Nightgaunts",
+        "section": "sb",
+        "item": "ccsb0001",
+        "prompted": "Own",
+        "title": "Abduct: Eliminate Nightgaunts",
+        "hasSubtitle": false,
+        "subtitle": "",
+        "button": "[Nightgaunt]",
+        "cancel": true,
+        "skip": false,
+        "leadsToNext": false,
+        "next": null,
+        "nextTrigger": "",
+        "done": true,
+        "multiSelect": true
+      },
+      {
+        "id": "menu007",
+        "name": "Invisibility - Exempt Units",
+        "section": "sb",
+        "item": "ccsb0002",
+        "prompted": "Own",
+        "title": "Invisibility: Exempt units (1 per Flying Polyp)",
+        "hasSubtitle": false,
+        "subtitle": "",
+        "button": "[Unit] to exempt",
+        "cancel": true,
+        "skip": false,
+        "leadsToNext": false,
+        "next": null,
+        "nextTrigger": "",
+        "done": true,
+        "multiSelect": true
+      },
+      {
+        "id": "menu008",
+        "name": "Seek and Destroy - Move Hunting Horrors",
+        "section": "sb",
+        "item": "ccsb0003",
+        "prompted": "Own",
+        "title": "Seek and Destroy: Move Hunting Horrors to Battle",
+        "hasSubtitle": false,
+        "subtitle": "",
+        "button": "[Hunting Horror] in [Area]",
+        "cancel": true,
+        "skip": false,
+        "leadsToNext": false,
+        "next": null,
+        "nextTrigger": "",
+        "done": true,
+        "multiSelect": true
+      },
+      {
+        "id": "menu009",
+        "name": "The Thousand Forms - Roll Die",
+        "section": "sb",
+        "item": "ccsb0005",
+        "prompted": "Own",
+        "title": "The Thousand Forms (Cost 0)",
+        "hasSubtitle": false,
+        "subtitle": "",
+        "button": "Roll 1d6",
+        "cancel": true,
+        "skip": false,
+        "leadsToNext": true,
+        "next": "menu010",
+        "nextTrigger": "Die rolled"
+      },
+      {
+        "id": "menu010",
+        "name": "The Thousand Forms - Negotiate",
+        "section": "sb",
+        "item": "ccsb0005",
+        "prompted": "Own",
+        "title": "The Thousand Forms: [X] Power to distribute",
+        "hasSubtitle": true,
+        "subtitle": "1 minute to decide",
+        "button": "Each enemy: [Amount] Power",
+        "cancel": false,
+        "skip": false,
+        "leadsToNext": false,
+        "next": null,
+        "nextTrigger": ""
+      },
+      {
+        "id": "menu011",
+        "name": "The Harbinger - Choose Reward",
+        "section": "units",
+        "item": "ccun0005",
+        "prompted": "Own",
+        "title": "The Harbinger: GOO Pained/Killed",
+        "hasSubtitle": false,
+        "subtitle": "",
+        "button": "Gain [Power] or [2 ES]",
+        "cancel": false,
+        "skip": false,
+        "leadsToNext": false,
+        "next": null,
+        "nextTrigger": "",
+        "repeat": true,
+        "repeatCount": "Per enemy GOO"
+      },
+      {
+        "id": "menu012",
+        "name": "Madness - Choose Pain Destination",
+        "section": "sb",
+        "item": "ccsb0006",
+        "prompted": "Own",
+        "title": "Madness: Choose destination for [Unit]",
+        "hasSubtitle": false,
+        "subtitle": "",
+        "button": "[Adjacent Area]",
+        "cancel": false,
+        "skip": false,
+        "leadsToNext": false,
+        "next": null,
+        "nextTrigger": "",
+        "repeat": true,
+        "repeatCount": "All Pained units"
+      }
+    ]
+  }
+}

@@ -1,0 +1,30 @@
+#!/usr/bin/env python3
+"""Master ticker 2026-06-29 ~06:25 — update nothing-happened timestamp."""
+import docx
+
+DOC = ("/Users/gremus/Library/CloudStorage/GoogleDrive-gremus@salesforce.com/"
+       "My Drive/Personal/Games/Cthulhu Wars/master current tasks.docx")
+
+d = docx.Document(DOC)
+
+OLD_PREFIX = "2026-06-29 ~06:10 CDT (master ticker): No new tasks or admin entries."
+NEW_TEXT = ("2026-06-29 ~06:25 CDT (master ticker): No new tasks or admin entries. "
+            "Both in-progress items still blocked on creator input "
+            "(Alternative Ancients clarifications, remote access preference). "
+            "Admin queue still 404 since server restart. Server healthy.")
+
+for p in d.paragraphs:
+    if p.text.strip().startswith(OLD_PREFIX):
+        for run in p.runs:
+            run.text = ""
+        if p.runs:
+            p.runs[0].text = NEW_TEXT
+        else:
+            p.add_run(NEW_TEXT)
+        print(f"Updated summary bullet timestamp from ~06:10 to ~06:25")
+        break
+else:
+    print("WARNING: Could not find the ~06:10 summary bullet to update")
+
+d.save(DOC)
+print("OK: saved")

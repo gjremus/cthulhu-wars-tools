@@ -1,0 +1,62 @@
+[
+  {
+    "op": "set",
+    "path": "units.rows.ccun0002.relatedSbNames",
+    "value": ["Abduct"]
+  },
+  {
+    "op": "set",
+    "path": "units.rows.ccun0003.relatedSbNames",
+    "value": ["Invisibility"]
+  },
+  {
+    "op": "set",
+    "path": "units.rows.ccun0004.relatedSbNames",
+    "value": ["Seek and Destroy"]
+  },
+  {
+    "op": "set",
+    "path": "units.rows.ccun0005.relatedSbNames",
+    "value": ["Emissary of the Outer Gods", "The Thousand Forms"]
+  },
+  {
+    "op": "set",
+    "path": "sbr.rows.ccsr0001.hasNum",
+    "value": true
+  },
+  {
+    "op": "set",
+    "path": "sbr.rows.ccsr0001.num",
+    "value": 4
+  },
+  {
+    "op": "set",
+    "path": "sbr.rows.ccsr0002.hasNum",
+    "value": true
+  },
+  {
+    "op": "set",
+    "path": "sbr.rows.ccsr0002.num",
+    "value": 6
+  },
+  {
+    "op": "set",
+    "path": "sbr.rows.ccsr0003.hasNum",
+    "value": true
+  },
+  {
+    "op": "set",
+    "path": "sbr.rows.ccsr0003.num",
+    "value": 3
+  },
+  {
+    "op": "set",
+    "path": "sbr.rows.ccsr0004.hasNum",
+    "value": true
+  },
+  {
+    "op": "set",
+    "path": "sbr.rows.ccsr0004.num",
+    "value": 4
+  }
+]

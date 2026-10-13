@@ -1,0 +1,368 @@
+{
+  "name": "Yellow Sign",
+  "acronym": "YS",
+  "base": true,
+  "design": {
+    "meta": {
+      "color": "#cccc00"
+    },
+    "card": {
+      "image": null,
+      "glyph": null
+    },
+    "sbImages": {
+      "mode": null,
+      "all": null,
+      "each": [null, null, null, null, null, null]
+    },
+    "ae": {
+      "enabled": false,
+      "name": "",
+      "acronym": "",
+      "rows": [],
+      "customLogic": ""
+    },
+    "ufa": {
+      "name": "Feast / Desecrate / Vengeance",
+      "phase": "Action",
+      "type": "Ongoing",
+      "hasCost": false,
+      "cost": null,
+      "hasEffect": false,
+      "effect": null,
+      "text": "Feast: Each GOO may move. Desecrate (King in Yellow): Roll d6, place token if you have units ≥ roll. Vengeance (Battle): +1 kill per Pain taken.",
+      "customLogic": ""
+    },
+    "setup": {
+      "text": "Place 6 Acolytes and your Gate in the region you choose. Place your other units in your play area.",
+      "location": "multi",
+      "earthRegion": null,
+      "libraryRegion": null,
+      "constraints": {
+        "follows": "0",
+        "water": true,
+        "land": true,
+        "emptyFactionGlyph": true,
+        "thorn": true,
+        "dragon": true,
+        "chevron": true,
+        "noneOf3": true,
+        "proximity": "N/A",
+        "custom": ""
+      },
+      "gate": true,
+      "units": [
+        {
+          "id": "setup001",
+          "onMap": true,
+          "name": "Acolyte",
+          "qty": 6
+        }
+      ],
+      "power": 8,
+      "aeStart": 0,
+      "customLogic": ""
+    },
+    "units": {
+      "rows": [
+        {
+          "id": "unit0001",
+          "type": "Cultist",
+          "name": "Acolyte",
+          "mapImage": null,
+          "mapScale": 1.0,
+          "silhouette": null,
+          "qty": 6,
+          "costType": "Fixed",
+          "cost": 1,
+          "costCalc": "",
+          "awakenReq": "",
+          "awakenPower": null,
+          "awakenRegion": "",
+          "combatType": "N/A",
+          "dice": null,
+          "diceCalc": "",
+          "pains": null,
+          "kills": null,
+          "resultsCalc": "",
+          "relatedSb": [],
+          "relatedSbNames": ["Passion"],
+          "hasAbility": false,
+          "abilityName": "",
+          "abilityText": ""
+        },
+        {
+          "id": "unit0002",
+          "type": "Monster",
+          "name": "Undead",
+          "mapImage": null,
+          "mapScale": 1.0,
+          "silhouette": null,
+          "qty": 6,
+          "costType": "Fixed",
+          "cost": 1,
+          "costCalc": "",
+          "awakenReq": "",
+          "awakenPower": null,
+          "awakenRegion": "",
+          "combatType": "Variable Dice",
+          "dice": null,
+          "diceCalc": "Quantity - 1 (minimum 0)",
+          "pains": null,
+          "kills": null,
+          "resultsCalc": "",
+          "relatedSb": [],
+          "relatedSbNames": ["Zingaya", "The Screaming Dead"],
+          "hasAbility": false,
+          "abilityName": "",
+          "abilityText": ""
+        },
+        {
+          "id": "unit0003",
+          "type": "Monster",
+          "name": "Byakhee",
+          "mapImage": null,
+          "mapScale": 1.0,
+          "silhouette": null,
+          "qty": 4,
+          "costType": "Fixed",
+          "cost": 2,
+          "costCalc": "",
+          "awakenReq": "",
+          "awakenPower": null,
+          "awakenRegion": "",
+          "combatType": "Variable Dice",
+          "dice": null,
+          "diceCalc": "Quantity + 1",
+          "pains": null,
+          "kills": null,
+          "resultsCalc": "",
+          "relatedSb": [],
+          "relatedSbNames": ["Shriek of the Byakhee"],
+          "hasAbility": false,
+          "abilityName": "",
+          "abilityText": ""
+        },
+        {
+          "id": "unit0004",
+          "type": "Great Old One",
+          "name": "King in Yellow",
+          "mapImage": null,
+          "mapScale": 1.0,
+          "silhouette": null,
+          "qty": 1,
+          "costType": "Awakening",
+          "cost": null,
+          "costCalc": "",
+          "awakenReq": "No Gate in region + Yellow Sign present in region",
+          "awakenPower": 4,
+          "awakenRegion": "",
+          "combatType": "Fixed Dice",
+          "dice": 4,
+          "diceCalc": "",
+          "pains": null,
+          "kills": null,
+          "resultsCalc": "",
+          "relatedSb": [],
+          "relatedSbNames": ["Desecrate", "The Screaming Dead"],
+          "hasAbility": false,
+          "abilityName": "",
+          "abilityText": ""
+        },
+        {
+          "id": "unit0005",
+          "type": "Great Old One",
+          "name": "Hastur",
+          "mapImage": null,
+          "mapScale": 1.0,
+          "silhouette": null,
+          "qty": 1,
+          "costType": "Awakening",
+          "cost": null,
+          "costCalc": "",
+          "awakenReq": "Yellow Sign Gate in region + King in Yellow in region",
+          "awakenPower": 10,
+          "awakenRegion": "",
+          "combatType": "Variable Dice",
+          "dice": null,
+          "diceCalc": "Quantity × Ritual Cost",
+          "pains": null,
+          "kills": null,
+          "resultsCalc": "",
+          "relatedSb": [],
+          "relatedSbNames": ["He Who is Not to be Named", "The Third Eye"],
+          "hasAbility": false,
+          "abilityName": "",
+          "abilityText": ""
+        }
+      ],
+      "customLogic": ""
+    },
+    "sbr": {
+      "multiText": "",
+      "rows": [
+        {
+          "id": "req001",
+          "text": "Provide 3 Doom",
+          "hasNum": false,
+          "num": null
+        },
+        {
+          "id": "req002",
+          "text": "Awaken King in Yellow",
+          "hasNum": false,
+          "num": null
+        },
+        {
+          "id": "req003",
+          "text": "Desecrate an Area with /^\\ Glyph",
+          "hasNum": false,
+          "num": null
+        },
+        {
+          "id": "req004",
+          "text": "Desecrate an Area with (*) Glyph",
+          "hasNum": false,
+          "num": null
+        },
+        {
+          "id": "req005",
+          "text": "Desecrate an Area with ||| Glyph",
+          "hasNum": false,
+          "num": null
+        },
+        {
+          "id": "req006",
+          "text": "Awaken Hastur",
+          "hasNum": false,
+          "num": null
+        }
+      ],
+      "customLogic": ""
+    },
+    "sb": {
+      "twoSided": false,
+      "rows": [
+        {
+          "id": "sb001",
+          "name": "Passion",
+          "type": "Ongoing",
+          "cost": 0,
+          "hasEffect": true,
+          "effect": "+1 Power per Cultist killed",
+          "text": "Each time one of your Cultists is killed, you get +1 Power.",
+          "nameB": "",
+          "typeB": null,
+          "costB": 0,
+          "hasEffectB": false,
+          "effectB": null,
+          "textB": "",
+          "dual": false,
+          "dualB": false
+        },
+        {
+          "id": "sb002",
+          "name": "Zingaya",
+          "type": "Action",
+          "cost": 1,
+          "hasEffect": true,
+          "effect": "Kill enemy Cultist, place Undead",
+          "text": "Pay 1 Power. Kill an enemy Cultist in a region where you have an Undead. Place an Undead in that region.",
+          "nameB": "",
+          "typeB": null,
+          "costB": 0,
+          "hasEffectB": false,
+          "effectB": null,
+          "textB": "",
+          "dual": false,
+          "dualB": false
+        },
+        {
+          "id": "sb003",
+          "name": "Shriek of the Byakhee",
+          "type": "Action",
+          "cost": 1,
+          "hasEffect": true,
+          "effect": "Move all Byakhee to one region",
+          "text": "Pay 1 Power. Move all your Byakhee to the same region.",
+          "nameB": "",
+          "typeB": null,
+          "costB": 0,
+          "hasEffectB": false,
+          "effectB": null,
+          "textB": "",
+          "dual": false,
+          "dualB": false
+        },
+        {
+          "id": "sb004",
+          "name": "The Screaming Dead",
+          "type": "Action",
+          "cost": 1,
+          "hasEffect": true,
+          "effect": "Move King + Undead to adjacent region",
+          "text": "Pay 1 Power. Move King in Yellow and any Undead in his region to an adjacent region.",
+          "nameB": "",
+          "typeB": null,
+          "costB": 0,
+          "hasEffectB": false,
+          "effectB": null,
+          "textB": "",
+          "dual": false,
+          "dualB": false
+        },
+        {
+          "id": "sb005",
+          "name": "The Third Eye",
+          "type": "Ongoing",
+          "cost": 0,
+          "hasEffect": true,
+          "effect": "Desecrate costs 1 Power instead of 2",
+          "text": "When you Desecrate, you may pay 1 Power instead of 2 and gain +1 Elder Sign on success.",
+          "nameB": "",
+          "typeB": null,
+          "costB": 0,
+          "hasEffectB": false,
+          "effectB": null,
+          "textB": "",
+          "dual": false,
+          "dualB": false
+        },
+        {
+          "id": "sb006",
+          "name": "He Who is Not to be Named",
+          "type": "Action",
+          "cost": 1,
+          "hasEffect": true,
+          "effect": "Move Hastur to region with enemy Cultist",
+          "text": "Pay 1 Power. Move Hastur to any region containing an enemy Cultist.",
+          "nameB": "",
+          "typeB": null,
+          "costB": 0,
+          "hasEffectB": false,
+          "effectB": null,
+          "textB": "",
+          "dual": false,
+          "dualB": false
+        }
+      ],
+      "customLogic": ""
+    },
+    "region": {
+      "rows": [],
+      "customLogic": ""
+    },
+    "tokens": {
+      "rows": [],
+      "customLogic": ""
+    },
+    "custom": {
+      "rows": [],
+      "customLogic": ""
+    },
+    "menus": {
+      "rows": [],
+      "customLogic": ""
+    }
+  }
+}
