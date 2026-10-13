@@ -127,22 +127,39 @@ step will cause the faction to crash when players try to select it:
    a. Add "XXX" to homebrewOnlyFactions Set (line ~6340) — **THIS IS THE MOST COMMON MISSING STEP**
    b. Add XXX to altPickerFactions list (line ~5987)
    c. Add "XXX" -> "alpha" to builtInStability Map (line ~6002)
-5. **Assets uploaded** with --assets flag: faction card, unit images, spellbook images
-6. **Overlay info function** defined for faction card display
-7. **Setup option** added for selecting the faction in game setup
-8. **Simple bot** implemented with faction logic
+   d. Add XXX to allFactions list (line ~5160)
+5. **Host.scala registration** (line ~90): Add XXX to allFactions for bot testing
+6. **Serialize.scala registration** (line ~262): Add XXX to factions list for game state serialization
+7. **Assets uploaded** with --assets flag: faction card, unit images, spellbook images
+8. **Overlay info function** defined for faction card display
+9. **Setup option** added for selecting the faction in game setup
+10. **BotXXX.scala created** with faction bot logic (even if simple placeholder)
 
-AUDIT PROCESS BEFORE DEPLOYING:
-After coding the faction, run this grep audit to verify all registrations:
+GREP AUDIT BEFORE DEPLOYING:
+After coding the faction, run these grep audits to verify ALL registrations:
   cd ~/Claude-Projects/cw-homebrew-wt/solo
   grep "XXX" Game.scala                     # Should show expansion registration
-  grep "XXX" CthulhuWarsSolo.scala          # Should show THREE hits: homebrewOnlyFactions, altPickerFactions, builtInStability
-If any grep returns ZERO results, the registration is MISSING and the faction will CRASH when selected.
+  grep "XXX" CthulhuWarsSolo.scala          # Should show FOUR hits: homebrewOnlyFactions, altPickerFactions, builtInStability, allFactions
+  grep "XXX" Host.scala                     # Should show allFactions entry
+  grep "XXX" Serialize.scala                # Should show factions list entry
+  ls BotXXX.scala                           # Bot file must exist
+If any grep returns ZERO results or the bot file doesn't exist, the registration is MISSING and the faction WILL CRASH.
 
-The owner explicitly reported: "Permeation, Tribulation, Flesh Mason - all 3 are fucking broken" because
-the agent missed step 4a (homebrewOnlyFactions). The memory file feedback_alt_picker_categorization.md
-says "CRITICAL: add faction to homebrewOnlyFactions set, not just comments". Follow this checklist for
-EVERY faction build to prevent crashes.
+**MANDATORY BROWSER TEST BEFORE MARKING "BUILT"** (owner requirement 2026-10-13):
+After deployment, you MUST test the faction in a REAL browser before marking it build-status "built":
+  1. Use headless Chrome to load: https://cwo.freeddns.org/HB/?setup=4:GC-XXX-CC-BG
+  2. Check for JavaScript errors in console output
+  3. Verify the game loads without crashes
+  4. If ANY errors occur, the faction is NOT built - fix them first
+  5. ONLY after successful browser test can you mark: build-status <fid> built "HB <commit>"
+
+The owner explicitly demanded: "make it so that the fucking agent, and you, HAVE TO LOAD A FUCKING GAME
+AND IT HAS TO FUCKING WORK, USING THE ACTUAL BROWSER, before you can call a faction 'built'"
+
+Owner reported ALL THREE designer factions crashed: "Permeation, Tribulation, Flesh Mason - all 3 are
+fucking broken" because the agent missed multiple registration steps (homebrewOnlyFactions + Host.scala).
+The memory file feedback_alt_picker_categorization.md says "CRITICAL: add faction to homebrewOnlyFactions
+set, not just comments". Follow EVERY step of this checklist and RUN THE BROWSER TEST before marking built.
 
 ABILITY LOOKUP SYSTEM (added 2026-10-12): Before building any new ability (unit, spellbook, UFA, or
 faction power), check the abilities reference spreadsheet for similar existing implementations:
