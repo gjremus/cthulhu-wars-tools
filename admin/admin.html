@@ -90,6 +90,20 @@
   button.danger:hover { background: var(--danger); color: #fff; }
   button.small { padding: 3px 10px; font-size: 9pt; }
 
+  /* File input styling for image uploads */
+  input[type=file] { display: none; }
+  .file-input-btn {
+    padding: 6px 14px; background: var(--bg-subtle); color: var(--text);
+    border: 1px solid var(--border); cursor: pointer; font-size: 10pt; border-radius: 6px;
+    font-weight: 500; display: inline-block; margin-left: 6px;
+  }
+  .file-input-btn:hover { background: var(--border); border-color: var(--border-strong); }
+  .image-preview-badge {
+    display: inline-block; padding: 4px 10px; background: rgba(47,129,247,0.15);
+    color: var(--accent); border: 1px solid var(--accent); border-radius: 6px;
+    font-size: 9pt; margin-left: 6px;
+  }
+
   .game-row { padding: 10px 12px; margin-bottom: 6px; background: var(--bg-card);
               border: 1px solid var(--border); border-radius: 6px; cursor: pointer;
               display: flex; gap: 8px; justify-content: space-between; align-items: center; }
@@ -534,6 +548,11 @@
                 style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px 10px;font-family:inherit;font-size:11pt;resize:vertical;"></textarea>
       <button class="primary" style="flex:0 0 auto;align-self:stretch;padding:0 18px;" onclick="submitClaudePrompt()">Submit</button>
     </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+      <input type="file" id="claude-prompt-image" accept="image/*" onchange="updateClaudePromptImageBadge()" />
+      <button class="file-input-btn" onclick="document.getElementById('claude-prompt-image').click()">Image</button>
+      <span id="claude-prompt-image-badge"></span>
+    </div>
     <p id="claude-prompt-status" style="font-size:9pt;color:var(--text-muted);margin-top:0;"></p>
 
     <h3 style="margin-top:24px;">Terminal log (last 36 hours of prompts + Claude output)
@@ -571,6 +590,11 @@
       <textarea id="meta-agent-input" rows="3" placeholder="Type a prompt for the meta agent watchdog…"
                 style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px 10px;font-family:inherit;font-size:11pt;resize:vertical;"></textarea>
       <button class="primary" style="flex:0 0 auto;align-self:stretch;padding:0 18px;" onclick="submitMetaAgentPrompt()">Submit</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+      <input type="file" id="meta-agent-image" accept="image/*" onchange="updateMetaAgentImageBadge()" />
+      <button class="file-input-btn" onclick="document.getElementById('meta-agent-image').click()">Image</button>
+      <span id="meta-agent-image-badge"></span>
     </div>
     <p id="meta-agent-status" style="font-size:9pt;color:var(--text-muted);margin-top:0;"></p>
 
@@ -988,16 +1012,76 @@ function loadPastRun(name) {
 let CLAUDE_POLL_TIMER = null;
 let AGENT_OUTPUT_POLL_TIMER = null;
 
+// Image upload badge and data storage
+let CLAUDE_PROMPT_IMAGE_DATA = null;
+let META_AGENT_IMAGE_DATA = null;
+let BUG_REPORT_IMAGE_DATA = null;
+
+function updateClaudePromptImageBadge() {
+  const input = document.getElementById('claude-prompt-image');
+  const badge = document.getElementById('claude-prompt-image-badge');
+  if (!input.files || !input.files[0]) {
+    CLAUDE_PROMPT_IMAGE_DATA = null;
+    badge.innerHTML = '';
+    return;
+  }
+  const file = input.files[0];
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    CLAUDE_PROMPT_IMAGE_DATA = { name: file.name, data: e.target.result };
+    badge.innerHTML = `<span class="image-preview-badge">📎 ${esc(file.name)}</span>`;
+  };
+  reader.readAsDataURL(file);
+}
+
+function updateMetaAgentImageBadge() {
+  const input = document.getElementById('meta-agent-image');
+  const badge = document.getElementById('meta-agent-image-badge');
+  if (!input.files || !input.files[0]) {
+    META_AGENT_IMAGE_DATA = null;
+    badge.innerHTML = '';
+    return;
+  }
+  const file = input.files[0];
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    META_AGENT_IMAGE_DATA = { name: file.name, data: e.target.result };
+    badge.innerHTML = `<span class="image-preview-badge">📎 ${esc(file.name)}</span>`;
+  };
+  reader.readAsDataURL(file);
+}
+
+function updateBugReportImageBadge() {
+  const input = document.getElementById('bug-report-image');
+  const badge = document.getElementById('bug-report-image-badge');
+  if (!input.files || !input.files[0]) {
+    BUG_REPORT_IMAGE_DATA = null;
+    badge.innerHTML = '';
+    return;
+  }
+  const file = input.files[0];
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    BUG_REPORT_IMAGE_DATA = { name: file.name, data: e.target.result };
+    badge.innerHTML = `<span class="image-preview-badge">📎 ${esc(file.name)}</span>`;
+  };
+  reader.readAsDataURL(file);
+}
+
 function submitClaudePrompt() {
   const ta = document.getElementById('claude-prompt-input');
   const text = ta.value.trim();
   const status = document.getElementById('claude-prompt-status');
   if (!text) { status.textContent = 'Empty prompt — type something first.'; status.style.color = 'var(--danger)'; return; }
   status.textContent = 'Sending…'; status.style.color = 'var(--text-muted)';
+  let body = text;
+  if (CLAUDE_PROMPT_IMAGE_DATA) {
+    body += `\n\n[IMAGE ATTACHED: ${CLAUDE_PROMPT_IMAGE_DATA.name}]\n${CLAUDE_PROMPT_IMAGE_DATA.data}`;
+  }
   fetch(`${SERVER}/admin/${TOKEN}/claude-prompt`, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain' },
-    body: text,
+    body: body,
   }).then(r => {
     if (!r.ok) {
       status.textContent = `Send failed (HTTP ${r.status}).`; status.style.color = 'var(--danger)';
@@ -1006,6 +1090,9 @@ function submitClaudePrompt() {
     status.textContent = 'Queued. Claude picks it up on the next ticker tick.';
     status.style.color = 'var(--success)';
     ta.value = '';
+    CLAUDE_PROMPT_IMAGE_DATA = null;
+    document.getElementById('claude-prompt-image').value = '';
+    document.getElementById('claude-prompt-image-badge').innerHTML = '';
     refreshClaudeQueue();
   }).catch(e => {
     status.textContent = `Network error: ${e.message || e}`; status.style.color = 'var(--danger)';
@@ -1046,10 +1133,14 @@ function submitMetaAgentPrompt() {
   const status = document.getElementById('meta-agent-status');
   if (!text) { status.textContent = 'Empty prompt — type something first.'; status.style.color = 'var(--danger)'; return; }
   status.textContent = 'Sending…'; status.style.color = 'var(--text-muted)';
+  let body = text;
+  if (META_AGENT_IMAGE_DATA) {
+    body += `\n\n[IMAGE ATTACHED: ${META_AGENT_IMAGE_DATA.name}]\n${META_AGENT_IMAGE_DATA.data}`;
+  }
   fetch(`${SERVER}/admin/${TOKEN}/meta-agent-prompt`, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain' },
-    body: text,
+    body: body,
   }).then(r => {
     if (!r.ok) {
       status.textContent = `Send failed (HTTP ${r.status}).`; status.style.color = 'var(--danger)';
@@ -1058,6 +1149,9 @@ function submitMetaAgentPrompt() {
     status.textContent = 'Queued. Meta agent checks every 2 minutes.';
     status.style.color = 'var(--success)';
     ta.value = '';
+    META_AGENT_IMAGE_DATA = null;
+    document.getElementById('meta-agent-image').value = '';
+    document.getElementById('meta-agent-image-badge').innerHTML = '';
     refreshMetaAgentOutput();
   }).catch(e => {
     status.textContent = `Network error: ${e.message || e}`; status.style.color = 'var(--danger)';
@@ -2291,6 +2385,11 @@ function refreshDetail() {
     <div class="notes-box" style="margin-top:6px;">
       <textarea id="console-output" rows="3" placeholder="Extra console output (optional — auto-captured errors above are already included)…"></textarea>
     </div>
+    <div style="display:flex;align-items:center;gap:8px;margin:8px 0;">
+      <input type="file" id="bug-report-image" accept="image/*" onchange="updateBugReportImageBadge()" />
+      <button class="file-input-btn" onclick="document.getElementById('bug-report-image').click()">Image</button>
+      <span id="bug-report-image-badge"></span>
+    </div>
     <p style="margin:6px 0;">
       <button class="primary" onclick="submitGameToTerminal()">Submit to terminal</button>
       <span id="submit-terminal-status" style="font-size:9pt;color:var(--text-muted);margin-left:8px;"></span>
@@ -2376,13 +2475,16 @@ function submitGameToTerminal() {
     .catch(() => '')
     .then(autoCaptured => {
       const auto = decodeConsoleErrorsTsv(autoCaptured);
-      const body =
+      let body =
         `ADMIN-CONSOLE-ERROR build=${build} game_id=${CURRENT_GAME.id}\n` +
         `Error in this game: ${gameUrl}\n` +
         `Error description (if any): ${desc}\n` +
         (auto ? `Auto-captured browser console errors (most recent first):\n${auto}\n\n` : '') +
         (cons ? `Extra console output (user-pasted):\n${cons}\n\n` : '') +
         `Fix. Game log: ${adminUrl}\n`;
+      if (BUG_REPORT_IMAGE_DATA) {
+        body += `\n[IMAGE ATTACHED: ${BUG_REPORT_IMAGE_DATA.name}]\n${BUG_REPORT_IMAGE_DATA.data}`;
+      }
       return sendClaudePromptBody(body);
     })
     .then(res => {
@@ -2391,27 +2493,16 @@ function submitGameToTerminal() {
         return;
       }
       if (status) { status.textContent = 'Queued. Claude picks it up on the next tick.'; status.style.color = 'var(--success)'; }
+      document.getElementById('error-description').value = '';
+      document.getElementById('console-output').value = '';
+      BUG_REPORT_IMAGE_DATA = null;
+      document.getElementById('bug-report-image').value = '';
+      document.getElementById('bug-report-image-badge').innerHTML = '';
       if (typeof refreshClaudeQueue === 'function') refreshClaudeQueue();
     })
     .catch(e => {
       if (status) { status.textContent = `Network error: ${e.message || e}`; status.style.color = 'var(--danger)'; }
     });
-  if (status) { status.textContent = 'Sending…'; status.style.color = 'var(--text-muted)'; }
-  fetch(`${SERVER}/admin/${TOKEN}/claude-prompt`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain' },
-    body,
-  }).then(r => {
-    if (!r.ok) {
-      if (status) { status.textContent = `Submit failed (HTTP ${r.status}).`; status.style.color = 'var(--danger)'; }
-      return;
-    }
-    if (status) { status.textContent = 'Queued. Claude picks it up on the next tick.'; status.style.color = 'var(--success)'; }
-    // Refresh the queue panel in the Claude Terminal section if it's loaded.
-    if (typeof refreshClaudeQueue === 'function') refreshClaudeQueue();
-  }).catch(e => {
-    if (status) { status.textContent = `Network error: ${e.message || e}`; status.style.color = 'var(--danger)'; }
-  });
 }
 
 // Helpers for the new console-capture pipeline.
