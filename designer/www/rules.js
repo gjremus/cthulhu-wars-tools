@@ -478,7 +478,7 @@
       if (row.hasEffect && row.effect == null) return false;
       return true;
     } else if (rowType === 'custom') {
-      if (!row.name || !row.image || !row.placement || !row.usage || !row.effects) return false;
+      if (!row.name || !row.placement || !row.usage || !row.effects) return false;
       if (row.hasNum && row.num == null) return false;
       return true;
     } else if (rowType === 'mapGlyph') {
@@ -893,7 +893,6 @@
       const nonEmptyRows = d.rows.filter(r => !isRowEmpty(r, blankRow('custom.rows')));
       nonEmptyRows.forEach(r => {
         if (!r.name) missing.push(`custom.rows.${r.id}.name`);
-        if (!r.image) missing.push(`custom.rows.${r.id}.image`);
         if (!r.placement) missing.push(`custom.rows.${r.id}.placement`);
         if (!r.usage) missing.push(`custom.rows.${r.id}.usage`);
         if (!r.effects) missing.push(`custom.rows.${r.id}.effects`);
