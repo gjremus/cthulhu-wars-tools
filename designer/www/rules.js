@@ -1424,6 +1424,40 @@
     return parts.join('; ');
   }
 
+  function computeSpellbookGuidance(design) {
+    const d = design.sb || {};
+    const hasMultiPower = (d.rows || []).some(r => {
+      const sides = sbTwo(d, r) ? ['', 'B'] : [''];
+      return sides.some(sd => r['dual' + sd]);
+    });
+    const hasMultiSided = sbAnyTwo(d);
+
+    if (!hasMultiPower && !hasMultiSided) return '';
+
+    let guidance = '';
+
+    if (hasMultiPower) {
+      guidance += 'MULTI-POWER SPELLBOOKS:\n';
+      guidance += '- Spellbooks with multiple powers on 1 side are a single spellbook\n';
+      guidance += '- Completing a single SBR can earn you a SB with 2 powers—still ONE spellbook\n';
+      guidance += '- Both powers are earned/blocked/copied together\n';
+      guidance += '- Max 6 SBR/SB slots on faction card (unless explicitly told otherwise)\n';
+      guidance += '- Spellbook overlays must describe BOTH powers\n';
+      guidance += '- Moonbeast blocking a 2-power spellbook blocks BOTH powers\n';
+    }
+
+    if (hasMultiSided) {
+      if (hasMultiPower) guidance += '\n';
+      guidance += 'MULTI-SIDED SPELLBOOKS:\n';
+      guidance += '- 2 sides with powers = 2 connected spellbooks, not 2 independent ones\n';
+      guidance += '- Sides are swapped per that spellbook\'s rules, not taken independently\n';
+      guidance += '- "Face down" sides: use Dragon Ascending (one-time) or Daemon Sultans (Doom Phase recharge) as templates\n';
+      guidance += '- A 3rd "face down" side: use as one-time block OR determine recharge rules (Side A or B)\n';
+    }
+
+    return guidance;
+  }
+
   window.Rules = {
     SECTIONS,
     BUILD_SECTIONS,
@@ -1454,6 +1488,7 @@
     sbAnyTwo,
     unitHasAbility,
     describeSectionDiff,
+    computeSpellbookGuidance,
     newId
   };
 })();

@@ -43,6 +43,52 @@ def load_json(path: Path) -> Dict:
         return json.load(f)
 
 
+def compute_spellbook_guidance(design: Dict) -> str:
+    """Compute guidance for Claude about multi-power and multi-sided spellbooks."""
+    sb = design.get('sb', {})
+    rows = sb.get('rows', [])
+
+    # Check for multi-sided spellbooks
+    has_multi_sided = any(row.get('twoSided') for row in rows)
+
+    # Check for multi-power spellbooks
+    has_multi_power = False
+    for row in rows:
+        # Check side A
+        if row.get('dual'):
+            has_multi_power = True
+            break
+        # Check side B
+        if row.get('twoSided') and row.get('dualB'):
+            has_multi_power = True
+            break
+
+    if not has_multi_power and not has_multi_sided:
+        return ''
+
+    guidance = ''
+
+    if has_multi_power:
+        guidance += 'MULTI-POWER SPELLBOOKS:\n'
+        guidance += '- Spellbooks with multiple powers on 1 side are a single spellbook\n'
+        guidance += '- Completing a single SBR can earn you a SB with 2 powers—still ONE spellbook\n'
+        guidance += '- Both powers are earned/blocked/copied together\n'
+        guidance += '- Max 6 SBR/SB slots on faction card (unless explicitly told otherwise)\n'
+        guidance += '- Spellbook overlays must describe BOTH powers\n'
+        guidance += '- Moonbeast blocking a 2-power spellbook blocks BOTH powers\n'
+
+    if has_multi_sided:
+        if has_multi_power:
+            guidance += '\n'
+        guidance += 'MULTI-SIDED SPELLBOOKS:\n'
+        guidance += '- 2 sides with powers = 2 connected spellbooks, not 2 independent ones\n'
+        guidance += '- Sides are swapped per that spellbook\'s rules, not taken independently\n'
+        guidance += '- "Face down" sides: use Dragon Ascending (one-time) or Daemon Sultans (Doom Phase recharge) as templates\n'
+        guidance += '- A 3rd "face down" side: use as one-time block OR determine recharge rules (Side A or B)\n'
+
+    return guidance
+
+
 def atomic_write(path: Path, data: Dict):
     """Atomic write with fsync."""
     tmp = path.parent / f"{path.name}.tmp"
@@ -2213,6 +2259,9 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         # Ensure bugHistory exists
         if "bugHistory" not in response:
             response["bugHistory"] = []
+        # Add spellbook guidance to design for Claude
+        if "design" in response:
+            response["design"]["spellbookGuidance"] = compute_spellbook_guidance(response["design"])
         self.send_json(response)
 
     def extract_queue_position(self, fid: str) -> Optional[Dict]:
@@ -4023,6 +4072,12 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         if faction.get("build", {}).get("status") != "built" or not faction["build"].get("liveVersion"):
             self.send_error_json("This faction hasn't been built yet, so there's nothing to update.")
             return
+
+        # Handle image_swap type
+        if data.get('type') == 'image_swap':
+            return self.handle_image_swap_push(fid, faction, username, data)
+
+        # Handle numeric field updates
         section, row_id, field = data.get('section'), data.get('rowId'), data.get('field')
         if field not in self.SIMPLE_UPDATE_FIELDS or not isinstance(section, str) or not section.isalnum() \
                 or (row_id is not None and not (isinstance(row_id, str) and re.fullmatch(r'[A-Za-z0-9_-]+', row_id))):
@@ -4060,6 +4115,57 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             atomic_write(requests_file, requests_data)
         self.send_json(request)
 
+    def handle_image_swap_push(self, fid: str, faction: Dict, username: str, data: Dict):
+        """Push image swap: copy image to build's webp/images folder and mark as ready."""
+        filename = data.get('filename', '')
+        image_id = data.get('imageId', '')
+
+        # Validate filename format: acr-name.webp
+        if not re.fullmatch(r'[a-z0-9]{2,3}-[a-z0-9\-]+\.webp', filename, re.IGNORECASE):
+            self.send_error_json("Invalid filename. Use format: acronym-name.webp (e.g., fm-glyph.webp)")
+            return
+
+        # Validate image_id
+        if not re.fullmatch(r'[a-f0-9]+\.(webp|png|jpg)', image_id):
+            self.send_error_json("Invalid image ID")
+            return
+
+        # Source image
+        source_image = self.server.data_dir / "images" / image_id
+        if not source_image.exists():
+            self.send_error_json("Source image not found")
+            return
+
+        now = int(time.time())
+        with WRITE_LOCK:
+            # Create imageSwaps directory if needed
+            swap_dir = self.server.data_dir / "factions" / fid / "imageSwaps"
+            swap_dir.mkdir(parents=True, exist_ok=True)
+
+            # Copy image to imageSwaps folder
+            dest_image = swap_dir / filename
+            try:
+                import shutil
+                shutil.copy2(source_image, dest_image)
+            except Exception as e:
+                self.send_error_json(f"Failed to copy image: {str(e)}")
+                return
+
+            # Log as a completed image swap request
+            requests_file = self.server.data_dir / "requests.json"
+            requests_data = load_json(requests_file) or {"requests": []}
+            request = {
+                "id": f"r_{secrets.token_urlsafe(6)}", "type": "simple_update", "fid": fid,
+                "faction": faction["name"], "acronym": faction["acronym"], "user": username,
+                "status": "done", "created": now, "updated": now,
+                "text": f"Faction {faction['name']} image swap: {filename}",
+                "data": {"type": "image_swap", "filename": filename, "imageId": image_id},
+            }
+            requests_data.setdefault("requests", []).append(request)
+            atomic_write(requests_file, requests_data)
+
+        self.send_json(request)
+
     def handle_live_values(self, acronym: str):
         """GET /designer/api/live/<ACR>/values[?rev=N] - public; read by the homebrew build at game start."""
         from urllib.parse import urlparse, parse_qs
@@ -4090,6 +4196,9 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
 
         response = dict(faction)
         response["pendingRequests"] = self.get_pending_requests_for_entity(fid, "faction")
+        # Add spellbook guidance to design for Claude
+        if "design" in response:
+            response["design"]["spellbookGuidance"] = compute_spellbook_guidance(response["design"])
         self.send_json(response)
 
     def get_pending_requests_for_entity(self, entity_id: str, entity_type: str = "faction"):

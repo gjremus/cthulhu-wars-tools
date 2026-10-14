@@ -3565,6 +3565,14 @@
         return;
       }
 
+      // Render numeric updates section
+      this.renderSimpleUpdateNumbers(faction, design, builtDesign);
+
+      // Render image swap section
+      this.renderSimpleUpdateImageSwaps(faction);
+    }
+
+    renderSimpleUpdateNumbers(faction, design, builtDesign) {
       const builtNums = Rules.fixedNumbers(builtDesign);
       const designNums = Rules.fixedNumbers(design);
 
@@ -3591,6 +3599,12 @@
         this.root.appendChild(p);
         return;
       }
+
+      // Section title for numbers
+      const numsTitle = document.createElement('h3');
+      numsTitle.textContent = 'Fixed Numbers';
+      numsTitle.style.marginTop = '20px';
+      this.root.appendChild(numsTitle);
 
       const table = document.createElement('table');
       const thead = document.createElement('thead');
@@ -3658,6 +3672,168 @@
 
       table.appendChild(tbody);
       this.root.appendChild(table);
+    }
+
+    renderSimpleUpdateImageSwaps(faction) {
+      // Initialize imageSwaps if not present
+      if (!faction.design.imageSwaps) {
+        faction.design.imageSwaps = {rows: []};
+      }
+
+      // Section title
+      const imgTitle = document.createElement('h3');
+      imgTitle.textContent = 'Quick Image Swap';
+      imgTitle.style.marginTop = '30px';
+      imgTitle.style.marginBottom = '8px';
+      this.root.appendChild(imgTitle);
+
+      const imgNote = document.createElement('p');
+      imgNote.style.fontSize = '0.9em';
+      imgNote.style.color = '#999';
+      imgNote.textContent = 'Add image files to swap out in the build. Format: acronym-filename.webp (e.g., "fm-glyph.webp")';
+      this.root.appendChild(imgNote);
+
+      // Table for image swaps
+      const imgTable = document.createElement('table');
+      imgTable.style.marginTop = '12px';
+      imgTable.style.marginBottom = '12px';
+
+      const imgThead = document.createElement('thead');
+      const imgHeaderRow = document.createElement('tr');
+      ['Filename', 'Image Preview', 'Action'].forEach(h => {
+        const th = document.createElement('th');
+        th.textContent = h;
+        th.style.padding = '8px';
+        th.style.textAlign = 'left';
+        th.style.borderBottom = '2px solid #000';
+        imgHeaderRow.appendChild(th);
+      });
+      imgThead.appendChild(imgHeaderRow);
+      imgTable.appendChild(imgThead);
+
+      const imgTbody = document.createElement('tbody');
+
+      const rows = faction.design.imageSwaps.rows || [];
+      rows.forEach((row, idx) => {
+        const tr = document.createElement('tr');
+
+        // Filename
+        const fileCell = document.createElement('td');
+        fileCell.style.padding = '8px';
+        fileCell.style.borderBottom = '1px solid #ccc';
+        const fileInput = document.createElement('input');
+        fileInput.type = 'text';
+        fileInput.placeholder = 'e.g., fm-glyph.webp';
+        fileInput.value = row.filename || '';
+        fileInput.style.width = '100%';
+        fileInput.style.padding = '4px';
+        fileInput.style.border = '1px solid #666';
+        fileInput.style.backgroundColor = '#222';
+        fileInput.style.color = '#eee';
+        fileInput.oninput = (e) => {
+          row.filename = e.target.value;
+        };
+        fileCell.appendChild(fileInput);
+        tr.appendChild(fileCell);
+
+        // Preview
+        const previewCell = document.createElement('td');
+        previewCell.style.padding = '8px';
+        previewCell.style.borderBottom = '1px solid #ccc';
+        previewCell.style.textAlign = 'center';
+        if (row.imageId) {
+          const img = document.createElement('img');
+          img.src = `/designer/img/${row.imageId}`;
+          img.style.height = '60px';
+          img.style.maxWidth = '80px';
+          img.style.objectFit = 'contain';
+          img.style.border = '1px solid #666';
+          previewCell.appendChild(img);
+        } else {
+          previewCell.textContent = 'No image';
+          previewCell.style.color = '#999';
+        }
+        tr.appendChild(previewCell);
+
+        // Action
+        const actionCell = document.createElement('td');
+        actionCell.style.padding = '8px';
+        actionCell.style.borderBottom = '1px solid #ccc';
+        actionCell.style.whiteSpace = 'nowrap';
+
+        const uploadBtn = document.createElement('button');
+        uploadBtn.className = 'small';
+        uploadBtn.textContent = row.imageId ? 'Replace' : 'Upload';
+        uploadBtn.style.marginRight = '4px';
+        uploadBtn.onclick = async () => {
+          try {
+            const imageId = await this.uploadImage();
+            if (imageId) {
+              row.imageId = imageId;
+              this.renderSimpleUpdateScreen();
+            }
+          } catch (err) {
+            alert('Upload failed: ' + err.message);
+          }
+        };
+        actionCell.appendChild(uploadBtn);
+
+        if (rows.length > 1) {
+          const deleteBtn = document.createElement('button');
+          deleteBtn.className = 'small';
+          deleteBtn.textContent = 'Delete';
+          deleteBtn.style.marginRight = '4px';
+          deleteBtn.onclick = () => {
+            faction.design.imageSwaps.rows.splice(idx, 1);
+            this.renderSimpleUpdateScreen();
+          };
+          actionCell.appendChild(deleteBtn);
+        }
+
+        const deployBtn = document.createElement('button');
+        deployBtn.className = 'small primary';
+        deployBtn.textContent = 'Deploy';
+        deployBtn.disabled = !row.filename || !row.imageId;
+        deployBtn.onclick = async () => {
+          try {
+            await this.createRequest(
+              faction.id,
+              'simple_update',
+              `Faction ${faction.name} image swap: ${row.filename}`,
+              {
+                type: 'image_swap',
+                filename: row.filename,
+                imageId: row.imageId
+              }
+            );
+            await this.loadFaction(faction.id);
+            alert(`Image swap deployed: ${row.filename}`);
+            this.renderSimpleUpdateScreen();
+          } catch (err) {
+            alert('Deploy failed: ' + err.message);
+          }
+        };
+        actionCell.appendChild(deployBtn);
+        tr.appendChild(actionCell);
+
+        imgTbody.appendChild(tr);
+      });
+
+      imgTable.appendChild(imgTbody);
+      this.root.appendChild(imgTable);
+
+      // Add row button
+      const addRowBtn = document.createElement('button');
+      addRowBtn.className = 'small';
+      addRowBtn.textContent = '+ Add image swap row';
+      addRowBtn.onclick = () => {
+        faction.design.imageSwaps.rows.push({
+          filename: '',
+          imageId: null
+        });
+        this.renderSimpleUpdateScreen();
+      };
+      this.root.appendChild(addRowBtn);
     }
 
     renderBugReportScreen() {

@@ -56,7 +56,7 @@ async function createAndTestGame() {
 
   // Create game with 4 factions: GC, FACTION, CC, BG
   const factions = ['GC', FACTION, 'CC', 'BG'];
-  const version = 'Homebrew v 2.250';
+  const version = 'Homebrew v 2.279';
   const gameName = `Test ${FACTION} ${Date.now()}`;
 
   // Format: "GC:Normal/FM:Normal/CC:Normal/BG:Normal "
