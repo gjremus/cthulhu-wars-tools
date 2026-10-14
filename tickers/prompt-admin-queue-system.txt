@@ -113,6 +113,25 @@ The rebuild process automatically includes spellbook guidance for Claude:
    - Multi-sided spellbooks = 2 connected SB slots, not 1+1
    - Use Dragon Ascending (one-use) or Daemon Sultans (Doom recharge) code templates
 
+CLAUDE RECEIVES THIS GUIDANCE FOR DGT BUILDS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Multi-Power Spellbooks:
+- Spellbooks with multiple powers on 1 spellbook side = treated as a single spellbook
+- Completing single SBR earns a SB with 2 powers = still ONE spellbook, earn BOTH powers at once
+- Both powers earned, blocked, and copied together (Moonbeast blocks BOTH)
+- Max 6 SBR/SB slots on faction card (unless explicitly told otherwise)
+- Spellbook overlays must describe BOTH powers
+- Moonbeast blocking a 2-power spellbook blocks BOTH powers
+- Copying a spellbook (e.g., Nodens) copies BOTH powers
+
+Multi-Sided Spellbooks:
+- 2 sides with powers = 2 connected spellbooks, NOT 2 independent ones
+- Sides swap per that spellbook's explicit rules, not taken independently
+- Leverage "Recriminations" pattern to code swaps (strictly apply so only "sides" of same SB swap via this faction's mechanism)
+- 3rd "face down" side can be: use-once (Dragon Ascending pattern) OR recharge (Doom Phase or other)
+- Recharge determines whether flipped back to side A or side B (consult spellbook rules; not automatic)
+
 DOCUMENTATION: See designer/SPELLBOOK_GUIDANCE_INTEGRATION_FINAL.md for complete
 end-to-end verification and implementation status (verified 2026-10-14).
 

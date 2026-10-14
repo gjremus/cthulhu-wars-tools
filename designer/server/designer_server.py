@@ -70,21 +70,23 @@ def compute_spellbook_guidance(design: Dict) -> str:
 
     if has_multi_power:
         guidance += 'MULTI-POWER SPELLBOOKS:\n'
-        guidance += '- Spellbooks with multiple powers on 1 side are a single spellbook\n'
-        guidance += '- Completing a single SBR can earn you a SB with 2 powers—still ONE spellbook\n'
-        guidance += '- Both powers are earned/blocked/copied together\n'
+        guidance += '- Spellbooks with multiple powers on 1 spellbook side = treated as a single spellbook\n'
+        guidance += '- Completing single SBR earns a SB with 2 powers = still ONE spellbook, earn BOTH powers at once\n'
+        guidance += '- Both powers earned, blocked, and copied together (Moonbeast blocks BOTH)\n'
         guidance += '- Max 6 SBR/SB slots on faction card (unless explicitly told otherwise)\n'
         guidance += '- Spellbook overlays must describe BOTH powers\n'
         guidance += '- Moonbeast blocking a 2-power spellbook blocks BOTH powers\n'
+        guidance += '- Copying a spellbook (e.g., Nodens) copies BOTH powers\n'
 
     if has_multi_sided:
         if has_multi_power:
             guidance += '\n'
         guidance += 'MULTI-SIDED SPELLBOOKS:\n'
-        guidance += '- 2 sides with powers = 2 connected spellbooks, not 2 independent ones\n'
-        guidance += '- Sides are swapped per that spellbook\'s rules, not taken independently\n'
-        guidance += '- "Face down" sides: use Dragon Ascending (one-time) or Daemon Sultans (Doom Phase recharge) as templates\n'
-        guidance += '- A 3rd "face down" side: use as one-time block OR determine recharge rules (Side A or B)\n'
+        guidance += '- 2 sides with powers = 2 connected spellbooks, NOT 2 independent ones\n'
+        guidance += '- Sides swap per that spellbook\'s explicit rules, not taken independently\n'
+        guidance += '- Leverage "Recriminations" pattern to code swaps (strictly apply so only "sides" of same SB swap via this faction\'s mechanism)\n'
+        guidance += '- 3rd "face down" side can be: use-once (Dragon Ascending pattern) OR recharge (Doom Phase or other)\n'
+        guidance += '- Recharge determines whether flipped back to side A or side B (consult spellbook rules; not automatic)\n'
 
     return guidance
 

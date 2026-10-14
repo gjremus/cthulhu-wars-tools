@@ -1378,12 +1378,13 @@
       if (hasMultiPower) {
         guidanceDiv.appendChild(h('div', {style: 'margin-bottom: 12px;'}, h('strong', {}, 'Multi-Power Spellbooks:')));
         const mpList = h('ul', {style: 'margin: 4px 0 0 20px; padding: 0; font-size: 0.9em; line-height: 1.5;'});
-        mpList.appendChild(h('li', {}, 'Spellbooks with multiple powers on 1 side should be treated as a single spellbook'));
-        mpList.appendChild(h('li', {}, 'Completing a single SBR can earn you a SB with 2 powers—that is still ONE spellbook'));
-        mpList.appendChild(h('li', {}, 'Both powers are earned/blocked/copied together'));
-        mpList.appendChild(h('li', {}, 'Faction card should never have more than 6 SBR/SB slots unless explicitly told otherwise'));
+        mpList.appendChild(h('li', {}, 'Spellbooks with multiple powers on 1 spellbook side = treated as a single spellbook'));
+        mpList.appendChild(h('li', {}, 'Completing single SBR earns a SB with 2 powers = still ONE spellbook, earn BOTH powers at once'));
+        mpList.appendChild(h('li', {}, 'Both powers earned, blocked, and copied together (Moonbeast blocks BOTH)'));
+        mpList.appendChild(h('li', {}, 'Max 6 SBR/SB slots on faction card (unless explicitly told otherwise)'));
         mpList.appendChild(h('li', {}, 'Spellbook overlays must describe BOTH powers'));
         mpList.appendChild(h('li', {}, 'Moonbeast blocking a 2-power spellbook blocks BOTH powers'));
+        mpList.appendChild(h('li', {}, 'Copying a spellbook (e.g., Nodens) copies BOTH powers'));
         guidanceDiv.appendChild(mpList);
       }
 
@@ -1393,10 +1394,11 @@
         }
         guidanceDiv.appendChild(h('div', {style: 'margin-bottom: 12px;'}, h('strong', {}, 'Multi-Sided Spellbooks:')));
         const msDiv = h('div', {style: 'font-size: 0.9em; line-height: 1.6;'});
-        msDiv.appendChild(h('p', {style: 'margin: 0 0 8px 0;'}, 'Spellbooks with 2 sides that both have powers = 2 connected spellbooks, not 2 independent ones'));
-        msDiv.appendChild(h('p', {style: 'margin: 0 0 8px 0;'}, 'Sides are swapped out for each other per that spellbook\'s explicit rules, not taken independently'));
-        msDiv.appendChild(h('p', {style: 'margin: 0 0 8px 0;'}, 'If a side can be flipped "face down": use Dragon Ascending (one-time use) or Daemon Sultans (recharge in Doom Phase) as your code template'));
-        msDiv.appendChild(h('p', {style: 'margin: 0 0 0 0;'}, 'A 3rd "face down" side means: used once = stays blocked; recharge rules determine when flipped back to side A or B'));
+        msDiv.appendChild(h('p', {style: 'margin: 0 0 6px 0;'}, '2 sides with powers = 2 connected spellbooks, NOT 2 independent ones'));
+        msDiv.appendChild(h('p', {style: 'margin: 0 0 6px 0;'}, 'Sides swap per that spellbook\'s explicit rules, not taken independently'));
+        msDiv.appendChild(h('p', {style: 'margin: 0 0 6px 0;'}, 'Leverage "Recriminations" pattern to code swaps (but strictly apply so only "sides" of same SB swap via this faction\'s mechanism)'));
+        msDiv.appendChild(h('p', {style: 'margin: 0 0 6px 0;'}, '3rd "face down" side can be: use-once (Dragon Ascending pattern) OR recharge (Doom Phase or other)'));
+        msDiv.appendChild(h('p', {style: 'margin: 0 0 0 0;'}, 'Recharge determines whether flipped back to side A or side B (consult spellbook rules; not automatic)'));
         guidanceDiv.appendChild(msDiv);
       }
 
