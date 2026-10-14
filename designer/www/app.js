@@ -5455,30 +5455,41 @@
   // overscroll-behavior (set in app.css) stops Chrome-for-Android's native pull-to-refresh,
   // but Chrome for iOS implements that gesture at the native WKWebView level and ignores the
   // CSS property entirely. Without this, dragging down at the top of a section reliably
-  // reloads the page instead of just stopping. Walk the touch target's scrollable ancestor
-  // chain and only block the drag when every one of them (plus the document) is already
-  // scrolled to its top, so normal scrolling and nested scroll areas (library picker, etc.)
-  // are untouched.
+  // reloads the page instead of just stopping. Find the touch target's nearest scrollable
+  // ancestor ONCE on touchstart (not on every touchmove) and only block the drag once that
+  // ancestor (or the document) is already scrolled to its top, so normal scrolling and
+  // nested scroll areas (library picker, etc.) are untouched.
+  //
+  // The ancestor walk reads scrollHeight, which forces a synchronous layout reflow. Doing
+  // that on every touchmove (fires up to ~60x/sec, passive: false so the browser blocks on
+  // it) stalls the scroll mid-gesture on slower devices and can make the browser fall back
+  // to its own native gesture instead of honoring preventDefault.
   function installPullToRefreshGuard() {
     let startY = 0;
+    let scrollNode = null;
+
     document.addEventListener('touchstart', (e) => {
-      if (e.touches.length === 1) startY = e.touches[0].clientY;
+      if (e.touches.length !== 1) return;
+      startY = e.touches[0].clientY;
+      scrollNode = null;
+      let node = e.target;
+      while (node && node !== document.documentElement) {
+        if (node.nodeType === 1) {
+          const style = getComputedStyle(node);
+          if (/(auto|scroll)/.test(style.overflowY) && node.scrollHeight > node.clientHeight) {
+            scrollNode = node;
+            break;
+          }
+        }
+        node = node.parentNode;
+      }
     }, { passive: true });
 
     document.addEventListener('touchmove', (e) => {
       if (e.touches.length !== 1) return;
       const draggingDown = e.touches[0].clientY - startY > 0;
       if (!draggingDown) return;
-
-      let node = e.target;
-      while (node && node !== document.documentElement) {
-        if (node.nodeType === 1) {
-          const style = getComputedStyle(node);
-          const scrollable = /(auto|scroll)/.test(style.overflowY) && node.scrollHeight > node.clientHeight;
-          if (scrollable && node.scrollTop > 0) return; // an ancestor can still scroll up; let it
-        }
-        node = node.parentNode;
-      }
+      if (scrollNode && scrollNode.scrollTop > 0) return; // nested scroll area can still absorb it
       if (document.scrollingElement.scrollTop <= 0) e.preventDefault();
     }, { passive: false });
   }
