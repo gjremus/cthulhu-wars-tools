@@ -1377,15 +1377,16 @@
 
       if (hasMultiPower) {
         guidanceDiv.appendChild(h('div', {style: 'margin-bottom: 12px;'}, h('strong', {}, 'Multi-Power Spellbooks:')));
-        const mpList = h('ul', {style: 'margin: 4px 0 0 20px; padding: 0; font-size: 0.9em; line-height: 1.5;'});
-        mpList.appendChild(h('li', {}, 'Spellbooks with multiple powers on 1 spellbook side = treated as a single spellbook'));
-        mpList.appendChild(h('li', {}, 'Completing single SBR earns a SB with 2 powers = still ONE spellbook, earn BOTH powers at once'));
-        mpList.appendChild(h('li', {}, 'Both powers earned, blocked, and copied together (Moonbeast blocks BOTH)'));
-        mpList.appendChild(h('li', {}, 'Max 6 SBR/SB slots on faction card (unless explicitly told otherwise)'));
-        mpList.appendChild(h('li', {}, 'Spellbook overlays must describe BOTH powers'));
-        mpList.appendChild(h('li', {}, 'Moonbeast blocking a 2-power spellbook blocks BOTH powers'));
-        mpList.appendChild(h('li', {}, 'Copying a spellbook (e.g., Nodens) copies BOTH powers'));
-        guidanceDiv.appendChild(mpList);
+        const mpDiv = h('div', {style: 'font-size: 0.9em; line-height: 1.6;'});
+        mpDiv.appendChild(h('p', {style: 'margin: 0 0 6px 0;'}, 'Spellbooks with multiple powers on 1 spellbook side should be treated as a single spellbook. This includes but is not exclusive to:'));
+        const mpList = h('ul', {style: 'margin: 4px 0 6px 20px; padding: 0;'});
+        mpList.appendChild(h('li', {}, 'Faction card spellbook / SBR slots- no faction should EVER have more than 6 SBR/ SB slots on its faction card, unless you are explicitly told otherwise'));
+        mpList.appendChild(h('li', {}, 'SBRs and availability of the powers- completing a single SBR can earn you a SB with 2 powers. That is still ONE spellbook. You earn BOTH powers at once.'));
+        mpList.appendChild(h('li', {}, 'Spellbook overlays - clicking on a spellbook with 2 powers should bring up an overlay describing BOTH powers'));
+        mpList.appendChild(h('li', {}, 'Moonbeast - blocking a 2 power spellbook with a Moonbeast blocks BOTH powers'));
+        mpList.appendChild(h('li', {}, 'Copying a spell book (Nodens, not yet coded) - copying a 2 power spellbook copies BOTH powers'));
+        mpDiv.appendChild(mpList);
+        guidanceDiv.appendChild(mpDiv);
       }
 
       if (hasMultiSided) {
@@ -1394,11 +1395,9 @@
         }
         guidanceDiv.appendChild(h('div', {style: 'margin-bottom: 12px;'}, h('strong', {}, 'Multi-Sided Spellbooks:')));
         const msDiv = h('div', {style: 'font-size: 0.9em; line-height: 1.6;'});
-        msDiv.appendChild(h('p', {style: 'margin: 0 0 6px 0;'}, '2 sides with powers = 2 connected spellbooks, NOT 2 independent ones'));
-        msDiv.appendChild(h('p', {style: 'margin: 0 0 6px 0;'}, 'Sides swap per that spellbook\'s explicit rules, not taken independently'));
-        msDiv.appendChild(h('p', {style: 'margin: 0 0 6px 0;'}, 'Leverage "Recriminations" pattern to code swaps (but strictly apply so only "sides" of same SB swap via this faction\'s mechanism)'));
-        msDiv.appendChild(h('p', {style: 'margin: 0 0 6px 0;'}, '3rd "face down" side can be: use-once (Dragon Ascending pattern) OR recharge (Doom Phase or other)'));
-        msDiv.appendChild(h('p', {style: 'margin: 0 0 0 0;'}, 'Recharge determines whether flipped back to side A or side B (consult spellbook rules; not automatic)'));
+        msDiv.appendChild(h('p', {style: 'margin: 0 0 6px 0;'}, 'Spellbooks with 2 spellbook sides that both have powers should be treated as 2 spellbooks, but generally 2 spellbooks that are connected and can be swapped out one for the other, per the explicit rules of that spellbook. NOT as 2 spellbooks that can each be taken independently. Leverage how the neutral spellbook "recriminations" works to code the swap out, but make sure it is strictly applied so that only "sides" of the same spellbook can be swapped out via this faction\'s swapping mechanism. (Recriminations will still apply and should still work- but will apply to swapping in a totally separate spellbook, not a separate "side" of the same spellbook").'));
+        msDiv.appendChild(h('p', {style: 'margin: 6px 0 0 0;'}, 'Spellbooks that have 2 sides with powers can have a 3rd "face down" side. If the spellbook power says to flip it "face down" after use, it is either a use once power, or a use and recharge power. Its own rules should determine which. For a "use once" power, once used, it is blocked for the rest of the game. See opener of the way\'s "dragon ascending" for an example of this, and to copy its code. For a "use and recharge" spellbook, see any of daemon sultans spellbooks, to copy their code. They are flipped face down when used, and are flipped face up (recharged) in the doom phase. For a different "recharge" mechanism, see the Library Times associated with the Library at Celaeno Map. They can be "recharged" by spending a token associated with that map (silence tokens).'));
+        msDiv.appendChild(h('p', {style: 'margin: 6px 0 0 0;'}, 'For a spell book with 3 total sides (2 with powers, one the "face down"/ powerless side), see the spell book rules for when (if) it is "recharged" whether it goes back to side 1 or side 2.'));
         guidanceDiv.appendChild(msDiv);
       }
 
