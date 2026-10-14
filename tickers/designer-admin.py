@@ -82,10 +82,15 @@ ALERTS_FILE = "/tmp/cw-ticker-alerts.txt"
 IMG_DIR = "/tmp/cw-designer-img"
 MAX_ATTEMPTS = 3
 
+# Cache the token to avoid repeated file access (Google Drive files can deadlock)
+_cached_token = None
 
 def token():
-    with open(TOKEN_FILE) as f:
-        return f.read().strip()
+    global _cached_token
+    if _cached_token is None:
+        with open(TOKEN_FILE) as f:
+            _cached_token = f.read().strip()
+    return _cached_token
 
 
 def api(path, body=None):

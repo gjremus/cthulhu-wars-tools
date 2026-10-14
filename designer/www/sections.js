@@ -1246,6 +1246,8 @@
         h('th', {style: 'width: 150px;'}, 'Includes Fixed Numeric Effect?'),
         h('th', {style: 'width: 100px;'}, 'Fixed Numeric Effect'),
         h('th', {}, 'Text'),
+        h('th', {style: 'width: 120px;'}, 'Earned by SBR'),
+        h('th', {style: 'width: 120px;'}, 'Replaceable'),
         h('th', {}, '')
       )
     ));
@@ -1337,6 +1339,12 @@
           if (anyDual) tr.appendChild(h('td', {}, sideParts.length > 1 ? `Power ${pi + 1}` : ''));
           sideCells(tr, row, sfx);
           if (first) {
+            tr.appendChild(h('td', {rowSpan: total, style: 'text-align: center;'},
+              h('input', {type: 'checkbox', checked: !!row.earnedBySBR, title: 'Can be earned by completing a spellbook requirement',
+                onchange: e => ctx.set(`sb.rows.${row.id}.earnedBySBR`, e.target.checked)})));
+            tr.appendChild(h('td', {rowSpan: total, style: 'text-align: center;'},
+              h('input', {type: 'checkbox', checked: !!row.replaceable, title: 'Can be replaced by another spellbook',
+                onchange: e => ctx.set(`sb.rows.${row.id}.replaceable`, e.target.checked)})));
             if (d.rows.length > 6) {
               tr.appendChild(h('td', {rowSpan: total},
                 h('button', {onclick: async () => {
@@ -1370,10 +1378,11 @@
       return sides.some(sd => r['dual' + sd]);
     });
     const hasMultiSided = two;
+    const hasMoreThanSix = d.rows.length > 6;
 
-    if (hasMultiPower || hasMultiSided) {
-      const guidanceDiv = h('div', {style: 'margin-top: 24px; padding: 12px; background-color: #f9f3e6; border: 1px solid #d4a574; border-radius: 4px;'});
-      guidanceDiv.appendChild(h('h4', {style: 'margin: 0 0 12px 0; font-size: 0.95em;'}, 'Guidance for Claude'));
+    if (hasMultiPower || hasMultiSided || hasMoreThanSix) {
+      const guidanceDiv = h('div', {style: 'margin-top: 24px; padding: 12px; background-color: #222; border: 1px solid #666; border-radius: 4px; color: #aaa;'});
+      guidanceDiv.appendChild(h('h4', {style: 'margin: 0 0 12px 0; font-size: 0.95em; color: #aaa;'}, 'Guidance for Claude'));
 
       if (hasMultiPower) {
         guidanceDiv.appendChild(h('div', {style: 'margin-bottom: 12px;'}, h('strong', {}, 'Multi-Power Spellbooks:')));
@@ -1399,6 +1408,17 @@
         msDiv.appendChild(h('p', {style: 'margin: 6px 0 0 0;'}, 'Spellbooks that have 2 sides with powers can have a 3rd "face down" side. If the spellbook power says to flip it "face down" after use, it is either a use once power, or a use and recharge power. Its own rules should determine which. For a "use once" power, once used, it is blocked for the rest of the game. See opener of the way\'s "dragon ascending" for an example of this, and to copy its code. For a "use and recharge" spellbook, see any of daemon sultans spellbooks, to copy their code. They are flipped face down when used, and are flipped face up (recharged) in the doom phase. For a different "recharge" mechanism, see the Library Times associated with the Library at Celaeno Map. They can be "recharged" by spending a token associated with that map (silence tokens).'));
         msDiv.appendChild(h('p', {style: 'margin: 6px 0 0 0;'}, 'For a spell book with 3 total sides (2 with powers, one the "face down"/ powerless side), see the spell book rules for when (if) it is "recharged" whether it goes back to side 1 or side 2.'));
         guidanceDiv.appendChild(msDiv);
+      }
+
+      // Guidance for > 6 spellbooks
+      if (d.rows.length > 6) {
+        if (hasMultiPower || hasMultiSided) {
+          guidanceDiv.appendChild(h('div', {style: 'margin-top: 12px;'}));
+        }
+        guidanceDiv.appendChild(h('div', {style: 'margin-bottom: 12px;'}, h('strong', {}, 'More than 6 Spellbooks:')));
+        const moreSixDiv = h('div', {style: 'font-size: 0.9em; line-height: 1.6;'});
+        moreSixDiv.appendChild(h('p', {style: 'margin: 0;'}, 'Claude will, by default, always design only 6 slots for spellbooks. If you have more than 6, this will imply that some or all spellbooks can be replaced by other spellbooks, OR that some spellbooks cannot be earned by achieving a spellbook requirement (only through replacement) OR that the player chooses 6 among the available options, and then once 6 have been chosen, the remainder are inaccessible (unless they used the neutral spellbook "recriminations"). Make sure to indicate with the flags above which spellbooks can be chosen upon completing any SBR, and which spellbooks are allowed to be replaced by other available spellbooks (assuming this is part of the abilities of the spellbook itself).'));
+        guidanceDiv.appendChild(moreSixDiv);
       }
 
       container.appendChild(guidanceDiv);
