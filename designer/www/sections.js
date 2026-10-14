@@ -3232,8 +3232,9 @@
     return abilitiesData.abilities.filter(a => {
       if (a.faction !== faction) return false;
       // Map ability types
-      if (type === 'UFA' && a.unit === 'N/A' && a.type !== 'Spellbook') return true;
-      if (type === 'Spellbook' && a.type === 'Spellbook') return true;
+      // Note: abilities-data.json doesn't distinguish UFAs from Spellbooks (both have unit='N/A')
+      // so we show all unit='N/A' abilities for both UFA and Spellbook types
+      if ((type === 'UFA' || type === 'Spellbook') && a.unit === 'N/A') return true;
       if (type === 'Unit Special' && a.unit !== 'N/A') return true;
       if (type === 'GOO/iGOO/EG ability' && a.unit !== 'N/A') return true;
       return false;
@@ -3313,6 +3314,12 @@
           ctx.set(`interactions.rows.${row.id}.otherFaction`, e.target.value || null);
           ctx.set(`interactions.rows.${row.id}.ability`, null);
           ctx.set(`interactions.rows.${row.id}.abilityText`, '');
+          // Auto-set Ancient Sorcery for Sleeper + Spellbook
+          if (e.target.value === 'Sleeper' && row.abilityType === 'Spellbook') {
+            ctx.set(`interactions.rows.${row.id}.ability`, 'Ancient Sorcery');
+            const text = getAbilityText('Sleeper', 'Ancient Sorcery');
+            ctx.set(`interactions.rows.${row.id}.abilityText`, text);
+          }
         }
       },
         h('option', {value: ''}, '-- Select --'),
@@ -3330,6 +3337,12 @@
           ctx.set(`interactions.rows.${row.id}.abilityType`, e.target.value || null);
           ctx.set(`interactions.rows.${row.id}.ability`, null);
           ctx.set(`interactions.rows.${row.id}.abilityText`, '');
+          // Auto-set Ancient Sorcery for Sleeper + Spellbook
+          if (row.otherFaction === 'Sleeper' && e.target.value === 'Spellbook') {
+            ctx.set(`interactions.rows.${row.id}.ability`, 'Ancient Sorcery');
+            const text = getAbilityText('Sleeper', 'Ancient Sorcery');
+            ctx.set(`interactions.rows.${row.id}.abilityText`, text);
+          }
         }
       },
         h('option', {value: ''}, '-- Select --'),
@@ -3422,6 +3435,19 @@
     'The Ancient Sorcery row (green background) is required. All other rows are optional. ' +
     'Use this section to document interactions between your faction\'s abilities and known abilities ' +
     'from other factions, maps, or neutral units.'
+  ));
+
+  // Hidden Claude guidelines (invisible to user, visible to Claude when building/fixing)
+  container.appendChild(h('div', {
+    className: 'claude-guidelines',
+    style: 'display: none;',
+    'data-guidance': 'interactions'
+  },
+    'Claude Guidelines: This section describes how other factions or units interact with this faction\'s abilities. ' +
+    'Sleeper can copy UFAs. The description should detail how that works. ' +
+    'Elder thing blocks GOO powers. Bubastis\'s moon has various restrictions. ' +
+    'This section allows the faction designer to describe how those other factions or units "interactive" powers ' +
+    'will work with their faction.'
   ));
 
   renderClaudeQA(container, ctx, 'interactions');
