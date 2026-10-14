@@ -1179,7 +1179,7 @@ function refreshAgentOutput() {
       if (!container) return;
       const wasAtBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 20;
 
-      if (data.running) {
+      if (data.status === 'running') {
         const output = data.output || '(empty)';
         const requestId = data.requestId ? ` [${data.requestId}]` : '';
         container.textContent = output;
