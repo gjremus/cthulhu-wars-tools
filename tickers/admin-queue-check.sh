@@ -314,7 +314,7 @@ backfill_costs
 # VM). Kill the worker and its claude child, wait 2 s, start a fresh worker, report to the VM.
 if [[ "$("${SSH[@]}" 'f=/tmp/admin-agent-restart.flag; [ -f $f ] && rm -f $f && echo RESTART; true' 2>>"$LOG")" == RESTART ]]; then
     killed=()
-    for wp in $(pgrep -f "admin-queue-check.sh worker"); do
+    for wp in $(pgrep -f '^/bin/zsh [^ ]*admin-queue-check\.sh worker$'); do   # anchored: agent command lines mention this script too
         for cp in $(pgrep -P "$wp"); do kill -9 "$cp" 2>/dev/null && killed+=("$cp(agent)"); done
         kill -9 "$wp" 2>/dev/null && killed+=("$wp(worker)")
     done
