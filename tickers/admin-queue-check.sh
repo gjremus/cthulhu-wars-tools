@@ -158,7 +158,13 @@ if [[ "${1:-}" == "worker" ]]; then
                 kill -9 $pid 2>/dev/null; note "Sonnet startup hang, retry $sonnet_try"; continue
             fi
             started=1
-            while kill -0 $pid 2>/dev/null && (( waited < MAX_SECONDS )); do sleep 5; (( waited += 5 )); done
+            while kill -0 $pid 2>/dev/null && (( waited < MAX_SECONDS )); do
+                sleep 5
+                (( waited += 5 ))
+                # Sync running agent output to server for Live Agent Output
+                [[ -s "$out" ]] && rsync -az --timeout=5 -e "ssh -i /Users/gremus/.ssh/oracle_cw_ed25519 -o ConnectTimeout=5" \
+                    "$out" oracle-cw-server@34.27.40.209:~/.cw-admin-queue/running/"${out:t}" 2>/dev/null || true
+            done
             if kill -0 $pid 2>/dev/null; then kill -9 $pid 2>/dev/null; note "Sonnet killed after ${MAX_SECONDS}s"; fi
             wait $pid 2>/dev/null
             # Check if Sonnet succeeded
@@ -185,7 +191,13 @@ if [[ "${1:-}" == "worker" ]]; then
                 kill -9 $pid 2>/dev/null; note "Opus startup hang, retry $opus_try"; continue
             fi
             started=1
-            while kill -0 $pid 2>/dev/null && (( waited < MAX_SECONDS )); do sleep 5; (( waited += 5 )); done
+            while kill -0 $pid 2>/dev/null && (( waited < MAX_SECONDS )); do
+                sleep 5
+                (( waited += 5 ))
+                # Sync running agent output to server for Live Agent Output
+                [[ -s "$out" ]] && rsync -az --timeout=5 -e "ssh -i /Users/gremus/.ssh/oracle_cw_ed25519 -o ConnectTimeout=5" \
+                    "$out" oracle-cw-server@34.27.40.209:~/.cw-admin-queue/running/"${out:t}" 2>/dev/null || true
+            done
             if kill -0 $pid 2>/dev/null; then kill -9 $pid 2>/dev/null; note "Opus killed after ${MAX_SECONDS}s"; fi
             wait $pid 2>/dev/null
             if grep -q '"type":"result"' "$out" 2>/dev/null; then
