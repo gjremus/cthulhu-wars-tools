@@ -1,8 +1,13 @@
 (function() {
   'use strict';
 
-  const SB_TYPES = ['Ongoing', 'Action', 'Unlimited Action', 'Pre-Battle', 'Battle',
-                    'Post-Battle', 'Movement', 'Gather Power Phase', 'Doom Phase', 'Once Only'];
+  const ABILITY_TYPES = ['Ongoing', 'Action', 'Unlimited Action', 'Pre-Battle', 'Battle',
+                         'Post-Battle', 'Move', 'Recruit Cultist Action', 'Summon Monster/Terror',
+                         'Awaken GOO/EG/iGOO/iEG', 'Create Gate', 'Gather Power Phase',
+                         'First Player Phase', 'Doom Phase', 'Once Only', 'Setup Variant'];
+
+  // Legacy name for backwards compatibility
+  const SB_TYPES = ABILITY_TYPES;
 
   const UNIT_TYPES = ['Cultist', 'Monster', 'Terror', 'Great Old One', 'Elder God',
                       'Building', 'Custom Gate'];
@@ -287,6 +292,7 @@
       relatedSb: [],
       relatedSbNames: [],
       hasAbility: false,
+      abilityType: null,
       abilityName: '',
       abilityText: '',
       spellbook: {
@@ -1466,6 +1472,7 @@
     MAP_ABILITY_PHASES,
     MAP_ABILITY_TYPES,
     NEUTRAL_UNIT_TYPES,
+    ABILITY_TYPES,
     SB_TYPES,
     UNIT_TYPES,
     COST_TYPES,

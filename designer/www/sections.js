@@ -845,6 +845,7 @@
       const hasAbility = window.Rules.unitHasAbility(unit);
       unitDiv.appendChild(checkboxField('Special Ability', hasAbility, val => ctx.set(`units.rows.${unit.id}.hasAbility`, val)));
       if (hasAbility) {
+        unitDiv.appendChild(selectField('Ability Type', unit.abilityType, window.Rules.ABILITY_TYPES, val => ctx.set(`units.rows.${unit.id}.abilityType`, val)));
         unitDiv.appendChild(textField('Special Ability Name (optional)', unit.abilityName, val => ctx.set(`units.rows.${unit.id}.abilityName`, val)));
         unitDiv.appendChild(textField('Special Ability Text', unit.abilityText, val => ctx.set(`units.rows.${unit.id}.abilityText`, val), {rows: 4, missing: isMissing(`units.rows.${unit.id}.abilityText`)}));
       }
