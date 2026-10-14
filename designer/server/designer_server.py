@@ -3203,7 +3203,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             # Every designer prompt also goes into the admin console's Claude terminal log
             self.add_terminal_entry(self.terminal_type(request), self.display_name(username),
                                     text or f"{req_type} request for {faction['name']}",
-                                    "Waiting to be picked up.", ref=req_id)
+                                    "Waiting to be picked up.", ref=req_id, designObject=faction['name'])
 
             # Faction builds go straight to the admin console queue (owner's standing OK to attempt them)
             if req_type == "build":
@@ -3396,7 +3396,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 # Fallback: add terminal entry for admin console
                 self.add_terminal_entry("design answers", self.display_name(username),
                                         f"Answered questions on {section_label} section",
-                                        "Waiting to be picked up.", ref=req_id)
+                                        "Waiting to be picked up.", ref=req_id, designObject=entity_name)
 
         self.send_json(request)
 
@@ -3524,7 +3524,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 # Fallback: add terminal entry for admin console
                 self.add_terminal_entry("unit build", self.display_name(username),
                                         text or f"{req_type} request for unit {unit_name}",
-                                        "Waiting to be picked up.", ref=req_id)
+                                        "Waiting to be picked up.", ref=req_id, designObject=unit_name)
 
             # Update unit build status (only for build requests)
             if req_type == "build":
@@ -4059,7 +4059,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 req_type = request.get("type", "request")
                 self.add_terminal_entry("admin", "admin",
                                        f"Mark {req_type} for {design_name} as {status}",
-                                       f"{default.get(status, status)}", ref=rid)
+                                       f"{default.get(status, status)}", ref=rid, designObject=design_name)
 
             # If marking bug request as done, update bugHistory with response
             if status == "done" and request.get("type") == "bug":
@@ -5024,11 +5024,13 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 return "unit build"
         return "design build"   # build and update both change the built faction
 
-    def add_terminal_entry(self, kind: str, user: str, prompt: str, summary: str, ref: Optional[str] = None) -> Dict:
+    def add_terminal_entry(self, kind: str, user: str, prompt: str, summary: str, ref: Optional[str] = None, designObject: Optional[str] = None) -> Dict:
         """Append one row to terminal-log.json. Caller may already hold WRITE_LOCK (it is not re-entrant),
         so this uses its own lock."""
         entry = {"id": ref or f"t_{secrets.token_urlsafe(6)}", "at": int(time.time()), "type": kind,
                  "user": user, "prompt": str(prompt)[:20000], "summary": str(summary)[:20000], "defaultSummary": True}
+        if designObject:
+            entry["designObject"] = str(designObject)[:200]
         with TERMINAL_LOCK:
             path = self.server.data_dir / "terminal-log.json"
             log = load_json(path) or {"entries": []}
@@ -5144,7 +5146,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             self.send_error_json(f"type must be one of: {', '.join(kinds)}")
             return
         entry = self.add_terminal_entry(body['type'], str(body.get('user') or 'admin'), body.get('prompt', ''),
-                                        body.get('summary', ''), ref=body.get('id'))
+                                        body.get('summary', ''), ref=body.get('id'), designObject=body.get('designObject'))
         if isinstance(body.get('at'), int):
             with TERMINAL_LOCK:
                 path = self.server.data_dir / "terminal-log.json"
