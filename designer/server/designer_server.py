@@ -2437,18 +2437,26 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             acronym = (acronym + 'X')[:3]
 
         # Check if reserved or in use
-        original = acronym
-        counter = 1
-        while acronym in reserved or self.acronym_exists(acronym):
-            # Try base + number
-            candidate = (original + str(counter))[:3]
-            if candidate in reserved or self.acronym_exists(candidate):
-                counter += 1
-            else:
-                acronym = candidate
-                break
+        if acronym not in reserved and not self.acronym_exists(acronym):
+            return acronym
 
-        return acronym
+        # Try prefix + number, truncating the PREFIX (not the number) so the
+        # candidate always changes. The old (original + str(n))[:3] form cut the
+        # digit off any 3-letter acronym and looped forever while holding
+        # WRITE_LOCK (pegged the VM's CPU on 2026-10-14).
+        original = acronym
+        for counter in range(1, 100):
+            suffix = str(counter)
+            candidate = original[:3 - len(suffix)] + suffix
+            if candidate not in reserved and not self.acronym_exists(candidate):
+                return candidate
+
+        # Fallback: random 3-char acronym (bounded, never loops forever)
+        for _ in range(1000):
+            candidate = original[:1] + secrets.token_hex(1).upper()
+            if candidate not in reserved and not self.acronym_exists(candidate):
+                return candidate
+        return original
 
     def acronym_exists(self, acronym: str) -> bool:
         """Check if an acronym is already in use."""
