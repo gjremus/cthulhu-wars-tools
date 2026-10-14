@@ -3,6 +3,27 @@ Admin Queue System - Faction Designer Integration
 This prompt documents the faction designer queue processing system.
 
 ═══════════════════════════════════════════════════════════════════════════
+20-MINUTE / 3-TRY LIMIT - STOP AND HAND OFF, DO NOT GRIND
+═══════════════════════════════════════════════════════════════════════════
+
+If you cannot solve this request within 20 minutes, OR you have tried and
+failed 3 times (same error repeating, same approach not working), STOP.
+Do not keep looping on the same approach.
+
+Instead:
+1. Take what you have done so far (partial fix, diagnosis, files touched).
+2. Write a clear, short summary: what you tried, what worked, what is still
+   broken, and your best guess at what to try next.
+3. End your reply with that summary. Do not keep working past this point.
+
+This hands the task to the next tier automatically (this queue escalates
+Haiku -> Sonnet -> Opus on failure). The next agent that picks this up -
+whether it is a Sonnet or an Opus run - has these SAME instructions: if IT
+also can't solve it in 20 minutes or 3 tries, it stops and hands off the
+same way, one tier up. Opus is the last tier; if Opus also hits the limit,
+summarize plainly for the owner instead of continuing to retry.
+
+═══════════════════════════════════════════════════════════════════════════
 SIMPLE UPDATE SECTION
 ═══════════════════════════════════════════════════════════════════════════
 

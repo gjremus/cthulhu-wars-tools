@@ -3244,6 +3244,22 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 faction_file = self.server.data_dir / "factions" / fid / "faction.json"
                 atomic_write(faction_file, faction)
 
+                queue_written = False
+                try:
+                    clean_name = faction["name"].replace('\n', ' ').replace('[', '').replace(']', '')
+                    timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+                    display_user = self.display_name(username)
+                    queue_line = f"[{timestamp}] FACTION-BUG {req_id}: Bug report for faction \"{clean_name}\" ({faction['acronym']}) from {display_user} (designer faction id {fid}).\n"
+                    with open(self.server.console_queue_path, 'a') as f:
+                        f.write(queue_line)
+                    queue_written = True
+                except OSError:
+                    pass
+
+                if queue_written:
+                    request["status"] = "notified"
+                    atomic_write(requests_file, requests_data)
+
         self.send_json(request)
 
     def handle_submit_answers(self, fid_or_uid: str, entity_type: str):
