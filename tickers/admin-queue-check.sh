@@ -236,6 +236,13 @@ PY
         # a queue are easy to match to what was asked.
         { print -r -- "(re: ${${text//$'\n'/ }[1,70]}...)"; cat "$job.reply"; } | post_output RESPONSE || note "could not post reply to the console"
         tlog summary "${job:t}" "$job.reply"
+
+        # Sync running agent JSONL to server for Live Agent Output display
+        if [[ -s "$out" ]]; then
+            rsync -az --timeout=10 -e "ssh -i /Users/gremus/.ssh/oracle_cw_ed25519" \
+                "$out" oracle-cw-server@34.27.40.209:~/.cw-admin-queue/running/ 2>/dev/null || true
+        fi
+
         # Telegram-tagged entries also want a one-line answer in the responses file.
         tg=$(print -r -- "$text" | grep -oE '\[TGMSG_[A-Za-z0-9_-]+\]' | head -1 | tr -d '[]')
         if [[ -n "$tg" ]]; then
