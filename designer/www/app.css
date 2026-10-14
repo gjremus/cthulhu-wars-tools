@@ -34,6 +34,18 @@ body {
 }
 
 /* Layout */
+/* Chrome-for-iOS triggers native pull-to-refresh on the document's own scroll view
+   regardless of overscroll-behavior CSS. Making the document itself non-scrolling
+   and scrolling inside this fixed container instead sidesteps that gesture entirely
+   -- the same pattern #overlay/.library-picker already use without the bug. */
+#scroll-container {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
 #root {
   max-width: 1200px;
   margin: 0 auto;

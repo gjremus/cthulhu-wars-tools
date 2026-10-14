@@ -8,6 +8,7 @@
   class App {
     constructor() {
       this.root = document.getElementById('root');
+      this.scrollContainer = document.getElementById('scroll-container');
       this.state = {
         token: localStorage.getItem('cw_designer_token'),
         username: localStorage.getItem('cw_designer_username'),
@@ -2862,10 +2863,10 @@
         readOnly: false,
         submitAdminNote: (section, noteContent) => this.submitAdminNote(uid, section, noteContent, 'unit'),
         rerender: () => {
-          const y = window.scrollY;
+          const y = this.scrollContainer.scrollTop;
           container.innerHTML = '';
           Sections.render('units', container, ctx);
-          window.scrollTo(0, y);
+          this.scrollContainer.scrollTop = y;
         },
         openOverlay: (content) => this.openOverlay(content),
         closeOverlay: () => this.closeOverlay()
@@ -2952,11 +2953,11 @@
         createRequest: (type, text, data) => this.isReadOnly() ? Promise.resolve(null) : this.createRequest(faction.id, type, text, data),
         submitAdminNote: (section, noteContent) => this.submitAdminNote(faction.id, section, noteContent, 'faction'),
         rerender: () => {
-          const y = window.scrollY;
+          const y = this.scrollContainer.scrollTop;
           container.innerHTML = '';
           Sections.render(key, container, ctx);
           this.lockReadOnly(container);
-          window.scrollTo(0, y);
+          this.scrollContainer.scrollTop = y;
         },
         openOverlay: (content) => this.openOverlay(content),
         closeOverlay: () => this.closeOverlay()
@@ -4246,11 +4247,11 @@
         createRequest: (type, text, data) => this.isReadOnly() ? Promise.resolve(null) : this.createMapRequest(map.id, type, text, data),
         submitAdminNote: (section, noteContent) => this.submitAdminNote(map.id, section, noteContent, 'map'),
         rerender: () => {
-          const y = window.scrollY;
+          const y = this.scrollContainer.scrollTop;
           container.innerHTML = '';
           Sections.render(section, container, ctx);
           this.lockReadOnly(container);
-          window.scrollTo(0, y);
+          this.scrollContainer.scrollTop = y;
         },
         openOverlay: (content) => this.openOverlay(content),
         closeOverlay: () => this.closeOverlay()
