@@ -1,0 +1,2011 @@
+[
+  {
+    "id": "an-acolyte",
+    "name": "Acolyte",
+    "type": "Cultist",
+    "faction": "Anointed",
+    "url": "/designer/images/unit-silhouette-an-acolyte.svg"
+  },
+  {
+    "id": "an-cathedral",
+    "name": "Cathedral",
+    "type": "Monster",
+    "faction": "Anointed",
+    "url": "/designer/images/unit-silhouette-an-cathedral.svg"
+  },
+  {
+    "id": "an-reanimated",
+    "name": "Reanimated",
+    "type": "Monster",
+    "faction": "Anointed",
+    "url": "/designer/images/unit-silhouette-an-reanimated.svg"
+  },
+  {
+    "id": "an-un-man",
+    "name": "Un-Man",
+    "type": "Monster",
+    "faction": "Anointed",
+    "url": "/designer/images/unit-silhouette-an-un-man.svg"
+  },
+  {
+    "id": "an-yothan",
+    "name": "Yothan",
+    "type": "Monster",
+    "faction": "Anointed",
+    "url": "/designer/images/unit-silhouette-an-yothan.svg"
+  },
+  {
+    "id": "azathoth-unit-sil-azathoth",
+    "name": "Azathoth",
+    "type": "Elder God",
+    "faction": "Azathoth",
+    "url": "/designer/images/unit-silhouette-azathoth-unit-sil-azathoth.svg"
+  },
+  {
+    "id": "azathoth-unit-sil-dimensional-shambler",
+    "name": "Dimensional Shambler",
+    "type": "Monster",
+    "faction": "Azathoth",
+    "url": "/designer/images/unit-silhouette-azathoth-unit-sil-dimensional-shambler.svg"
+  },
+  {
+    "id": "azathoth-unit-sil-elder-thing",
+    "name": "Elder Thing",
+    "type": "Monster",
+    "faction": "Azathoth",
+    "url": "/designer/images/unit-silhouette-azathoth-unit-sil-elder-thing.svg"
+  },
+  {
+    "id": "azathoth-unit-sil-servitor-of-the-outer-gods",
+    "name": "Servitor of the Outer Gods",
+    "type": "Monster",
+    "faction": "Azathoth",
+    "url": "/designer/images/unit-silhouette-azathoth-unit-sil-servitor-of-the-outer-gods.svg"
+  },
+  {
+    "id": "azathoth-unit-sil-star-vampire",
+    "name": "Star Vampire",
+    "type": "Monster",
+    "faction": "Azathoth",
+    "url": "/designer/images/unit-silhouette-azathoth-unit-sil-star-vampire.svg"
+  },
+  {
+    "id": "beyond-time-and-space-unit-sil-hound-of-tindalos",
+    "name": "Hound of Tindalos",
+    "type": "Monster",
+    "faction": "Beyond Time And Space",
+    "url": "/designer/images/unit-silhouette-beyond-time-and-space-unit-sil-hound-of-tindalos.svg"
+  },
+  {
+    "id": "beyond-time-and-space-unit-sil-voonith",
+    "name": "Voonith",
+    "type": "Monster",
+    "faction": "Beyond Time And Space",
+    "url": "/designer/images/unit-silhouette-beyond-time-and-space-unit-sil-voonith.svg"
+  },
+  {
+    "id": "beyond-time-and-space-unit-sil-wamp",
+    "name": "Wamp",
+    "type": "Monster",
+    "faction": "Beyond Time And Space",
+    "url": "/designer/images/unit-silhouette-beyond-time-and-space-unit-sil-wamp.svg"
+  },
+  {
+    "id": "bg-acolyte",
+    "name": "Acolyte",
+    "type": "Cultist",
+    "faction": "Black Goat",
+    "url": "/designer/images/unit-silhouette-bg-acolyte.svg"
+  },
+  {
+    "id": "bg-dark-young",
+    "name": "Dark Young",
+    "type": "Monster",
+    "faction": "Black Goat",
+    "url": "/designer/images/unit-silhouette-bg-dark-young.svg"
+  },
+  {
+    "id": "bg-fungi-from-yuggoth",
+    "name": "Fungi from Yuggoth",
+    "type": "Monster",
+    "faction": "Black Goat",
+    "url": "/designer/images/unit-silhouette-bg-fungi-from-yuggoth.svg"
+  },
+  {
+    "id": "bg-ghoul",
+    "name": "Ghoul",
+    "type": "Monster",
+    "faction": "Black Goat",
+    "url": "/designer/images/unit-silhouette-bg-ghoul.svg"
+  },
+  {
+    "id": "bg-shub-niggurath",
+    "name": "Shub-Niggurath",
+    "type": "Elder God",
+    "faction": "Black Goat",
+    "url": "/designer/images/unit-silhouette-bg-shub-niggurath.svg"
+  },
+  {
+    "id": "cc-acolyte",
+    "name": "Acolyte",
+    "type": "Cultist",
+    "faction": "Chaos & Creeping Corruption",
+    "url": "/designer/images/unit-silhouette-cc-acolyte.svg"
+  },
+  {
+    "id": "cc-flying-polyp",
+    "name": "Flying Polyp",
+    "type": "Monster",
+    "faction": "Chaos & Creeping Corruption",
+    "url": "/designer/images/unit-silhouette-cc-flying-polyp.svg"
+  },
+  {
+    "id": "cc-hunting-horror",
+    "name": "Hunting Horror",
+    "type": "Monster",
+    "faction": "Chaos & Creeping Corruption",
+    "url": "/designer/images/unit-silhouette-cc-hunting-horror.svg"
+  },
+  {
+    "id": "cc-nightgaunt",
+    "name": "Nightgaunt",
+    "type": "Monster",
+    "faction": "Chaos & Creeping Corruption",
+    "url": "/designer/images/unit-silhouette-cc-nightgaunt.svg"
+  },
+  {
+    "id": "cc-nyarlathotep",
+    "name": "Nyarlathotep",
+    "type": "Elder God",
+    "faction": "Chaos & Creeping Corruption",
+    "url": "/designer/images/unit-silhouette-cc-nyarlathotep.svg"
+  },
+  {
+    "id": "cosmic-terrors-unit-sil-dhole",
+    "name": "Dhole",
+    "type": "Monster",
+    "faction": "Cosmic Terrors",
+    "url": "/designer/images/unit-silhouette-cosmic-terrors-unit-sil-dhole.svg"
+  },
+  {
+    "id": "cosmic-terrors-unit-sil-great-race-of-yith",
+    "name": "Great Race of Yith",
+    "type": "Monster",
+    "faction": "Cosmic Terrors",
+    "url": "/designer/images/unit-silhouette-cosmic-terrors-unit-sil-great-race-of-yith.svg"
+  },
+  {
+    "id": "cosmic-terrors-unit-sil-quachil-uttaus",
+    "name": "Quachil Uttaus",
+    "type": "Monster",
+    "faction": "Cosmic Terrors",
+    "url": "/designer/images/unit-silhouette-cosmic-terrors-unit-sil-quachil-uttaus.svg"
+  },
+  {
+    "id": "dreamlands-surface-monsters-unit-sil-gnorri",
+    "name": "Gnorri",
+    "type": "Monster",
+    "faction": "Dreamlands Surface Monsters",
+    "url": "/designer/images/unit-silhouette-dreamlands-surface-monsters-unit-sil-gnorri.svg"
+  },
+  {
+    "id": "dreamlands-surface-monsters-unit-sil-moonbeast",
+    "name": "Moonbeast",
+    "type": "Monster",
+    "faction": "Dreamlands Surface Monsters",
+    "url": "/designer/images/unit-silhouette-dreamlands-surface-monsters-unit-sil-moonbeast.svg"
+  },
+  {
+    "id": "dreamlands-surface-monsters-unit-sil-shantak",
+    "name": "Shantak",
+    "type": "Monster",
+    "faction": "Dreamlands Surface Monsters",
+    "url": "/designer/images/unit-silhouette-dreamlands-surface-monsters-unit-sil-shantak.svg"
+  },
+  {
+    "id": "dreamlands-underworld-monsters-unit-sil-ghast",
+    "name": "Ghast",
+    "type": "Monster",
+    "faction": "Dreamlands Underworld Monsters",
+    "url": "/designer/images/unit-silhouette-dreamlands-underworld-monsters-unit-sil-ghast.svg"
+  },
+  {
+    "id": "dreamlands-underworld-monsters-unit-sil-gug",
+    "name": "Gug",
+    "type": "Monster",
+    "faction": "Dreamlands Underworld Monsters",
+    "url": "/designer/images/unit-silhouette-dreamlands-underworld-monsters-unit-sil-gug.svg"
+  },
+  {
+    "id": "dreamlands-underworld-monsters-unit-sil-leng-spider",
+    "name": "Leng Spider",
+    "type": "Monster",
+    "faction": "Dreamlands Underworld Monsters",
+    "url": "/designer/images/unit-silhouette-dreamlands-underworld-monsters-unit-sil-leng-spider.svg"
+  },
+  {
+    "id": "gc-acolyte",
+    "name": "Acolyte",
+    "type": "Cultist",
+    "faction": "Great Cthulhu",
+    "url": "/designer/images/unit-silhouette-gc-acolyte.svg"
+  },
+  {
+    "id": "gc-cthulhu",
+    "name": "Cthulhu",
+    "type": "Elder God",
+    "faction": "Great Cthulhu",
+    "url": "/designer/images/unit-silhouette-gc-cthulhu.svg"
+  },
+  {
+    "id": "gc-deep-one",
+    "name": "Deep One",
+    "type": "Monster",
+    "faction": "Great Cthulhu",
+    "url": "/designer/images/unit-silhouette-gc-deep-one.svg"
+  },
+  {
+    "id": "gc-shoggoth",
+    "name": "Shoggoth",
+    "type": "Monster",
+    "faction": "Great Cthulhu",
+    "url": "/designer/images/unit-silhouette-gc-shoggoth.svg"
+  },
+  {
+    "id": "gc-starspawn",
+    "name": "Starspawn",
+    "type": "Monster",
+    "faction": "Great Cthulhu",
+    "url": "/designer/images/unit-silhouette-gc-starspawn.svg"
+  },
+  {
+    "id": "great-old-one-pack-1-unit-sil-abhoth",
+    "name": "Abhoth",
+    "type": "Elder God",
+    "faction": "Great Old One Pack 1",
+    "url": "/designer/images/unit-silhouette-great-old-one-pack-1-unit-sil-abhoth.svg"
+  },
+  {
+    "id": "great-old-one-pack-1-unit-sil-chaugnar-faugn",
+    "name": "Chaugnar Faugn",
+    "type": "Elder God",
+    "faction": "Great Old One Pack 1",
+    "url": "/designer/images/unit-silhouette-great-old-one-pack-1-unit-sil-chaugnar-faugn.svg"
+  },
+  {
+    "id": "great-old-one-pack-1-unit-sil-cthugha",
+    "name": "Cthugha",
+    "type": "Elder God",
+    "faction": "Great Old One Pack 1",
+    "url": "/designer/images/unit-silhouette-great-old-one-pack-1-unit-sil-cthugha.svg"
+  },
+  {
+    "id": "great-old-one-pack-1-unit-sil-mother-hydra",
+    "name": "Mother Hydra",
+    "type": "Elder God",
+    "faction": "Great Old One Pack 1",
+    "url": "/designer/images/unit-silhouette-great-old-one-pack-1-unit-sil-mother-hydra.svg"
+  },
+  {
+    "id": "great-old-one-pack-1-unit-sil-yig",
+    "name": "Yig",
+    "type": "Elder God",
+    "faction": "Great Old One Pack 1",
+    "url": "/designer/images/unit-silhouette-great-old-one-pack-1-unit-sil-yig.svg"
+  },
+  {
+    "id": "great-old-one-pack-2-unit-sil-atlach-nacha",
+    "name": "Atlach-Nacha",
+    "type": "Elder God",
+    "faction": "Great Old One Pack 2",
+    "url": "/designer/images/unit-silhouette-great-old-one-pack-2-unit-sil-atlach-nacha.svg"
+  },
+  {
+    "id": "great-old-one-pack-2-unit-sil-bokrug",
+    "name": "Bokrug",
+    "type": "Elder God",
+    "faction": "Great Old One Pack 2",
+    "url": "/designer/images/unit-silhouette-great-old-one-pack-2-unit-sil-bokrug.svg"
+  },
+  {
+    "id": "great-old-one-pack-2-unit-sil-father-dagon",
+    "name": "Father Dagon",
+    "type": "Elder God",
+    "faction": "Great Old One Pack 2",
+    "url": "/designer/images/unit-silhouette-great-old-one-pack-2-unit-sil-father-dagon.svg"
+  },
+  {
+    "id": "great-old-one-pack-2-unit-sil-ghatanothoa",
+    "name": "Ghatanothoa",
+    "type": "Elder God",
+    "faction": "Great Old One Pack 2",
+    "url": "/designer/images/unit-silhouette-great-old-one-pack-2-unit-sil-ghatanothoa.svg"
+  },
+  {
+    "id": "great-old-one-pack-3-unit-sil-gobogeg",
+    "name": "Gobogeg",
+    "type": "Terror",
+    "faction": "Great Old One Pack 3",
+    "url": "/designer/images/unit-silhouette-great-old-one-pack-3-unit-sil-gobogeg.svg"
+  },
+  {
+    "id": "great-old-one-pack-4-unit-sil-byatis",
+    "name": "Byatis",
+    "type": "Elder God",
+    "faction": "Great Old One Pack 4",
+    "url": "/designer/images/unit-silhouette-great-old-one-pack-4-unit-sil-byatis.svg"
+  },
+  {
+    "id": "great-old-one-pack-4-unit-sil-nyogtha",
+    "name": "Nyogtha",
+    "type": "Elder God",
+    "faction": "Great Old One Pack 4",
+    "url": "/designer/images/unit-silhouette-great-old-one-pack-4-unit-sil-nyogtha.svg"
+  },
+  {
+    "id": "great-old-one-pack-4-unit-sil-tulzscha",
+    "name": "Tulzscha",
+    "type": "Elder God",
+    "faction": "Great Old One Pack 4",
+    "url": "/designer/images/unit-silhouette-great-old-one-pack-4-unit-sil-tulzscha.svg"
+  },
+  {
+    "id": "high-priests-unit-sil-high-priest",
+    "name": "High Priest",
+    "type": "Cultist",
+    "faction": "High Priests",
+    "url": "/designer/images/unit-silhouette-high-priests-unit-sil-high-priest.svg"
+  },
+  {
+    "id": "kickstarter-specials-unit-sil-brown-jenkin",
+    "name": "Brown Jenkin",
+    "type": "Monster",
+    "faction": "Kickstarter Specials",
+    "url": "/designer/images/unit-silhouette-kickstarter-specials-unit-sil-brown-jenkin.svg"
+  },
+  {
+    "id": "kickstarter-specials-unit-sil-cthulhu-the-harbinger",
+    "name": "Cthulhu the Harbinger",
+    "type": "Monster",
+    "faction": "Kickstarter Specials",
+    "url": "/designer/images/unit-silhouette-kickstarter-specials-unit-sil-cthulhu-the-harbinger.svg"
+  },
+  {
+    "id": "kickstarter-specials-unit-sil-dire-azathoth",
+    "name": "Dire Azathoth",
+    "type": "Elder God",
+    "faction": "Kickstarter Specials",
+    "url": "/designer/images/unit-silhouette-kickstarter-specials-unit-sil-dire-azathoth.svg"
+  },
+  {
+    "id": "kickstarter-specials-unit-sil-dire-cthulhu",
+    "name": "Dire Cthulhu",
+    "type": "Elder God",
+    "faction": "Kickstarter Specials",
+    "url": "/designer/images/unit-silhouette-kickstarter-specials-unit-sil-dire-cthulhu.svg"
+  },
+  {
+    "id": "kickstarter-specials-unit-sil-elder-shoggoth",
+    "name": "Elder Shoggoth",
+    "type": "Monster",
+    "faction": "Kickstarter Specials",
+    "url": "/designer/images/unit-silhouette-kickstarter-specials-unit-sil-elder-shoggoth.svg"
+  },
+  {
+    "id": "kickstarter-specials-unit-sil-giant-blind-albino-penguins",
+    "name": "Giant Blind Albino Penguins",
+    "type": "Monster",
+    "faction": "Kickstarter Specials",
+    "url": "/designer/images/unit-silhouette-kickstarter-specials-unit-sil-giant-blind-albino-penguins.svg"
+  },
+  {
+    "id": "kickstarter-specials-unit-sil-nodens",
+    "name": "Nodens",
+    "type": "Elder God",
+    "faction": "Kickstarter Specials",
+    "url": "/designer/images/unit-silhouette-kickstarter-specials-unit-sil-nodens.svg"
+  },
+  {
+    "id": "kickstarter-specials-unit-sil-the-risen-one",
+    "name": "The Risen One",
+    "type": "Elder God",
+    "faction": "Kickstarter Specials",
+    "url": "/designer/images/unit-silhouette-kickstarter-specials-unit-sil-the-risen-one.svg"
+  },
+  {
+    "id": "masks-of-nyarlathotep-unit-sil-the-bloated-woman",
+    "name": "The Bloated Woman",
+    "type": "Monster",
+    "faction": "Masks Of Nyarlathotep",
+    "url": "/designer/images/unit-silhouette-masks-of-nyarlathotep-unit-sil-the-bloated-woman.svg"
+  },
+  {
+    "id": "masks-of-nyarlathotep-unit-sil-the-dark-demon",
+    "name": "The Dark Demon",
+    "type": "Monster",
+    "faction": "Masks Of Nyarlathotep",
+    "url": "/designer/images/unit-silhouette-masks-of-nyarlathotep-unit-sil-the-dark-demon.svg"
+  },
+  {
+    "id": "masks-of-nyarlathotep-unit-sil-the-haunter-of-the-dark",
+    "name": "The Haunter of the Dark",
+    "type": "Monster",
+    "faction": "Masks Of Nyarlathotep",
+    "url": "/designer/images/unit-silhouette-masks-of-nyarlathotep-unit-sil-the-haunter-of-the-dark.svg"
+  },
+  {
+    "id": "masks-of-nyarlathotep-unit-sil-the-shadow-pharaoh",
+    "name": "The Shadow Pharaoh",
+    "type": "Monster",
+    "faction": "Masks Of Nyarlathotep",
+    "url": "/designer/images/unit-silhouette-masks-of-nyarlathotep-unit-sil-the-shadow-pharaoh.svg"
+  },
+  {
+    "id": "n-abhoth",
+    "name": "Abhoth",
+    "type": "Elder God",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-abhoth.svg"
+  },
+  {
+    "id": "n-amelia-azevedo",
+    "name": "Amelia Azevedo",
+    "type": "Cultist",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-amelia-azevedo.svg"
+  },
+  {
+    "id": "n-argus",
+    "name": "Argus",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-argus.svg"
+  },
+  {
+    "id": "n-asenath-waite",
+    "name": "Asenath Waite",
+    "type": "Cultist",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-asenath-waite.svg"
+  },
+  {
+    "id": "n-asmod",
+    "name": "Asmod",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-asmod.svg"
+  },
+  {
+    "id": "n-asteroid-cat",
+    "name": "Asteroid Cat",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-asteroid-cat.svg"
+  },
+  {
+    "id": "n-atlach-nacha-web-token",
+    "name": "Atlach Nacha Web Token",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-atlach-nacha-web-token.svg"
+  },
+  {
+    "id": "n-atlach-nacha",
+    "name": "Atlach-Nacha",
+    "type": "Elder God",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-atlach-nacha.svg"
+  },
+  {
+    "id": "n-azathoth",
+    "name": "Azathoth",
+    "type": "Elder God",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-azathoth.svg"
+  },
+  {
+    "id": "n-baphomet",
+    "name": "Baphomet",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-baphomet.svg"
+  },
+  {
+    "id": "n-bellatrix",
+    "name": "Bellatrix",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-bellatrix.svg"
+  },
+  {
+    "id": "n-bernice-kuchler",
+    "name": "Bernice Kuchler",
+    "type": "Cultist",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-bernice-kuchler.svg"
+  },
+  {
+    "id": "n-bokrug",
+    "name": "Bokrug",
+    "type": "Elder God",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-bokrug.svg"
+  },
+  {
+    "id": "n-brown-jenkin",
+    "name": "Brown Jenkin",
+    "type": "Monster",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-brown-jenkin.svg"
+  },
+  {
+    "id": "n-byatis",
+    "name": "Byatis",
+    "type": "Elder God",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-byatis.svg"
+  },
+  {
+    "id": "n-cacodemon",
+    "name": "Cacodemon",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-cacodemon.svg"
+  },
+  {
+    "id": "n-cat-from-mercury",
+    "name": "Cat from Mercury",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-cat-from-mercury.svg"
+  },
+  {
+    "id": "n-cat-from-neptune",
+    "name": "Cat from Neptune",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-cat-from-neptune.svg"
+  },
+  {
+    "id": "n-cat-from-venus",
+    "name": "Cat from Venus",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-cat-from-venus.svg"
+  },
+  {
+    "id": "n-catoblepas",
+    "name": "Catoblepas",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-catoblepas.svg"
+  },
+  {
+    "id": "n-cendiary",
+    "name": "Cendiary",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-cendiary.svg"
+  },
+  {
+    "id": "n-chaugnar-faugn",
+    "name": "Chaugnar Faugn",
+    "type": "Elder God",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-chaugnar-faugn.svg"
+  },
+  {
+    "id": "n-chthon",
+    "name": "Chthon",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-chthon.svg"
+  },
+  {
+    "id": "n-cindrew-putorius",
+    "name": "Cindrew Putorius",
+    "type": "Cultist",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-cindrew-putorius.svg"
+  },
+  {
+    "id": "n-cissy-salem",
+    "name": "Cissy Salem",
+    "type": "Cultist",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-cissy-salem.svg"
+  },
+  {
+    "id": "n-crawford-tillinghast",
+    "name": "Crawford Tillinghast",
+    "type": "Cultist",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-crawford-tillinghast.svg"
+  },
+  {
+    "id": "n-cthugha",
+    "name": "Cthugha",
+    "type": "Elder God",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-cthugha.svg"
+  },
+  {
+    "id": "n-cthulhu",
+    "name": "Cthulhu",
+    "type": "Elder God",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-cthulhu.svg"
+  },
+  {
+    "id": "n-cthulhu-the-harbinger",
+    "name": "Cthulhu the Harbinger",
+    "type": "Monster",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-cthulhu-the-harbinger.svg"
+  },
+  {
+    "id": "n-daoloth",
+    "name": "Daoloth",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-daoloth.svg"
+  },
+  {
+    "id": "n-demon-gate",
+    "name": "Demon Gate",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-demon-gate.svg"
+  },
+  {
+    "id": "n-dhole",
+    "name": "Dhole",
+    "type": "Monster",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-dhole.svg"
+  },
+  {
+    "id": "n-dimensional-shambler",
+    "name": "Dimensional Shambler",
+    "type": "Monster",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-dimensional-shambler.svg"
+  },
+  {
+    "id": "n-dire-azathoth",
+    "name": "Dire Azathoth",
+    "type": "Elder God",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-dire-azathoth.svg"
+  },
+  {
+    "id": "n-dire-cthulhu",
+    "name": "Dire Cthulhu",
+    "type": "Elder God",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-dire-cthulhu.svg"
+  },
+  {
+    "id": "n-dire-yog-sothoth",
+    "name": "Dire Yog-Sothoth",
+    "type": "Elder God",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-dire-yog-sothoth.svg"
+  },
+  {
+    "id": "n-doctor-hunter",
+    "name": "Doctor Hunter",
+    "type": "Cultist",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-doctor-hunter.svg"
+  },
+  {
+    "id": "n-dorothy-hall",
+    "name": "Dorothy Hall",
+    "type": "Cultist",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-dorothy-hall.svg"
+  },
+  {
+    "id": "n-eihort",
+    "name": "Eihort",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-eihort.svg"
+  },
+  {
+    "id": "n-elder-shoggoth",
+    "name": "Elder Shoggoth",
+    "type": "Monster",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-elder-shoggoth.svg"
+  },
+  {
+    "id": "n-elder-thing",
+    "name": "Elder Thing",
+    "type": "Monster",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-elder-thing.svg"
+  },
+  {
+    "id": "n-elemental",
+    "name": "Elemental",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-elemental.svg"
+  },
+  {
+    "id": "n-eradicators",
+    "name": "Eradicators",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-eradicators.svg"
+  },
+  {
+    "id": "n-ermengarde-stubbs",
+    "name": "Ermengarde Stubbs",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-ermengarde-stubbs.svg"
+  },
+  {
+    "id": "n-father-dagon",
+    "name": "Father Dagon",
+    "type": "Elder God",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-father-dagon.svg"
+  },
+  {
+    "id": "n-fiend",
+    "name": "Fiend",
+    "type": "Monster",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-fiend.svg"
+  },
+  {
+    "id": "n-gadarene",
+    "name": "Gadarene",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-gadarene.svg"
+  },
+  {
+    "id": "n-geryon",
+    "name": "Geryon",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-geryon.svg"
+  },
+  {
+    "id": "n-ghast",
+    "name": "Ghast",
+    "type": "Monster",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-ghast.svg"
+  },
+  {
+    "id": "n-ghatanothoa",
+    "name": "Ghatanothoa",
+    "type": "Elder God",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-ghatanothoa.svg"
+  },
+  {
+    "id": "n-giant-blind-albino-penguins",
+    "name": "Giant Blind Albino Penguins",
+    "type": "Monster",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-giant-blind-albino-penguins.svg"
+  },
+  {
+    "id": "n-glaaki",
+    "name": "Glaaki",
+    "type": "Elder God",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-glaaki.svg"
+  },
+  {
+    "id": "n-gnorri",
+    "name": "Gnorri",
+    "type": "Monster",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-gnorri.svg"
+  },
+  {
+    "id": "n-gobogeg",
+    "name": "Gobogeg",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-gobogeg.svg"
+  },
+  {
+    "id": "n-great-race-of-yith",
+    "name": "Great Race of Yith",
+    "type": "Monster",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-great-race-of-yith.svg"
+  },
+  {
+    "id": "n-gryllus",
+    "name": "Gryllus",
+    "type": "Monster",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-gryllus.svg"
+  },
+  {
+    "id": "n-gug",
+    "name": "Gug",
+    "type": "Monster",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-gug.svg"
+  },
+  {
+    "id": "n-hagarg-ryonis",
+    "name": "Hagarg Ryonis",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-hagarg-ryonis.svg"
+  },
+  {
+    "id": "n-hannah-hazard",
+    "name": "Hannah Hazard",
+    "type": "Cultist",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-hannah-hazard.svg"
+  },
+  {
+    "id": "n-hastur",
+    "name": "Hastur",
+    "type": "Elder God",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-hastur.svg"
+  },
+  {
+    "id": "n-hellhound",
+    "name": "Hellhound",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-hellhound.svg"
+  },
+  {
+    "id": "n-hellmother",
+    "name": "Hellmother",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-hellmother.svg"
+  },
+  {
+    "id": "n-herbert-west",
+    "name": "Herbert West",
+    "type": "Cultist",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-herbert-west.svg"
+  },
+  {
+    "id": "n-high-priest",
+    "name": "High Priest",
+    "type": "Cultist",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-high-priest.svg"
+  },
+  {
+    "id": "n-hortator",
+    "name": "Hortator",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-hortator.svg"
+  },
+  {
+    "id": "n-hound-of-tindalos",
+    "name": "Hound of Tindalos",
+    "type": "Monster",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-hound-of-tindalos.svg"
+  },
+  {
+    "id": "n-humbaba",
+    "name": "Humbaba",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-humbaba.svg"
+  },
+  {
+    "id": "n-insects-from-shaggai",
+    "name": "Insects from Shaggai",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-insects-from-shaggai.svg"
+  },
+  {
+    "id": "n-ithaqua",
+    "name": "Ithaqua",
+    "type": "Elder God",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-ithaqua.svg"
+  },
+  {
+    "id": "n-jabootu",
+    "name": "Jabootu",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-jabootu.svg"
+  },
+  {
+    "id": "n-john-dark",
+    "name": "John Dark",
+    "type": "Cultist",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-john-dark.svg"
+  },
+  {
+    "id": "n-joseph-curwen",
+    "name": "Joseph Curwen",
+    "type": "Cultist",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-joseph-curwen.svg"
+  },
+  {
+    "id": "n-junior-whateley",
+    "name": "Junior Whateley",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-junior-whateley.svg"
+  },
+  {
+    "id": "n-keziah-mason",
+    "name": "Keziah Mason",
+    "type": "Cultist",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-keziah-mason.svg"
+  },
+  {
+    "id": "n-lady-of-disease",
+    "name": "Lady of Disease",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-lady-of-disease.svg"
+  },
+  {
+    "id": "n-larva",
+    "name": "Larva",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-larva.svg"
+  },
+  {
+    "id": "n-lavinia-whateley-dunwich",
+    "name": "Lavinia Whateley",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-lavinia-whateley-dunwich.svg"
+  },
+  {
+    "id": "n-lavinia-whateley",
+    "name": "Lavinia Whateley",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-lavinia-whateley.svg"
+  },
+  {
+    "id": "n-leng-spider",
+    "name": "Leng Spider",
+    "type": "Monster",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-leng-spider.svg"
+  },
+  {
+    "id": "n-mad-god",
+    "name": "Mad God",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-mad-god.svg"
+  },
+  {
+    "id": "n-magdalene",
+    "name": "Magdalene",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-magdalene.svg"
+  },
+  {
+    "id": "n-magna-mater",
+    "name": "Magna Mater",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-magna-mater.svg"
+  },
+  {
+    "id": "n-mandrake",
+    "name": "Mandrake",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-mandrake.svg"
+  },
+  {
+    "id": "n-moonbeast",
+    "name": "Moonbeast",
+    "type": "Monster",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-moonbeast.svg"
+  },
+  {
+    "id": "n-moose-kowalski",
+    "name": "Moose Kowalski",
+    "type": "Cultist",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-moose-kowalski.svg"
+  },
+  {
+    "id": "n-mother-hydra",
+    "name": "Mother Hydra",
+    "type": "Elder God",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-mother-hydra.svg"
+  },
+  {
+    "id": "n-naomi-johnson",
+    "name": "Naomi Johnson",
+    "type": "Cultist",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-naomi-johnson.svg"
+  },
+  {
+    "id": "n-nodens",
+    "name": "Nodens",
+    "type": "Elder God",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-nodens.svg"
+  },
+  {
+    "id": "n-nuckelavee",
+    "name": "Nuckelavee",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-nuckelavee.svg"
+  },
+  {
+    "id": "n-nyarlathotep",
+    "name": "Nyarlathotep",
+    "type": "Elder God",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-nyarlathotep.svg"
+  },
+  {
+    "id": "n-nyogtha",
+    "name": "Nyogtha",
+    "type": "Elder God",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-nyogtha.svg"
+  },
+  {
+    "id": "n-orobas",
+    "name": "Orobas",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-orobas.svg"
+  },
+  {
+    "id": "n-penrod-wallenstein",
+    "name": "Penrod Wallenstein",
+    "type": "Cultist",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-penrod-wallenstein.svg"
+  },
+  {
+    "id": "n-philter",
+    "name": "Philter",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-philter.svg"
+  },
+  {
+    "id": "n-pitpipo",
+    "name": "Pitpipo",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-pitpipo.svg"
+  },
+  {
+    "id": "n-procrustes",
+    "name": "Procrustes",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-procrustes.svg"
+  },
+  {
+    "id": "n-professor-maxwell",
+    "name": "Professor Maxwell",
+    "type": "Cultist",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-professor-maxwell.svg"
+  },
+  {
+    "id": "n-pulgasaur",
+    "name": "Pulgasaur",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-pulgasaur.svg"
+  },
+  {
+    "id": "n-quachil-uttaus",
+    "name": "Quachil Uttaus",
+    "type": "Monster",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-quachil-uttaus.svg"
+  },
+  {
+    "id": "n-raparee",
+    "name": "Raparee",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-raparee.svg"
+  },
+  {
+    "id": "n-rhan-tegoth",
+    "name": "Rhan-Tegoth",
+    "type": "Monster",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-rhan-tegoth.svg"
+  },
+  {
+    "id": "n-satyr",
+    "name": "Satyr",
+    "type": "Monster",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-satyr.svg"
+  },
+  {
+    "id": "n-scylla",
+    "name": "Scylla",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-scylla.svg"
+  },
+  {
+    "id": "n-secutor",
+    "name": "Secutor",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-secutor.svg"
+  },
+  {
+    "id": "n-servitor-of-the-outer-gods",
+    "name": "Servitor of the Outer Gods",
+    "type": "Monster",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-servitor-of-the-outer-gods.svg"
+  },
+  {
+    "id": "n-shantak",
+    "name": "Shantak",
+    "type": "Monster",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-shantak.svg"
+  },
+  {
+    "id": "n-shub-niggurath",
+    "name": "Shub-Niggurath",
+    "type": "Elder God",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-shub-niggurath.svg"
+  },
+  {
+    "id": "n-star-vampire",
+    "name": "Star Vampire",
+    "type": "Monster",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-star-vampire.svg"
+  },
+  {
+    "id": "n-stheno",
+    "name": "Stheno",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-stheno.svg"
+  },
+  {
+    "id": "n-stroma",
+    "name": "Stroma",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-stroma.svg"
+  },
+  {
+    "id": "n-sun-god",
+    "name": "Sun God",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-sun-god.svg"
+  },
+  {
+    "id": "n-tarang",
+    "name": "Tarang",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-tarang.svg"
+  },
+  {
+    "id": "n-tarasque",
+    "name": "Tarasque",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-tarasque.svg"
+  },
+  {
+    "id": "n-tardigrade",
+    "name": "Tardigrade",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-tardigrade.svg"
+  },
+  {
+    "id": "n-the-bloated-woman",
+    "name": "The Bloated Woman",
+    "type": "Monster",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-the-bloated-woman.svg"
+  },
+  {
+    "id": "n-the-dark-demon",
+    "name": "The Dark Demon",
+    "type": "Monster",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-the-dark-demon.svg"
+  },
+  {
+    "id": "n-the-eidolon",
+    "name": "The Eidolon",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-the-eidolon.svg"
+  },
+  {
+    "id": "n-the-haunter-of-the-dark",
+    "name": "The Haunter of the Dark",
+    "type": "Monster",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-the-haunter-of-the-dark.svg"
+  },
+  {
+    "id": "n-the-king-in-yellow",
+    "name": "The King In Yellow",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-the-king-in-yellow.svg"
+  },
+  {
+    "id": "n-the-prophetess",
+    "name": "The Prophetess",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-the-prophetess.svg"
+  },
+  {
+    "id": "n-the-risen-one",
+    "name": "The Risen One",
+    "type": "Elder God",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-the-risen-one.svg"
+  },
+  {
+    "id": "n-the-shadow-pharaoh",
+    "name": "The Shadow Pharaoh",
+    "type": "Monster",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-the-shadow-pharaoh.svg"
+  },
+  {
+    "id": "n-thunder-king",
+    "name": "Thunder King",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-thunder-king.svg"
+  },
+  {
+    "id": "n-tsathoggua",
+    "name": "Tsathoggua",
+    "type": "Elder God",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-tsathoggua.svg"
+  },
+  {
+    "id": "n-tulzscha",
+    "name": "Tulzscha",
+    "type": "Elder God",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-tulzscha.svg"
+  },
+  {
+    "id": "n-ubbo-sathla",
+    "name": "Ubbo-Sathla",
+    "type": "Monster",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-ubbo-sathla.svg"
+  },
+  {
+    "id": "n-victor-steele",
+    "name": "Victor Steele",
+    "type": "Cultist",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-victor-steele.svg"
+  },
+  {
+    "id": "n-voonith",
+    "name": "Voonith",
+    "type": "Monster",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-voonith.svg"
+  },
+  {
+    "id": "n-wamp",
+    "name": "Wamp",
+    "type": "Monster",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-wamp.svg"
+  },
+  {
+    "id": "n-wilbur-whateley",
+    "name": "Wilbur Whateley",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-wilbur-whateley.svg"
+  },
+  {
+    "id": "n-wizard-whateley",
+    "name": "Wizard Whateley",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-wizard-whateley.svg"
+  },
+  {
+    "id": "n-worms-of-ghroth",
+    "name": "Worms of Ghroth",
+    "type": "Terror",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-worms-of-ghroth.svg"
+  },
+  {
+    "id": "n-ygolonac",
+    "name": "Ygolonac",
+    "type": "Elder God",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-ygolonac.svg"
+  },
+  {
+    "id": "n-yig",
+    "name": "Yig",
+    "type": "Elder God",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-yig.svg"
+  },
+  {
+    "id": "n-yog-sothoth",
+    "name": "Yog-Sothoth",
+    "type": "Elder God",
+    "faction": "Neutral",
+    "url": "/designer/images/unit-silhouette-n-yog-sothoth.svg"
+  },
+  {
+    "id": "ow-abomination",
+    "name": "Abomination",
+    "type": "Monster",
+    "faction": "Outer Worlds",
+    "url": "/designer/images/unit-silhouette-ow-abomination.svg"
+  },
+  {
+    "id": "ow-acolyte",
+    "name": "Acolyte",
+    "type": "Cultist",
+    "faction": "Outer Worlds",
+    "url": "/designer/images/unit-silhouette-ow-acolyte.svg"
+  },
+  {
+    "id": "ow-mutant",
+    "name": "Mutant",
+    "type": "Monster",
+    "faction": "Outer Worlds",
+    "url": "/designer/images/unit-silhouette-ow-mutant.svg"
+  },
+  {
+    "id": "ow-spawn-of-yog-sothoth",
+    "name": "Spawn of Yog-Sothoth",
+    "type": "Monster",
+    "faction": "Outer Worlds",
+    "url": "/designer/images/unit-silhouette-ow-spawn-of-yog-sothoth.svg"
+  },
+  {
+    "id": "ow-yog-sothoth",
+    "name": "Yog-Sothoth",
+    "type": "Elder God",
+    "faction": "Outer Worlds",
+    "url": "/designer/images/unit-silhouette-ow-yog-sothoth.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-amelia-azevedo",
+    "name": "Amelia Azevedo",
+    "type": "Cultist",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-amelia-azevedo.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-argus",
+    "name": "Argus",
+    "type": "Terror",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-argus.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-asmod",
+    "name": "Asmod",
+    "type": "Terror",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-asmod.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-baphomet",
+    "name": "Baphomet",
+    "type": "Terror",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-baphomet.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-bellatrix",
+    "name": "Bellatrix",
+    "type": "Terror",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-bellatrix.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-bernice-kuchler",
+    "name": "Bernice Kuchler",
+    "type": "Cultist",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-bernice-kuchler.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-cacodemon",
+    "name": "Cacodemon",
+    "type": "Terror",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-cacodemon.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-catoblepas",
+    "name": "Catoblepas",
+    "type": "Terror",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-catoblepas.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-cendiary",
+    "name": "Cendiary",
+    "type": "Terror",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-cendiary.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-chthon",
+    "name": "Chthon",
+    "type": "Terror",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-chthon.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-cindrew-putorius",
+    "name": "Cindrew Putorius",
+    "type": "Cultist",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-cindrew-putorius.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-cissy-salem",
+    "name": "Cissy Salem",
+    "type": "Cultist",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-cissy-salem.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-demon-gate",
+    "name": "Demon Gate",
+    "type": "Terror",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-demon-gate.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-doctor-hunter",
+    "name": "Doctor Hunter",
+    "type": "Cultist",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-doctor-hunter.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-dorothy-hall",
+    "name": "Dorothy Hall",
+    "type": "Cultist",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-dorothy-hall.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-elemental",
+    "name": "Elemental",
+    "type": "Terror",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-elemental.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-fiend",
+    "name": "Fiend",
+    "type": "Monster",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-fiend.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-gadarene",
+    "name": "Gadarene",
+    "type": "Terror",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-gadarene.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-geryon",
+    "name": "Geryon",
+    "type": "Terror",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-geryon.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-gryllus",
+    "name": "Gryllus",
+    "type": "Monster",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-gryllus.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-hannah-hazard",
+    "name": "Hannah Hazard",
+    "type": "Cultist",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-hannah-hazard.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-hellhound",
+    "name": "Hellhound",
+    "type": "Terror",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-hellhound.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-hortator",
+    "name": "Hortator",
+    "type": "Terror",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-hortator.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-humbaba",
+    "name": "Humbaba",
+    "type": "Terror",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-humbaba.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-jabootu",
+    "name": "Jabootu",
+    "type": "Terror",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-jabootu.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-john-dark",
+    "name": "John Dark",
+    "type": "Cultist",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-john-dark.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-larva",
+    "name": "Larva",
+    "type": "Terror",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-larva.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-magdalene",
+    "name": "Magdalene",
+    "type": "Terror",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-magdalene.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-mandrake",
+    "name": "Mandrake",
+    "type": "Terror",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-mandrake.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-moose-kowalski",
+    "name": "Moose Kowalski",
+    "type": "Cultist",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-moose-kowalski.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-naomi-johnson",
+    "name": "Naomi Johnson",
+    "type": "Cultist",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-naomi-johnson.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-nuckelavee",
+    "name": "Nuckelavee",
+    "type": "Terror",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-nuckelavee.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-orobas",
+    "name": "Orobas",
+    "type": "Terror",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-orobas.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-penrod-wallenstein",
+    "name": "Penrod Wallenstein",
+    "type": "Cultist",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-penrod-wallenstein.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-philter",
+    "name": "Philter",
+    "type": "Terror",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-philter.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-procrustes",
+    "name": "Procrustes",
+    "type": "Terror",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-procrustes.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-professor-maxwell",
+    "name": "Professor Maxwell",
+    "type": "Cultist",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-professor-maxwell.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-pulgasaur",
+    "name": "Pulgasaur",
+    "type": "Terror",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-pulgasaur.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-raparee",
+    "name": "Raparee",
+    "type": "Terror",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-raparee.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-scylla",
+    "name": "Scylla",
+    "type": "Terror",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-scylla.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-secutor",
+    "name": "Secutor",
+    "type": "Terror",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-secutor.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-stheno",
+    "name": "Stheno",
+    "type": "Terror",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-stheno.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-stroma",
+    "name": "Stroma",
+    "type": "Terror",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-stroma.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-tarang",
+    "name": "Tarang",
+    "type": "Terror",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-tarang.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-tarasque",
+    "name": "Tarasque",
+    "type": "Terror",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-tarasque.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-tardigrade",
+    "name": "Tardigrade",
+    "type": "Terror",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-tardigrade.svg"
+  },
+  {
+    "id": "planet-apocalypse-crossover-unit-sil-victor-steele",
+    "name": "Victor Steele",
+    "type": "Cultist",
+    "faction": "Planet Apocalypse Crossover",
+    "url": "/designer/images/unit-silhouette-planet-apocalypse-crossover-unit-sil-victor-steele.svg"
+  },
+  {
+    "id": "ramsey-campbell-horrors-1-unit-sil-eihort",
+    "name": "Eihort",
+    "type": "Terror",
+    "faction": "Ramsey Campbell Horrors 1",
+    "url": "/designer/images/unit-silhouette-ramsey-campbell-horrors-1-unit-sil-eihort.svg"
+  },
+  {
+    "id": "ramsey-campbell-horrors-1-unit-sil-glaaki",
+    "name": "Glaaki",
+    "type": "Elder God",
+    "faction": "Ramsey Campbell Horrors 1",
+    "url": "/designer/images/unit-silhouette-ramsey-campbell-horrors-1-unit-sil-glaaki.svg"
+  },
+  {
+    "id": "ramsey-campbell-horrors-1-unit-sil-insects-from-shaggai",
+    "name": "Insects from Shaggai",
+    "type": "Terror",
+    "faction": "Ramsey Campbell Horrors 1",
+    "url": "/designer/images/unit-silhouette-ramsey-campbell-horrors-1-unit-sil-insects-from-shaggai.svg"
+  },
+  {
+    "id": "ramsey-campbell-horrors-2-unit-sil-daoloth",
+    "name": "Daoloth",
+    "type": "Terror",
+    "faction": "Ramsey Campbell Horrors 2",
+    "url": "/designer/images/unit-silhouette-ramsey-campbell-horrors-2-unit-sil-daoloth.svg"
+  },
+  {
+    "id": "ramsey-campbell-horrors-2-unit-sil-satyr",
+    "name": "Satyr",
+    "type": "Monster",
+    "faction": "Ramsey Campbell Horrors 2",
+    "url": "/designer/images/unit-silhouette-ramsey-campbell-horrors-2-unit-sil-satyr.svg"
+  },
+  {
+    "id": "ramsey-campbell-horrors-2-unit-sil-y-golonac",
+    "name": "Y Golonac",
+    "type": "Terror",
+    "faction": "Ramsey Campbell Horrors 2",
+    "url": "/designer/images/unit-silhouette-ramsey-campbell-horrors-2-unit-sil-y-golonac.svg"
+  },
+  {
+    "id": "sl-acolyte",
+    "name": "Acolyte",
+    "type": "Cultist",
+    "faction": "Sleeper",
+    "url": "/designer/images/unit-silhouette-sl-acolyte.svg"
+  },
+  {
+    "id": "sl-formless-spawn",
+    "name": "Formless Spawn",
+    "type": "Monster",
+    "faction": "Sleeper",
+    "url": "/designer/images/unit-silhouette-sl-formless-spawn.svg"
+  },
+  {
+    "id": "sl-serpent-man",
+    "name": "Serpent Man",
+    "type": "Monster",
+    "faction": "Sleeper",
+    "url": "/designer/images/unit-silhouette-sl-serpent-man.svg"
+  },
+  {
+    "id": "sl-tsathoggua",
+    "name": "Tsathoggua",
+    "type": "Elder God",
+    "faction": "Sleeper",
+    "url": "/designer/images/unit-silhouette-sl-tsathoggua.svg"
+  },
+  {
+    "id": "sl-wizard",
+    "name": "Wizard",
+    "type": "Cultist",
+    "faction": "Sleeper",
+    "url": "/designer/images/unit-silhouette-sl-wizard.svg"
+  },
+  {
+    "id": "something-about-cats-unit-sil-asteroid-cat",
+    "name": "Asteroid Cat",
+    "type": "Terror",
+    "faction": "Something About Cats",
+    "url": "/designer/images/unit-silhouette-something-about-cats-unit-sil-asteroid-cat.svg"
+  },
+  {
+    "id": "something-about-cats-unit-sil-cat-from-mercury",
+    "name": "Cat from Mercury",
+    "type": "Terror",
+    "faction": "Something About Cats",
+    "url": "/designer/images/unit-silhouette-something-about-cats-unit-sil-cat-from-mercury.svg"
+  },
+  {
+    "id": "something-about-cats-unit-sil-cat-from-neptune",
+    "name": "Cat from Neptune",
+    "type": "Terror",
+    "faction": "Something About Cats",
+    "url": "/designer/images/unit-silhouette-something-about-cats-unit-sil-cat-from-neptune.svg"
+  },
+  {
+    "id": "something-about-cats-unit-sil-cat-from-venus",
+    "name": "Cat from Venus",
+    "type": "Terror",
+    "faction": "Something About Cats",
+    "url": "/designer/images/unit-silhouette-something-about-cats-unit-sil-cat-from-venus.svg"
+  },
+  {
+    "id": "something-about-cats-unit-sil-hagarg-ryonis",
+    "name": "Hagarg Ryonis",
+    "type": "Terror",
+    "faction": "Something About Cats",
+    "url": "/designer/images/unit-silhouette-something-about-cats-unit-sil-hagarg-ryonis.svg"
+  },
+  {
+    "id": "the-dunwich-horror-unit-sil-dire-yog-sothoth",
+    "name": "Dire Yog-Sothoth",
+    "type": "Elder God",
+    "faction": "The Dunwich Horror",
+    "url": "/designer/images/unit-silhouette-the-dunwich-horror-unit-sil-dire-yog-sothoth.svg"
+  },
+  {
+    "id": "the-dunwich-horror-unit-sil-junior-whateley",
+    "name": "Junior Whateley",
+    "type": "Terror",
+    "faction": "The Dunwich Horror",
+    "url": "/designer/images/unit-silhouette-the-dunwich-horror-unit-sil-junior-whateley.svg"
+  },
+  {
+    "id": "the-dunwich-horror-unit-sil-lavinia-whateley",
+    "name": "Lavinia Whateley",
+    "type": "Terror",
+    "faction": "The Dunwich Horror",
+    "url": "/designer/images/unit-silhouette-the-dunwich-horror-unit-sil-lavinia-whateley.svg"
+  },
+  {
+    "id": "the-dunwich-horror-unit-sil-wilbur-whateley",
+    "name": "Wilbur Whateley",
+    "type": "Terror",
+    "faction": "The Dunwich Horror",
+    "url": "/designer/images/unit-silhouette-the-dunwich-horror-unit-sil-wilbur-whateley.svg"
+  },
+  {
+    "id": "the-dunwich-horror-unit-sil-wizard-whateley",
+    "name": "Wizard Whateley",
+    "type": "Terror",
+    "faction": "The Dunwich Horror",
+    "url": "/designer/images/unit-silhouette-the-dunwich-horror-unit-sil-wizard-whateley.svg"
+  },
+  {
+    "id": "the-gods-war-crossover-unit-sil-hellmother",
+    "name": "Hellmother",
+    "type": "Terror",
+    "faction": "The Gods War Crossover",
+    "url": "/designer/images/unit-silhouette-the-gods-war-crossover-unit-sil-hellmother.svg"
+  },
+  {
+    "id": "the-gods-war-crossover-unit-sil-lady-of-disease",
+    "name": "Lady of Disease",
+    "type": "Terror",
+    "faction": "The Gods War Crossover",
+    "url": "/designer/images/unit-silhouette-the-gods-war-crossover-unit-sil-lady-of-disease.svg"
+  },
+  {
+    "id": "the-gods-war-crossover-unit-sil-mad-god",
+    "name": "Mad God",
+    "type": "Terror",
+    "faction": "The Gods War Crossover",
+    "url": "/designer/images/unit-silhouette-the-gods-war-crossover-unit-sil-mad-god.svg"
+  },
+  {
+    "id": "the-gods-war-crossover-unit-sil-magna-mater",
+    "name": "Magna Mater",
+    "type": "Terror",
+    "faction": "The Gods War Crossover",
+    "url": "/designer/images/unit-silhouette-the-gods-war-crossover-unit-sil-magna-mater.svg"
+  },
+  {
+    "id": "the-gods-war-crossover-unit-sil-sun-god",
+    "name": "Sun God",
+    "type": "Terror",
+    "faction": "The Gods War Crossover",
+    "url": "/designer/images/unit-silhouette-the-gods-war-crossover-unit-sil-sun-god.svg"
+  },
+  {
+    "id": "the-gods-war-crossover-unit-sil-thunder-king",
+    "name": "Thunder King",
+    "type": "Terror",
+    "faction": "The Gods War Crossover",
+    "url": "/designer/images/unit-silhouette-the-gods-war-crossover-unit-sil-thunder-king.svg"
+  },
+  {
+    "id": "ww-acolyte",
+    "name": "Acolyte",
+    "type": "Cultist",
+    "faction": "Windward Wormwood",
+    "url": "/designer/images/unit-silhouette-ww-acolyte.svg"
+  },
+  {
+    "id": "ww-gnoph-keh",
+    "name": "Gnoph-Keh",
+    "type": "Elder God",
+    "faction": "Windward Wormwood",
+    "url": "/designer/images/unit-silhouette-ww-gnoph-keh.svg"
+  },
+  {
+    "id": "ww-ithaqua",
+    "name": "Ithaqua",
+    "type": "Elder God",
+    "faction": "Windward Wormwood",
+    "url": "/designer/images/unit-silhouette-ww-ithaqua.svg"
+  },
+  {
+    "id": "ww-rhan-tegoth",
+    "name": "Rhan-Tegoth",
+    "type": "Monster",
+    "faction": "Windward Wormwood",
+    "url": "/designer/images/unit-silhouette-ww-rhan-tegoth.svg"
+  },
+  {
+    "id": "ww-wendigo",
+    "name": "Wendigo",
+    "type": "Monster",
+    "faction": "Windward Wormwood",
+    "url": "/designer/images/unit-silhouette-ww-wendigo.svg"
+  },
+  {
+    "id": "ys-acolyte",
+    "name": "Acolyte",
+    "type": "Cultist",
+    "faction": "Yellow Sign",
+    "url": "/designer/images/unit-silhouette-ys-acolyte.svg"
+  },
+  {
+    "id": "ys-byakhee",
+    "name": "Byakhee",
+    "type": "Monster",
+    "faction": "Yellow Sign",
+    "url": "/designer/images/unit-silhouette-ys-byakhee.svg"
+  },
+  {
+    "id": "ys-hastur",
+    "name": "Hastur",
+    "type": "Elder God",
+    "faction": "Yellow Sign",
+    "url": "/designer/images/unit-silhouette-ys-hastur.svg"
+  },
+  {
+    "id": "ys-king-in-yellow",
+    "name": "King in Yellow",
+    "type": "Elder God",
+    "faction": "Yellow Sign",
+    "url": "/designer/images/unit-silhouette-ys-king-in-yellow.svg"
+  },
+  {
+    "id": "ys-undead",
+    "name": "Undead",
+    "type": "Unit",
+    "faction": "Yellow Sign",
+    "url": "/designer/images/unit-silhouette-ys-undead.svg"
+  }
+]
