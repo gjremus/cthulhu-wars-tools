@@ -2791,7 +2791,11 @@
       backBtn.textContent = 'Back to My Customs';
       backBtn.style.marginTop = '20px';
       backBtn.onclick = async () => {
-        await this.flushSaves();
+        try {
+          await this.flushSaves();
+        } catch (err) {
+          console.error('Back to My Customs: save failed, navigating anyway', err);
+        }
         window.location.hash = '#/factions';
       };
       this.root.appendChild(backBtn);
@@ -2884,8 +2888,12 @@
       const backBtn = document.createElement('button');
       backBtn.textContent = 'Exit to Main';
       backBtn.onclick = async () => {
-        await this.flushSaves();
-        await this.closeSession(faction.id);
+        try {
+          await this.flushSaves();
+          await this.closeSession(faction.id);
+        } catch (err) {
+          console.error('Exit to Main: save/close-session failed, navigating anyway', err);
+        }
         window.location.hash = `#/faction/${faction.id}`;
       };
       backBtn.style.marginTop = '20px';
@@ -4183,8 +4191,12 @@
       const backBtn = document.createElement('button');
       backBtn.textContent = 'Exit to Main';
       backBtn.onclick = async () => {
-        await this.flushSaves();
-        await this.closeMapSession(map.id);
+        try {
+          await this.flushSaves();
+          await this.closeMapSession(map.id);
+        } catch (err) {
+          console.error('Exit to Main: save/close-session failed, navigating anyway', err);
+        }
         window.location.hash = `#/map/${map.id}`;
       };
       backBtn.style.marginTop = '20px';
