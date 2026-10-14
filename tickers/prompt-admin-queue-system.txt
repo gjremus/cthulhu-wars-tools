@@ -81,7 +81,7 @@ just image swaps), add a row here:
 FORMAT: MAP-BUILD: <faction-acr> from commit <hash> (Reason)
 
 Entries:
-(none - all factions current)
+MAP-BUILD: dgt from commit f066636 (Crash fix: missing game state + spellbooks + SVGs from commits 2a9f15a3..f066636)
 
 ═══════════════════════════════════════════════════════════════════════════
 
