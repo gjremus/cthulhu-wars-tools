@@ -133,10 +133,26 @@ echo "Fixed X, deployed to Y, cache Z" > /tmp/summary.txt
 python3 designer-admin.py tlog-summary <entry-id> /tmp/summary.txt
 ```
 
-**HOW TO ADD COST:**
-When work has a known cost (from agent runs):
+**HOW TO ADD COST (REQUIRED):**
+When you complete work on an entry, you MUST log the estimated cost:
 ```
 python3 designer-admin.py tlog-cost <entry-id> <usd-amount>
+```
+
+To estimate cost:
+- Check your usage at the end of the conversation (token counts, tool uses)
+- Use rough estimates: $0.01-0.05 for simple tasks, $0.10-0.50 for complex ones
+- If you spawned agents, sum their reported costs
+- Better to log an estimate than skip cost logging entirely
+
+Example workflow after completing a task:
+```
+# Update summary
+echo "Fixed faction overlay, deployed to HB v2.295" > /tmp/summary.txt
+python3 designer-admin.py tlog-summary q_abc123 /tmp/summary.txt
+
+# Log cost (REQUIRED)
+python3 designer-admin.py tlog-cost q_abc123 0.15
 ```
 
 **COMMON WORKFLOW:**
@@ -146,6 +162,7 @@ python3 designer-admin.py tlog-cost <entry-id> <usd-amount>
 4. Read the entry's prompt and summary
 5. Do the requested work
 6. Update the entry summary with results
+7. Log the estimated cost (REQUIRED - see "HOW TO ADD COST" above)
 
 **CRITICAL:**
 - ALWAYS use `python3 designer-admin.py terminal-log` to read the log
