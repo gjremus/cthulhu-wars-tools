@@ -8,6 +8,8 @@
 }
 
 html {
+  height: 100%;
+  overflow: hidden;
   overscroll-behavior-y: contain;
 }
 
@@ -16,7 +18,8 @@ body {
   background: #1a1a1a;
   color: #e0e0e0;
   line-height: 1.6;
-  min-height: 100vh;
+  height: 100%;
+  overflow: hidden;
   overscroll-behavior-y: contain;
 }
 
@@ -35,9 +38,17 @@ body {
 
 /* Layout */
 /* Chrome-for-iOS triggers native pull-to-refresh on the document's own scroll view
-   regardless of overscroll-behavior CSS. Making the document itself non-scrolling
-   and scrolling inside this fixed container instead sidesteps that gesture entirely
-   -- the same pattern #overlay/.library-picker already use without the bug. */
+   regardless of overscroll-behavior CSS. html/body get height:100%+overflow:hidden
+   (above) so the document itself has zero scroll room -- a prior fix relied on
+   body's min-height:100vh leaving no *flow* content to scroll, but mobile `vh` is
+   measured against the toolbar-hidden viewport, which is taller than the visible
+   one, so the document still had a few px of real scroll room. That let part of
+   a pull gesture leak into the document instead of this container (section
+   wouldn't reach its true top) and also broke the touchmove guard's
+   `document.scrollingElement.scrollTop <= 0` check. explicit overflow:hidden
+   closes that gap regardless of viewport-unit quirks. Scrolling happens inside
+   this fixed container instead -- the same pattern #overlay/.library-picker
+   already use without the bug. */
 #scroll-container {
   position: fixed;
   inset: 0;
