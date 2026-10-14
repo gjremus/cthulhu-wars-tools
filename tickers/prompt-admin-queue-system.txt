@@ -113,6 +113,9 @@ The rebuild process automatically includes spellbook guidance for Claude:
    - Multi-sided spellbooks = 2 connected SB slots, not 1+1
    - Use Dragon Ascending (one-use) or Daemon Sultans (Doom recharge) code templates
 
+DOCUMENTATION: See designer/SPELLBOOK_GUIDANCE_INTEGRATION_FINAL.md for complete
+end-to-end verification and implementation status (verified 2026-10-14).
+
 ═══════════════════════════════════════════════════════════════════════════
 
 ═══════════════════════════════════════════════════════════════════════════
