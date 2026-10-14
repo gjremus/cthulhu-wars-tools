@@ -249,3 +249,33 @@ Never deploy without committing first. Git history is the source of truth for
 all UI changes and allows rollback if issues occur.
 
 ═══════════════════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════════════════
+FACTION BUILD COMPLETE MANUAL - YOUR PRIMARY GUIDE
+═══════════════════════════════════════════════════════════════════════════
+
+**CRITICAL:** The Faction Build Complete Manual is your PRIMARY GUIDE for all
+faction builds, audits, and bug fixes. This is THE authoritative document.
+
+Location:
+~/Library/CloudStorage/GoogleDrive-gremus@salesforce.com/My Drive/Personal/Games/Cthulhu Wars/Designer/faction-build-complete-manual.md
+
+ALWAYS read this manual BEFORE starting any faction build or audit work.
+
+The manual contains:
+- Task 1.0: Crash Prevention Checklist (5 common crash patterns)
+- Task 2.0: Showstopper Crash Tests (MUST pass before rules validation)
+- Section 4.0: Common Crash Patterns lookup table
+- Section 6.0: Complete audit checklist with explicit testable steps
+- Section 7.0: Why Builds Crash (explains the 7 showstopper types)
+- Section 8.0: Evidence requirements (11 files, cross-agent verification)
+
+**For faction builds:** Follow the manual step-by-step. Do not skip steps.
+**For audits:** Use Section 6.0 checklist. Every check must be testable.
+**For bug fixes:** Check Section 4.0 patterns first, then Section 7.0.
+
+The manual was updated 2026-10-14 to explain how broken factions passed
+previous audits and includes explicit testable steps so audits actually catch
+problems. Follow it exactly.
+
+═══════════════════════════════════════════════════════════════════════════
