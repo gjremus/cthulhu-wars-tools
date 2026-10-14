@@ -1205,6 +1205,7 @@ function startClaudePolling() {
   CLAUDE_POLL_TIMER = setInterval(() => {
     refreshClaudeOutput();
     refreshClaudeQueue();
+    refreshAgentOutput();
   }, 4000);
   // Poll agent output every 2.5 seconds (faster than the main log)
   if (!AGENT_OUTPUT_POLL_TIMER) {
