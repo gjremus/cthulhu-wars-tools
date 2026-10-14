@@ -93,6 +93,47 @@ IMPORTANT NOTES:
 ═══════════════════════════════════════════════════════════════════════════
 
 ═══════════════════════════════════════════════════════════════════════════
+SILHOUETTE GENERATION
+═══════════════════════════════════════════════════════════════════════════
+
+Designers can request automatic silhouette generation from their uploaded map images.
+A silhouette is a flat white version of the unit image with transparent background.
+
+WHEN REQUESTED:
+- Designer clicks "Generate Silhouette" button in Units section
+- Button only appears when designer has uploaded a unique map image (not from CW/Necro library)
+- Request comes through as a bug report type with text like:
+  "Generate silhouette for unit [name]. Convert map image to flat white silhouette..."
+
+HOW TO GENERATE:
+1. Read the original map image using the provided image ID
+2. Keep the transparent background
+3. Replace ALL colored pixels (any non-transparent pixel) with solid white (#FFFFFF)
+4. Save as new image with "-silhouette" suffix
+5. Upload the silhouette image to the designer
+6. Update the unit's silhouette field with the new image ID
+
+TECHNICAL APPROACH:
+- Use image processing tools (ImageMagick, PIL, etc.)
+- Command example: `convert input.png -alpha extract -negate output.png`
+- Or: Load image, iterate pixels, set RGB to (255,255,255) where alpha > 0
+- Maintain original dimensions and alpha channel
+
+IMPORTANT:
+- Silhouettes are flat white with transparent background
+- Do NOT keep any colored pixels
+- Do NOT add black borders or outlines
+- Maintain the exact same shape/alpha as the original
+
+UPDATE THE DESIGNER:
+After generating, update the unit's silhouette field in the faction JSON:
+```
+units.rows[unit_id].silhouette = "new_silhouette_image_id"
+```
+
+═══════════════════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════════════════
 CLAUDE TERMINAL LOG - CHECKING AND RESPONDING TO ENTRIES
 ═══════════════════════════════════════════════════════════════════════════
 

@@ -741,7 +741,7 @@
           className: 'sx-btn',
           style: 'display: block; margin-top: 8px; font-size: 12px; padding: 4px 8px;',
           onclick: async () => {
-            const id = await ctx.pickLibraryImage();
+            const id = await ctx.pickSilhouetteImage();
             if (id) {
               ctx.set(`units.rows.${unit.id}.silhouette`, id);
               ctx.rerender();
@@ -749,6 +749,31 @@
           }
         }, 'CW / Necro');
         silDiv.appendChild(libraryBtn);
+        // Generate Silhouette button - only show if mapImage is a unique upload (not from library)
+        const mapIsUniqueUpload = unit.mapImage && !typeArt;
+        if (mapIsUniqueUpload) {
+          const genBtn = h('button', {
+            className: 'sx-btn',
+            style: 'display: block; margin-top: 8px; font-size: 12px; padding: 4px 8px; background: #4a9eff;',
+            onclick: async () => {
+              if (!confirm('Submit to Claude to generate flat white silhouette from your map image?')) return;
+              const factionName = ctx.design.name || 'Unknown Faction';
+              const text = `Generate silhouette for unit "${unit.name}". Convert map image to flat white silhouette (keep transparent background, replace all colored pixels with white). Map image ID: ${unit.mapImage}`;
+              try {
+                const resp = await fetch(`/designer/api/factions/${ctx.factionId}/requests`, {
+                  method: 'POST',
+                  headers: {'Content-Type': 'application/json'},
+                  body: JSON.stringify({type: 'bug', text})
+                });
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                alert('Silhouette generation request submitted to Claude admin console');
+              } catch (err) {
+                alert('Failed to submit request: ' + err.message);
+              }
+            }
+          }, 'Generate Silhouette');
+          silDiv.appendChild(genBtn);
+        }
       }
       unitDiv.appendChild(silDiv);
 

@@ -1118,6 +1118,174 @@
       });
     }
 
+    async pickSilhouetteImage() {
+      if (this.isReadOnly()) return null;
+
+      return new Promise(async (resolve) => {
+        const layer = document.createElement('div');
+        layer.className = 'library-picker';
+        document.body.appendChild(layer);
+
+        const loading = document.createElement('div');
+        loading.className = 'library-loading';
+        loading.textContent = 'Loading silhouettes…';
+        layer.appendChild(loading);
+
+        // Load silhouettes.json (silhouette images from CW/Necro factions)
+        let silhouettes;
+        try {
+          const resp = await fetch('/designer/library/silhouettes.json');
+          if (!resp.ok) throw new Error('Failed to load silhouettes');
+          silhouettes = await resp.json();
+        } catch (err) {
+          console.error('Silhouette load error:', err);
+          layer.innerHTML = '';
+          const errorDiv = document.createElement('div');
+          errorDiv.className = 'library-error';
+          errorDiv.textContent = 'Failed to load silhouettes: ' + err.message;
+          layer.appendChild(errorDiv);
+          const backBtn = document.createElement('button');
+          backBtn.className = 'library-btn';
+          backBtn.textContent = 'Back to unit';
+          backBtn.onclick = () => {
+            layer.remove();
+            resolve(null);
+          };
+          layer.appendChild(backBtn);
+          return;
+        }
+
+        // Group by type
+        const typeOrder = ['Cultist', 'Monster', 'Terror', 'GOO', 'Elder God'];
+        const sections = {};
+        typeOrder.forEach(t => { sections[t] = []; });
+
+        silhouettes.forEach(item => {
+          if (sections[item.type]) sections[item.type].push(item);
+        });
+
+        Object.keys(sections).forEach(type => {
+          sections[type].sort((a, b) => {
+            if (a.name !== b.name) return a.name.localeCompare(b.name);
+            return (a.faction || '').localeCompare(b.faction || '');
+          });
+        });
+
+        layer.innerHTML = '';
+
+        const topBar = document.createElement('div');
+        topBar.className = 'library-topbar';
+        layer.appendChild(topBar);
+
+        const backBtn = document.createElement('button');
+        backBtn.className = 'library-btn';
+        backBtn.textContent = 'Back to unit';
+        backBtn.onclick = () => {
+          layer.remove();
+          resolve(null);
+        };
+        topBar.appendChild(backBtn);
+
+        const typeJumps = document.createElement('div');
+        typeJumps.className = 'library-type-jumps';
+        topBar.appendChild(typeJumps);
+
+        const typeLabels = {
+          'Cultist': 'Cultists',
+          'Monster': 'Monsters',
+          'Terror': 'Terrors',
+          'GOO': 'GOOs / iGOOs',
+          'Elder God': 'Elder Gods'
+        };
+
+        typeOrder.forEach(type => {
+          if (sections[type].length === 0) return;
+          const btn = document.createElement('button');
+          btn.className = 'library-type-btn';
+          btn.textContent = typeLabels[type];
+          btn.onclick = () => {
+            const typeSection = document.querySelector(`.silhouette-section[data-type="${type}"]`);
+            if (typeSection) typeSection.scrollIntoView({behavior: 'smooth', block: 'start'});
+          };
+          typeJumps.appendChild(btn);
+        });
+
+        const grid = document.createElement('div');
+        grid.className = 'library-grid';
+        grid.style.height = 'auto';
+        grid.style.overflow = 'auto';
+        grid.style.padding = '20px';
+        layer.appendChild(grid);
+
+        // Render all types in scrollable grid
+        typeOrder.forEach(type => {
+          const items = sections[type];
+          if (items.length === 0) return;
+
+          const sectionDiv = document.createElement('div');
+          sectionDiv.className = 'silhouette-section';
+          sectionDiv.dataset.type = type;
+          sectionDiv.style.marginBottom = '30px';
+          grid.appendChild(sectionDiv);
+
+          const heading = document.createElement('h3');
+          heading.textContent = typeLabels[type];
+          heading.style.marginBottom = '12px';
+          heading.style.fontSize = '16px';
+          heading.style.fontWeight = 'bold';
+          sectionDiv.appendChild(heading);
+
+          const itemsGrid = document.createElement('div');
+          itemsGrid.style.display = 'grid';
+          itemsGrid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(100px, 1fr))';
+          itemsGrid.style.gap = '12px';
+          sectionDiv.appendChild(itemsGrid);
+
+          items.forEach(item => {
+            const tile = document.createElement('div');
+            tile.style.cursor = 'pointer';
+            tile.style.border = '1px solid #444';
+            tile.style.padding = '8px';
+            tile.style.borderRadius = '4px';
+            tile.style.textAlign = 'center';
+            tile.style.background = '#1a1a1a';
+            tile.onclick = () => {
+              layer.remove();
+              resolve(item.id);
+            };
+
+            const img = document.createElement('img');
+            img.src = item.url || `/designer/images/${item.id}`;
+            img.style.width = '80px';
+            img.style.height = '80px';
+            img.style.objectFit = 'contain';
+            img.style.display = 'block';
+            img.style.margin = '0 auto';
+            img.style.background = '#333'; // Dark background to see white silhouettes
+            tile.appendChild(img);
+
+            const label = document.createElement('div');
+            label.textContent = item.name;
+            label.style.fontSize = '11px';
+            label.style.marginTop = '4px';
+            label.style.color = '#ccc';
+            label.style.wordBreak = 'break-word';
+            tile.appendChild(label);
+
+            if (item.faction) {
+              const factionLabel = document.createElement('div');
+              factionLabel.textContent = item.faction;
+              factionLabel.style.fontSize = '9px';
+              factionLabel.style.color = '#888';
+              tile.appendChild(factionLabel);
+            }
+
+            itemsGrid.appendChild(tile);
+          });
+        });
+      });
+    }
+
     // Autosave
     // kind: 'faction' | 'unit' | 'map'
     scheduleSave(fid, path, value, kind = 'faction') {
@@ -2862,6 +3030,7 @@
         },
         uploadImage: (kind) => this.uploadImage(kind),
         pickLibraryImage: () => this.pickLibraryImage(),
+        pickSilhouetteImage: () => this.pickSilhouetteImage(),
         imgUrl: (id) => this.imgUrl(id),
         confirm: (msg, yes, no) => this.confirm(msg, yes, no),
         readOnly: false,
@@ -2955,6 +3124,7 @@
         },
         uploadImage: (kind) => this.uploadImage(kind),
         pickLibraryImage: () => this.pickLibraryImage(),
+        pickSilhouetteImage: () => this.pickSilhouetteImage(),
         imgUrl: (id) => this.imgUrl(id),
         confirm: (msg, yes, no) => this.confirm(msg, yes, no),
         readOnly: this.isReadOnly(),
@@ -4280,6 +4450,7 @@
         },
         uploadImage: (kind) => this.uploadImage(kind),
         pickLibraryImage: () => this.pickLibraryImage(),
+        pickSilhouetteImage: () => this.pickSilhouetteImage(),
         imgUrl: (id) => this.imgUrl(id),
         confirm: (msg, yes, no) => this.confirm(msg, yes, no),
         readOnly: this.isReadOnly(),
