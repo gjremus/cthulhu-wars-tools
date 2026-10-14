@@ -1294,14 +1294,14 @@ object CthulhuWarsOnline {
                             complete(StatusCodes.BadRequest -> "Invalid JSON format")
                         } else {
                             // Extract type value
-                            val typeStart = body.indexOf("\"", typeIdx + 6)  // after "type"
-                            val typeValueStart = body.indexOf("\"", typeStart + 1) + 1
-                            val typeValueEnd = body.indexOf("\"", typeValueStart)
+                            val typeStart = body.indexOf("\"", typeIdx + 6)  // find opening quote of value
+                            val typeValueStart = typeStart + 1  // first character after opening quote
+                            val typeValueEnd = body.indexOf("\"", typeValueStart)  // find closing quote
                             val promptType = body.substring(typeValueStart, typeValueEnd)
 
-                            // Extract content value (find the opening quote after "content":)
-                            val contentStart = body.indexOf("\"", contentIdx + 9)  // after "content"
-                            val contentValueStart = body.indexOf("\"", contentStart + 1) + 1
+                            // Extract content value
+                            val contentStart = body.indexOf("\"", contentIdx + 9)  // find opening quote of value
+                            val contentValueStart = contentStart + 1  // first character after opening quote
                             // Find closing quote (must handle escaped quotes)
                             var contentValueEnd = contentValueStart
                             var inEscape = false
