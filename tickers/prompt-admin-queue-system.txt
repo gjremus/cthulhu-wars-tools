@@ -77,18 +77,75 @@ For DGT:
 - dgt-famine.webp
 - dgt-death.webp
 
-HOW IT WORKS:
-- Designer uploads new image with matching filename
-- System detects the file and swaps it in the webp/images folder
-- Change appears in game immediately (no rebuild required)
-- Assets are deployed via deploy-homebrew-to-vm.sh --assets
+HOW IT WORKS (corrected 2026-10-14 - the old text here was wrong):
+- Designer uploads a new image with the matching filename and pushes it.
+  The designer server only stores it on the VM in
+  /opt/cwo/designer/data/factions/<fid>/imageSwaps/. NOTHING copies it into the
+  game by itself.
+- The image reaches the game with the same script as numbers (no Claude):
+    /usr/bin/python3 ~/Claude-Projects/cthulhu-wars-tools/scripts/faction-values.py sync
+    /usr/bin/python3 ~/Claude-Projects/cthulhu-wars-tools/scripts/faction-values.py apply --deploy
+  sync copies the swap into solo/webp/images; apply commits it (git add -f) and
+  deploys with --assets.
 
 IMPORTANT NOTES:
 - Simple Update section name may also appear as "Quick Update" in some docs
   (they are THE SAME SECTION)
-- This is purely for IMAGE swaps - code changes still require full rebuild
+- Fixed NUMBERS also go through Simple Update ("Push design to build") - see the
+  QUICK UPDATE VALUES FILE section below. They only reach the game if the build
+  wrote every number into solo/faction-values/<acr>.json.
 - Unit info SVGs (webp/info/<acr>-<unit>.svg) are NOT in Simple Update
   (those are generated during build and rarely need swapping)
+
+═══════════════════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════════════════
+QUICK UPDATE VALUES FILE - REQUIRED FOR EVERY FACTION BUILD
+═══════════════════════════════════════════════════════════════════════════
+
+The owner must be able to change a faction's fixed numbers WITHOUT Claude.
+That only works if every fixed number lives in ONE values file that a script
+changes. Full instructions: Faction Build Complete Manual, Task 1.6a.
+
+RULE: NO fixed faction number may be typed into Scala code or overlay text.
+Unit cost / combat / count / setup count, SBR thresholds, SB costs, fixed
+amounts in SB and UFA effects -> ALL go in the values file.
+(Calculations like "number of players" or "in play plus one" stay as code.)
+
+FILES (homebrew worktree, ~/Claude-Projects/cw-homebrew-wt/solo):
+- faction-values/<acr>.json   the ONE place the numbers live (copy fm.json as a template)
+- FactionValues.scala         GENERATED (object <ACR>Values). Never edit by hand.
+- Tool: ~/Claude-Projects/cthulhu-wars-tools/scripts/faction-values.py
+
+BUILD STEPS (do these while writing the faction code, not after):
+1. Write faction-values/<acr>.json: one entry per fixed number, key "Unit.what"
+   or "BookReq.what", with "value", "min", "max", "what", and "designer" =
+   the designer field it comes from (units.rows.<id>.cost / .dice / .qty /
+   .awakenPower, sb.rows.<id>.cost / .costB, sbr.rows.<id>.num, ufa.cost,
+   setup.units.<id>.qty). Row ids: designer-admin.py faction <fid>.
+2. /usr/bin/python3 .../faction-values.py gen   (key Unit.cost -> <ACR>Values.Unit_cost)
+3. Use <ACR>Values.X in EVERY place the number appears: FactionUnitClass cost,
+   allUnits counts, Requirement text, satisfyIf thresholds, power/doom checks
+   and deductions, menu labels, Battle.scala hooks, AND overlay.scala text
+   (faction card unit rows, requirement(...), spellbook(...) cost + effect text).
+4. If combat differs from cost, add combatOf(uclass) in the expansion reading
+   <ACR>Values.<Unit>_combat and use it in strength() (see FMExpansion).
+5. grep your faction file for literal numbers in power/doom/thresholds; every
+   hit must be a calculation or a standard all-faction rule.
+6. faction-values.py check must print "matches". Commit the json and
+   FactionValues.scala together with the code.
+7. Prove it: set one value to a different number, rebuild, run
+   node scripts/test-faction-values-local.mjs <url> <ACR> "<key>" "<text>",
+   see the new number, then set it back. Missing this = build NOT done.
+
+OWNER FLOW (for reference - no Claude involved):
+  faction-values.py list FM
+  faction-values.py set FM BoneSculptor.cost 2
+  faction-values.py apply --deploy
+or designer "Push design to build" then: faction-values.py sync && faction-values.py apply --deploy
+
+If you are asked to "change a cost / number" for a faction that already has a
+values file: do NOT edit Scala. Use faction-values.py set + apply --deploy.
 
 ═══════════════════════════════════════════════════════════════════════════
 
