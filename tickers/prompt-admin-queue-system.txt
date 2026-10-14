@@ -145,10 +145,27 @@ To estimate cost:
 - If you spawned agents, sum their reported costs
 - Better to log an estimate than skip cost logging entirely
 
+**SUMMARY REQUIREMENTS (CRITICAL):**
+Your summary MUST be a COMPLETE layman's description of what you actually did.
+DO NOT just write "Done" or "Fixed" or "Built the faction".
+
+Your summary must include:
+1. WHAT you changed (which files, which code sections, what the change was)
+2. HOW you tested it (what you did to confirm it works)
+3. WHAT the result was (e.g., "Game now loads without crash", "Icons now display correctly")
+
+GOOD summary:
+"Fixed overlay.scala line 234 to use correct unit lookup. Added missing import for UnitType. Tested by loading game in Chrome - faction card now shows all 6 spellbooks without overlap. Deployed to HB v2.295."
+
+BAD summary:
+"Done"
+"Fixed the bug"
+"Built the faction"
+
 Example workflow after completing a task:
 ```
-# Update summary
-echo "Fixed faction overlay, deployed to HB v2.295" > /tmp/summary.txt
+# Update summary with FULL DETAILS
+echo "Fixed overlay.scala line 234 to use correct unit lookup. Added missing import for UnitType. Tested by loading game in Chrome - faction card now shows all 6 spellbooks without overlap. Deployed to HB v2.295." > /tmp/summary.txt
 python3 designer-admin.py tlog-summary q_abc123 /tmp/summary.txt
 
 # Log cost (REQUIRED)

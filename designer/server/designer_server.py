@@ -3203,7 +3203,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             # Every designer prompt also goes into the admin console's Claude terminal log
             self.add_terminal_entry(self.terminal_type(request), self.display_name(username),
                                     text or f"{req_type} request for {faction['name']}",
-                                    "Waiting to be picked up.", ref=req_id, designObject=faction['name'])
+                                    "Waiting to be picked up.", ref=req_id, designObject=faction['name'], faction=faction['name'])
 
             # Faction builds go straight to the admin console queue (owner's standing OK to attempt them)
             if req_type == "build":
@@ -5024,13 +5024,15 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 return "unit build"
         return "design build"   # build and update both change the built faction
 
-    def add_terminal_entry(self, kind: str, user: str, prompt: str, summary: str, ref: Optional[str] = None, designObject: Optional[str] = None) -> Dict:
+    def add_terminal_entry(self, kind: str, user: str, prompt: str, summary: str, ref: Optional[str] = None, designObject: Optional[str] = None, faction: Optional[str] = None) -> Dict:
         """Append one row to terminal-log.json. Caller may already hold WRITE_LOCK (it is not re-entrant),
         so this uses its own lock."""
         entry = {"id": ref or f"t_{secrets.token_urlsafe(6)}", "at": int(time.time()), "type": kind,
                  "user": user, "prompt": str(prompt)[:20000], "summary": str(summary)[:20000], "defaultSummary": True}
         if designObject:
             entry["designObject"] = str(designObject)[:200]
+        if faction:
+            entry["faction"] = str(faction)[:200]
         with TERMINAL_LOCK:
             path = self.server.data_dir / "terminal-log.json"
             log = load_json(path) or {"entries": []}

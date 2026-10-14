@@ -3862,118 +3862,145 @@
       title.style.marginTop = '20px';
       this.root.appendChild(title);
 
-      // Bug history table
-      if (faction.bugHistory && faction.bugHistory.length > 0) {
-        const historyDiv = document.createElement('div');
-        historyDiv.style.marginTop = '30px';
-        historyDiv.style.marginBottom = '30px';
+      // Bug history table - fetch from Claude Terminal Log filtered by faction name
+      const historyDiv = document.createElement('div');
+      historyDiv.style.marginTop = '30px';
+      historyDiv.style.marginBottom = '30px';
 
-        const historyTitle = document.createElement('h3');
-        historyTitle.textContent = 'Bug History';
-        historyTitle.style.marginBottom = '15px';
-        historyDiv.appendChild(historyTitle);
+      const historyTitle = document.createElement('h3');
+      historyTitle.textContent = 'Bug History (from Claude Terminal Log)';
+      historyTitle.style.marginBottom = '15px';
+      historyDiv.appendChild(historyTitle);
 
-        const table = document.createElement('table');
-        table.style.width = '100%';
-        table.style.borderCollapse = 'collapse';
-        table.style.border = '1px solid #000';
-        table.style.fontSize = '14px';
+      const loadingMsg = document.createElement('p');
+      loadingMsg.textContent = 'Loading bug history...';
+      loadingMsg.style.color = '#888';
+      historyDiv.appendChild(loadingMsg);
+      this.root.appendChild(historyDiv);
 
-        // Table header
-        const thead = document.createElement('thead');
-        const headerRow = document.createElement('tr');
-        headerRow.style.backgroundColor = '#f0f0f0';
-        headerRow.style.border = '1px solid #000';
+      // Fetch terminal log and filter by faction name
+      fetch('/designer/api/terminal-log')
+        .then(r => r.ok ? r.json() : Promise.reject(`HTTP ${r.status}`))
+        .then(data => {
+          const entries = data.entries || [];
+          // Filter for bug type entries matching this faction's name
+          const bugs = entries.filter(e =>
+            e.type === 'bug' &&
+            e.faction === faction.name
+          ).sort((a, b) => b.at - a.at); // Most recent first
 
-        const headers = ['Bug #', 'Submitted', 'Description', 'Response', 'Status'];
-        for (const headerText of headers) {
-          const th = document.createElement('th');
-          th.textContent = headerText;
-          th.style.padding = '8px';
-          th.style.textAlign = 'left';
-          th.style.border = '1px solid #000';
-          th.style.fontWeight = 'bold';
-          headerRow.appendChild(th);
-        }
-        thead.appendChild(headerRow);
-        table.appendChild(thead);
+          loadingMsg.remove();
 
-        // Table body - most recent first
-        const tbody = document.createElement('tbody');
-        const sortedBugs = [...faction.bugHistory].sort((a, b) => b.submittedAt - a.submittedAt);
-
-        for (const bug of sortedBugs) {
-          const row = document.createElement('tr');
-          row.style.border = '1px solid #000';
-
-          // Bug Number
-          const bugCell = document.createElement('td');
-          bugCell.textContent = bug.bugNumber;
-          bugCell.style.padding = '8px';
-          bugCell.style.border = '1px solid #000';
-          row.appendChild(bugCell);
-
-          // Submitted date
-          const dateCell = document.createElement('td');
-          const date = new Date(bug.submittedAt * 1000);
-          dateCell.textContent = date.toLocaleString();
-          dateCell.style.padding = '8px';
-          dateCell.style.border = '1px solid #000';
-          dateCell.style.fontSize = '12px';
-          row.appendChild(dateCell);
-
-          // Description
-          const descCell = document.createElement('td');
-          descCell.textContent = bug.description;
-          descCell.style.padding = '8px';
-          descCell.style.border = '1px solid #000';
-          descCell.style.maxWidth = '300px';
-          descCell.style.overflow = 'hidden';
-          descCell.style.textOverflow = 'ellipsis';
-          descCell.title = bug.description;
-          row.appendChild(descCell);
-
-          // Response
-          const respCell = document.createElement('td');
-          respCell.textContent = bug.response || '';
-          respCell.style.padding = '8px';
-          respCell.style.border = '1px solid #000';
-          respCell.style.maxWidth = '300px';
-          respCell.style.overflow = 'hidden';
-          respCell.style.textOverflow = 'ellipsis';
-          if (bug.response) {
-            respCell.title = bug.response;
+          if (bugs.length === 0) {
+            const noBugs = document.createElement('p');
+            noBugs.textContent = 'No bugs reported yet.';
+            noBugs.style.color = '#888';
+            historyDiv.appendChild(noBugs);
+            return;
           }
-          row.appendChild(respCell);
 
-          // Status - show full Claude status, not just Pending/Addressed
-          const statusCell = document.createElement('td');
-          if (bug.response) {
-            // Show the full response text as status
-            statusCell.textContent = bug.response;
-            statusCell.style.color = '#008000';
-          } else {
-            statusCell.textContent = 'Submitted, waiting to be picked up';
-            statusCell.style.color = '#ff8800';
-          }
-          statusCell.style.padding = '8px';
-          statusCell.style.border = '1px solid #000';
-          statusCell.style.maxWidth = '400px';
-          statusCell.style.overflow = 'hidden';
-          statusCell.style.textOverflow = 'ellipsis';
-          statusCell.style.whiteSpace = 'normal';
-          statusCell.style.fontSize = '12px';
-          if (bug.response) {
-            statusCell.title = bug.response;
-          }
-          row.appendChild(statusCell);
+          const table = document.createElement('table');
+          table.style.width = '100%';
+          table.style.borderCollapse = 'collapse';
+          table.style.border = '1px solid #000';
+          table.style.fontSize = '14px';
 
-          tbody.appendChild(row);
-        }
-        table.appendChild(tbody);
-        historyDiv.appendChild(table);
-        this.root.appendChild(historyDiv);
-      }
+          // Table header
+          const thead = document.createElement('thead');
+          const headerRow = document.createElement('tr');
+          headerRow.style.backgroundColor = '#f0f0f0';
+          headerRow.style.border = '1px solid #000';
+
+          const headers = ['Entry #', 'Submitted', 'User', 'Prompt', 'Claude Response', 'Status'];
+          for (const headerText of headers) {
+            const th = document.createElement('th');
+            th.textContent = headerText;
+            th.style.padding = '8px';
+            th.style.textAlign = 'left';
+            th.style.border = '1px solid #000';
+            th.style.fontWeight = 'bold';
+            headerRow.appendChild(th);
+          }
+          thead.appendChild(headerRow);
+          table.appendChild(thead);
+
+          // Table body
+          const tbody = document.createElement('tbody');
+          for (const bug of bugs) {
+            const row = document.createElement('tr');
+            row.style.border = '1px solid #000';
+
+            // Entry Number
+            const numCell = document.createElement('td');
+            numCell.textContent = bug.n || bug.id;
+            numCell.style.padding = '8px';
+            numCell.style.border = '1px solid #000';
+            numCell.style.textAlign = 'right';
+            row.appendChild(numCell);
+
+            // Submitted date
+            const dateCell = document.createElement('td');
+            const date = new Date(bug.at * 1000);
+            dateCell.textContent = date.toLocaleString();
+            dateCell.style.padding = '8px';
+            dateCell.style.border = '1px solid #000';
+            dateCell.style.fontSize = '12px';
+            dateCell.style.whiteSpace = 'nowrap';
+            row.appendChild(dateCell);
+
+            // User
+            const userCell = document.createElement('td');
+            userCell.textContent = bug.user || '';
+            userCell.style.padding = '8px';
+            userCell.style.border = '1px solid #000';
+            row.appendChild(userCell);
+
+            // Prompt
+            const promptCell = document.createElement('td');
+            promptCell.textContent = bug.prompt || '';
+            promptCell.style.padding = '8px';
+            promptCell.style.border = '1px solid #000';
+            promptCell.style.maxWidth = '300px';
+            promptCell.style.overflow = 'hidden';
+            promptCell.style.textOverflow = 'ellipsis';
+            promptCell.title = bug.prompt || '';
+            row.appendChild(promptCell);
+
+            // Summary (Claude's response)
+            const summaryCell = document.createElement('td');
+            summaryCell.textContent = bug.summary || '';
+            summaryCell.style.padding = '8px';
+            summaryCell.style.border = '1px solid #000';
+            summaryCell.style.maxWidth = '300px';
+            summaryCell.style.overflow = 'hidden';
+            summaryCell.style.textOverflow = 'ellipsis';
+            summaryCell.title = bug.summary || '';
+            row.appendChild(summaryCell);
+
+            // Status
+            const statusCell = document.createElement('td');
+            if (bug.summary) {
+              statusCell.textContent = 'Completed';
+              statusCell.style.color = '#008000';
+            } else {
+              statusCell.textContent = 'Pending';
+              statusCell.style.color = '#ff8800';
+            }
+            statusCell.style.padding = '8px';
+            statusCell.style.border = '1px solid #000';
+            statusCell.style.whiteSpace = 'nowrap';
+            row.appendChild(statusCell);
+
+            tbody.appendChild(row);
+          }
+          table.appendChild(tbody);
+          historyDiv.appendChild(table);
+        })
+        .catch(err => {
+          loadingMsg.textContent = `Failed to load bug history: ${err}`;
+          loadingMsg.style.color = '#c00';
+        });
+    }
 
       const label = document.createElement('label');
       label.textContent = 'Describe the bug:';
