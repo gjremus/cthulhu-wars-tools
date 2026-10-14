@@ -4073,7 +4073,25 @@ function renderAdminFactionDetail(data, factionName) {
     <b style="color:var(--text);">Stability:</b> ${esc(stabilityText)}
   </div>`;
 
-  const html = bannerHtml + tableHtml + missingFieldsHtml + versionHtml + stabilityHtml;
+  // Spellbook guidance (if present)
+  let guidanceHtml = '';
+  const spellbookGuidance = design.spellbookGuidance;
+  if (spellbookGuidance && spellbookGuidance.trim()) {
+    const guidanceText = spellbookGuidance.split('\n').map(line => {
+      if (line.startsWith('MULTI-')) {
+        return `<b style="color:var(--accent);">${esc(line)}</b>`;
+      }
+      return esc(line);
+    }).join('<br>');
+    guidanceHtml = `<div class="stability-row">
+      <b style="color:var(--text);">Guidance for Claude:</b>
+      <div style="margin-top:8px;padding:8px;background:var(--bg);border-left:3px solid var(--accent);font-family:ui-monospace;font-size:9pt;color:var(--text-muted);">
+        ${guidanceText}
+      </div>
+    </div>`;
+  }
+
+  const html = bannerHtml + tableHtml + missingFieldsHtml + versionHtml + stabilityHtml + guidanceHtml;
   contentDiv.innerHTML = html;
 }
 
