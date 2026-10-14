@@ -32,9 +32,10 @@ async function overlayText(key) {
   await new Promise(r => setTimeout(r, 1500));
   let text = '';
   try {
-    text = await page.evaluate((acr, key) => {
+    text = await page.evaluate(async (acr, key) => {
       try { key === '' ? onExternalClick(acr) : onExternalClick(acr, key); }
       catch (e) { return 'OVERLAY ERROR: ' + e.message; }
+      await new Promise(r => setTimeout(r, 1500));   // the overlay fills in on a timer
       const o = document.getElementById('overlay');
       return o ? o.textContent.replace(/\s+/g, ' ') : '';
     }, acr, key);

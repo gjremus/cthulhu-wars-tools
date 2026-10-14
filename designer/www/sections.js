@@ -3252,9 +3252,51 @@
 
   const abilitiesData = window._abilitiesData;
 
+  // Helper to get ability type options for a faction
+  const getAbilityTypeOptions = (faction) => {
+    if (!faction) return ['UFA', 'Spellbook', 'Unit Special', 'GOO/iGOO/EG ability'];
+
+    // For neutral categories, show unit names as ability types
+    if (faction === 'Neutral Cultists') {
+      const units = abilitiesData.abilities
+        .filter(a => a.faction === 'Neutral' && a.unit !== 'N/A' && a.unitType === 'Cultist')
+        .map(a => a.unit)
+        .filter((v, i, arr) => arr.indexOf(v) === i) // unique
+        .sort();
+      return units.length > 0 ? units : ['-- No units found --'];
+    }
+
+    if (faction === 'Neutral Monsters') {
+      const units = abilitiesData.abilities
+        .filter(a => a.faction === 'Neutral' && a.unit !== 'N/A' && a.unitType === 'Monster')
+        .map(a => a.unit)
+        .filter((v, i, arr) => arr.indexOf(v) === i)
+        .sort();
+      return units.length > 0 ? units : ['-- No units found --'];
+    }
+
+    if (faction === 'Neutral Terrors') {
+      const units = abilitiesData.abilities
+        .filter(a => a.faction === 'Neutral' && a.unit !== 'N/A' && a.unitType === 'Terror')
+        .map(a => a.unit)
+        .filter((v, i, arr) => arr.indexOf(v) === i)
+        .sort();
+      return units.length > 0 ? units : ['-- No units found --'];
+    }
+
+    // For regular factions, use standard ability types
+    return ['UFA', 'Spellbook', 'Unit Special', 'GOO/iGOO/EG ability'];
+  };
+
   // Helper to get abilities for a faction/type combination
   const getAbilities = (faction, type) => {
     if (!faction || !type) return [];
+
+    // For neutral categories, type is the unit name
+    if (faction === 'Neutral Cultists' || faction === 'Neutral Monsters' || faction === 'Neutral Terrors') {
+      return abilitiesData.abilities.filter(a => a.faction === 'Neutral' && a.unit === type);
+    }
+
     return abilitiesData.abilities.filter(a => {
       if (a.faction !== faction) return false;
       // Map ability types
@@ -3269,7 +3311,10 @@
 
   // Helper to get ability text
   const getAbilityText = (faction, abilityName) => {
-    const ability = abilitiesData.abilities.find(a => a.faction === faction && a.name === abilityName);
+    // For neutral categories, look up in Neutral faction
+    const lookupFaction = (faction === 'Neutral Cultists' || faction === 'Neutral Monsters' || faction === 'Neutral Terrors')
+      ? 'Neutral' : faction;
+    const ability = abilitiesData.abilities.find(a => a.faction === lookupFaction && a.name === abilityName);
     return ability ? ability.text : '';
   };
 
@@ -3349,16 +3394,20 @@
         }
       },
         h('option', {value: ''}, '-- Select --'),
-        abilitiesData.factions.map(f => h('option', {value: f}, f))
+        abilitiesData.factions.filter(f => f !== 'Neutral').map(f => h('option', {value: f}, f)),
+        h('option', {value: 'Neutral Cultists'}, 'Neutral Cultists'),
+        h('option', {value: 'Neutral Monsters'}, 'Neutral Monsters'),
+        h('option', {value: 'Neutral Terrors'}, 'Neutral Terrors')
       )
     ));
 
-    // Column 2: Ability Type dropdown
-    const abilityTypes = ['UFA', 'Spellbook', 'Unit Special', 'GOO/iGOO/EG ability'];
+    // Column 2: Ability Type dropdown (shows unit names for neutral categories, otherwise ability types)
+    const abilityTypeOptions = getAbilityTypeOptions(row.otherFaction);
     tr.appendChild(h('td', {},
       h('select', {
         className: isMissing(`interactions.rows.${row.id}.abilityType`) ? 'sx-missing' : '',
         value: row.abilityType || '',
+        disabled: !row.otherFaction,
         onchange: e => {
           ctx.set(`interactions.rows.${row.id}.abilityType`, e.target.value || null);
           ctx.set(`interactions.rows.${row.id}.ability`, null);
@@ -3372,7 +3421,7 @@
         }
       },
         h('option', {value: ''}, '-- Select --'),
-        abilityTypes.map(t => h('option', {value: t}, t))
+        abilityTypeOptions.map(t => h('option', {value: t}, t))
       )
     ));
 
