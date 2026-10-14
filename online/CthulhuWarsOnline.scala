@@ -1246,8 +1246,9 @@ object CthulhuWarsOnline {
             (get & path("admin" / Segment / "agent-prompts")) { token =>
                 if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
                 else {
-                    val adminQueuePath = "/Users/gremus/Claude-Projects/cthulhu-wars-tools/tickers/prompt-admin-queue-system.txt"
-                    val metaAgentPath = "/Users/gremus/Claude-Projects/cthulhu-wars-tools/tickers/prompt-meta-agent.txt"
+                    val tickersDir = System.getProperty("user.home") + "/cthulhu-wars-tools/tickers"
+                    val adminQueuePath = s"$tickersDir/prompt-admin-queue-system.txt"
+                    val metaAgentPath = s"$tickersDir/prompt-meta-agent.txt"
 
                     def readPrompt(path: String) = {
                         val f = new java.io.File(path)
@@ -1285,26 +1286,57 @@ object CthulhuWarsOnline {
                 if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
                 else {
                     try {
-                        // Parse JSON body
-                        val jsonPattern = """"type"\s*:\s*"([^"]+)".*"content"\s*:\s*"((?:[^"\\]|\\.)*)"""".r
-                        val m = jsonPattern.findFirstMatchIn(body)
-                        if (m.isEmpty) {
+                        // Parse JSON body (simple manual parsing to avoid regex catastrophic backtracking)
+                        val typeIdx = body.indexOf("\"type\"")
+                        val contentIdx = body.indexOf("\"content\"")
+
+                        if (typeIdx == -1 || contentIdx == -1) {
                             complete(StatusCodes.BadRequest -> "Invalid JSON format")
                         } else {
-                            val promptType = m.get.group(1)
-                            val contentEscaped = m.get.group(2)
+                            // Extract type value
+                            val typeStart = body.indexOf("\"", typeIdx + 6)  // after "type"
+                            val typeValueStart = body.indexOf("\"", typeStart + 1) + 1
+                            val typeValueEnd = body.indexOf("\"", typeValueStart)
+                            val promptType = body.substring(typeValueStart, typeValueEnd)
 
-                            // Unescape JSON string
+                            // Extract content value (find the opening quote after "content":)
+                            val contentStart = body.indexOf("\"", contentIdx + 9)  // after "content"
+                            val contentValueStart = body.indexOf("\"", contentStart + 1) + 1
+                            // Find closing quote (must handle escaped quotes)
+                            var contentValueEnd = contentValueStart
+                            var inEscape = false
+                            var done = false
+                            while (contentValueEnd < body.length && !done) {
+                                val c = body.charAt(contentValueEnd)
+                                if (inEscape) {
+                                    inEscape = false
+                                    contentValueEnd += 1
+                                } else if (c == '\\') {
+                                    inEscape = true
+                                    contentValueEnd += 1
+                                } else if (c == '"') {
+                                    // Found unescaped quote - end of content
+                                    done = true
+                                } else {
+                                    contentValueEnd += 1
+                                }
+                            }
+
+                            val contentEscaped = body.substring(contentValueStart, contentValueEnd)
+
+                            // Unescape JSON string (do backslash-backslash first to avoid double-unescaping)
                             val content = contentEscaped
+                                .replace("\\\\", "\u0000")  // Temp placeholder for \\
                                 .replace("\\n", "\n")
                                 .replace("\\r", "\r")
                                 .replace("\\t", "\t")
                                 .replace("\\\"", "\"")
-                                .replace("\\\\", "\\")
+                                .replace("\u0000", "\\")
 
+                            val tickersDir = System.getProperty("user.home") + "/cthulhu-wars-tools/tickers"
                             val path = promptType match {
-                                case "adminQueue" => "/Users/gremus/Claude-Projects/cthulhu-wars-tools/tickers/prompt-admin-queue-system.txt"
-                                case "metaAgent"  => "/Users/gremus/Claude-Projects/cthulhu-wars-tools/tickers/prompt-meta-agent.txt"
+                                case "adminQueue" => s"$tickersDir/prompt-admin-queue-system.txt"
+                                case "metaAgent"  => s"$tickersDir/prompt-meta-agent.txt"
                                 case _ => ""
                             }
 
