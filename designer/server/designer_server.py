@@ -1893,7 +1893,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             "created": now,
             "updated": now,
             "text": text,
-            "data": data
+            "data": data,
+            "designObjectName": map_obj["name"]
         }
 
         with WRITE_LOCK:
@@ -3191,7 +3192,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             "created": now,
             "updated": now,
             "text": text,
-            "data": data
+            "data": data,
+            "designObjectName": faction["name"]
         }
 
         with WRITE_LOCK:
@@ -3485,7 +3487,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             "created": now,
             "updated": now,
             "text": text,
-            "data": data
+            "data": data,
+            "designObjectName": unit_name
         }
 
         with WRITE_LOCK:
@@ -4049,6 +4052,14 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             default = {"in_progress": "Being worked on now.", "notified": "Owner notified.",
                        "done": "Done.", "cancelled": "Cancelled.", "open": "Waiting to be picked up."}
             self.update_terminal_entry(rid, default.get(status, status), only_if_default=True)
+
+            # Log admin status changes to terminal
+            if status in ("done", "cancelled"):
+                design_name = request.get("designObjectName", request.get("faction") or request.get("mapName") or request.get("unit_name") or "Unknown")
+                req_type = request.get("type", "request")
+                self.add_terminal_entry("admin", "admin",
+                                       f"Mark {req_type} for {design_name} as {status}",
+                                       f"{default.get(status, status)}", ref=rid)
 
             # If marking bug request as done, update bugHistory with response
             if status == "done" and request.get("type") == "bug":
