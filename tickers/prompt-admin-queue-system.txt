@@ -72,6 +72,20 @@ IMPORTANT NOTES:
 ═══════════════════════════════════════════════════════════════════════════
 
 ═══════════════════════════════════════════════════════════════════════════
+BUILD QUEUE SECTION
+═══════════════════════════════════════════════════════════════════════════
+
+When a faction needs to be rebuilt from the current main branch commit (not
+just image swaps), add a row here:
+
+FORMAT: MAP-BUILD: <faction-acr> from commit <hash> (Reason)
+
+Entries:
+- MAP-BUILD: DGT from commit 2a9f15a3 (crash fix: old commit 43ce1e4 missing code fixes)
+
+═══════════════════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════════════════
 GIT TRACKING - CRITICAL
 ═══════════════════════════════════════════════════════════════════════════
 
