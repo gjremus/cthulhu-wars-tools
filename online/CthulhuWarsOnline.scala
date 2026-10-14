@@ -1313,8 +1313,17 @@ object CthulhuWarsOnline {
                             } else {
                                 // Validate path (no traversal)
                                 val f = new java.io.File(path)
+                                val tickersDirFile = new java.io.File(tickersDir)
+
+                                // Ensure directory exists
+                                if (!tickersDirFile.exists) {
+                                    tickersDirFile.mkdirs()
+                                }
+
+                                // Validate canonical path
                                 val canonical = f.getCanonicalPath
-                                if (!canonical.startsWith("/Users/gremus/Claude-Projects/cthulhu-wars-tools/tickers/")) {
+                                val allowedCanonical = tickersDirFile.getCanonicalPath
+                                if (!canonical.startsWith(allowedCanonical)) {
                                     complete(StatusCodes.BadRequest -> "Invalid path")
                                 } else {
                                     // Create backup
