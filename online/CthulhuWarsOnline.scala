@@ -1178,10 +1178,35 @@ object CthulhuWarsOnline {
                                 .!(ProcessLogger(line => out.append(line + "\n")))
                             val content = out.toString
                             val truncated = if (content.length > 51200) content.takeRight(51200) else content
+                            val escaped = truncated.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
                             complete(HttpEntity(ContentTypes.`application/json`,
-                                s"""{"status":"running","output":${spray.json.JsString(truncated).compactPrint}}"""))
+                                s"""{"status":"running","output":"$escaped"}"""))
                         }
                     }
+                }
+            } ~
+            // [2026-10-13] Kill & Restart Admin Agent. The worker runs on the owner's Mac, so POST
+            // only drops /tmp/admin-agent-restart.flag; the Mac's 2-minute admin-queue tick sees it,
+            // kills the worker + its claude child, waits 2 s, starts a fresh worker, and writes
+            // /tmp/admin-agent-restart.status. GET reports {pending, status} for the admin page.
+            (post & path("admin" / Segment / "restart-agent")) { token =>
+                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
+                else {
+                    new java.io.File("/tmp/admin-agent-restart.status").delete()
+                    val w = new java.io.FileWriter(new java.io.File("/tmp/admin-agent-restart.flag"))
+                    try w.write(java.time.LocalDateTime.now.toString + "\n") finally w.close()
+                    complete(HttpEntity(ContentTypes.`text/plain(UTF-8)`, "restart requested\n"))
+                }
+            } ~
+            (get & path("admin" / Segment / "restart-agent")) { token =>
+                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
+                else {
+                    val pending = new java.io.File("/tmp/admin-agent-restart.flag").exists
+                    val sf = new java.io.File("/tmp/admin-agent-restart.status")
+                    val status = if (sf.exists) scala.io.Source.fromFile(sf, "UTF-8").mkString.trim else ""
+                    val esc = status.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
+                    complete(HttpEntity(ContentTypes.`application/json`,
+                        s"""{"pending":$pending,"status":"$esc"}"""))
                 }
             } ~
             // [2026-10-14] Meta agent prompt submission - appends to meta agent queue

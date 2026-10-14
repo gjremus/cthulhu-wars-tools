@@ -566,6 +566,10 @@
     <pre id="claude-queue" class="sim-tail" style="height:20vh;max-height:20vh;">loading…</pre>
 
     <h3 style="margin-top:24px;">Live Agent Output (Debug View) <button class="small" style="margin-left:8px;" onclick="refreshAgentOutput()">Refresh</button></h3>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+      <button class="primary" style="background:var(--danger);border-color:var(--danger);" onclick="restartAdminAgent()">Kill &amp; Restart Admin Agent</button>
+      <span id="restart-agent-status" style="font-size:9pt;color:var(--text-muted);"></span>
+    </div>
     <p style="color:var(--text-muted);font-size:9pt;">Real-time JSONL output from the currently running admin queue agent. Shows last 200 lines or 50KB.</p>
     <div id="agent-output-container" style="
       background: #000;
@@ -1169,6 +1173,35 @@ function refreshMetaAgentOutput() {
       if (wasAtBottom) el.scrollTop = el.scrollHeight;
     })
     .catch(() => {});
+}
+
+// Kill & Restart Admin Agent: the server drops a flag; the Mac's 2-minute admin-queue tick kills
+// the worker + its agent, waits 2 s, starts a fresh worker and writes back a status line.
+function restartAdminAgent() {
+  if (!confirm('Kill the running admin agent and start a fresh one? The job it was working on will be retried from the start.')) return;
+  const status = document.getElementById('restart-agent-status');
+  status.textContent = 'Sending restart request…'; status.style.color = 'var(--text-muted)';
+  fetch(`${SERVER}/admin/${TOKEN}/restart-agent`, { method: 'POST' })
+    .then(r => r.text().then(t => ({ ok: r.ok, status: r.status, t })))
+    .then(({ ok, status: code, t }) => {
+      if (!ok) { status.textContent = `Restart request failed (HTTP ${code}).`; status.style.color = 'var(--danger)'; return; }
+      status.textContent = 'Restart requested — it happens within 2 minutes. Waiting for confirmation…';
+      const sentAt = Date.now();
+      const poll = setInterval(() => {
+        fetch(`${SERVER}/admin/${TOKEN}/restart-agent`).then(r => r.json()).then(d => {
+          if (!d.pending && d.status) {
+            clearInterval(poll);
+            status.textContent = d.status; status.style.color = 'var(--success)';
+            refreshAgentOutput();
+          } else if (Date.now() - sentAt > 5 * 60 * 1000) {
+            clearInterval(poll);
+            status.textContent = 'No confirmation after 5 minutes — the Mac may be asleep or offline.';
+            status.style.color = 'var(--danger)';
+          }
+        }).catch(() => {});
+      }, 10000);
+    })
+    .catch(e => { status.textContent = `Network error: ${e.message || e}`; status.style.color = 'var(--danger)'; });
 }
 
 function refreshAgentOutput() {

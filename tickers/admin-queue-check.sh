@@ -108,6 +108,7 @@ if [[ "${1:-}" == "worker" ]]; then
         note "start ${job:t} ${resume:+(resume)} :: ${text[1,120]//$'\n'/ }"
         print "Working on it now." > "$job.status"; tlog summary "${job:t}" "$job.status"; rm -f "$job.status"
         started=0
+        ok=0   # set to 1 when a model run produced a result; later tiers are then skipped
 
         # Classify request: simple tasks use Haiku-first, complex tasks skip to Sonnet.
         # Simple: extractions, logs, analysis, documentation, deployments, read-only queries, menu design.
@@ -137,16 +138,17 @@ if [[ "${1:-}" == "worker" ]]; then
                 wait $pid 2>/dev/null
                 if grep -q '"type":"result"' "$out" 2>/dev/null; then
                     note "Haiku attempt $haiku_try succeeded"
-                    break 2  # Exit both loops, go process the result
+                    ok=1; break   # was `break 2`, which also left the job loop: reply never posted, job re-run forever
                 fi
                 note "Haiku attempt $haiku_try failed; retrying Haiku"
             done
             # All 3 Haiku attempts failed. Fall through to Sonnet.
-            note "Haiku failed 3x on simple task; escalating to Sonnet"
+            (( ok )) || note "Haiku failed 3x on simple task; escalating to Sonnet"
         fi
 
         # Sonnet-first: try Sonnet up to 3 times. If Sonnet fails all 3, try Opus.
         for sonnet_try in 1 2 3; do
+            (( ok )) && break
             : > "$out"
             "$CLAUDE" -p "$text" "${resume[@]}" --append-system-prompt "$sysprompt" \
                 --permission-mode bypassPermissions --model "$SONNET" --strict-mcp-config \
@@ -173,14 +175,15 @@ if [[ "${1:-}" == "worker" ]]; then
                 if (( ${#resume} )) && ! grep -q '"modelUsage"' "$out"; then
                     note "Sonnet resume failed, starting fresh"; resume=(); started=0; continue
                 fi
-                break 2  # Exit both loops, go process the result
+                ok=1; break
             fi
             # Sonnet failed or didn't produce a result. Log it and retry with Sonnet (up to 3x).
             note "Sonnet attempt $sonnet_try failed; retrying Sonnet"
         done
         # All 3 Sonnet attempts failed. Fall back to Opus.
-        note "Sonnet failed 3x; falling back to Opus"
+        (( ok )) || note "Sonnet failed 3x; falling back to Opus"
         for opus_try in 1 2 3; do
+            (( ok )) && break
             : > "$out"
             "$CLAUDE" -p "$text" "${resume[@]}" --append-system-prompt "$sysprompt" \
                 --permission-mode bypassPermissions --model "$OPUS" --strict-mcp-config \
@@ -204,12 +207,12 @@ if [[ "${1:-}" == "worker" ]]; then
                 if (( ${#resume} )) && ! grep -q '"modelUsage"' "$out"; then
                     note "Opus resume failed, starting fresh"; resume=(); started=0; continue
                 fi
-                break 2
+                ok=1; break
             fi
             note "Opus attempt $opus_try failed; retrying Opus"
         done
         # Both Sonnet and Opus failed 3x each.
-        note "Both Sonnet and Opus failed 3x each; giving up on this task"
+        (( ok )) || note "Both Sonnet and Opus failed 3x each; giving up on this task"
         # Pull the reply, cost and session id out of the stream.
         python3 - "$out" "$Q/session" "$job.reply" "$started" >> "$LOG" <<'PY'
 import json, sys, time
@@ -306,6 +309,24 @@ for i in range(1, len(parts), 2):
 fi
 
 backfill_costs
+
+# Admin console "Kill & Restart Admin Agent" (POST /admin/<token>/restart-agent drops a flag on the
+# VM). Kill the worker and its claude child, wait 2 s, start a fresh worker, report to the VM.
+if [[ "$("${SSH[@]}" 'f=/tmp/admin-agent-restart.flag; [ -f $f ] && rm -f $f && echo RESTART; true' 2>>"$LOG")" == RESTART ]]; then
+    killed=()
+    for wp in $(pgrep -f "admin-queue-check.sh worker"); do
+        for cp in $(pgrep -P "$wp"); do kill -9 "$cp" 2>/dev/null && killed+=("$cp(agent)"); done
+        kill -9 "$wp" 2>/dev/null && killed+=("$wp(worker)")
+    done
+    rm -rf "$WORKER_LOCK"
+    sleep 2
+    nohup /bin/zsh "$0" worker >> "$LOG" 2>&1 &
+    newpid=$!
+    note "restart requested from admin console: killed ${killed[*]:-nothing}; new worker $newpid"
+    print -r -- "[$(date '+%F %T')] Restarted. Killed: ${killed[*]:-nothing running}. New worker pid: $newpid" \
+        | "${SSH[@]}" 'cat > /tmp/admin-agent-restart.status' 2>>"$LOG"
+    exit 0
+fi
 
 # Something waiting and nobody working on it -> start a worker in the background.
 waiting=( "$Q"/pending/*(N) "$Q"/running/*(N) )
