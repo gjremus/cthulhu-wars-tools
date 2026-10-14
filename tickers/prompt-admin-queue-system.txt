@@ -93,6 +93,70 @@ IMPORTANT NOTES:
 ═══════════════════════════════════════════════════════════════════════════
 
 ═══════════════════════════════════════════════════════════════════════════
+CLAUDE TERMINAL LOG - CHECKING AND RESPONDING TO ENTRIES
+═══════════════════════════════════════════════════════════════════════════
+
+The Claude Terminal Log is a live activity feed in the admin console that tracks
+all designer work and admin agent activity. You MUST check this regularly.
+
+**WHERE IT IS:**
+- Designer service (on the VM): data/terminal-log.json
+- Admin console tab: "Claude Terminal Log"
+- CLI command: `python3 designer-admin.py terminal-log`
+
+**HOW TO READ IT:**
+Use the CLI tool to list all entries (returns JSON):
+```bash
+cd ~/Claude-Projects/cthulhu-wars-tools/tickers
+python3 designer-admin.py terminal-log
+```
+
+This returns a JSON array of all entries with their IDs, types, users, and current status/summary.
+For a quick count or grep: `python3 designer-admin.py terminal-log | grep -c '"id"'`
+
+**ENTRY TYPES:**
+- extract: Design extraction request (spellbook text, menu text, etc.)
+- build: Faction build request
+- bug: Bug fix request
+- admin: Direct admin console submission (from /tmp/claude-prompts.log queue)
+
+**WHEN TO CHECK:**
+- At the START of every conversation turn
+- When the owner asks about specific entry numbers (e.g., "check entries 111, 112, 113")
+- After completing work to update the entry summary
+
+**HOW TO UPDATE SUMMARIES:**
+After completing work on an entry, update its summary:
+```
+cd ~/Claude-Projects/cthulhu-wars-tools/tickers
+echo "Fixed X, deployed to Y, cache Z" > /tmp/summary.txt
+python3 designer-admin.py tlog-summary <entry-id> /tmp/summary.txt
+```
+
+**HOW TO ADD COST:**
+When work has a known cost (from agent runs):
+```
+python3 designer-admin.py tlog-cost <entry-id> <usd-amount>
+```
+
+**COMMON WORKFLOW:**
+1. Owner says "check entry 123" or "what's in the terminal log?"
+2. Run: `cd ~/Claude-Projects/cthulhu-wars-tools/tickers && python3 designer-admin.py terminal-log`
+3. Parse the JSON to find entry with matching id or n (number)
+4. Read the entry's prompt and summary
+5. Do the requested work
+6. Update the entry summary with results
+
+**CRITICAL:**
+- ALWAYS use `python3 designer-admin.py terminal-log` to read the log
+- NEVER try to read terminal-log.json directly (it's on the VM, not local)
+- Every admin queue submission creates a terminal log entry (type: admin, id: q_<queuefile>)
+- Entry IDs starting with "q_" are admin console submissions
+- Entry IDs starting with "r_" are designer extraction/build/bug requests
+
+═══════════════════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════════════════
 BUILD QUEUE SECTION
 ═══════════════════════════════════════════════════════════════════════════
 

@@ -23,6 +23,7 @@ Reads the owner admin token from its file so it never has to appear in a prompt.
   designer-admin.py tlog-cost <id> <usd> [--add] [--note "<text>"]
                                             set (or add to) that row's cost in US dollars; use '-'
                                             for cost to skip cost update (note only)
+  designer-admin.py terminal-log            list all Claude Terminal Log entries (JSON array)
   designer-admin.py handoff <rid> <reason>  queue request for the Sonnet fallback
   designer-admin.py build-status <fid> <status> [version]
                                             set faction build status
@@ -406,6 +407,9 @@ def main():
     cmd, args = sys.argv[1], sys.argv[2:]
     if cmd == 'list-extract':
         list_extract()
+    elif cmd == 'terminal-log':
+        result = api('terminal-log')
+        print(json.dumps(result.get('entries', []), indent=2))
     elif cmd == 'faction' and len(args) == 1:
         mark_started(args[0])
         print(json.dumps(api(f'factions/{args[0]}'), indent=2))

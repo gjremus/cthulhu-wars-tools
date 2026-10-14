@@ -321,6 +321,55 @@
     .hamburger-btn { display: inline-flex; }
     /* drawer + overlay still allowed; they pop on demand via openNav() */
   }
+
+  /* Make Default button styling */
+  .make-default-btn {
+    padding: 3px 10px;
+    font-size: 9pt;
+    margin-left: 10px;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    cursor: pointer;
+    border-radius: 6px;
+  }
+  .make-default-btn:hover {
+    background: var(--border);
+    color: var(--text);
+  }
+  .make-default-btn.is-default {
+    background: rgba(47,129,247,0.15);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* Menu reorder styling */
+  .menu-edit-btn {
+    padding: 4px 10px;
+    font-size: 9pt;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    color: var(--text);
+    cursor: pointer;
+    border-radius: 6px;
+    margin: 0 18px 12px 18px;
+    display: block;
+    width: calc(100% - 36px);
+  }
+  .menu-edit-btn:hover {
+    background: var(--border);
+  }
+  .nav-drawer.reorder-mode a:not(.section) {
+    cursor: move;
+    border-left: 3px solid var(--accent);
+    padding-left: 15px;
+  }
+  .nav-drawer a.dragging {
+    opacity: 0.4;
+  }
+  .nav-drawer a.drag-over {
+    border-top: 2px solid var(--accent);
+  }
 </style>
 </head>
 <body>
@@ -330,15 +379,16 @@
      placeholders pending the SimRunner status page and Build admin tooling. -->
 <div id="nav-overlay" class="nav-overlay" onclick="closeNav()"></div>
 <nav id="nav-drawer" class="nav-drawer" aria-label="Primary">
+  <button class="menu-edit-btn" id="menu-edit-btn" onclick="toggleMenuEditMode()">✏️ Edit Menu Order</button>
   <a class="section">Sections</a>
-  <a href="#" onclick="showSection('games'); closeNav(); return false;">Games</a>
-  <a href="#" onclick="showSection('simrunner'); closeNav(); return false;">SimRunner</a>
-  <a href="#" onclick="showSection('build'); closeNav(); return false;">Build</a>
-  <a href="#" onclick="showSection('claude'); closeNav(); return false;">Claude Terminal</a>
-  <a href="#" onclick="showSection('claudelog'); loadClaudeLog(); closeNav(); return false;">Claude Terminal Log</a>
-  <a href="#" onclick="showSection('agentprompts'); loadAgentPrompts(); closeNav(); return false;">Agent Prompts</a>
-  <a href="#" onclick="showSection('customdesigns'); loadDesignerData(); closeNav(); return false;">Custom Designs</a>
-  <a href="#" onclick="showSection('serverstats'); loadServerStats(); closeNav(); return false;">Server Stats</a>
+  <a href="#" data-section="games" onclick="showSection('games'); closeNav(); return false;">Games</a>
+  <a href="#" data-section="simrunner" onclick="showSection('simrunner'); closeNav(); return false;">SimRunner</a>
+  <a href="#" data-section="build" onclick="showSection('build'); closeNav(); return false;">Build</a>
+  <a href="#" data-section="claude" onclick="showSection('claude'); closeNav(); return false;">Claude Terminal</a>
+  <a href="#" data-section="claudelog" onclick="showSection('claudelog'); loadClaudeLog(); closeNav(); return false;">Claude Terminal Log</a>
+  <a href="#" data-section="agentprompts" onclick="showSection('agentprompts'); loadAgentPrompts(); closeNav(); return false;">Agent Prompts</a>
+  <a href="#" data-section="customdesigns" onclick="showSection('customdesigns'); loadDesignerData(); closeNav(); return false;">Custom Designs</a>
+  <a href="#" data-section="serverstats" onclick="showSection('serverstats'); loadServerStats(); closeNav(); return false;">Server Stats</a>
 </nav>
 
 <header>
@@ -367,7 +417,7 @@
   <!-- Games section (default view) — the existing two-column game-list + detail. -->
   <div id="section-games" class="section-pane active col-wrap">
     <div class="col left">
-      <h2>Live Games</h2>
+      <h2>Live Games<button class="make-default-btn small" data-section="games" onclick="makeDefaultTab('games')">Make Default</button></h2>
       <!-- Designer request banners -->
       <div id="designer-banners" style="margin:8px 0;"></div>
       <p>
@@ -465,7 +515,7 @@
   <!-- SimRunner section — wizard for kicking off online sims directly from
        the admin tool via /admin/<t>/sim-run, plus past-runs list and live tail. -->
   <div id="section-simrunner" class="section-pane" style="padding: 18px;">
-    <h2>SimRunner — current build: <span id="sim-build-label" style="color:var(--accent);">…</span></h2>
+    <h2>SimRunner — current build: <span id="sim-build-label" style="color:var(--accent);">…</span><button class="make-default-btn small" data-section="simrunner" onclick="makeDefaultTab('simrunner')">Make Default</button></h2>
     <p style="color:var(--text-muted);">Pick the bot recipe, hit <b>Run sim</b>. The orchestrator runs on the VM and writes a log under <code>/tmp/online-sim-&lt;build&gt;-&lt;timestamp&gt;.log</code>. Use the Build menu to switch between the Library and MNU jars.</p>
 
     <h3>1. Force factions (leave all unchecked for random)</h3>
@@ -506,7 +556,7 @@
   <!-- Build section — switch the admin's active build. Other
        menus (SimRunner) read this localStorage value and adapt. -->
   <div id="section-build" class="section-pane" style="padding: 18px;">
-    <h2>Build</h2>
+    <h2>Build<button class="make-default-btn small" data-section="build" onclick="makeDefaultTab('build')">Make Default</button></h2>
     <p style="color:var(--text-muted);">Four builds share this admin tool. Pick the active one — SimRunner and other build-dependent menus read this setting. Use the ↗ link inside each card to open the corresponding game in a new tab.</p>
 
     <div style="display:flex;gap:14px;flex-wrap:wrap;margin:24px 0;">
@@ -541,7 +591,7 @@
        even when this section isn't visible (the user wanted to keep
        context loaded). -->
   <div id="section-claude" class="section-pane" style="padding: 18px;">
-    <h2>Claude Terminal</h2>
+    <h2>Claude Terminal<button class="make-default-btn small" data-section="claude" onclick="makeDefaultTab('claude')">Make Default</button></h2>
     <p style="color:var(--text-muted);">Type a prompt and hit Submit. It's queued to <code>/tmp/claude-prompts.log</code> on the VM. Claude drains the queue every tick, appends to <code>/tmp/claude-output.log</code> with prompts + responses interleaved, and the terminal log below polls that for the recent history.</p>
 
     <div style="display:flex;gap:8px;align-items:stretch;margin-bottom:16px;">
@@ -625,7 +675,7 @@
 
   <!-- Server Stats — host + JVM resource usage. -->
   <div id="section-serverstats" class="section-pane" style="padding: 18px;">
-    <h2>Server Stats <button class="small" style="margin-left:8px;" onclick="loadServerStats()">Refresh</button></h2>
+    <h2>Server Stats <button class="small" style="margin-left:8px;" onclick="loadServerStats()">Refresh</button><button class="make-default-btn small" data-section="serverstats" onclick="makeDefaultTab('serverstats')">Make Default</button></h2>
     <p style="color:var(--text-muted);font-size:10pt;">Live host metrics + GCP Always-Free consumption are collected on the VM (cron, every 5 min) and served as <code>serverstats.json</code>. Game statistics are computed from the games list.</p>
 
     <!-- Free-tier consumption: month-to-date usage vs. GCP Always-Free allowances. -->
@@ -656,7 +706,7 @@
   <!-- Claude Terminal Log: one row per prompt (console + faction designer), newest first.
        Stored by the designer service in /opt/cwo/designer/data/terminal-log.json. -->
   <div id="section-claudelog" class="section-pane" style="padding: 18px;">
-    <h2>Claude Terminal Log <button class="small" style="margin-left:8px;" onclick="loadClaudeLog()">Refresh</button></h2>
+    <h2>Claude Terminal Log <button class="small" style="margin-left:8px;" onclick="loadClaudeLog()">Refresh</button><button class="make-default-btn small" data-section="claudelog" onclick="makeDefaultTab('claudelog')">Make Default</button></h2>
     <p style="color:var(--text-muted);font-size:10pt;">Every prompt sent to Claude, newest first: from this console (user "admin") and from the Faction Designer (extraction, menu, build and bug fix requests).</p>
     <div style="margin:10px 0;">
       <input type="text" id="claudelog-search" oninput="renderClaudeLog()" placeholder="Search prompts, users, summaries…"
@@ -684,7 +734,7 @@
 
   <!-- Agent Prompts section — edit system prompts for automated agents -->
   <div id="section-agentprompts" class="section-pane" style="padding: 18px;">
-    <h2>Agent Prompts <button class="small" style="margin-left:8px;" onclick="loadAgentPrompts()">Refresh</button></h2>
+    <h2>Agent Prompts <button class="small" style="margin-left:8px;" onclick="loadAgentPrompts()">Refresh</button><button class="make-default-btn small" data-section="agentprompts" onclick="makeDefaultTab('agentprompts')">Make Default</button></h2>
     <p style="color:var(--text-muted);font-size:10pt;">View and edit the system prompts for the automated agents. Changes take effect on the next agent run.</p>
 
     <!-- Admin Queue Agent -->
@@ -725,7 +775,7 @@
   </div>
 
   <div id="section-customdesigns" class="section-pane" style="padding: 18px;">
-    <h2>Custom Designs <button class="small" style="margin-left:8px;" onclick="loadDesignerData()">Refresh</button></h2>
+    <h2>Custom Designs <button class="small" style="margin-left:8px;" onclick="loadDesignerData()">Refresh</button><button class="make-default-btn small" data-section="customdesigns" onclick="makeDefaultTab('customdesigns')">Make Default</button></h2>
     <p style="color:var(--text-muted);font-size:10pt;">Manage faction designer users and factions. Build-ready and simple-update requests appear as banners in the Games view.</p>
 
     <!-- Search box -->
@@ -1346,6 +1396,9 @@ function signIn() {
       // Start Claude terminal polling immediately so the log stays warm
       // whether or not the user navigates to the Claude Terminal section.
       startClaudePolling();
+      // Load default tab and update indicators
+      loadDefaultTab();
+      updateDefaultTabIndicators();
       // Make the server URL in the header a clickable link that opens a new
       // game lobby in a fresh tab. Was previously plain text.
       const ind = document.getElementById('server-indicator');
@@ -4330,6 +4383,183 @@ function savePrompt(type) {
       if (saveBtn) saveBtn.disabled = false;
     });
 }
+
+// ========== Make Default Tab Feature ==========
+function makeDefaultTab(sectionId) {
+  localStorage.setItem('cw_admin_default_tab', sectionId);
+  updateDefaultTabIndicators();
+}
+
+function loadDefaultTab() {
+  const defaultTab = localStorage.getItem('cw_admin_default_tab');
+  if (defaultTab) {
+    showSection(defaultTab);
+    // Also trigger any load functions for the default tab
+    if (defaultTab === 'claudelog') loadClaudeLog();
+    if (defaultTab === 'agentprompts') loadAgentPrompts();
+    if (defaultTab === 'customdesigns') loadDesignerData();
+    if (defaultTab === 'serverstats') loadServerStats();
+  }
+  updateDefaultTabIndicators();
+}
+
+function updateDefaultTabIndicators() {
+  const defaultTab = localStorage.getItem('cw_admin_default_tab');
+  document.querySelectorAll('.make-default-btn').forEach(btn => {
+    const section = btn.getAttribute('data-section');
+    if (section === defaultTab) {
+      btn.classList.add('is-default');
+      btn.textContent = '✓ Default';
+    } else {
+      btn.classList.remove('is-default');
+      btn.textContent = 'Make Default';
+    }
+  });
+}
+
+// ========== Draggable Menu Ordering Feature ==========
+let menuReorderMode = false;
+
+function toggleMenuEditMode() {
+  const drawer = document.getElementById('nav-drawer');
+  const btn = document.getElementById('menu-edit-btn');
+
+  menuReorderMode = !menuReorderMode;
+
+  if (menuReorderMode) {
+    drawer.classList.add('reorder-mode');
+    btn.textContent = '✓ Done Editing';
+    btn.style.background = 'rgba(47,129,247,0.15)';
+    btn.style.borderColor = 'var(--accent)';
+    btn.style.color = 'var(--accent)';
+    enableMenuDragging();
+  } else {
+    drawer.classList.remove('reorder-mode');
+    btn.textContent = '✏️ Edit Menu Order';
+    btn.style.background = '';
+    btn.style.borderColor = '';
+    btn.style.color = '';
+    disableMenuDragging();
+  }
+}
+
+function enableMenuDragging() {
+  const menuLinks = document.querySelectorAll('#nav-drawer a:not(.section)');
+  menuLinks.forEach(link => {
+    link.draggable = true;
+    link.addEventListener('dragstart', handleDragStart);
+    link.addEventListener('dragover', handleDragOver);
+    link.addEventListener('drop', handleDrop);
+    link.addEventListener('dragend', handleDragEnd);
+  });
+}
+
+function disableMenuDragging() {
+  const menuLinks = document.querySelectorAll('#nav-drawer a:not(.section)');
+  menuLinks.forEach(link => {
+    link.draggable = false;
+    link.removeEventListener('dragstart', handleDragStart);
+    link.removeEventListener('dragover', handleDragOver);
+    link.removeEventListener('drop', handleDrop);
+    link.removeEventListener('dragend', handleDragEnd);
+  });
+}
+
+let draggedElement = null;
+
+function handleDragStart(e) {
+  draggedElement = this;
+  this.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/html', this.innerHTML);
+}
+
+function handleDragOver(e) {
+  if (e.preventDefault) e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+
+  const target = e.target.closest('a:not(.section)');
+  if (target && target !== draggedElement) {
+    document.querySelectorAll('#nav-drawer a').forEach(a => a.classList.remove('drag-over'));
+    target.classList.add('drag-over');
+  }
+  return false;
+}
+
+function handleDrop(e) {
+  if (e.stopPropagation) e.stopPropagation();
+
+  const target = e.target.closest('a:not(.section)');
+  if (target && draggedElement && draggedElement !== target) {
+    const drawer = document.getElementById('nav-drawer');
+    const allLinks = Array.from(drawer.querySelectorAll('a:not(.section)'));
+    const draggedIndex = allLinks.indexOf(draggedElement);
+    const targetIndex = allLinks.indexOf(target);
+
+    if (draggedIndex < targetIndex) {
+      target.parentNode.insertBefore(draggedElement, target.nextSibling);
+    } else {
+      target.parentNode.insertBefore(draggedElement, target);
+    }
+
+    saveMenuOrder();
+  }
+
+  return false;
+}
+
+function handleDragEnd(e) {
+  this.classList.remove('dragging');
+  document.querySelectorAll('#nav-drawer a').forEach(a => a.classList.remove('drag-over'));
+}
+
+function saveMenuOrder() {
+  const menuLinks = document.querySelectorAll('#nav-drawer a:not(.section)');
+  const order = Array.from(menuLinks).map(link => link.getAttribute('data-section'));
+  localStorage.setItem('cw_admin_menu_order', JSON.stringify(order));
+}
+
+function loadMenuOrder() {
+  const savedOrder = localStorage.getItem('cw_admin_menu_order');
+  if (!savedOrder) return;
+
+  try {
+    const order = JSON.parse(savedOrder);
+    const drawer = document.getElementById('nav-drawer');
+    const sectionHeader = drawer.querySelector('a.section');
+    const menuLinks = Array.from(drawer.querySelectorAll('a:not(.section)'));
+
+    // Create a map of section -> link element
+    const linkMap = {};
+    menuLinks.forEach(link => {
+      const section = link.getAttribute('data-section');
+      linkMap[section] = link;
+    });
+
+    // Reorder links according to saved order
+    order.forEach(section => {
+      if (linkMap[section]) {
+        drawer.appendChild(linkMap[section]);
+      }
+    });
+
+    // Add any links not in saved order (new sections)
+    menuLinks.forEach(link => {
+      const section = link.getAttribute('data-section');
+      if (!order.includes(section)) {
+        drawer.appendChild(link);
+      }
+    });
+  } catch (e) {
+    console.error('Failed to load menu order:', e);
+  }
+}
+
+// Initialize menu order and default tab on page load
+window.addEventListener('DOMContentLoaded', () => {
+  loadMenuOrder();
+});
+
 </script>
 
 </body>
