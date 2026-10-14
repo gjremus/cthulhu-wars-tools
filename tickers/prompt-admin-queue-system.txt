@@ -83,6 +83,36 @@ FORMAT: MAP-BUILD: <faction-acr> from commit <hash> (Reason)
 Entries:
 MAP-BUILD: dgt from commit 74fbf916 (Spellbook guidance application: dual-sided spellbooks marked, guidance embedded for Claude)
 
+SPELLBOOK GUIDANCE INTEGRATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The rebuild process automatically includes spellbook guidance for Claude:
+
+1. DETECTION: When a faction has multi-power or multi-sided spellbooks,
+   the designer server computes guidance via compute_spellbook_guidance()
+
+2. FLAGS: Spellbooks are marked with:
+   - dual=true (for multi-power on side A)
+   - dualB=true (for multi-power on side B)
+   - twoSided=true (for swappable sides A and B)
+
+3. UI DISPLAY: In the designer, "Guidance for Claude" appears when:
+   - At least one spellbook has dual=true OR
+   - At least one spellbook has twoSided=true
+   Shows both Multi-Power and Multi-Sided guidance sections as needed
+
+4. CLAUDE RECEIVES: When build is submitted:
+   - Design JSON includes spellbookGuidance field
+   - Claude sees guidance in /designer/api/factions/<fid> endpoint
+   - Admin queue agent includes guidance in build prompt
+   - Guidance tells Claude about power slots, SBR count, overlay structure
+
+5. FOR DGT SPECIFICALLY:
+   - Gods' Scale and similar spellbooks need twoSided=true
+   - Ensure no faction exceeds 6 SBR/SB slots on faction card
+   - Multi-sided spellbooks = 2 connected SB slots, not 1+1
+   - Use Dragon Ascending (one-use) or Daemon Sultans (Doom recharge) code templates
+
 ═══════════════════════════════════════════════════════════════════════════
 
 ═══════════════════════════════════════════════════════════════════════════
