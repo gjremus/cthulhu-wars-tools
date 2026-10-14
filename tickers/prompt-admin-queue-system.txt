@@ -81,7 +81,7 @@ just image swaps), add a row here:
 FORMAT: MAP-BUILD: <faction-acr> from commit <hash> (Reason)
 
 Entries:
-MAP-BUILD: dgt from commit 74fbf916 (Spellbook guidance application: dual-sided spellbooks marked, guidance embedded for Claude)
+MAP-BUILD: dgt from commit 7e525a5 (Spellbook guidance application: dual-sided spellbooks marked, guidance embedded for Claude)
 
 SPELLBOOK GUIDANCE INTEGRATION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

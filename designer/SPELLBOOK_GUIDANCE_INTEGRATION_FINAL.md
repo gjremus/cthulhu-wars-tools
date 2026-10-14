@@ -2,7 +2,7 @@
 
 **Status**: ✅ **COMPLETE AND LIVE**  
 **Integration**: Admin Queue System → Faction Designer  
-**Deployment**: Ready for DGT rebuild from commit 74fbf916
+**Deployment**: Ready for DGT rebuild from commit 7e525a5
 
 ---
 
@@ -103,7 +103,7 @@ When DGT build is submitted:
 ### Admin Queue System
 The DGT rebuild is queued in `tickers/prompt-admin-queue-system.txt`:
 ```
-MAP-BUILD: dgt from commit 74fbf916 (Spellbook guidance application: dual-sided spellbooks marked, guidance embedded for Claude)
+MAP-BUILD: dgt from commit 7e525a5 (Spellbook guidance application: dual-sided spellbooks marked, guidance embedded for Claude)
 ```
 
 **When Claude builds DGT**:
