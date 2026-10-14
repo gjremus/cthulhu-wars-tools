@@ -1156,6 +1156,67 @@ object CthulhuWarsOnline {
                     }
                 }
             } ~
+            // [2026-10-14] Live agent output streaming - shows current running
+            // agent's JSONL transcript for debugging
+            (get & path("admin" / Segment / "agent-output")) { token =>
+                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
+                else {
+                    val queueDir = new java.io.File(System.getProperty("user.home") + "/.cw-admin-queue/running")
+                    if (!queueDir.exists || !queueDir.isDirectory) {
+                        complete(HttpEntity(ContentTypes.`application/json`, """{"status":"no_agent","message":"No agent currently running"}"""))
+                    } else {
+                        val jsonlFiles = queueDir.listFiles.filter(_.getName.endsWith(".jsonl"))
+                        if (jsonlFiles.isEmpty) {
+                            complete(HttpEntity(ContentTypes.`application/json`, """{"status":"no_agent","message":"No agent currently running"}"""))
+                        } else {
+                            // Get most recent .jsonl file
+                            val latest = jsonlFiles.maxBy(_.lastModified)
+                            import scala.sys.process._
+                            val out = new StringBuilder
+                            // Tail last 200 lines or 50KB, whichever is smaller
+                            Process(Seq("tail", "-n", "200", latest.getAbsolutePath))
+                                .!(ProcessLogger(line => out.append(line + "\n")))
+                            val content = out.toString
+                            val truncated = if (content.length > 51200) content.takeRight(51200) else content
+                            complete(HttpEntity(ContentTypes.`application/json`,
+                                s"""{"status":"running","output":${spray.json.JsString(truncated).compactPrint}}"""))
+                        }
+                    }
+                }
+            } ~
+            // [2026-10-14] Meta agent prompt submission - appends to meta agent queue
+            (post & path("admin" / Segment / "meta-agent-prompt") & entity(as[String])) { (token, body) =>
+                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
+                else {
+                    val text = body.trim
+                    if (text.isEmpty) complete(StatusCodes.BadRequest -> "empty prompt")
+                    else {
+                        val stamp = java.time.LocalDateTime.now.format(
+                            java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                        val line = s"[$stamp] $text\n"
+                        val f = new java.io.File("/tmp/meta-agent-prompts.log")
+                        val w = new java.io.FileWriter(f, true)
+                        try w.write(line) finally w.close()
+                        complete(HttpEntity(ContentTypes.`text/plain(UTF-8)`, "queued\n"))
+                    }
+                }
+            } ~
+            // [2026-10-14] Meta agent output log - tails meta agent response log
+            (get & path("admin" / Segment / "meta-agent-output")) { token =>
+                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
+                else parameter("lines".as[Int].?) { linesOpt =>
+                    val n = linesOpt.getOrElse(100).max(1).min(500)
+                    val f = new java.io.File("/tmp/meta-agent-output.log")
+                    if (!f.exists) complete(HttpEntity(ContentTypes.`text/plain(UTF-8)`, ""))
+                    else {
+                        import scala.sys.process._
+                        val out = new StringBuilder
+                        Process(Seq("tail", "-n", n.toString, f.getAbsolutePath))
+                            .!(ProcessLogger(line => out.append(line + "\n")))
+                        complete(HttpEntity(ContentTypes.`text/plain(UTF-8)`, out.toString))
+                    }
+                }
+            } ~
             (post & path("admin" / Segment / "sim-run")) { token =>
                 if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
                 else parameter(
