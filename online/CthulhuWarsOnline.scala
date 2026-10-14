@@ -1242,6 +1242,113 @@ object CthulhuWarsOnline {
                     }
                 }
             } ~
+            // [2026-10-14] Agent prompts - GET returns both agent prompt files with metadata
+            (get & path("admin" / Segment / "agent-prompts")) { token =>
+                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
+                else {
+                    val adminQueuePath = "/Users/gremus/Claude-Projects/cthulhu-wars-tools/tickers/prompt-admin-queue-system.txt"
+                    val metaAgentPath = "/Users/gremus/Claude-Projects/cthulhu-wars-tools/tickers/prompt-meta-agent.txt"
+
+                    def readPrompt(path: String) = {
+                        val f = new java.io.File(path)
+                        if (!f.exists) ("", 0L)
+                        else {
+                            val content = scala.io.Source.fromFile(f, "UTF-8").mkString
+                            val mtime = f.lastModified / 1000  // seconds since epoch
+                            (content, mtime)
+                        }
+                    }
+
+                    val (adminQueueContent, adminQueueMtime) = readPrompt(adminQueuePath)
+                    val (metaAgentContent, metaAgentMtime) = readPrompt(metaAgentPath)
+
+                    val adminQueueJson = adminQueueContent.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
+                    val metaAgentJson = metaAgentContent.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
+
+                    val json = s"""{
+                        "adminQueue": {
+                            "path": "$adminQueuePath",
+                            "content": "$adminQueueJson",
+                            "mtime": $adminQueueMtime
+                        },
+                        "metaAgent": {
+                            "path": "$metaAgentPath",
+                            "content": "$metaAgentJson",
+                            "mtime": $metaAgentMtime
+                        }
+                    }"""
+                    complete(HttpEntity(ContentTypes.`application/json`, json))
+                }
+            } ~
+            // [2026-10-14] Agent prompts - POST saves an updated prompt file
+            (post & path("admin" / Segment / "agent-prompts") & entity(as[String])) { (token, body) =>
+                if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
+                else {
+                    try {
+                        // Parse JSON body
+                        val jsonPattern = """"type"\s*:\s*"([^"]+)".*"content"\s*:\s*"((?:[^"\\]|\\.)*)"""".r
+                        val m = jsonPattern.findFirstMatchIn(body)
+                        if (m.isEmpty) {
+                            complete(StatusCodes.BadRequest -> "Invalid JSON format")
+                        } else {
+                            val promptType = m.get.group(1)
+                            val contentEscaped = m.get.group(2)
+
+                            // Unescape JSON string
+                            val content = contentEscaped
+                                .replace("\\n", "\n")
+                                .replace("\\r", "\r")
+                                .replace("\\t", "\t")
+                                .replace("\\\"", "\"")
+                                .replace("\\\\", "\\")
+
+                            val path = promptType match {
+                                case "adminQueue" => "/Users/gremus/Claude-Projects/cthulhu-wars-tools/tickers/prompt-admin-queue-system.txt"
+                                case "metaAgent"  => "/Users/gremus/Claude-Projects/cthulhu-wars-tools/tickers/prompt-meta-agent.txt"
+                                case _ => ""
+                            }
+
+                            if (path.isEmpty) {
+                                complete(StatusCodes.BadRequest -> s"Invalid prompt type: $promptType")
+                            } else {
+                                // Validate path (no traversal)
+                                val f = new java.io.File(path)
+                                val canonical = f.getCanonicalPath
+                                if (!canonical.startsWith("/Users/gremus/Claude-Projects/cthulhu-wars-tools/tickers/")) {
+                                    complete(StatusCodes.BadRequest -> "Invalid path")
+                                } else {
+                                    // Create backup
+                                    val backupPath = path + ".backup"
+                                    if (f.exists) {
+                                        val backupContent = scala.io.Source.fromFile(f, "UTF-8").mkString
+                                        val backupW = new java.io.FileWriter(new java.io.File(backupPath))
+                                        try backupW.write(backupContent) finally backupW.close()
+                                    }
+
+                                    // Atomic write via temp file
+                                    val tempPath = path + ".tmp"
+                                    val tempW = new java.io.FileWriter(new java.io.File(tempPath))
+                                    try tempW.write(content) finally tempW.close()
+
+                                    // Rename to final location
+                                    val tempFile = new java.io.File(tempPath)
+                                    val success = tempFile.renameTo(f)
+
+                                    if (success) {
+                                        val json = s"""{"success":true,"message":"Prompt saved successfully"}"""
+                                        complete(HttpEntity(ContentTypes.`application/json`, json))
+                                    } else {
+                                        complete(StatusCodes.InternalServerError -> "Failed to save prompt file")
+                                    }
+                                }
+                            }
+                        }
+                    } catch {
+                        case e: Exception =>
+                            complete(StatusCodes.InternalServerError -> s"Save error: ${e.getMessage}")
+                    }
+                }
+            } ~
             (post & path("admin" / Segment / "sim-run")) { token =>
                 if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
                 else parameter(

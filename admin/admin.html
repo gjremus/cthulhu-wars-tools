@@ -336,6 +336,7 @@
   <a href="#" onclick="showSection('build'); closeNav(); return false;">Build</a>
   <a href="#" onclick="showSection('claude'); closeNav(); return false;">Claude Terminal</a>
   <a href="#" onclick="showSection('claudelog'); loadClaudeLog(); closeNav(); return false;">Claude Terminal Log</a>
+  <a href="#" onclick="showSection('agentprompts'); loadAgentPrompts(); closeNav(); return false;">Agent Prompts</a>
   <a href="#" onclick="showSection('customdesigns'); loadDesignerData(); closeNav(); return false;">Custom Designs</a>
   <a href="#" onclick="showSection('serverstats'); loadServerStats(); closeNav(); return false;">Server Stats</a>
 </nav>
@@ -678,6 +679,48 @@
       <p style="color:var(--text-muted);font-size:9pt;margin-top:8px;">
         Est. cost = what the Claude run reported for that task, including its helpers. Older designer requests are estimated from the extract checker's run logs. A designer request run by a console task is counted once, on that console row (see its note).
       </p>
+    </div>
+  </div>
+
+  <!-- Agent Prompts section — edit system prompts for automated agents -->
+  <div id="section-agentprompts" class="section-pane" style="padding: 18px;">
+    <h2>Agent Prompts <button class="small" style="margin-left:8px;" onclick="loadAgentPrompts()">Refresh</button></h2>
+    <p style="color:var(--text-muted);font-size:10pt;">View and edit the system prompts for the automated agents. Changes take effect on the next agent run.</p>
+
+    <!-- Admin Queue Agent -->
+    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:14px 16px;margin-bottom:20px;">
+      <h3 style="margin-top:0;">Admin Queue Agent</h3>
+      <p style="color:var(--text-muted);font-size:9pt;margin:4px 0 8px;">Processes faction BUILD/EXTRACT/BUG requests from the designer queue</p>
+      <code style="background:var(--bg);padding:3px 8px;border-radius:3px;font-size:9pt;display:block;margin-bottom:8px;">/Users/gremus/Claude-Projects/cthulhu-wars-tools/tickers/prompt-admin-queue-system.txt</code>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+        <button class="small" id="admin-queue-edit-btn" onclick="enableEdit('admin-queue')">Edit</button>
+        <button class="small primary" id="admin-queue-save-btn" onclick="savePrompt('admin-queue')" style="display:none;">Save</button>
+        <button class="small" id="admin-queue-cancel-btn" onclick="cancelEdit('admin-queue')" style="display:none;">Cancel</button>
+        <span id="admin-queue-status" style="font-size:9pt;color:var(--text-muted);"></span>
+      </div>
+      <div style="color:var(--text-muted);font-size:8.5pt;margin-bottom:6px;">
+        Last modified: <span id="admin-queue-mtime">loading…</span>
+      </div>
+      <textarea id="admin-queue-prompt" rows="12" readonly
+        style="width:100%;box-sizing:border-box;padding:10px 12px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:9.5pt;line-height:1.5;resize:vertical;border-radius:6px;">loading…</textarea>
+    </div>
+
+    <!-- Meta Agent (Watchdog) -->
+    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:14px 16px;margin-bottom:20px;">
+      <h3 style="margin-top:0;">Meta Agent (Watchdog)</h3>
+      <p style="color:var(--text-muted);font-size:9pt;margin:4px 0 8px;">Monitors admin queue agent and restarts if stuck (checked every 2 min)</p>
+      <code style="background:var(--bg);padding:3px 8px;border-radius:3px;font-size:9pt;display:block;margin-bottom:8px;">/Users/gremus/Claude-Projects/cthulhu-wars-tools/tickers/prompt-meta-agent.txt</code>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+        <button class="small" id="meta-agent-edit-btn" onclick="enableEdit('meta-agent')">Edit</button>
+        <button class="small primary" id="meta-agent-save-btn" onclick="savePrompt('meta-agent')" style="display:none;">Save</button>
+        <button class="small" id="meta-agent-cancel-btn" onclick="cancelEdit('meta-agent')" style="display:none;">Cancel</button>
+        <span id="meta-agent-status" style="font-size:9pt;color:var(--text-muted);"></span>
+      </div>
+      <div style="color:var(--text-muted);font-size:8.5pt;margin-bottom:6px;">
+        Last modified: <span id="meta-agent-mtime">loading…</span>
+      </div>
+      <textarea id="meta-agent-prompt" rows="12" readonly
+        style="width:100%;box-sizing:border-box;padding:10px 12px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:9.5pt;line-height:1.5;resize:vertical;border-radius:6px;">loading…</textarea>
     </div>
   </div>
 
@@ -4134,6 +4177,158 @@ function esc(str) {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
+}
+
+// ========== Agent Prompts Management ==========
+// State storage for edit/cancel operations
+let AGENT_PROMPT_ORIGINALS = {
+  'admin-queue': '',
+  'meta-agent': ''
+};
+
+function loadAgentPrompts() {
+  const types = ['admin-queue', 'meta-agent'];
+
+  types.forEach(type => {
+    const textarea = document.getElementById(`${type}-prompt`);
+    const mtimeSpan = document.getElementById(`${type}-mtime`);
+    const status = document.getElementById(`${type}-status`);
+
+    if (textarea) textarea.value = 'loading…';
+    if (mtimeSpan) mtimeSpan.textContent = 'loading…';
+    if (status) status.textContent = '';
+  });
+
+  fetch(`${SERVER}/admin/${TOKEN}/agent-prompts`)
+    .then(r => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    })
+    .then(data => {
+      types.forEach(type => {
+        const typeData = data[type === 'admin-queue' ? 'adminQueue' : 'metaAgent'];
+        if (!typeData) return;
+
+        const textarea = document.getElementById(`${type}-prompt`);
+        const mtimeSpan = document.getElementById(`${type}-mtime`);
+
+        if (textarea) {
+          textarea.value = typeData.content || '';
+          AGENT_PROMPT_ORIGINALS[type] = typeData.content || '';
+        }
+        if (mtimeSpan && typeData.mtime) {
+          const date = new Date(typeData.mtime * 1000);
+          mtimeSpan.textContent = date.toLocaleString();
+        }
+      });
+    })
+    .catch(e => {
+      types.forEach(type => {
+        const textarea = document.getElementById(`${type}-prompt`);
+        const status = document.getElementById(`${type}-status`);
+        if (textarea) textarea.value = `Error loading prompt: ${e.message}`;
+        if (status) {
+          status.textContent = `Load failed: ${e.message}`;
+          status.style.color = 'var(--danger)';
+        }
+      });
+    });
+}
+
+function enableEdit(type) {
+  const textarea = document.getElementById(`${type}-prompt`);
+  const editBtn = document.getElementById(`${type}-edit-btn`);
+  const saveBtn = document.getElementById(`${type}-save-btn`);
+  const cancelBtn = document.getElementById(`${type}-cancel-btn`);
+
+  if (textarea) {
+    textarea.removeAttribute('readonly');
+    textarea.style.background = 'var(--bg-subtle)';
+    textarea.style.borderColor = 'var(--accent)';
+    AGENT_PROMPT_ORIGINALS[type] = textarea.value;
+  }
+  if (editBtn) editBtn.style.display = 'none';
+  if (saveBtn) saveBtn.style.display = 'inline-block';
+  if (cancelBtn) cancelBtn.style.display = 'inline-block';
+}
+
+function cancelEdit(type) {
+  const textarea = document.getElementById(`${type}-prompt`);
+  const editBtn = document.getElementById(`${type}-edit-btn`);
+  const saveBtn = document.getElementById(`${type}-save-btn`);
+  const cancelBtn = document.getElementById(`${type}-cancel-btn`);
+  const status = document.getElementById(`${type}-status`);
+
+  if (textarea) {
+    textarea.value = AGENT_PROMPT_ORIGINALS[type];
+    textarea.setAttribute('readonly', '');
+    textarea.style.background = 'var(--bg)';
+    textarea.style.borderColor = 'var(--border)';
+  }
+  if (editBtn) editBtn.style.display = 'inline-block';
+  if (saveBtn) saveBtn.style.display = 'none';
+  if (cancelBtn) cancelBtn.style.display = 'none';
+  if (status) status.textContent = '';
+}
+
+function savePrompt(type) {
+  const textarea = document.getElementById(`${type}-prompt`);
+  const status = document.getElementById(`${type}-status`);
+  const saveBtn = document.getElementById(`${type}-save-btn`);
+
+  if (!textarea) return;
+
+  const content = textarea.value;
+  if (status) {
+    status.textContent = 'Saving…';
+    status.style.color = 'var(--text-muted)';
+  }
+  if (saveBtn) saveBtn.disabled = true;
+
+  fetch(`${SERVER}/admin/${TOKEN}/agent-prompts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      type: type === 'admin-queue' ? 'adminQueue' : 'metaAgent',
+      content: content
+    })
+  })
+    .then(r => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    })
+    .then(data => {
+      if (status) {
+        status.textContent = data.message || 'Saved successfully!';
+        status.style.color = 'var(--success)';
+        setTimeout(() => { status.textContent = ''; }, 3000);
+      }
+
+      // Update original for cancel, exit edit mode
+      AGENT_PROMPT_ORIGINALS[type] = content;
+      textarea.setAttribute('readonly', '');
+      textarea.style.background = 'var(--bg)';
+      textarea.style.borderColor = 'var(--border)';
+
+      const editBtn = document.getElementById(`${type}-edit-btn`);
+      const cancelBtn = document.getElementById(`${type}-cancel-btn`);
+      if (editBtn) editBtn.style.display = 'inline-block';
+      if (saveBtn) {
+        saveBtn.style.display = 'none';
+        saveBtn.disabled = false;
+      }
+      if (cancelBtn) cancelBtn.style.display = 'none';
+
+      // Reload to get updated mtime
+      loadAgentPrompts();
+    })
+    .catch(e => {
+      if (status) {
+        status.textContent = `Save failed: ${e.message}`;
+        status.style.color = 'var(--danger)';
+      }
+      if (saveBtn) saveBtn.disabled = false;
+    });
 }
 </script>
 
