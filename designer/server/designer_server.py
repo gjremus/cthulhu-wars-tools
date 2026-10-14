@@ -4249,6 +4249,9 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         response["pendingRequests"] = self.get_pending_requests_for_entity(fid, "faction")
         if "claudeQA" not in response:
             response["claudeQA"] = {}
+        # Add spellbook guidance to design for Claude
+        if "design" in response:
+            response["design"]["spellbookGuidance"] = compute_spellbook_guidance(response["design"])
         # Admin inspector: expose build metadata
         if "build" in faction:
             response["requestId"] = faction["build"].get("requestId")
