@@ -1118,6 +1118,174 @@
       });
     }
 
+    async pickSilhouetteImage() {
+      if (this.isReadOnly()) return null;
+
+      return new Promise(async (resolve) => {
+        const layer = document.createElement('div');
+        layer.className = 'library-picker';
+        document.body.appendChild(layer);
+
+        const loading = document.createElement('div');
+        loading.className = 'library-loading';
+        loading.textContent = 'Loading silhouettes…';
+        layer.appendChild(loading);
+
+        // Load silhouettes.json (silhouette images from CW/Necro factions)
+        let silhouettes;
+        try {
+          const resp = await fetch('/designer/library/silhouettes.json');
+          if (!resp.ok) throw new Error('Failed to load silhouettes');
+          silhouettes = await resp.json();
+        } catch (err) {
+          console.error('Silhouette load error:', err);
+          layer.innerHTML = '';
+          const errorDiv = document.createElement('div');
+          errorDiv.className = 'library-error';
+          errorDiv.textContent = 'Failed to load silhouettes: ' + err.message;
+          layer.appendChild(errorDiv);
+          const backBtn = document.createElement('button');
+          backBtn.className = 'library-btn';
+          backBtn.textContent = 'Back to unit';
+          backBtn.onclick = () => {
+            layer.remove();
+            resolve(null);
+          };
+          layer.appendChild(backBtn);
+          return;
+        }
+
+        // Group by type
+        const typeOrder = ['Cultist', 'Monster', 'Terror', 'GOO', 'Elder God'];
+        const sections = {};
+        typeOrder.forEach(t => { sections[t] = []; });
+
+        silhouettes.forEach(item => {
+          if (sections[item.type]) sections[item.type].push(item);
+        });
+
+        Object.keys(sections).forEach(type => {
+          sections[type].sort((a, b) => {
+            if (a.name !== b.name) return a.name.localeCompare(b.name);
+            return (a.faction || '').localeCompare(b.faction || '');
+          });
+        });
+
+        layer.innerHTML = '';
+
+        const topBar = document.createElement('div');
+        topBar.className = 'library-topbar';
+        layer.appendChild(topBar);
+
+        const backBtn = document.createElement('button');
+        backBtn.className = 'library-btn';
+        backBtn.textContent = 'Back to unit';
+        backBtn.onclick = () => {
+          layer.remove();
+          resolve(null);
+        };
+        topBar.appendChild(backBtn);
+
+        const typeJumps = document.createElement('div');
+        typeJumps.className = 'library-type-jumps';
+        topBar.appendChild(typeJumps);
+
+        const typeLabels = {
+          'Cultist': 'Cultists',
+          'Monster': 'Monsters',
+          'Terror': 'Terrors',
+          'GOO': 'GOOs / iGOOs',
+          'Elder God': 'Elder Gods'
+        };
+
+        typeOrder.forEach(type => {
+          if (sections[type].length === 0) return;
+          const btn = document.createElement('button');
+          btn.className = 'library-type-btn';
+          btn.textContent = typeLabels[type];
+          btn.onclick = () => {
+            const typeSection = document.querySelector(`.silhouette-section[data-type="${type}"]`);
+            if (typeSection) typeSection.scrollIntoView({behavior: 'smooth', block: 'start'});
+          };
+          typeJumps.appendChild(btn);
+        });
+
+        const grid = document.createElement('div');
+        grid.className = 'library-grid';
+        grid.style.height = 'auto';
+        grid.style.overflow = 'auto';
+        grid.style.padding = '20px';
+        layer.appendChild(grid);
+
+        // Render all types in scrollable grid
+        typeOrder.forEach(type => {
+          const items = sections[type];
+          if (items.length === 0) return;
+
+          const sectionDiv = document.createElement('div');
+          sectionDiv.className = 'silhouette-section';
+          sectionDiv.dataset.type = type;
+          sectionDiv.style.marginBottom = '30px';
+          grid.appendChild(sectionDiv);
+
+          const heading = document.createElement('h3');
+          heading.textContent = typeLabels[type];
+          heading.style.marginBottom = '12px';
+          heading.style.fontSize = '16px';
+          heading.style.fontWeight = 'bold';
+          sectionDiv.appendChild(heading);
+
+          const itemsGrid = document.createElement('div');
+          itemsGrid.style.display = 'grid';
+          itemsGrid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(100px, 1fr))';
+          itemsGrid.style.gap = '12px';
+          sectionDiv.appendChild(itemsGrid);
+
+          items.forEach(item => {
+            const tile = document.createElement('div');
+            tile.style.cursor = 'pointer';
+            tile.style.border = '1px solid #444';
+            tile.style.padding = '8px';
+            tile.style.borderRadius = '4px';
+            tile.style.textAlign = 'center';
+            tile.style.background = '#1a1a1a';
+            tile.onclick = () => {
+              layer.remove();
+              resolve(item.id);
+            };
+
+            const img = document.createElement('img');
+            img.src = item.url || `/designer/images/${item.id}`;
+            img.style.width = '80px';
+            img.style.height = '80px';
+            img.style.objectFit = 'contain';
+            img.style.display = 'block';
+            img.style.margin = '0 auto';
+            img.style.background = '#333'; // Dark background to see white silhouettes
+            tile.appendChild(img);
+
+            const label = document.createElement('div');
+            label.textContent = item.name;
+            label.style.fontSize = '11px';
+            label.style.marginTop = '4px';
+            label.style.color = '#ccc';
+            label.style.wordBreak = 'break-word';
+            tile.appendChild(label);
+
+            if (item.faction) {
+              const factionLabel = document.createElement('div');
+              factionLabel.textContent = item.faction;
+              factionLabel.style.fontSize = '9px';
+              factionLabel.style.color = '#888';
+              tile.appendChild(factionLabel);
+            }
+
+            itemsGrid.appendChild(tile);
+          });
+        });
+      });
+    }
+
     // Autosave
     // kind: 'faction' | 'unit' | 'map'
     scheduleSave(fid, path, value, kind = 'faction') {
@@ -2862,6 +3030,7 @@
         },
         uploadImage: (kind) => this.uploadImage(kind),
         pickLibraryImage: () => this.pickLibraryImage(),
+        pickSilhouetteImage: () => this.pickSilhouetteImage(),
         imgUrl: (id) => this.imgUrl(id),
         confirm: (msg, yes, no) => this.confirm(msg, yes, no),
         readOnly: false,
@@ -2955,6 +3124,7 @@
         },
         uploadImage: (kind) => this.uploadImage(kind),
         pickLibraryImage: () => this.pickLibraryImage(),
+        pickSilhouetteImage: () => this.pickSilhouetteImage(),
         imgUrl: (id) => this.imgUrl(id),
         confirm: (msg, yes, no) => this.confirm(msg, yes, no),
         readOnly: this.isReadOnly(),
@@ -3862,118 +4032,144 @@
       title.style.marginTop = '20px';
       this.root.appendChild(title);
 
-      // Bug history table
-      if (faction.bugHistory && faction.bugHistory.length > 0) {
-        const historyDiv = document.createElement('div');
-        historyDiv.style.marginTop = '30px';
-        historyDiv.style.marginBottom = '30px';
+      // Bug history table - fetch from Claude Terminal Log filtered by faction name
+      const historyDiv = document.createElement('div');
+      historyDiv.style.marginTop = '30px';
+      historyDiv.style.marginBottom = '30px';
 
-        const historyTitle = document.createElement('h3');
-        historyTitle.textContent = 'Bug History';
-        historyTitle.style.marginBottom = '15px';
-        historyDiv.appendChild(historyTitle);
+      const historyTitle = document.createElement('h3');
+      historyTitle.textContent = 'Bug History (from Claude Terminal Log)';
+      historyTitle.style.marginBottom = '15px';
+      historyDiv.appendChild(historyTitle);
 
-        const table = document.createElement('table');
-        table.style.width = '100%';
-        table.style.borderCollapse = 'collapse';
-        table.style.border = '1px solid #000';
-        table.style.fontSize = '14px';
+      const loadingMsg = document.createElement('p');
+      loadingMsg.textContent = 'Loading bug history...';
+      loadingMsg.style.color = '#888';
+      historyDiv.appendChild(loadingMsg);
+      this.root.appendChild(historyDiv);
 
-        // Table header
-        const thead = document.createElement('thead');
-        const headerRow = document.createElement('tr');
-        headerRow.style.backgroundColor = '#f0f0f0';
-        headerRow.style.border = '1px solid #000';
+      // Fetch terminal log and filter by faction name
+      fetch('/designer/api/terminal-log')
+        .then(r => r.ok ? r.json() : Promise.reject(`HTTP ${r.status}`))
+        .then(data => {
+          const entries = data.entries || [];
+          // Filter for bug type entries matching this faction's name
+          const bugs = entries.filter(e =>
+            e.type === 'bug' &&
+            e.faction === faction.name
+          ).sort((a, b) => b.at - a.at); // Most recent first
 
-        const headers = ['Bug #', 'Submitted', 'Description', 'Response', 'Status'];
-        for (const headerText of headers) {
-          const th = document.createElement('th');
-          th.textContent = headerText;
-          th.style.padding = '8px';
-          th.style.textAlign = 'left';
-          th.style.border = '1px solid #000';
-          th.style.fontWeight = 'bold';
-          headerRow.appendChild(th);
-        }
-        thead.appendChild(headerRow);
-        table.appendChild(thead);
+          loadingMsg.remove();
 
-        // Table body - most recent first
-        const tbody = document.createElement('tbody');
-        const sortedBugs = [...faction.bugHistory].sort((a, b) => b.submittedAt - a.submittedAt);
-
-        for (const bug of sortedBugs) {
-          const row = document.createElement('tr');
-          row.style.border = '1px solid #000';
-
-          // Bug Number
-          const bugCell = document.createElement('td');
-          bugCell.textContent = bug.bugNumber;
-          bugCell.style.padding = '8px';
-          bugCell.style.border = '1px solid #000';
-          row.appendChild(bugCell);
-
-          // Submitted date
-          const dateCell = document.createElement('td');
-          const date = new Date(bug.submittedAt * 1000);
-          dateCell.textContent = date.toLocaleString();
-          dateCell.style.padding = '8px';
-          dateCell.style.border = '1px solid #000';
-          dateCell.style.fontSize = '12px';
-          row.appendChild(dateCell);
-
-          // Description
-          const descCell = document.createElement('td');
-          descCell.textContent = bug.description;
-          descCell.style.padding = '8px';
-          descCell.style.border = '1px solid #000';
-          descCell.style.maxWidth = '300px';
-          descCell.style.overflow = 'hidden';
-          descCell.style.textOverflow = 'ellipsis';
-          descCell.title = bug.description;
-          row.appendChild(descCell);
-
-          // Response
-          const respCell = document.createElement('td');
-          respCell.textContent = bug.response || '';
-          respCell.style.padding = '8px';
-          respCell.style.border = '1px solid #000';
-          respCell.style.maxWidth = '300px';
-          respCell.style.overflow = 'hidden';
-          respCell.style.textOverflow = 'ellipsis';
-          if (bug.response) {
-            respCell.title = bug.response;
+          if (bugs.length === 0) {
+            const noBugs = document.createElement('p');
+            noBugs.textContent = 'No bugs reported yet.';
+            noBugs.style.color = '#888';
+            historyDiv.appendChild(noBugs);
+            return;
           }
-          row.appendChild(respCell);
 
-          // Status - show full Claude status, not just Pending/Addressed
-          const statusCell = document.createElement('td');
-          if (bug.response) {
-            // Show the full response text as status
-            statusCell.textContent = bug.response;
-            statusCell.style.color = '#008000';
-          } else {
-            statusCell.textContent = 'Submitted, waiting to be picked up';
-            statusCell.style.color = '#ff8800';
-          }
-          statusCell.style.padding = '8px';
-          statusCell.style.border = '1px solid #000';
-          statusCell.style.maxWidth = '400px';
-          statusCell.style.overflow = 'hidden';
-          statusCell.style.textOverflow = 'ellipsis';
-          statusCell.style.whiteSpace = 'normal';
-          statusCell.style.fontSize = '12px';
-          if (bug.response) {
-            statusCell.title = bug.response;
-          }
-          row.appendChild(statusCell);
+          const table = document.createElement('table');
+          table.style.width = '100%';
+          table.style.borderCollapse = 'collapse';
+          table.style.border = '1px solid #000';
+          table.style.fontSize = '14px';
 
-          tbody.appendChild(row);
-        }
-        table.appendChild(tbody);
-        historyDiv.appendChild(table);
-        this.root.appendChild(historyDiv);
-      }
+          // Table header
+          const thead = document.createElement('thead');
+          const headerRow = document.createElement('tr');
+          headerRow.style.backgroundColor = '#f0f0f0';
+          headerRow.style.border = '1px solid #000';
+
+          const headers = ['Entry #', 'Submitted', 'User', 'Prompt', 'Claude Response', 'Status'];
+          for (const headerText of headers) {
+            const th = document.createElement('th');
+            th.textContent = headerText;
+            th.style.padding = '8px';
+            th.style.textAlign = 'left';
+            th.style.border = '1px solid #000';
+            th.style.fontWeight = 'bold';
+            headerRow.appendChild(th);
+          }
+          thead.appendChild(headerRow);
+          table.appendChild(thead);
+
+          // Table body
+          const tbody = document.createElement('tbody');
+          for (const bug of bugs) {
+            const row = document.createElement('tr');
+            row.style.border = '1px solid #000';
+
+            // Entry Number
+            const numCell = document.createElement('td');
+            numCell.textContent = bug.n || bug.id;
+            numCell.style.padding = '8px';
+            numCell.style.border = '1px solid #000';
+            numCell.style.textAlign = 'right';
+            row.appendChild(numCell);
+
+            // Submitted date
+            const dateCell = document.createElement('td');
+            const date = new Date(bug.at * 1000);
+            dateCell.textContent = date.toLocaleString();
+            dateCell.style.padding = '8px';
+            dateCell.style.border = '1px solid #000';
+            dateCell.style.fontSize = '12px';
+            dateCell.style.whiteSpace = 'nowrap';
+            row.appendChild(dateCell);
+
+            // User
+            const userCell = document.createElement('td');
+            userCell.textContent = bug.user || '';
+            userCell.style.padding = '8px';
+            userCell.style.border = '1px solid #000';
+            row.appendChild(userCell);
+
+            // Prompt
+            const promptCell = document.createElement('td');
+            promptCell.textContent = bug.prompt || '';
+            promptCell.style.padding = '8px';
+            promptCell.style.border = '1px solid #000';
+            promptCell.style.maxWidth = '300px';
+            promptCell.style.overflow = 'hidden';
+            promptCell.style.textOverflow = 'ellipsis';
+            promptCell.title = bug.prompt || '';
+            row.appendChild(promptCell);
+
+            // Summary (Claude's response)
+            const summaryCell = document.createElement('td');
+            summaryCell.textContent = bug.summary || '';
+            summaryCell.style.padding = '8px';
+            summaryCell.style.border = '1px solid #000';
+            summaryCell.style.maxWidth = '300px';
+            summaryCell.style.overflow = 'hidden';
+            summaryCell.style.textOverflow = 'ellipsis';
+            summaryCell.title = bug.summary || '';
+            row.appendChild(summaryCell);
+
+            // Status
+            const statusCell = document.createElement('td');
+            if (bug.summary) {
+              statusCell.textContent = 'Completed';
+              statusCell.style.color = '#008000';
+            } else {
+              statusCell.textContent = 'Pending';
+              statusCell.style.color = '#ff8800';
+            }
+            statusCell.style.padding = '8px';
+            statusCell.style.border = '1px solid #000';
+            statusCell.style.whiteSpace = 'nowrap';
+            row.appendChild(statusCell);
+
+            tbody.appendChild(row);
+          }
+          table.appendChild(tbody);
+          historyDiv.appendChild(table);
+        })
+        .catch(err => {
+          loadingMsg.textContent = `Failed to load bug history: ${err}`;
+          loadingMsg.style.color = '#c00';
+        });
 
       const label = document.createElement('label');
       label.textContent = 'Describe the bug:';
@@ -4253,6 +4449,7 @@
         },
         uploadImage: (kind) => this.uploadImage(kind),
         pickLibraryImage: () => this.pickLibraryImage(),
+        pickSilhouetteImage: () => this.pickSilhouetteImage(),
         imgUrl: (id) => this.imgUrl(id),
         confirm: (msg, yes, no) => this.confirm(msg, yes, no),
         readOnly: this.isReadOnly(),
