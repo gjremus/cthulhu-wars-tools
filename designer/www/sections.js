@@ -158,6 +158,32 @@
         opacity: 0;
         pointer-events: none;
       }
+      .sx-legend-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.6);
+        z-index: 1100;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .sx-legend-overlay-panel {
+        position: relative;
+        max-width: 90vw;
+        max-height: 85vh;
+        overflow: auto;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+      }
+      .sx-legend-overlay-panel .sx-update-legend {
+        margin-bottom: 0;
+        padding-right: 36px;
+      }
+      .sx-legend-overlay-close {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        padding: 4px 10px;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -821,7 +847,10 @@ After generating the silhouette, automatically attach it to this unit by setting
             try {
               const resp = await fetch(`/designer/api/factions/${ctx.factionId}/request`, {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${localStorage.getItem('cw_designer_token')}`
+                },
                 body: JSON.stringify({type: 'bug', text})
               });
               if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -3388,7 +3417,7 @@ After generating the silhouette, automatically attach it to this unit by setting
       {color: '#ff8800', label: 'Orange outline: Can be updated either way (simple or rebuild)'}
     ];
 
-    const legend = h('div', {style: 'margin-bottom: 20px; padding: 12px; background-color: #1a1a1a; border: 1px solid #444; border-radius: 4px;'});
+    const legend = h('div', {className: 'sx-update-legend', style: 'margin-bottom: 20px; padding: 12px; background-color: #1a1a1a; border: 1px solid #444; border-radius: 4px;'});
     legend.appendChild(h('strong', {style: 'display: block; margin-bottom: 8px;'}, 'Field Update Legend:'));
 
     items.forEach(item => {
@@ -3517,9 +3546,134 @@ After generating the silhouette, automatically attach it to this unit by setting
           container.appendChild(answersDiv);
         }
       }
+
+      // Add floating Top/Bottom buttons if section is taller than 2 screens
+      addSectionNavButtons(container, ctx);
     } else {
       container.appendChild(h('p', {}, 'Section not implemented: ' + key));
     }
+  }
+
+  function addSectionNavButtons(container, ctx) {
+    // Wait for content to render and measure height
+    setTimeout(() => {
+      const sectionHeight = container.scrollHeight;
+      const viewportHeight = window.innerHeight;
+
+      // Only add buttons if section is > 2 screens tall
+      if (sectionHeight <= viewportHeight * 2) return;
+
+      // Remove existing nav buttons if any
+      const existing = document.querySelector('.sx-nav-buttons');
+      if (existing) existing.remove();
+
+      // Create button container
+      const navButtons = h('div', {className: 'sx-nav-buttons'});
+
+      // Top button
+      const topBtn = h('button', {className: 'sx-nav-btn sx-hidden', onclick: () => {
+        container.scrollIntoView({behavior: 'smooth', block: 'start'});
+      }}, 'Top');
+
+      // Bottom button
+      const bottomBtn = h('button', {className: 'sx-nav-btn sx-hidden', onclick: () => {
+        container.scrollIntoView({behavior: 'smooth', block: 'end'});
+      }}, 'Bottom');
+
+      navButtons.appendChild(topBtn);
+      navButtons.appendChild(bottomBtn);
+
+      // Legend button: only when this section actually has the colored-border legend
+      // (applyUpdateHighlighting adds a .sx-update-legend element at the top of the
+      // section when any field differs from the live build). Lets the owner see the
+      // legend without scrolling back to the top of a long section.
+      const legendSource = container.querySelector('.sx-update-legend');
+      if (legendSource) {
+        const legendBtn = h('button', {className: 'sx-nav-btn', onclick: () => {
+          const overlay = h('div', {className: 'sx-legend-overlay', onclick: e => {
+            if (e.target === overlay) overlay.remove();
+          }});
+          const panel = h('div', {className: 'sx-legend-overlay-panel'});
+          const closeBtn = h('button', {className: 'sx-nav-btn sx-legend-overlay-close', onclick: () => overlay.remove()}, '✕');
+          panel.appendChild(closeBtn);
+          panel.appendChild(legendSource.cloneNode(true));
+          overlay.appendChild(panel);
+          document.body.appendChild(overlay);
+        }}, 'Legend');
+        navButtons.appendChild(legendBtn);
+      }
+
+      document.body.appendChild(navButtons);
+
+      // Position buttons based on scroll
+      const updateButtons = () => {
+        const rect = container.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+
+        // Position buttons vertically centered in visible portion of section
+        const visibleTop = Math.max(0, -rect.top);
+        const visibleBottom = Math.min(rect.height, viewportHeight - rect.top);
+        const visibleMiddle = (visibleTop + visibleBottom) / 2;
+
+        navButtons.style.top = `${rect.top + visibleMiddle - 50}px`;
+
+        // Show Top button if we're more than 1 screen from the top
+        const distanceFromTop = -rect.top;
+        if (distanceFromTop > viewportHeight) {
+          topBtn.classList.remove('sx-hidden');
+        } else {
+          topBtn.classList.add('sx-hidden');
+        }
+
+        // Show Bottom button if we're more than 1 screen from the bottom
+        const distanceFromBottom = rect.bottom - viewportHeight;
+        if (distanceFromBottom > viewportHeight) {
+          bottomBtn.classList.remove('sx-hidden');
+        } else {
+          bottomBtn.classList.add('sx-hidden');
+        }
+
+        // Hide buttons if section is not visible
+        if (rect.bottom < 0 || rect.top > viewportHeight) {
+          navButtons.style.opacity = '0';
+        } else {
+          navButtons.style.opacity = '1';
+        }
+      };
+
+      // Update on scroll
+      const scrollHandler = () => updateButtons();
+      window.addEventListener('scroll', scrollHandler, {passive: true});
+
+      // Update on resize
+      const resizeHandler = () => {
+        const newSectionHeight = container.scrollHeight;
+        const newViewportHeight = window.innerHeight;
+        if (newSectionHeight <= newViewportHeight * 2) {
+          // Section is now too short, remove buttons
+          navButtons.remove();
+          window.removeEventListener('scroll', scrollHandler);
+          window.removeEventListener('resize', resizeHandler);
+        } else {
+          updateButtons();
+        }
+      };
+      window.addEventListener('resize', resizeHandler);
+
+      // Clean up when section is removed
+      const observer = new MutationObserver((mutations) => {
+        if (!document.body.contains(container)) {
+          navButtons.remove();
+          window.removeEventListener('scroll', scrollHandler);
+          window.removeEventListener('resize', resizeHandler);
+          observer.disconnect();
+        }
+      });
+      observer.observe(document.body, {childList: true, subtree: true});
+
+      // Initial update
+      updateButtons();
+    }, 100);
   }
 
   // renderInteractions - integrated from temporary file
