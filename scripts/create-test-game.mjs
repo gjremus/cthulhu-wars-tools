@@ -56,7 +56,11 @@ async function createAndTestGame() {
 
   // Create game with 4 factions: GC, FACTION, CC, BG
   const factions = ['GC', FACTION, 'CC', 'BG'];
-  const version = 'Homebrew v 2.279';
+  // Known Gap (Faction Build Manual 0.4): this used to be hard-coded to an old
+  // version and silently created games against a stale build. Must match the
+  // CURRENT live homebrew version (see cache-bust.txt / deploy-hb-to-vm.sh output)
+  // or the server may refuse the game / serve the wrong main.js.
+  const version = 'Homebrew v 2.297';
   const gameName = `Test ${FACTION} ${Date.now()}`;
 
   // Format: "GC:Normal/FM:Normal/CC:Normal/BG:Normal "
@@ -103,10 +107,15 @@ async function createAndTestGame() {
     console.log(`\nTesting ${FACTION} at: ${testUrl}`);
 
     // Now test the game with Puppeteer
+    // NOTE (2026-10-14): the MDM-managed /Applications/Google Chrome.app on this
+    // machine has remote debugging disallowed by system admin policy — Puppeteer's
+    // CDP connection gets killed a few seconds after launch, closing the page before
+    // the game ever finishes loading (silent false "pass": no errors were captured
+    // because nothing was listening by the time they'd fire). Puppeteer's own bundled
+    // Chromium (no executablePath override) is NOT subject to that policy and stays
+    // open normally. Use that instead.
     const browser = await puppeteer.launch({
-      headless: false,  // VISIBLE
-      executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      headless: true,
       defaultViewport: { width: 1280, height: 800 }
     });
 
