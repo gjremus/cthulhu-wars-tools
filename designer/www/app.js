@@ -1483,7 +1483,12 @@
           headerRow.style.backgroundColor = '#f0f0f0';
           headerRow.style.border = '1px solid #000';
 
-          const headers = ['Entry #', 'Type', 'Submitted', 'User', 'Prompt', 'Claude Response', 'Cost', 'Status'];
+          const allHeaders = ['Entry #', 'Type', 'Submitted', 'User', 'Prompt', 'Claude Response', 'Cost', 'Status'];
+          const hiddenInFactionDesigner = ['Type', 'User', 'Cost'];
+          const headers = this.state.adminToken
+            ? allHeaders
+            : allHeaders.filter(h => !hiddenInFactionDesigner.includes(h));
+
           for (const headerText of headers) {
             const th = document.createElement('th');
             th.textContent = headerText;
@@ -1498,6 +1503,7 @@
 
           // Table body
           const tbody = document.createElement('tbody');
+          const isAdminView = this.state.adminToken;
           for (const entry of logs) {
             const row = document.createElement('tr');
             row.style.border = '1px solid #000';
@@ -1510,18 +1516,20 @@
             numCell.style.textAlign = 'right';
             row.appendChild(numCell);
 
-            // Type
-            const typeCell = document.createElement('td');
-            const typeShort = (entry.type || '')
-              .replace('design ', '')
-              .replace('extraction', 'extract')
-              .replace('bug fix', 'bug');
-            typeCell.textContent = typeShort;
-            typeCell.style.padding = '8px';
-            typeCell.style.border = '1px solid #000';
-            typeCell.style.whiteSpace = 'nowrap';
-            typeCell.style.fontSize = '12px';
-            row.appendChild(typeCell);
+            // Type (hidden in faction designer)
+            if (isAdminView) {
+              const typeCell = document.createElement('td');
+              const typeShort = (entry.type || '')
+                .replace('design ', '')
+                .replace('extraction', 'extract')
+                .replace('bug fix', 'bug');
+              typeCell.textContent = typeShort;
+              typeCell.style.padding = '8px';
+              typeCell.style.border = '1px solid #000';
+              typeCell.style.whiteSpace = 'nowrap';
+              typeCell.style.fontSize = '12px';
+              row.appendChild(typeCell);
+            }
 
             // Submitted date
             const dateCell = document.createElement('td');
@@ -1533,13 +1541,15 @@
             dateCell.style.whiteSpace = 'nowrap';
             row.appendChild(dateCell);
 
-            // User
-            const userCell = document.createElement('td');
-            userCell.textContent = entry.user || '';
-            userCell.style.padding = '8px';
-            userCell.style.border = '1px solid #000';
-            userCell.style.fontSize = '12px';
-            row.appendChild(userCell);
+            // User (hidden in faction designer)
+            if (isAdminView) {
+              const userCell = document.createElement('td');
+              userCell.textContent = entry.user || '';
+              userCell.style.padding = '8px';
+              userCell.style.border = '1px solid #000';
+              userCell.style.fontSize = '12px';
+              row.appendChild(userCell);
+            }
 
             // Prompt
             const promptCell = document.createElement('td');
@@ -1565,22 +1575,24 @@
             summaryCell.style.fontSize = '12px';
             row.appendChild(summaryCell);
 
-            // Cost
-            const costCell = document.createElement('td');
-            if (entry.cost !== undefined && entry.cost !== null) {
-              costCell.textContent = '$' + entry.cost.toFixed(2);
-              if (entry.costNote) {
-                costCell.title = entry.costNote;
+            // Cost (hidden in faction designer)
+            if (isAdminView) {
+              const costCell = document.createElement('td');
+              if (entry.cost !== undefined && entry.cost !== null) {
+                costCell.textContent = '$' + entry.cost.toFixed(2);
+                if (entry.costNote) {
+                  costCell.title = entry.costNote;
+                }
+              } else {
+                costCell.textContent = '—';
               }
-            } else {
-              costCell.textContent = '—';
+              costCell.style.padding = '8px';
+              costCell.style.border = '1px solid #000';
+              costCell.style.textAlign = 'right';
+              costCell.style.whiteSpace = 'nowrap';
+              costCell.style.fontSize = '12px';
+              row.appendChild(costCell);
             }
-            costCell.style.padding = '8px';
-            costCell.style.border = '1px solid #000';
-            costCell.style.textAlign = 'right';
-            costCell.style.whiteSpace = 'nowrap';
-            costCell.style.fontSize = '12px';
-            row.appendChild(costCell);
 
             // Status
             const statusCell = document.createElement('td');
