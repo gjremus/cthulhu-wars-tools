@@ -3922,6 +3922,30 @@
       };
       this.root.appendChild(backBtn);
 
+      // Check if there are rebuild-eligible changes
+      const hasRebuildNeeded = this.hasRebuildEligibleChanges(faction, design, builtDesign);
+      if (hasRebuildNeeded) {
+        const rebuildBtn = document.createElement('button');
+        rebuildBtn.textContent = 'Rebuild';
+        rebuildBtn.className = 'primary';
+        rebuildBtn.style.marginLeft = '10px';
+        rebuildBtn.onclick = async () => {
+          try {
+            await this.createRequest(
+              faction.id,
+              'build',
+              `Rebuild faction ${faction.name} with updated design`,
+              {}
+            );
+            alert('Build request submitted. You will be notified when it completes.');
+            window.location.hash = `#/faction/${faction.id}`;
+          } catch (err) {
+            alert('Build request failed: ' + err.message);
+          }
+        };
+        this.root.appendChild(rebuildBtn);
+      }
+
       const title = document.createElement('h2');
       title.textContent = 'Simple Update';
       title.style.marginTop = '20px';
@@ -3957,6 +3981,24 @@
       this.renderSimpleUpdateImageSwaps(faction);
     }
 
+    // Check if there are any rebuild-eligible changes (yellow or orange outlines)
+    hasRebuildEligibleChanges(faction, design, builtDesign) {
+      const builtTexts = Rules.fixedText(builtDesign);
+      const designTexts = Rules.fixedText(design);
+
+      for (const dTxt of designTexts) {
+        const bTxt = builtTexts.find(b => b.section === dTxt.section && b.rowId === dTxt.rowId && b.field === dTxt.field);
+        if (!bTxt || bTxt.value !== dTxt.value) {
+          const updateType = App.getUpdateType(dTxt.section, dTxt.field);
+          // Yellow (rebuild) or orange (either) means rebuild is possible
+          if (updateType === 'rebuild' || updateType === 'either') {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
     // Readable label for a fixedNumbers() "field" value, shown in its own "Type of value" column.
     // Side/power variants (costB, cost2, costB2, effectB, ...) share their base field's label since
     // the side/power is already called out in the Element column (e.g. "Ritual Name (side B)").
@@ -3976,6 +4018,74 @@
       return FIELD_LABELS[field] || field;
     }
 
+    // Determine if a text field is a simple update (green), rebuild-only (yellow),
+    // or either (orange). Spellbooks and SBRs can be either; other text is simple update only.
+    static getUpdateType(section, field) {
+      // Spellbook and SBR text can be either simple update or rebuild
+      if ((section === 'spellbooks' || section === 'sbr') && (field === 'name' || field === 'text')) {
+        return 'either'; // orange
+      }
+      // All other text fields are simple update only
+      return 'simple';  // green
+    }
+
+    // Get the outline color based on update type
+    static getOutlineColor(updateType) {
+      const COLORS = {
+        'number': '#00aa00',    // green - numbers are always simple update
+        'simple': '#00aa00',    // green - simple text
+        'rebuild': '#ccaa00',   // yellow - rebuild only
+        'either': '#ff8800'     // orange - either simple or rebuild
+      };
+      return COLORS[updateType] || '#00aa00';
+    }
+
+    // Show legend for field outlines
+    showUpdateLegend(parent) {
+      const legend = document.createElement('div');
+      legend.style.marginBottom = '20px';
+      legend.style.padding = '12px';
+      legend.style.backgroundColor = '#1a1a1a';
+      legend.style.border = '1px solid #444';
+      legend.style.borderRadius = '4px';
+
+      const legendTitle = document.createElement('strong');
+      legendTitle.textContent = 'Field Update Legend:';
+      legendTitle.style.display = 'block';
+      legendTitle.style.marginBottom = '8px';
+      legend.appendChild(legendTitle);
+
+      const items = [
+        { color: '#00aa00', label: 'Green outline: Can be updated immediately through Simple Update' },
+        { color: '#ccaa00', label: 'Yellow outline: Must be updated through a rebuild' },
+        { color: '#ff8800', label: 'Orange outline: Can be updated either way (simple or rebuild)' }
+      ];
+
+      items.forEach(item => {
+        const itemDiv = document.createElement('div');
+        itemDiv.style.marginBottom = '6px';
+
+        const colorBox = document.createElement('span');
+        colorBox.style.display = 'inline-block';
+        colorBox.style.width = '16px';
+        colorBox.style.height = '16px';
+        colorBox.style.backgroundColor = 'transparent';
+        colorBox.style.border = `2px solid ${item.color}`;
+        colorBox.style.marginRight = '8px';
+        colorBox.style.verticalAlign = 'middle';
+
+        const label = document.createElement('span');
+        label.textContent = item.label;
+        label.style.verticalAlign = 'middle';
+
+        itemDiv.appendChild(colorBox);
+        itemDiv.appendChild(label);
+        legend.appendChild(itemDiv);
+      });
+
+      parent.appendChild(legend);
+    }
+
     renderSimpleUpdateNumbers(faction, design, builtDesign) {
       const builtNums = Rules.fixedNumbers(builtDesign);
       const designNums = Rules.fixedNumbers(design);
@@ -3993,7 +4103,8 @@
             rowId: dNum.rowId,
             field: dNum.field,
             buildValue: bNum ? bNum.value : null,
-            designValue: dNum.value
+            designValue: dNum.value,
+            type: 'number'
           });
         }
       }
@@ -4010,6 +4121,9 @@
       numsTitle.textContent = 'Fixed Numbers';
       numsTitle.style.marginTop = '20px';
       this.root.appendChild(numsTitle);
+
+      // Show legend if there are differences
+      this.showUpdateLegend(this.root);
 
       const table = document.createElement('table');
       const thead = document.createElement('thead');
@@ -4045,8 +4159,9 @@
 
         const designCell = document.createElement('td');
         designCell.textContent = diff.designValue !== null ? diff.designValue : '-';
-        // Every shown row is, by construction, a mismatch between build and design - highlight it.
-        designCell.style.backgroundColor = '#fff3cd';
+        // Numbers are always simple updates - apply green outline, normal background
+        designCell.style.backgroundColor = '#1a1a1a';
+        designCell.style.border = '3px solid #00aa00';
         row.appendChild(designCell);
 
         const actionCell = document.createElement('td');
@@ -4095,6 +4210,7 @@
       for (const dTxt of designTexts) {
         const bTxt = builtTexts.find(b => b.section === dTxt.section && b.rowId === dTxt.rowId && b.field === dTxt.field);
         if (!bTxt || bTxt.value !== dTxt.value) {
+          const updateType = App.getUpdateType(dTxt.section, dTxt.field);
           diffs.push({
             section: dTxt.section,
             sectionTitle: dTxt.sectionTitle,
@@ -4102,7 +4218,8 @@
             rowId: dTxt.rowId,
             field: dTxt.field,
             buildValue: bTxt ? bTxt.value : null,
-            designValue: dTxt.value
+            designValue: dTxt.value,
+            updateType: updateType
           });
         }
       }
@@ -4119,6 +4236,9 @@
       textTitle.textContent = 'Fixed Text';
       textTitle.style.marginTop = '20px';
       this.root.appendChild(textTitle);
+
+      // Show legend if there are differences
+      this.showUpdateLegend(this.root);
 
       const table = document.createElement('table');
       const thead = document.createElement('thead');
@@ -4150,8 +4270,10 @@
 
         const designCell = document.createElement('td');
         designCell.textContent = diff.designValue !== null ? diff.designValue : '-';
-        // Every shown row is, by construction, a mismatch between build and design - highlight it.
-        designCell.style.backgroundColor = '#fff3cd';
+        // Apply outline based on update type
+        designCell.style.backgroundColor = '#1a1a1a';
+        const outlineColor = App.getOutlineColor(diff.updateType);
+        designCell.style.border = `3px solid ${outlineColor}`;
         row.appendChild(designCell);
 
         const actionCell = document.createElement('td');
