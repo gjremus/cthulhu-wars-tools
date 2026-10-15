@@ -641,6 +641,18 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                         "buildStatus": faction.get("build", {}).get("status", "none"),
                         "updated": faction["updated"]
                     })
+                elif username in faction.get("editors", []):
+                    # Shared with this user with edit access (set by the admin)
+                    factions.append({
+                        "id": faction["id"],
+                        "name": faction["name"],
+                        "acronym": faction["acronym"],
+                        "current": faction["current"],
+                        "buildStatus": faction.get("build", {}).get("status", "none"),
+                        "updated": faction["updated"],
+                        "owner": faction["owner"],
+                        "ownerName": self.display_name(faction["owner"])
+                    })
                 elif username in faction.get("viewers", []):
                     # Shared with this user as read only (set by the admin)
                     factions.append({
@@ -2255,8 +2267,13 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         if is_base:
             read_only = username != "cavysupreme"
         else:
-            read_only = faction["owner"] != username
-            if read_only and username not in faction.get("viewers", []):
+            is_owner = faction["owner"] == username
+            is_editor = username in faction.get("editors", [])
+            is_viewer = username in faction.get("viewers", [])
+
+            read_only = not (is_owner or is_editor)
+
+            if not (is_owner or is_editor or is_viewer):
                 self.send_error_json("Forbidden", 403)
                 return
 
@@ -2307,7 +2324,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         if not faction:
             self.send_error_json("Faction not found", 404)
             return
-        if faction["owner"] != username and username not in faction.get("viewers", []):
+        if faction["owner"] != username and username not in faction.get("editors", []) and username not in faction.get("viewers", []):
             self.send_error_json("Forbidden", 403)
             return
         self.send_json({"status": self.extract_queue_position(fid)})
@@ -2396,7 +2413,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 return
 
             # Check if owner or if base faction (base cannot be copied)
-            if faction["owner"] != username:
+            if faction["owner"] != username and username not in faction.get("editors", []):
                 self.send_error_json("Forbidden", 403)
                 return
 
@@ -2516,7 +2533,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 self.send_error_json("Faction not found", 404)
                 return
 
-            if faction["owner"] != username:
+            if faction["owner"] != username and username not in faction.get("editors", []):
                 self.send_error_json("Forbidden", 403)
                 return
 
@@ -2578,7 +2595,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 if username != "cavysupreme":
                     self.send_error_json("Base factions are read-only", 403)
                     return
-            elif faction["owner"] != username:
+            elif faction["owner"] != username and username not in faction.get("editors", []):
                 self.send_error_json("Forbidden", 403)
                 return
 
@@ -2915,7 +2932,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 if username != "cavysupreme":
                     self.send_error_json("Base factions are read-only", 403)
                     return
-            elif faction["owner"] != username:
+            elif faction["owner"] != username and username not in faction.get("editors", []):
                 self.send_error_json("Forbidden", 403)
                 return
 
@@ -2954,7 +2971,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 if username != "cavysupreme":
                     self.send_error_json("Base factions are read-only", 403)
                     return
-            elif faction["owner"] != username:
+            elif faction["owner"] != username and username not in faction.get("editors", []):
                 self.send_error_json("Forbidden", 403)
                 return
 
@@ -3014,7 +3031,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 if username != "cavysupreme":
                     self.send_error_json("Base factions are read-only", 403)
                     return
-            elif faction["owner"] != username:
+            elif faction["owner"] != username and username not in faction.get("editors", []):
                 self.send_error_json("Forbidden", 403)
                 return
 
@@ -3685,6 +3702,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                     self.handle_admin_live_game_versions(fid)
                 elif action == 'viewers':
                     self.handle_admin_viewers(fid)
+                elif action == 'editors':
+                    self.handle_admin_editors(fid)
                 elif action == 'qa':
                     self.handle_admin_post_qa(fid, 'faction')
                 elif action == 'submit-note':
@@ -4277,6 +4296,12 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
 
         response = dict(faction)
         response["pendingRequests"] = self.get_pending_requests_for_entity(fid, "faction")
+        # Same builtDesign/liveValues the designer page itself gets (handle_get_faction) and the
+        # admin read-only viewer gets (handle_admin_view_faction) - without this, Claude's own
+        # admin CLI looked null here even when the real page had a built version, which caused a
+        # false "builtDesign is null" diagnosis for a bug that was actually just a deploy lag.
+        response["builtDesign"] = self.built_design_with_overrides(fid, faction)
+        response["liveValues"] = self.load_live_values(fid)
         # Add spellbook guidance to design for Claude
         if "design" in response:
             response["design"]["spellbookGuidance"] = compute_spellbook_guidance(response["design"])
@@ -4923,6 +4948,30 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             faction["viewers"] = [v for v in dict.fromkeys(viewers) if v != faction["owner"]]
             atomic_write(self.server.data_dir / "factions" / fid / "faction.json", faction)
         self.send_json({"id": fid, "viewers": faction["viewers"]})
+
+    def handle_admin_editors(self, fid: str):
+        """POST admin/factions/<fid>/editors {editors:[username...]} -> edit access for those users"""
+        body = self.read_json_body()
+        if body is None:
+            return
+        editors = body.get('editors', [])
+        if not isinstance(editors, list):
+            self.send_error_json("editors must be an array")
+            return
+        users = (load_json(self.server.data_dir / "users.json") or {}).get("users", {})
+        editors = [str(e).strip().lower() for e in editors]
+        missing = [e for e in editors if e not in users]
+        if missing:
+            self.send_error_json(f"No such user: {', '.join(missing)}")
+            return
+        with WRITE_LOCK:
+            faction = self.load_faction(fid)
+            if not faction:
+                self.send_error_json("Faction not found", 404)
+                return
+            faction["editors"] = [e for e in dict.fromkeys(editors) if e != faction["owner"]]
+            atomic_write(self.server.data_dir / "factions" / fid / "faction.json", faction)
+        self.send_json({"id": fid, "editors": faction["editors"]})
 
     def handle_admin_import_faction(self):
         """POST admin/import-faction {owner, name, acronym, design, built:bool, viewers:[], base:bool}

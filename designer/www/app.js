@@ -802,6 +802,11 @@
     }
 
     imgUrl(id) {
+      // If id is already a full URL or path, return as-is
+      if (!id) return '';
+      if (id.startsWith('/') || id.startsWith('http://') || id.startsWith('https://')) {
+        return id;
+      }
       return `/designer/img/${id}`;
     }
 
@@ -1132,27 +1137,28 @@
         layer.appendChild(loading);
 
         // Load silhouettes.json (silhouette images from CW/Necro factions)
-        let silhouettes;
-        try {
-          const resp = await fetch('/designer/library/silhouettes.json');
-          if (!resp.ok) throw new Error('Failed to load silhouettes');
-          silhouettes = await resp.json();
-        } catch (err) {
-          console.error('Silhouette load error:', err);
-          layer.innerHTML = '';
-          const errorDiv = document.createElement('div');
-          errorDiv.className = 'library-error';
-          errorDiv.textContent = 'Failed to load silhouettes: ' + err.message;
-          layer.appendChild(errorDiv);
-          const backBtn = document.createElement('button');
-          backBtn.className = 'library-btn';
-          backBtn.textContent = 'Back to unit';
-          backBtn.onclick = () => {
-            layer.remove();
-            resolve(null);
-          };
-          layer.appendChild(backBtn);
-          return;
+        if (!this.silhouettesCache) {
+          try {
+            const resp = await fetch('/designer/library/silhouettes.json');
+            if (!resp.ok) throw new Error('Failed to load silhouettes');
+            this.silhouettesCache = await resp.json();
+          } catch (err) {
+            console.error('Silhouette load error:', err);
+            layer.innerHTML = '';
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'library-error';
+            errorDiv.textContent = 'Failed to load silhouettes: ' + err.message;
+            layer.appendChild(errorDiv);
+            const backBtn = document.createElement('button');
+            backBtn.className = 'library-btn';
+            backBtn.textContent = 'Back to unit';
+            backBtn.onclick = () => {
+              layer.remove();
+              resolve(null);
+            };
+            layer.appendChild(backBtn);
+            return;
+          }
         }
 
         // Group by type
@@ -1160,7 +1166,7 @@
         const sections = {};
         typeOrder.forEach(t => { sections[t] = []; });
 
-        silhouettes.forEach(item => {
+        this.silhouettesCache.forEach(item => {
           if (sections[item.type]) sections[item.type].push(item);
         });
 
@@ -1170,6 +1176,20 @@
             return (a.faction || '').localeCompare(b.faction || '');
           });
         });
+
+        let currentPage = 0;
+        let pages = [];
+        let tileW = 88;
+        let tileH = 115;
+        let cols = 3;
+        let rows = 2;
+        let resizeTimer;
+
+        const close = () => {
+          window.removeEventListener('resize', onResize);
+          window.removeEventListener('orientationchange', onResize);
+          layer.remove();
+        };
 
         layer.innerHTML = '';
 
@@ -1181,7 +1201,7 @@
         backBtn.className = 'library-btn';
         backBtn.textContent = 'Back to unit';
         backBtn.onclick = () => {
-          layer.remove();
+          close();
           resolve(null);
         };
         topBar.appendChild(backBtn);
@@ -1198,91 +1218,177 @@
           'Elder God': 'Elder Gods'
         };
 
+        const nav = document.createElement('div');
+        nav.className = 'library-nav';
+        topBar.appendChild(nav);
+
+        const prevBtn = document.createElement('button');
+        prevBtn.className = 'library-btn';
+        prevBtn.textContent = 'Prev';
+        nav.appendChild(prevBtn);
+
+        const pageLabel = document.createElement('span');
+        pageLabel.className = 'library-page-label';
+        nav.appendChild(pageLabel);
+
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'library-btn';
+        nextBtn.textContent = 'Next';
+        nav.appendChild(nextBtn);
+
+        const grid = document.createElement('div');
+        grid.className = 'library-grid';
+        layer.appendChild(grid);
+
+        // Build pages: paginate within each type
+        const buildPages = (pageSize) => {
+          const newPages = [];
+          typeOrder.forEach(type => {
+            const items = sections[type];
+            if (items.length === 0) return;
+            for (let i = 0; i < items.length; i += pageSize) {
+              newPages.push({
+                type,
+                items: items.slice(i, Math.min(i + pageSize, items.length))
+              });
+            }
+          });
+          return newPages;
+        };
+
+        // Compute page size from viewport
+        const computePageSize = () => {
+          const vw = window.innerWidth;
+          const vh = window.innerHeight;
+
+          if (vw < 600) {
+            tileW = 88; tileH = 88 * 0.85 + 40;
+          } else if (vw < 1100) {
+            tileW = 120; tileH = 120 * 0.85 + 40;
+          } else {
+            tileW = 160; tileH = 160 * 0.85 + 40;
+          }
+
+          const gap = 12;
+          const topBarH = topBar.offsetHeight || 60;
+          const gridH = grid.clientHeight || (vh - topBarH - 40 - 20 - 24);
+          cols = Math.max(2, Math.floor((vw - 40) / (tileW + gap)));
+          rows = Math.max(1, Math.floor(gridH / (tileH + gap)));
+          const pageSize = Math.max(6, cols * rows);
+
+          const oldType = pages[currentPage]?.type;
+          pages = buildPages(pageSize);
+
+          // Keep same type visible after resize
+          if (oldType) {
+            const idx = pages.findIndex(p => p.type === oldType);
+            if (idx >= 0) currentPage = idx;
+          }
+          currentPage = Math.max(0, Math.min(currentPage, pages.length - 1));
+        };
+
+        const onResize = () => {
+          clearTimeout(resizeTimer);
+          resizeTimer = setTimeout(() => {
+            computePageSize();
+            renderPage();
+          }, 200);
+        };
+
+        window.addEventListener('resize', onResize);
+        window.addEventListener('orientationchange', onResize);
+
+        // Build type jump buttons
         typeOrder.forEach(type => {
           if (sections[type].length === 0) return;
           const btn = document.createElement('button');
           btn.className = 'library-type-btn';
           btn.textContent = typeLabels[type];
+          btn.dataset.type = type;
           btn.onclick = () => {
-            const typeSection = document.querySelector(`.silhouette-section[data-type="${type}"]`);
-            if (typeSection) typeSection.scrollIntoView({behavior: 'smooth', block: 'start'});
+            const idx = pages.findIndex(p => p.type === type);
+            if (idx >= 0) {
+              currentPage = idx;
+              renderPage();
+            }
           };
           typeJumps.appendChild(btn);
         });
 
-        const grid = document.createElement('div');
-        grid.className = 'library-grid';
-        grid.style.height = 'auto';
-        grid.style.overflow = 'auto';
-        grid.style.padding = '20px';
-        layer.appendChild(grid);
+        // Widest label first
+        pageLabel.textContent = 'GOOs / iGOOs · Page 00 of 00';
+        computePageSize();
 
-        // Render all types in scrollable grid
-        typeOrder.forEach(type => {
-          const items = sections[type];
-          if (items.length === 0) return;
+        prevBtn.onclick = () => {
+          if (currentPage > 0) {
+            currentPage--;
+            renderPage();
+          }
+        };
 
-          const sectionDiv = document.createElement('div');
-          sectionDiv.className = 'silhouette-section';
-          sectionDiv.dataset.type = type;
-          sectionDiv.style.marginBottom = '30px';
-          grid.appendChild(sectionDiv);
+        nextBtn.onclick = () => {
+          if (currentPage < pages.length - 1) {
+            currentPage++;
+            renderPage();
+          }
+        };
 
-          const heading = document.createElement('h3');
-          heading.textContent = typeLabels[type];
-          heading.style.marginBottom = '12px';
-          heading.style.fontSize = '16px';
-          heading.style.fontWeight = 'bold';
-          sectionDiv.appendChild(heading);
+        const renderPage = () => {
+          if (pages.length === 0) return;
 
-          const itemsGrid = document.createElement('div');
-          itemsGrid.style.display = 'grid';
-          itemsGrid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(100px, 1fr))';
-          itemsGrid.style.gap = '12px';
-          sectionDiv.appendChild(itemsGrid);
+          const page = pages[currentPage];
+          const pageType = page.type;
 
-          items.forEach(item => {
-            const tile = document.createElement('div');
-            tile.style.cursor = 'pointer';
-            tile.style.border = '1px solid #444';
-            tile.style.padding = '8px';
-            tile.style.borderRadius = '4px';
-            tile.style.textAlign = 'center';
-            tile.style.background = '#1a1a1a';
-            tile.onclick = () => {
-              layer.remove();
-              resolve(item.id);
-            };
+          // Update nav
+          prevBtn.disabled = currentPage === 0;
+          nextBtn.disabled = currentPage >= pages.length - 1;
+          pageLabel.textContent = `${typeLabels[pageType]} · Page ${currentPage + 1} of ${pages.length}`;
+
+          // Update type button highlight
+          typeJumps.querySelectorAll('.library-type-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.type === pageType);
+          });
+
+          // Render tiles
+          grid.innerHTML = '';
+          grid.style.gridTemplateColumns = `repeat(${cols}, ${tileW}px)`;
+
+          page.items.forEach(item => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'library-tile';
+            btn.title = item.faction && item.faction !== 'Neutral' ? `${item.name} (${item.faction})` : item.name;
+            btn.style.height = `${tileH}px`;
 
             const img = document.createElement('img');
-            img.src = item.url || `/designer/images/${item.id}`;
-            img.style.width = '80px';
-            img.style.height = '80px';
-            img.style.objectFit = 'contain';
-            img.style.display = 'block';
-            img.style.margin = '0 auto';
-            img.style.background = '#333'; // Dark background to see white silhouettes
-            tile.appendChild(img);
+            img.src = item.url || `/designer/silhouettes/${item.id}.svg`;
+            img.loading = 'lazy';
+            img.alt = item.name;
 
-            const label = document.createElement('div');
-            label.textContent = item.name;
-            label.style.fontSize = '11px';
-            label.style.marginTop = '4px';
-            label.style.color = '#ccc';
-            label.style.wordBreak = 'break-word';
-            tile.appendChild(label);
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'library-tile-name';
+            nameDiv.textContent = item.name;
 
-            if (item.faction) {
-              const factionLabel = document.createElement('div');
-              factionLabel.textContent = item.faction;
-              factionLabel.style.fontSize = '9px';
-              factionLabel.style.color = '#888';
-              tile.appendChild(factionLabel);
+            const factionDiv = document.createElement('div');
+            factionDiv.className = 'library-tile-faction';
+            if (item.faction && item.faction !== 'Neutral') {
+              factionDiv.textContent = item.faction;
             }
 
-            itemsGrid.appendChild(tile);
+            btn.appendChild(img);
+            btn.appendChild(nameDiv);
+            btn.appendChild(factionDiv);
+
+            btn.onclick = () => {
+              close();
+              resolve(item.url || `/designer/silhouettes/${item.id}.svg`);
+            };
+
+            grid.appendChild(btn);
           });
-        });
+        };
+
+        renderPage();
       });
     }
 

@@ -887,6 +887,7 @@
         }
         if (u.combatType === 'Variable Results' && !u.resultsCalc) missing.push(`units.rows.${u.id}.resultsCalc`);
         if (unitHasAbility(u)) {
+          if (!u.abilityType) missing.push(`units.rows.${u.id}.abilityType`);
           if (!u.abilityText) missing.push(`units.rows.${u.id}.abilityText`);
         }
       });

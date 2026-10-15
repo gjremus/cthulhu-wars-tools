@@ -24,6 +24,282 @@ same way, one tier up. Opus is the last tier; if Opus also hits the limit,
 summarize plainly for the owner instead of continuing to retry.
 
 ═══════════════════════════════════════════════════════════════════════════
+COLOUR OUT OF SPACE FACTION - FULL EDIT ACCESS
+═══════════════════════════════════════════════════════════════════════════
+
+You have FULL EDIT ACCESS to the "Colour Out of Space" faction design:
+- Faction ID: tpunhkcjo2c
+- Faction Name: Colour Out of Space
+- Acronym: CS
+- Owner: CavySupreme
+
+USE THIS ACCESS to validate changes you make to the faction designer. When you:
+- Fix bugs in the CS faction build
+- Update CS faction mechanics or values
+- Modify CS faction assets or configuration
+
+HOW TO VIEW THE FACTION DESIGN (same data the frontend shows):
+
+1. **Fetch the full faction JSON** (exactly what the designer UI loads):
+   ```bash
+   cd ~/Claude-Projects/cthulhu-wars-tools/tickers
+   python3 designer-admin.py faction tpunhkcjo2c
+   ```
+
+   This returns the complete faction design with all sections:
+   - meta (name, acronym, color, stability)
+   - units (all unit rows with costs, combat, abilities)
+   - spellbooks (all SBs with requirements, types, abilities)
+   - unfactionedAbilities (UFAs)
+   - interactions (faction/map interactions)
+   - simpleUpdate (quick-update image/value rows)
+   - customLogic (any custom code notes)
+   - claudeQA (questions/answers for each section)
+
+2. **Make changes via admin API**:
+   ```bash
+   # Create ops.json with JSON Patch operations:
+   echo '[{"op":"replace","path":"/units/rows/0/cost","value":2}]' > /tmp/cs-patch.json
+   python3 designer-admin.py patch tpunhkcjo2c /tmp/cs-patch.json
+   ```
+
+3. **Verify changes by fetching again**:
+   ```bash
+   python3 designer-admin.py faction tpunhkcjo2c | jq '.units.rows[0].cost'
+   ```
+
+4. **View in browser** (if someone needs to see the visual UI):
+   The faction is at: https://cwo.freeddns.org/designer/#/design/tpunhkcjo2c
+   - Owner: CavySupreme (full edit access)
+   - Editor: scrolltest_7jyc2n (full edit access for testing/validation)
+
+   The test user (scrolltest_7jyc2n) has full edit access, so changes made via the admin
+   API can be verified by logging in as that user and viewing the faction in the designer UI.
+   (You as the admin agent use the API; the test user is for manual browser verification.)
+
+VALIDATION WORKFLOW:
+
+When you make changes to CS faction code (FactionCS.scala, unit costs, abilities),
+you SHOULD verify the designer reflects those changes:
+1. Read the current designer state (designer-admin.py faction)
+2. Check if numbers/values match your code changes
+3. If they don't match, use the patch API to sync them
+4. Re-read to confirm
+
+This ensures the designer and game code stay in sync, so future "Push design to
+build" operations work correctly.
+
+HOW TO VIEW THE DESIGNER FRONTEND IN A BROWSER (automation with puppeteer):
+
+You have access to puppeteer for browser automation. Use this to actually VIEW the
+designer frontend like a user would, not just read JSON via the API.
+
+1. **Write a puppeteer script** to automate the browser:
+
+```javascript
+#!/usr/bin/env node
+import puppeteer from 'puppeteer';
+
+(async () => {
+  const browser = await puppeteer.launch({
+    headless: false,  // Set true for screenshots only, false to watch it work
+    executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    devtools: false
+  });
+
+  const page = await browser.newPage();
+
+  // Log console errors from the page
+  page.on('console', msg => {
+    if (msg.type() === 'error') console.log(`❌ Page error: ${msg.text()}`);
+  });
+
+  try {
+    // 1. Go to designer
+    console.log('Loading designer...');
+    await page.goto('https://cwo.freeddns.org/designer/', {
+      waitUntil: 'domcontentloaded',
+      timeout: 30000
+    });
+
+    // 2. Log in as test user (scrolltest_7jyc2n)
+    // You need the PASSWORD - it's stored in the designer database users.json
+    // For the test user, the password is likely simple (like "test" or same as username)
+    console.log('Logging in as scrolltest_7jyc2n...');
+    await page.type('#username', 'scrolltest_7jyc2n');
+    await page.type('#password', 'test');  // Or fetch from users.json if needed
+    await page.click('button[type="submit"]');
+    await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 10000 });
+
+    // 3. Navigate to CS faction
+    console.log('Opening CS faction...');
+    await page.goto('https://cwo.freeddns.org/designer/#/design/tpunhkcjo2c', {
+      waitUntil: 'domcontentloaded',
+      timeout: 10000
+    });
+
+    // Wait for faction to load
+    await page.waitForSelector('.design-view', { timeout: 10000 });
+
+    // 4. Take screenshot
+    await page.screenshot({ path: '/tmp/cs-faction-designer.png', fullPage: true });
+    console.log('✓ Screenshot saved to /tmp/cs-faction-designer.png');
+
+    // 5. Check specific sections or interact with UI
+    // Example: click on Units tab
+    const unitsTab = await page.$('button:has-text("Units")');
+    if (unitsTab) {
+      await unitsTab.click();
+      await page.waitForTimeout(1000);
+      await page.screenshot({ path: '/tmp/cs-units-section.png' });
+    }
+
+    // Keep browser open for manual inspection (remove this in headless mode)
+    if (!browser.headless) {
+      console.log('Browser open for inspection. Press Ctrl+C to close.');
+      await new Promise(r => setTimeout(r, 300000)); // 5 min
+    }
+
+  } catch (e) {
+    console.error(`Error: ${e.message}`);
+    await page.screenshot({ path: '/tmp/designer-error.png' });
+  }
+
+  await browser.close();
+})();
+```
+
+2. **Run the script**:
+```bash
+cd /tmp
+# Write script to /tmp/view-cs-faction.mjs
+node /tmp/view-cs-faction.mjs
+```
+
+3. **Get test user password** (if you don't know it):
+```bash
+# Read users.json from the VM to get the password hash or reset it
+ssh -i ~/.ssh/oracle_cw_ed25519 oracle-cw-server@cwo.freeddns.org \
+  "cat /opt/cwo/designer/data/users.json" | jq '.users.scrolltest_7jyc2n'
+```
+
+4. **For headless automation** (screenshots only, no visible browser):
+   - Set `headless: true` in puppeteer.launch()
+   - Remove the setTimeout at the end
+   - Script will run, take screenshots, and exit automatically
+
+5. **Check screenshots**:
+```bash
+open /tmp/cs-faction-designer.png
+# or
+Read /tmp/cs-faction-designer.png
+```
+
+WHEN TO USE BROWSER AUTOMATION:
+
+- Verifying visual layout of the designer
+- Testing that buttons/tabs work correctly
+- Confirming images load properly
+- Checking for JavaScript errors in the console
+- Taking screenshots to show the owner what you fixed
+
+Don't just use the API - if you made changes that affect the UI, actually LOOK at
+the UI with puppeteer to verify it works.
+
+═══════════════════════════════════════════════════════════════════════════
+SILHOUETTE GENERATION
+═══════════════════════════════════════════════════════════════════════════
+
+Designers can request silhouette generation from their custom uploaded map images.
+A silhouette is a flat white version of the map image with transparent background,
+used on faction cards.
+
+WHEN YOU RECEIVE A SILHOUETTE GENERATION REQUEST:
+
+The request will include:
+- Unit name
+- Faction name
+- Map image ID
+- Map image URL (use this to download the source image)
+- Unit ID
+- Faction ID
+
+STEPS:
+
+1. **Download the source map image**:
+   ```bash
+   cd /tmp
+   python3 ~/Claude-Projects/cthulhu-wars-tools/tickers/designer-admin.py image <imageId>
+   # This downloads and converts to PNG, prints the local path
+   ```
+
+2. **Generate the silhouette** using ImageMagick or Python PIL:
+   ```bash
+   # Method 1: ImageMagick
+   convert input.png -channel RGB -negate -colorspace gray -negate \
+     -threshold 50% -fill white -opaque black output-silhouette.png
+
+   # Method 2: Python PIL (better for preserving transparency)
+   python3 << 'EOF'
+   from PIL import Image
+   import sys
+
+   img = Image.open('input.png').convert('RGBA')
+   pixels = img.load()
+   for y in range(img.height):
+       for x in range(img.width):
+           r, g, b, a = pixels[x, y]
+           if a > 0:  # Not transparent
+               pixels[x, y] = (255, 255, 255, a)  # White, preserve alpha
+   img.save('output-silhouette.png')
+   print('✓ Silhouette generated')
+   EOF
+   ```
+
+3. **Upload the silhouette**:
+   ```bash
+   cd ~/Claude-Projects/cthulhu-wars-tools/tickers
+   python3 designer-admin.py upload /tmp/output-silhouette.png
+   # Prints the new image ID
+   ```
+
+4. **Attach to the unit** (patch the faction design):
+   ```bash
+   # Create patch operation
+   echo '[{"op":"replace","path":"/units/rows/<unitId>/silhouette","value":"<newImageId>"}]' > /tmp/patch.json
+   python3 designer-admin.py patch <factionId> /tmp/patch.json
+   ```
+
+5. **Report completion** with a summary of what you did and the new silhouette image ID.
+
+EXAMPLE WORKFLOW:
+
+```bash
+# 1. Download source
+IMG_PATH=$(python3 designer-admin.py image abc123xyz)
+
+# 2. Generate silhouette
+python3 << 'EOF'
+from PIL import Image
+img = Image.open("$IMG_PATH").convert('RGBA')
+pixels = img.load()
+for y in range(img.height):
+    for x in range(img.width):
+        r, g, b, a = pixels[x, y]
+        if a > 0: pixels[x, y] = (255, 255, 255, a)
+img.save('/tmp/silhouette.png')
+EOF
+
+# 3. Upload
+NEW_ID=$(python3 designer-admin.py upload /tmp/silhouette.png | tail -1)
+
+# 4. Attach
+echo "[{\"op\":\"replace\",\"path\":\"/units/rows/unit123/silhouette\",\"value\":\"$NEW_ID\"}]" > /tmp/patch.json
+python3 designer-admin.py patch fac456 /tmp/patch.json
+```
+
+═══════════════════════════════════════════════════════════════════════════
 SIMPLE UPDATE SECTION
 ═══════════════════════════════════════════════════════════════════════════
 
@@ -409,5 +685,44 @@ The manual contains:
 The manual was updated 2026-10-14 to explain how broken factions passed
 previous audits and includes explicit testable steps so audits actually catch
 problems. Follow it exactly.
+
+═══════════════════════════════════════════════════════════════════════════
+UNIT SPECIAL ABILITIES - EXTRACTION GUIDANCE
+═══════════════════════════════════════════════════════════════════════════
+
+When extracting faction designs from guides, PAY SPECIAL ATTENTION to special abilities:
+
+**GOOs (Great Old Ones) ALMOST ALWAYS have special abilities:**
+- Most GOOs have at least one special ability that is NOT a spellbook
+- GOO special abilities usually have names (e.g., "Immortal", "Eternal", "Devour")
+- These abilities live on the FACTION CARD in the GOO's notes section
+- Look for abilities in the GOO's description section of the faction guide
+- Common GOO abilities: custom combat effects, movement rules, awakening effects, etc.
+
+**Check "Notes" sections on ALL units:**
+- Notes that are NOT spellbook names might be special abilities
+- Examples:
+  - "Move after combat" = special ability
+  - "Cannot be killed" = special ability
+  - "Requires 6 SBs" = spellbook requirement (NOT a special ability)
+  - "Vermiculite Hypertrophy" = spellbook name (NOT a special ability)
+- If a note describes how the unit works or breaks normal rules, it's a special ability
+
+**Special Ability vs Spellbook - WHERE they live:**
+- Special ability = lives on the FACTION CARD in the unit's notes section
+- Spellbook = lives on SPELLBOOK IMAGES (separate cards)
+- Special ability = inherent to the unit, doesn't cost Power to acquire
+- Spellbook = costs Power to acquire, unlocks new actions/effects
+- If in doubt: check the guide images - is it on the faction card or a spellbook card?
+
+**Required fields when special ability checkbox is ticked:**
+- Ability Type (dropdown) - REQUIRED, must be one of the 16 ability types
+- Ability Text - REQUIRED
+- Ability Name - optional
+
+When building or auditing a faction, specifically verify:
+1. Does each GOO have a special ability? (should be YES)
+2. Are there any unit notes that are actually special abilities?
+3. Does each special ability have an Ability Type selected?
 
 ═══════════════════════════════════════════════════════════════════════════

@@ -32,6 +32,7 @@
       .sx-table table { border: 2px solid #000; width: 100%; min-width: 800px; }
       .sx-table th, .sx-table td { border: 1px solid #000; padding: 8px; text-align: left; vertical-align: top; }
       .sx-table th { background: #333; font-weight: bold; }
+      .sx-table th.sx-rotated { writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg); white-space: nowrap; padding: 8px 4px; }
       .sx-table input, .sx-table select, .sx-table textarea {
         width: 100%;
         box-sizing: border-box;
@@ -749,31 +750,58 @@
           }
         }, 'CW / Necro');
         silDiv.appendChild(libraryBtn);
-        // Generate Silhouette button - only show if mapImage is a unique upload (not from library)
-        const mapIsUniqueUpload = unit.mapImage && !typeArt;
-        if (mapIsUniqueUpload) {
-          const genBtn = h('button', {
-            className: 'sx-btn',
-            style: 'display: block; margin-top: 8px; font-size: 12px; padding: 4px 8px; background: #4a9eff;',
-            onclick: async () => {
-              if (!confirm('Submit to Claude to generate flat white silhouette from your map image?')) return;
-              const factionName = ctx.design.name || 'Unknown Faction';
-              const text = `Generate silhouette for unit "${unit.name}". Convert map image to flat white silhouette (keep transparent background, replace all colored pixels with white). Map image ID: ${unit.mapImage}`;
-              try {
-                const resp = await fetch(`/designer/api/factions/${ctx.factionId}/requests`, {
-                  method: 'POST',
-                  headers: {'Content-Type': 'application/json'},
-                  body: JSON.stringify({type: 'bug', text})
-                });
-                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-                alert('Silhouette generation request submitted to Claude admin console');
-              } catch (err) {
-                alert('Failed to submit request: ' + err.message);
-              }
+
+        // Generate Silhouette button - greyed out unless mapImage is a unique upload
+        // mapIsUniqueUpload = has a custom uploaded map image (not a default library image)
+        const mapIsUniqueUpload = unit.mapImage && (!typeArt || unit.mapImage !== typeArt.url);
+        const genBtnContainer = h('div', {style: 'display: flex; align-items: center; margin-top: 8px; gap: 4px;'});
+        const genBtn = h('button', {
+          className: 'sx-btn',
+          style: `font-size: 12px; padding: 4px 8px; ${mapIsUniqueUpload ? 'background: #4a9eff; cursor: pointer;' : 'background: #555; color: #888; cursor: not-allowed;'}`,
+          disabled: !mapIsUniqueUpload,
+          onclick: async () => {
+            if (!mapIsUniqueUpload) return;
+            if (!confirm('Submit to Claude to generate flat white silhouette from your map image?')) return;
+            const factionName = ctx.design.name || 'Unknown Faction';
+            const mapImageUrl = ctx.imgUrl(unit.mapImage);
+            const text = `Generate silhouette for unit "${unit.name}" in faction "${factionName}".
+
+Convert the map image to a flat white silhouette:
+- Keep the transparent background
+- Replace all colored pixels with white (#FFFFFF)
+- Preserve the exact shape and transparency
+
+Map image ID: ${unit.mapImage}
+Map image URL: ${mapImageUrl}
+Unit ID: ${unit.id}
+Faction ID: ${ctx.factionId}
+
+After generating the silhouette, automatically attach it to this unit by setting the silhouette field to the new image ID.`;
+            try {
+              const resp = await fetch(`/designer/api/factions/${ctx.factionId}/request`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({type: 'bug', text})
+              });
+              if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+              alert('Silhouette generation request submitted to Claude admin console. The silhouette will be automatically attached when ready.');
+            } catch (err) {
+              alert('Failed to submit request: ' + err.message);
             }
-          }, 'Generate Silhouette');
-          silDiv.appendChild(genBtn);
-        }
+          }
+        }, 'Generate Silhouette');
+        genBtnContainer.appendChild(genBtn);
+
+        // Help button
+        const helpBtn = h('button', {
+          className: 'sx-btn',
+          style: 'font-size: 11px; padding: 2px 6px; background: #555; border-radius: 50%; width: 20px; height: 20px; line-height: 16px;',
+          onclick: () => {
+            alert('Generates a silhouette for the faction card, based on the map image. Only available if you upload your own custom map image with a transparent background.');
+          }
+        }, '?');
+        genBtnContainer.appendChild(helpBtn);
+        silDiv.appendChild(genBtnContainer);
       }
       unitDiv.appendChild(silDiv);
 
@@ -823,7 +851,11 @@
         } else {
           sbOptions.forEach(opt => {
             const checked = unit.relatedSb.includes(opt.value);
-            relatedDiv.appendChild(h('label', {style: 'display: block; margin: 4px 0;'},
+            const sbRow = sbRows.find(s => s.id === opt.value);
+
+            const rowContainer = h('div', {style: 'display: flex; align-items: center; margin: 4px 0; gap: 4px;'});
+
+            const checkboxLabel = h('label', {style: 'flex: 1;'},
               h('input', {
                 type: 'checkbox',
                 checked,
@@ -835,17 +867,80 @@
                 }
               }),
               ' ' + opt.label
-            ));
+            );
+            rowContainer.appendChild(checkboxLabel);
+
+            // Question mark button to show spellbook details
+            if (sbRow) {
+              const helpBtn = h('button', {
+                className: 'sx-btn',
+                style: 'font-size: 11px; padding: 2px 6px; background: #555; border-radius: 50%; width: 20px; height: 20px; line-height: 16px; flex-shrink: 0;',
+                onclick: (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+
+                  // Build spellbook overlay
+                  const overlay = h('div', {
+                    style: 'background: #1a1a1a; border: 2px solid #666; padding: 20px; max-width: 500px; font-family: "Bohemian Typewriter", monospace;'
+                  });
+
+                  overlay.appendChild(h('h2', {style: 'margin-bottom: 16px;'}, sbRow.name || 'Spellbook'));
+
+                  if (sbRow.type) {
+                    overlay.appendChild(h('div', {style: 'margin: 8px 0; font-weight: bold;'}, `Type: ${sbRow.type}`));
+                  }
+                  if (sbRow.cost != null) {
+                    overlay.appendChild(h('div', {style: 'margin: 8px 0;'}, `Cost: ${sbRow.cost} Power`));
+                  }
+                  if (sbRow.text) {
+                    overlay.appendChild(h('div', {style: 'margin: 12px 0; font-size: 14px; line-height: 1.4;'}, sbRow.text));
+                  }
+                  if (sbRow.hasEffect && sbRow.effect != null) {
+                    overlay.appendChild(h('div', {style: 'margin: 8px 0;'}, `Effect: ${sbRow.effect}`));
+                  }
+
+                  // Side B if two-sided
+                  if (sbRow.twoSided && sbRow.nameB) {
+                    overlay.appendChild(h('hr', {style: 'margin: 16px 0; border-color: #666;'}));
+                    overlay.appendChild(h('h3', {style: 'margin: 12px 0;'}, `Side B: ${sbRow.nameB}`));
+                    if (sbRow.typeB) {
+                      overlay.appendChild(h('div', {style: 'margin: 8px 0; font-weight: bold;'}, `Type: ${sbRow.typeB}`));
+                    }
+                    if (sbRow.costB != null) {
+                      overlay.appendChild(h('div', {style: 'margin: 8px 0;'}, `Cost: ${sbRow.costB} Power`));
+                    }
+                    if (sbRow.textB) {
+                      overlay.appendChild(h('div', {style: 'margin: 12px 0; font-size: 14px; line-height: 1.4;'}, sbRow.textB));
+                    }
+                    if (sbRow.hasEffectB && sbRow.effectB != null) {
+                      overlay.appendChild(h('div', {style: 'margin: 8px 0;'}, `Effect: ${sbRow.effectB}`));
+                    }
+                  }
+
+                  const closeBtn = h('button', {
+                    className: 'sx-btn',
+                    style: 'margin-top: 20px; display: block;',
+                    onclick: () => ctx.closeOverlay()
+                  }, 'Close');
+                  overlay.appendChild(closeBtn);
+
+                  ctx.openOverlay(overlay);
+                }
+              }, '?');
+              rowContainer.appendChild(helpBtn);
+            }
+
+            relatedDiv.appendChild(rowContainer);
           });
         }
         unitDiv.appendChild(relatedDiv);
       }
 
-      // Special ability: name is optional, only text is required when the box is ticked
+      // Special ability: name is optional, abilityType and text are required when the box is ticked
       const hasAbility = window.Rules.unitHasAbility(unit);
       unitDiv.appendChild(checkboxField('Special Ability', hasAbility, val => ctx.set(`units.rows.${unit.id}.hasAbility`, val)));
       if (hasAbility) {
-        unitDiv.appendChild(selectField('Ability Type', unit.abilityType, window.Rules.ABILITY_TYPES, val => ctx.set(`units.rows.${unit.id}.abilityType`, val)));
+        unitDiv.appendChild(selectField('Ability Type', unit.abilityType, window.Rules.ABILITY_TYPES, val => ctx.set(`units.rows.${unit.id}.abilityType`, val), {missing: isMissing(`units.rows.${unit.id}.abilityType`)}));
         unitDiv.appendChild(textField('Special Ability Name (optional)', unit.abilityName, val => ctx.set(`units.rows.${unit.id}.abilityName`, val)));
         unitDiv.appendChild(textField('Special Ability Text', unit.abilityText, val => ctx.set(`units.rows.${unit.id}.abilityText`, val), {rows: 4, missing: isMissing(`units.rows.${unit.id}.abilityText`)}));
       }
@@ -1147,7 +1242,7 @@
         }
       }}, 'Replace'),
       h('button', {className: 'sx-btn', onclick: async () => {
-        const id = await ctx.pickLibraryImage();
+        const id = await ctx.pickSilhouetteImage();
         if (id) {
           ctx.set(`units.rows.${unit.id}.silhouette`, id);
           ctx.closeOverlay();
@@ -1264,16 +1359,16 @@
       h('tr', {},
         grouped ? h('th', {style: 'width: 100px;'}, 'Spellbook') : null,
         two ? h('th', {style: 'width: 60px;'}, 'Side') : null,
-        h('th', {style: 'width: 70px;'}, 'Dual powers?'),
+        h('th', {className: 'sx-rotated', style: 'width: 50px;'}, 'Dual powers?'),
         anyDual ? h('th', {style: 'width: 60px;'}, 'Power') : null,
         h('th', {}, 'Name'),
-        h('th', {}, 'Type'),
+        h('th', {style: 'width: 140px;'}, 'Type'),
         h('th', {style: 'width: 100px;'}, 'Cost'),
         h('th', {style: 'width: 150px;'}, 'Includes Fixed Numeric Effect?'),
         h('th', {style: 'width: 100px;'}, 'Fixed Numeric Effect'),
         h('th', {}, 'Text'),
-        h('th', {style: 'width: 120px;'}, 'Earned by SBR'),
-        h('th', {style: 'width: 120px;'}, 'Replaceable'),
+        h('th', {className: 'sx-rotated', style: 'width: 50px;'}, 'Earned by SBR'),
+        h('th', {className: 'sx-rotated', style: 'width: 50px;'}, 'Replaceable'),
         h('th', {}, '')
       )
     ));
