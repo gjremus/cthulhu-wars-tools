@@ -3183,7 +3183,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             if username != "cavysupreme":
                 self.send_error_json("Base factions are read-only", 403)
                 return
-        elif faction["owner"] != username:
+        elif faction["owner"] != username and username not in faction.get("editors", []):
+            # Editors may file requests too (same rule as patch/save); viewers may not
             self.send_error_json("Forbidden", 403)
             return
 
