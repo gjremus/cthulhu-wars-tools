@@ -1429,6 +1429,185 @@
       });
     }
 
+    // Helper: Render Claude Terminal Log history for a design
+    renderTerminalLogHistory(designName, containerId) {
+      const historyDiv = document.createElement('div');
+      historyDiv.style.marginTop = '30px';
+      historyDiv.style.marginBottom = '30px';
+      historyDiv.id = containerId;
+
+      const historyTitle = document.createElement('h3');
+      historyTitle.textContent = 'Claude Terminal Log (All Work on This Design)';
+      historyTitle.style.marginBottom = '15px';
+      historyDiv.appendChild(historyTitle);
+
+      const loadingMsg = document.createElement('p');
+      loadingMsg.textContent = 'Loading terminal log...';
+      loadingMsg.style.color = '#888';
+      historyDiv.appendChild(loadingMsg);
+
+      // Fetch terminal log and filter by design name
+      fetch('/designer/api/terminal-log')
+        .then(r => r.ok ? r.json() : Promise.reject(`HTTP ${r.status}`))
+        .then(data => {
+          const entries = data.entries || [];
+          // Filter for all entries matching this design's name
+          const logs = entries.filter(e =>
+            e.faction === designName || e.designObject === designName
+          ).sort((a, b) => b.at - a.at); // Most recent first
+
+          loadingMsg.remove();
+
+          if (logs.length === 0) {
+            const noLogs = document.createElement('p');
+            noLogs.textContent = 'No terminal log entries yet.';
+            noLogs.style.color = '#888';
+            historyDiv.appendChild(noLogs);
+            return;
+          }
+
+          const table = document.createElement('table');
+          table.style.width = '100%';
+          table.style.borderCollapse = 'collapse';
+          table.style.border = '1px solid #000';
+          table.style.fontSize = '14px';
+
+          // Table header
+          const thead = document.createElement('thead');
+          const headerRow = document.createElement('tr');
+          headerRow.style.backgroundColor = '#f0f0f0';
+          headerRow.style.border = '1px solid #000';
+
+          const headers = ['Entry #', 'Type', 'Submitted', 'User', 'Prompt', 'Claude Response', 'Cost', 'Status'];
+          for (const headerText of headers) {
+            const th = document.createElement('th');
+            th.textContent = headerText;
+            th.style.padding = '8px';
+            th.style.textAlign = 'left';
+            th.style.border = '1px solid #000';
+            th.style.fontWeight = 'bold';
+            headerRow.appendChild(th);
+          }
+          thead.appendChild(headerRow);
+          table.appendChild(thead);
+
+          // Table body
+          const tbody = document.createElement('tbody');
+          for (const entry of logs) {
+            const row = document.createElement('tr');
+            row.style.border = '1px solid #000';
+
+            // Entry Number
+            const numCell = document.createElement('td');
+            numCell.textContent = entry.n || '';
+            numCell.style.padding = '8px';
+            numCell.style.border = '1px solid #000';
+            numCell.style.textAlign = 'right';
+            row.appendChild(numCell);
+
+            // Type
+            const typeCell = document.createElement('td');
+            const typeShort = (entry.type || '')
+              .replace('design ', '')
+              .replace('extraction', 'extract')
+              .replace('bug fix', 'bug');
+            typeCell.textContent = typeShort;
+            typeCell.style.padding = '8px';
+            typeCell.style.border = '1px solid #000';
+            typeCell.style.whiteSpace = 'nowrap';
+            typeCell.style.fontSize = '12px';
+            row.appendChild(typeCell);
+
+            // Submitted date
+            const dateCell = document.createElement('td');
+            const date = new Date(entry.at * 1000);
+            dateCell.textContent = date.toLocaleString();
+            dateCell.style.padding = '8px';
+            dateCell.style.border = '1px solid #000';
+            dateCell.style.fontSize = '12px';
+            dateCell.style.whiteSpace = 'nowrap';
+            row.appendChild(dateCell);
+
+            // User
+            const userCell = document.createElement('td');
+            userCell.textContent = entry.user || '';
+            userCell.style.padding = '8px';
+            userCell.style.border = '1px solid #000';
+            userCell.style.fontSize = '12px';
+            row.appendChild(userCell);
+
+            // Prompt
+            const promptCell = document.createElement('td');
+            promptCell.textContent = entry.prompt || '';
+            promptCell.style.padding = '8px';
+            promptCell.style.border = '1px solid #000';
+            promptCell.style.maxWidth = '250px';
+            promptCell.style.overflow = 'hidden';
+            promptCell.style.textOverflow = 'ellipsis';
+            promptCell.title = entry.prompt || '';
+            promptCell.style.fontSize = '12px';
+            row.appendChild(promptCell);
+
+            // Summary (Claude's response)
+            const summaryCell = document.createElement('td');
+            summaryCell.textContent = entry.summary || '';
+            summaryCell.style.padding = '8px';
+            summaryCell.style.border = '1px solid #000';
+            summaryCell.style.maxWidth = '250px';
+            summaryCell.style.overflow = 'hidden';
+            summaryCell.style.textOverflow = 'ellipsis';
+            summaryCell.title = entry.summary || '';
+            summaryCell.style.fontSize = '12px';
+            row.appendChild(summaryCell);
+
+            // Cost
+            const costCell = document.createElement('td');
+            if (entry.cost !== undefined && entry.cost !== null) {
+              costCell.textContent = '$' + entry.cost.toFixed(2);
+              if (entry.costNote) {
+                costCell.title = entry.costNote;
+              }
+            } else {
+              costCell.textContent = '—';
+            }
+            costCell.style.padding = '8px';
+            costCell.style.border = '1px solid #000';
+            costCell.style.textAlign = 'right';
+            costCell.style.whiteSpace = 'nowrap';
+            costCell.style.fontSize = '12px';
+            row.appendChild(costCell);
+
+            // Status
+            const statusCell = document.createElement('td');
+            if (entry.summary && !entry.defaultSummary) {
+              statusCell.textContent = 'Done';
+              statusCell.style.color = '#008000';
+            } else if (entry.summary) {
+              statusCell.textContent = 'Pending';
+              statusCell.style.color = '#ff8800';
+            } else {
+              statusCell.textContent = 'Queued';
+              statusCell.style.color = '#888';
+            }
+            statusCell.style.padding = '8px';
+            statusCell.style.border = '1px solid #000';
+            statusCell.style.whiteSpace = 'nowrap';
+            statusCell.style.fontSize = '12px';
+            row.appendChild(statusCell);
+
+            tbody.appendChild(row);
+          }
+          table.appendChild(tbody);
+          historyDiv.appendChild(table);
+        })
+        .catch(err => {
+          loadingMsg.textContent = `Failed to load terminal log: ${err}`;
+          loadingMsg.style.color = '#c00';
+        });
+
+      return historyDiv;
+    }
+
     // Render methods
     renderLogin() {
       const form = document.createElement('div');
@@ -2409,12 +2588,12 @@
       };
       sectionsDiv.appendChild(updateBtn);
 
-      // Bug Report button
+      // Terminal Log / Bug Report button (always enabled)
       const bugBtn = document.createElement('button');
       bugBtn.className = 'section-button';
-      bugBtn.disabled = faction.build.status !== 'built';
+      bugBtn.dataset.nav = '1'; // Keep visible in read-only mode
       const bugName = document.createElement('span');
-      bugName.textContent = 'Bug Report';
+      bugName.textContent = 'Terminal Log & Bug Report';
       bugBtn.appendChild(bugName);
       bugBtn.onclick = () => {
         window.location.hash = `#/faction/${faction.id}/bug-report`;
@@ -2989,10 +3168,9 @@
       };
       this.root.appendChild(updateBtn);
 
-      // Bug Report button
+      // Terminal Log / Bug Report button (always enabled)
       const bugBtn = document.createElement('button');
-      bugBtn.textContent = 'Bug Report';
-      bugBtn.disabled = !(unit.build && unit.build.status === 'built');
+      bugBtn.textContent = 'Terminal Log & Bug Report';
       bugBtn.style.marginTop = '10px';
       bugBtn.style.marginLeft = '10px';
       bugBtn.onclick = () => {
@@ -4028,149 +4206,12 @@
       this.root.appendChild(backBtn);
 
       const title = document.createElement('h2');
-      title.textContent = 'Bug Report';
+      title.textContent = 'Terminal Log & Bug Report';
       title.style.marginTop = '20px';
       this.root.appendChild(title);
 
-      // Bug history table - fetch from Claude Terminal Log filtered by faction name
-      const historyDiv = document.createElement('div');
-      historyDiv.style.marginTop = '30px';
-      historyDiv.style.marginBottom = '30px';
-
-      const historyTitle = document.createElement('h3');
-      historyTitle.textContent = 'Bug History (from Claude Terminal Log)';
-      historyTitle.style.marginBottom = '15px';
-      historyDiv.appendChild(historyTitle);
-
-      const loadingMsg = document.createElement('p');
-      loadingMsg.textContent = 'Loading bug history...';
-      loadingMsg.style.color = '#888';
-      historyDiv.appendChild(loadingMsg);
-      this.root.appendChild(historyDiv);
-
-      // Fetch terminal log and filter by faction name
-      fetch('/designer/api/terminal-log')
-        .then(r => r.ok ? r.json() : Promise.reject(`HTTP ${r.status}`))
-        .then(data => {
-          const entries = data.entries || [];
-          // Filter for bug type entries matching this faction's name
-          const bugs = entries.filter(e =>
-            e.type === 'bug' &&
-            e.faction === faction.name
-          ).sort((a, b) => b.at - a.at); // Most recent first
-
-          loadingMsg.remove();
-
-          if (bugs.length === 0) {
-            const noBugs = document.createElement('p');
-            noBugs.textContent = 'No bugs reported yet.';
-            noBugs.style.color = '#888';
-            historyDiv.appendChild(noBugs);
-            return;
-          }
-
-          const table = document.createElement('table');
-          table.style.width = '100%';
-          table.style.borderCollapse = 'collapse';
-          table.style.border = '1px solid #000';
-          table.style.fontSize = '14px';
-
-          // Table header
-          const thead = document.createElement('thead');
-          const headerRow = document.createElement('tr');
-          headerRow.style.backgroundColor = '#f0f0f0';
-          headerRow.style.border = '1px solid #000';
-
-          const headers = ['Entry #', 'Submitted', 'User', 'Prompt', 'Claude Response', 'Status'];
-          for (const headerText of headers) {
-            const th = document.createElement('th');
-            th.textContent = headerText;
-            th.style.padding = '8px';
-            th.style.textAlign = 'left';
-            th.style.border = '1px solid #000';
-            th.style.fontWeight = 'bold';
-            headerRow.appendChild(th);
-          }
-          thead.appendChild(headerRow);
-          table.appendChild(thead);
-
-          // Table body
-          const tbody = document.createElement('tbody');
-          for (const bug of bugs) {
-            const row = document.createElement('tr');
-            row.style.border = '1px solid #000';
-
-            // Entry Number
-            const numCell = document.createElement('td');
-            numCell.textContent = bug.n || bug.id;
-            numCell.style.padding = '8px';
-            numCell.style.border = '1px solid #000';
-            numCell.style.textAlign = 'right';
-            row.appendChild(numCell);
-
-            // Submitted date
-            const dateCell = document.createElement('td');
-            const date = new Date(bug.at * 1000);
-            dateCell.textContent = date.toLocaleString();
-            dateCell.style.padding = '8px';
-            dateCell.style.border = '1px solid #000';
-            dateCell.style.fontSize = '12px';
-            dateCell.style.whiteSpace = 'nowrap';
-            row.appendChild(dateCell);
-
-            // User
-            const userCell = document.createElement('td');
-            userCell.textContent = bug.user || '';
-            userCell.style.padding = '8px';
-            userCell.style.border = '1px solid #000';
-            row.appendChild(userCell);
-
-            // Prompt
-            const promptCell = document.createElement('td');
-            promptCell.textContent = bug.prompt || '';
-            promptCell.style.padding = '8px';
-            promptCell.style.border = '1px solid #000';
-            promptCell.style.maxWidth = '300px';
-            promptCell.style.overflow = 'hidden';
-            promptCell.style.textOverflow = 'ellipsis';
-            promptCell.title = bug.prompt || '';
-            row.appendChild(promptCell);
-
-            // Summary (Claude's response)
-            const summaryCell = document.createElement('td');
-            summaryCell.textContent = bug.summary || '';
-            summaryCell.style.padding = '8px';
-            summaryCell.style.border = '1px solid #000';
-            summaryCell.style.maxWidth = '300px';
-            summaryCell.style.overflow = 'hidden';
-            summaryCell.style.textOverflow = 'ellipsis';
-            summaryCell.title = bug.summary || '';
-            row.appendChild(summaryCell);
-
-            // Status
-            const statusCell = document.createElement('td');
-            if (bug.summary) {
-              statusCell.textContent = 'Completed';
-              statusCell.style.color = '#008000';
-            } else {
-              statusCell.textContent = 'Pending';
-              statusCell.style.color = '#ff8800';
-            }
-            statusCell.style.padding = '8px';
-            statusCell.style.border = '1px solid #000';
-            statusCell.style.whiteSpace = 'nowrap';
-            row.appendChild(statusCell);
-
-            tbody.appendChild(row);
-          }
-          table.appendChild(tbody);
-          historyDiv.appendChild(table);
-        })
-        .catch(err => {
-          loadingMsg.textContent = `Failed to load bug history: ${err}`;
-          loadingMsg.style.color = '#c00';
-        });
-    }
+      // Terminal log history - fetch from Claude Terminal Log filtered by faction name
+      this.root.appendChild(this.renderTerminalLogHistory(faction.name, 'faction-terminal-log'));
 
       const label = document.createElement('label');
       label.textContent = 'Describe the bug:';
@@ -4341,12 +4382,12 @@
       };
       sectionsDiv.appendChild(updateBtn);
 
-      // Bug Report button
+      // Terminal Log / Bug Report button (always enabled)
       const bugBtn = document.createElement('button');
       bugBtn.className = 'section-button';
-      bugBtn.disabled = map.build.status !== 'built';
+      bugBtn.dataset.nav = '1'; // Keep visible in read-only mode
       const bugName = document.createElement('span');
-      bugName.textContent = 'Bug Report';
+      bugName.textContent = 'Terminal Log & Bug Report';
       bugBtn.appendChild(bugName);
       bugBtn.onclick = () => {
         window.location.hash = `#/map/${map.id}/bug-report`;
@@ -4731,122 +4772,12 @@
       this.root.appendChild(backBtn);
 
       const title = document.createElement('h2');
-      title.textContent = 'Bug Report';
+      title.textContent = 'Terminal Log & Bug Report';
       title.style.marginTop = '20px';
       this.root.appendChild(title);
 
-      // Bug history table
-      if (map.bugHistory && map.bugHistory.length > 0) {
-        const historyDiv = document.createElement('div');
-        historyDiv.style.marginTop = '30px';
-        historyDiv.style.marginBottom = '30px';
-
-        const historyTitle = document.createElement('h3');
-        historyTitle.textContent = 'Bug History';
-        historyTitle.style.marginBottom = '15px';
-        historyDiv.appendChild(historyTitle);
-
-        const table = document.createElement('table');
-        table.style.width = '100%';
-        table.style.borderCollapse = 'collapse';
-        table.style.border = '1px solid #000';
-        table.style.fontSize = '14px';
-
-        // Table header
-        const thead = document.createElement('thead');
-        const headerRow = document.createElement('tr');
-        headerRow.style.backgroundColor = '#f0f0f0';
-        headerRow.style.border = '1px solid #000';
-
-        const headers = ['Bug #', 'Submitted', 'Description', 'Response', 'Status'];
-        for (const headerText of headers) {
-          const th = document.createElement('th');
-          th.textContent = headerText;
-          th.style.padding = '8px';
-          th.style.textAlign = 'left';
-          th.style.border = '1px solid #000';
-          th.style.fontWeight = 'bold';
-          headerRow.appendChild(th);
-        }
-        thead.appendChild(headerRow);
-        table.appendChild(thead);
-
-        // Table body - most recent first
-        const tbody = document.createElement('tbody');
-        const sortedBugs = [...map.bugHistory].sort((a, b) => b.submittedAt - a.submittedAt);
-
-        for (const bug of sortedBugs) {
-          const row = document.createElement('tr');
-          row.style.border = '1px solid #000';
-
-          // Bug Number
-          const bugCell = document.createElement('td');
-          bugCell.textContent = bug.bugNumber;
-          bugCell.style.padding = '8px';
-          bugCell.style.border = '1px solid #000';
-          row.appendChild(bugCell);
-
-          // Submitted date
-          const dateCell = document.createElement('td');
-          const date = new Date(bug.submittedAt * 1000);
-          dateCell.textContent = date.toLocaleString();
-          dateCell.style.padding = '8px';
-          dateCell.style.border = '1px solid #000';
-          dateCell.style.fontSize = '12px';
-          row.appendChild(dateCell);
-
-          // Description
-          const descCell = document.createElement('td');
-          descCell.textContent = bug.description;
-          descCell.style.padding = '8px';
-          descCell.style.border = '1px solid #000';
-          descCell.style.maxWidth = '300px';
-          descCell.style.overflow = 'hidden';
-          descCell.style.textOverflow = 'ellipsis';
-          descCell.title = bug.description;
-          row.appendChild(descCell);
-
-          // Response
-          const respCell = document.createElement('td');
-          respCell.textContent = bug.response || '';
-          respCell.style.padding = '8px';
-          respCell.style.border = '1px solid #000';
-          respCell.style.maxWidth = '300px';
-          respCell.style.overflow = 'hidden';
-          respCell.style.textOverflow = 'ellipsis';
-          if (bug.response) {
-            respCell.title = bug.response;
-          }
-          row.appendChild(respCell);
-
-          // Status - show full Claude status, not just Pending/Addressed
-          const statusCell = document.createElement('td');
-          if (bug.response) {
-            // Show the full response text as status
-            statusCell.textContent = bug.response;
-            statusCell.style.color = '#008000';
-          } else {
-            statusCell.textContent = 'Submitted, waiting to be picked up';
-            statusCell.style.color = '#ff8800';
-          }
-          statusCell.style.padding = '8px';
-          statusCell.style.border = '1px solid #000';
-          statusCell.style.maxWidth = '400px';
-          statusCell.style.overflow = 'hidden';
-          statusCell.style.textOverflow = 'ellipsis';
-          statusCell.style.whiteSpace = 'normal';
-          statusCell.style.fontSize = '12px';
-          if (bug.response) {
-            statusCell.title = bug.response;
-          }
-          row.appendChild(statusCell);
-
-          tbody.appendChild(row);
-        }
-        table.appendChild(tbody);
-        historyDiv.appendChild(table);
-        this.root.appendChild(historyDiv);
-      }
+      // Terminal log history - fetch from Claude Terminal Log filtered by map name
+      this.root.appendChild(this.renderTerminalLogHistory(map.name, 'map-terminal-log'));
 
       const label = document.createElement('label');
       label.textContent = 'Describe the bug:';
@@ -5100,122 +5031,13 @@
       this.root.appendChild(backBtn);
 
       const title = document.createElement('h2');
-      title.textContent = 'Bug Report';
+      title.textContent = 'Terminal Log & Bug Report';
       title.style.marginTop = '20px';
       this.root.appendChild(title);
 
-      // Bug history table
-      if (unit.bugHistory && unit.bugHistory.length > 0) {
-        const historyDiv = document.createElement('div');
-        historyDiv.style.marginTop = '30px';
-        historyDiv.style.marginBottom = '30px';
-
-        const historyTitle = document.createElement('h3');
-        historyTitle.textContent = 'Bug History';
-        historyTitle.style.marginBottom = '15px';
-        historyDiv.appendChild(historyTitle);
-
-        const table = document.createElement('table');
-        table.style.width = '100%';
-        table.style.borderCollapse = 'collapse';
-        table.style.border = '1px solid #000';
-        table.style.fontSize = '14px';
-
-        // Table header
-        const thead = document.createElement('thead');
-        const headerRow = document.createElement('tr');
-        headerRow.style.backgroundColor = '#f0f0f0';
-        headerRow.style.border = '1px solid #000';
-
-        const headers = ['Bug #', 'Submitted', 'Description', 'Response', 'Status'];
-        for (const headerText of headers) {
-          const th = document.createElement('th');
-          th.textContent = headerText;
-          th.style.padding = '8px';
-          th.style.textAlign = 'left';
-          th.style.border = '1px solid #000';
-          th.style.fontWeight = 'bold';
-          headerRow.appendChild(th);
-        }
-        thead.appendChild(headerRow);
-        table.appendChild(thead);
-
-        // Table body - most recent first
-        const tbody = document.createElement('tbody');
-        const sortedBugs = [...unit.bugHistory].sort((a, b) => b.submittedAt - a.submittedAt);
-
-        for (const bug of sortedBugs) {
-          const row = document.createElement('tr');
-          row.style.border = '1px solid #000';
-
-          // Bug Number
-          const bugCell = document.createElement('td');
-          bugCell.textContent = bug.bugNumber;
-          bugCell.style.padding = '8px';
-          bugCell.style.border = '1px solid #000';
-          row.appendChild(bugCell);
-
-          // Submitted date
-          const dateCell = document.createElement('td');
-          const date = new Date(bug.submittedAt * 1000);
-          dateCell.textContent = date.toLocaleString();
-          dateCell.style.padding = '8px';
-          dateCell.style.border = '1px solid #000';
-          dateCell.style.fontSize = '12px';
-          row.appendChild(dateCell);
-
-          // Description
-          const descCell = document.createElement('td');
-          descCell.textContent = bug.description;
-          descCell.style.padding = '8px';
-          descCell.style.border = '1px solid #000';
-          descCell.style.maxWidth = '300px';
-          descCell.style.overflow = 'hidden';
-          descCell.style.textOverflow = 'ellipsis';
-          descCell.title = bug.description;
-          row.appendChild(descCell);
-
-          // Response
-          const respCell = document.createElement('td');
-          respCell.textContent = bug.response || '';
-          respCell.style.padding = '8px';
-          respCell.style.border = '1px solid #000';
-          respCell.style.maxWidth = '300px';
-          respCell.style.overflow = 'hidden';
-          respCell.style.textOverflow = 'ellipsis';
-          if (bug.response) {
-            respCell.title = bug.response;
-          }
-          row.appendChild(respCell);
-
-          // Status - show full Claude status, not just Pending/Addressed
-          const statusCell = document.createElement('td');
-          if (bug.response) {
-            // Show the full response text as status
-            statusCell.textContent = bug.response;
-            statusCell.style.color = '#008000';
-          } else {
-            statusCell.textContent = 'Submitted, waiting to be picked up';
-            statusCell.style.color = '#ff8800';
-          }
-          statusCell.style.padding = '8px';
-          statusCell.style.border = '1px solid #000';
-          statusCell.style.maxWidth = '400px';
-          statusCell.style.overflow = 'hidden';
-          statusCell.style.textOverflow = 'ellipsis';
-          statusCell.style.whiteSpace = 'normal';
-          statusCell.style.fontSize = '12px';
-          if (bug.response) {
-            statusCell.title = bug.response;
-          }
-          row.appendChild(statusCell);
-
-          tbody.appendChild(row);
-        }
-        table.appendChild(tbody);
-        historyDiv.appendChild(table);
-        this.root.appendChild(historyDiv);
-      }
+      // Terminal log history - fetch from Claude Terminal Log filtered by unit name
+      const unitName = unit.design?.units?.rows?.[0]?.name || 'Unnamed Unit';
+      this.root.appendChild(this.renderTerminalLogHistory(unitName, 'unit-terminal-log'));
 
       const label = document.createElement('label');
       label.textContent = 'Describe the bug:';
