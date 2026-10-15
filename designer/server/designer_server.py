@@ -1901,6 +1901,10 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             requests.append(request)
             requests_data["requests"] = requests
             atomic_write(requests_file, requests_data)
+            # Every designer prompt also goes into the admin console's Claude terminal log
+            self.add_terminal_entry(self.terminal_type(request), self.display_name(username),
+                                    text or f"{req_type} request for map {map_obj['name']}",
+                                    "Waiting to be picked up.", ref=req_id, designObject=map_obj['name'])
 
             # Write to console queue for build requests
             if req_type == "build":
@@ -2241,12 +2245,15 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             self.send_error_json("Faction not found", 404)
             return
 
-        # Base factions are visible to everyone (read-only)
+        # Base factions are visible to everyone read-only, except cavysupreme can edit them
         is_base = self.is_base_faction(faction)
-        read_only = is_base or faction["owner"] != username
-        if read_only and not is_base and username not in faction.get("viewers", []):
-            self.send_error_json("Forbidden", 403)
-            return
+        if is_base:
+            read_only = username != "cavysupreme"
+        else:
+            read_only = faction["owner"] != username
+            if read_only and username not in faction.get("viewers", []):
+                self.send_error_json("Forbidden", 403)
+                return
 
         response = dict(faction)
         if read_only:
@@ -3374,6 +3381,10 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             requests.append(request)
             requests_data["requests"] = requests
             atomic_write(requests_file, requests_data)
+            # Every designer prompt also goes into the admin console's Claude terminal log
+            self.add_terminal_entry("design answers", self.display_name(username),
+                                    f"Answered questions on {section_label} section: {text}" if text else f"Answered questions on {section_label} section",
+                                    "Waiting to be picked up.", ref=req_id, designObject=entity_name)
 
             # Write queue line to console queue file
             queue_written = False
@@ -3392,11 +3403,6 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 request["status"] = "notified"
                 requests_data["requests"] = requests
                 atomic_write(requests_file, requests_data)
-            else:
-                # Fallback: add terminal entry for admin console
-                self.add_terminal_entry("design answers", self.display_name(username),
-                                        f"Answered questions on {section_label} section",
-                                        "Waiting to be picked up.", ref=req_id, designObject=entity_name)
 
         self.send_json(request)
 
@@ -3495,6 +3501,10 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             requests.append(request)
             requests_data["requests"] = requests
             atomic_write(requests_file, requests_data)
+            # Every designer prompt also goes into the admin console's Claude terminal log
+            self.add_terminal_entry(self.terminal_type(request), self.display_name(username),
+                                    text or f"{req_type} request for unit {unit_name}",
+                                    "Waiting to be picked up.", ref=req_id, designObject=unit_name)
 
             # Write to console queue
             queue_written = False
@@ -3520,11 +3530,6 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 request["status"] = "notified"
                 requests_data["requests"] = requests
                 atomic_write(requests_file, requests_data)
-            elif req_type == "build":
-                # Fallback: add terminal entry for admin console
-                self.add_terminal_entry("unit build", self.display_name(username),
-                                        text or f"{req_type} request for unit {unit_name}",
-                                        "Waiting to be picked up.", ref=req_id, designObject=unit_name)
 
             # Update unit build status (only for build requests)
             if req_type == "build":
@@ -4150,6 +4155,10 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             }
             requests_data.setdefault("requests", []).append(request)
             atomic_write(requests_file, requests_data)
+            # Every designer prompt also goes into the admin console's Claude terminal log
+            self.add_terminal_entry("design update", self.display_name(username), request["text"],
+                                    "Pushed live, no rebuild needed.", ref=request["id"],
+                                    designObject=faction['name'], faction=faction['name'])
         self.send_json(request)
 
     def handle_image_swap_push(self, fid: str, faction: Dict, username: str, data: Dict):
@@ -4200,6 +4209,10 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             }
             requests_data.setdefault("requests", []).append(request)
             atomic_write(requests_file, requests_data)
+            # Every designer prompt also goes into the admin console's Claude terminal log
+            self.add_terminal_entry("design update", self.display_name(username), request["text"],
+                                    "Saved to imageSwaps; needs faction-values.py sync && apply --deploy to go live.",
+                                    ref=request["id"], designObject=faction['name'], faction=faction['name'])
 
         self.send_json(request)
 
@@ -5022,6 +5035,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 return "map build"
             elif kind == "unit":
                 return "unit build"
+        if t == "simple_update":
+            return "design update"
         return "design build"   # build and update both change the built faction
 
     def add_terminal_entry(self, kind: str, user: str, prompt: str, summary: str, ref: Optional[str] = None, designObject: Optional[str] = None, faction: Optional[str] = None) -> Dict:
