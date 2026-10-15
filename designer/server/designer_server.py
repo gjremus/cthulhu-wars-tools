@@ -4111,7 +4111,19 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             return None
         v_file = self.server.data_dir / "factions" / fid / "v" / f"{live_version}.json"
         if not v_file.exists():
-            return None
+            # Fallback: if liveVersion file doesn't exist (e.g., invalid version string like "HB 9267656"),
+            # try using the faction's current version instead
+            if isinstance(live_version, str) and not live_version.isdigit():
+                current = faction.get("current")
+                if current:
+                    v_file = self.server.data_dir / "factions" / fid / "v" / f"{current}.json"
+                    if not v_file.exists():
+                        return None
+                    live_version = current
+                else:
+                    return None
+            else:
+                return None
         built = load_json(v_file)
         for path, value in self.live_overrides(self.load_live_values(fid), live_version).items():
             if self.get_path_value(built, path.rsplit('.', 1)[0]) is not None:
