@@ -1468,6 +1468,31 @@
     return texts;
   }
 
+  // Determine if a fixedNumbers()/fixedText() field is a simple update only (green), rebuild-only
+  // (yellow), or either (orange) - the colored-border rule from the Simple Update spec (owner
+  // request, 2026-10). Shared by the Simple Update screen (app.js, Fixed Text table) and by the
+  // per-section field highlighting in sections.js, which shows the same borders + legend directly
+  // in whichever section the value was actually changed, not only in the Simple Update summary.
+  function getUpdateType(section, field) {
+    // Spellbook and SBR full text (not the abbreviated SBR card text) can be either a simple
+    // update or a rebuild, depending on whether the change is cosmetic or a rules change.
+    if ((section === 'sb' || section === 'sbr') && (field === 'name' || field === 'text')) {
+      return 'either'; // orange
+    }
+    return 'simple'; // green
+  }
+
+  // Outline color for a given update type (and for plain numbers, which are always 'simple').
+  function getOutlineColor(updateType) {
+    const COLORS = {
+      number: '#00aa00',   // green - numbers are always simple update
+      simple: '#00aa00',   // green - simple text
+      rebuild: '#ccaa00',  // yellow - rebuild only
+      either: '#ff8800'    // orange - either simple or rebuild
+    };
+    return COLORS[updateType] || '#00aa00';
+  }
+
   function describeSectionDiff(key, oldDesign, newDesign) {
     const parts = [];
     const old = oldDesign[key];
@@ -1603,6 +1628,8 @@
     missingMapFields,
     fixedNumbers,
     fixedText,
+    getUpdateType,
+    getOutlineColor,
     sbTwo,
     sbAnyTwo,
     unitHasAbility,

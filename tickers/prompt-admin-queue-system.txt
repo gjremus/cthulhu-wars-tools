@@ -726,3 +726,374 @@ When building or auditing a faction, specifically verify:
 3. Does each special ability have an Ability Type selected?
 
 ═══════════════════════════════════════════════════════════════════════════
+FACTION DESIGNER SYSTEM - COMPLETE OVERVIEW
+═══════════════════════════════════════════════════════════════════════════
+
+This is the COMPLETE context for the faction designer system that users interact with
+and that you support through this admin queue.
+
+## THE CUSTOMER DESIGNER (Web Interface)
+
+**What it is:**
+A web application at https://cwo.freeddns.org/designer/ where users design custom
+factions, neutral units, and maps for Cthulhu Wars Online. Think of it as a structured
+form that captures all the data needed to build game content.
+
+**Who uses it:**
+- Faction designers (like CavySupreme, Zehk, FBE) who create homebrew factions
+- The admin (for importing base factions and making mass updates)
+- You (via API) to verify builds and fix bugs
+
+**Three types of designs:**
+1. **Factions** - complete playable factions with units, spellbooks, abilities
+2. **Neutral Units** - standalone units usable by multiple factions (Elder Things, Servitors)
+3. **Maps** - custom game boards with regions, gates, glyphs
+
+## FACTION DESIGNER - SECTIONS AND DATA STRUCTURE
+
+A faction design has these sections (each section = one collapsible accordion in the UI):
+
+### 1. META Section
+- Faction name, acronym, color
+- Stability setting (experimental / stable)
+- Admin notes (private, only admins see these)
+
+### 2. UNITS Section
+Each unit is a row in a table with:
+- **Basic**: name, type (Cultist/Monster/Terror/GOO/Elder God), cost, combat
+- **Images**: map image (URL or upload), silhouette image (white SVG for faction card)
+- **Special Ability**: checkbox, ability name, ability type (dropdown), ability text
+- **Spellbook Requirements**: which spellbooks are needed to recruit this unit
+- **Related Spellbooks**: spellbooks that unlock when recruiting this unit
+- **Notes**: free-text field (often contains spellbook names or ability descriptions)
+
+**Validation rules for units:**
+- Name required
+- Type required
+- Cost required (number)
+- Combat required for non-Cultists
+- If special ability checked: ability type AND ability text required
+- Map image required (except "Other Custom" types)
+- Silhouette optional
+
+**Buttons for units:**
+- Add Unit (creates new empty row)
+- Delete Unit (removes row)
+- Generate Silhouette (creates white silhouette from map image - only enabled if unit has custom/unique map image)
+- CW/Necro button (choose from library of official faction images)
+
+### 3. SPELLBOOKS Section
+Each spellbook is a row with:
+- **Basic**: name, type (11 types: Start of Battle, Battle, Desecrate, Instant, etc)
+- **Cost**: how much Power to buy it
+- **Requirements**: numeric (how many of X type), glyphs, specific other SBs
+- **Effect**: fixed numeric effect (like "+1 Combat") and effect text
+- **Text**: full rules text
+- **Two-sided**: checkbox, if checked adds Side B with separate name/type/cost/text
+- **Dual powers**: checkbox, if checked adds Power 2 fields (one SB = two abilities)
+- **Earned by SBR**: checkbox (SB Ritual earns this for free)
+- **Replaceable**: checkbox (can be replaced by SB Ritual)
+
+**Validation rules for spellbooks:**
+- Name required
+- Type required
+- Cost required
+- Text required
+- If two-sided: Side B name/type/cost/text all required
+- If dual powers: Power 2 name/type/text all required
+
+**Special spellbook logic:**
+- "All 2-sided" checkbox at top: makes EVERY spellbook two-sided at once
+- Each spellbook can be individually toggled back to 1-sided
+- Dual powers is separate from two-sided (can have dual-power single-sided SB)
+
+### 4. UNFACTIONED ABILITIES (UFAs) Section
+Passive abilities that apply to the whole faction, not tied to a unit or SB.
+- Name, ability type, text
+- 1-2 UFAs per faction is typical
+- Example: "Cultists are Undead" (global rule)
+
+### 5. INTERACTIONS Section
+Special rules for how this faction interacts with maps or other factions.
+- Map interactions: "On Yuggoth map, Cultists can fly"
+- Faction interactions: "When playing against Yellow Sign, X happens"
+
+### 6. SIMPLE UPDATE Section
+Quick-update rows for common changes (images, costs, combat values).
+Used for mass updates without editing full JSON.
+- Numeric fields (costs, combat, counts)
+- Text fields (names, descriptions)
+- Image fields (map images, silhouettes)
+
+### 7. CUSTOM LOGIC Section
+Free-text notes for special coding requirements that don't fit the structured form.
+Example: "Cthulhu's Eternal Lies requires custom overlay to show regeneration counter"
+
+## ADMIN TOOL (admin.html)
+
+**Location:** https://cwo.freeddns.org/admin/
+**What it is:** Admin console for monitoring and managing the designer system
+
+**Pages/Tabs:**
+1. **Games** - list of live CWO games with notes/filters
+2. **Users** - designer user accounts, factions owned, password resets
+3. **Faction Designs** - list of all faction designs with build status
+4. **Neutral Units** - list of all neutral unit designs
+5. **Maps** - list of all map designs
+6. **Queue** - shows pending/running/done BUILD/EXTRACT/BUG requests
+7. **Claude Terminal** - log of all Claude agent interactions with designer
+8. **Agent Output** - live transcript of currently running admin agent
+9. **Server Stats** - VM performance metrics
+
+**Key admin actions:**
+- Import faction (bulk create from JSON)
+- Reset user password
+- View/edit any design (via API)
+- Submit BUILD/EXTRACT/BUG requests to queue
+- View agent transcripts
+- Submit prompts to admin agent or meta agent
+
+## CLAUDE TERMINAL PAGE
+
+**What it is:** A log showing every time Claude (any agent) interacts with the designer.
+Shows what the agent did, why, and the outcome.
+
+**When entries are created:**
+- User submits a design for BUILD/EXTRACT/BUG → queue job → agent runs → terminal log entry
+- Agent asks questions via Claude Q&A → terminal log entry
+- Agent completes a build → terminal log entry with cost
+- User answers Claude's questions → terminal log entry
+
+**Entry fields:**
+- **Type**: BUILD, EXTRACT, BUG, QA-ASKED, QA-ANSWERED
+- **User**: who submitted the request
+- **Design Object**: which faction/unit/map (if applicable)
+- **Prompt**: what the user asked for
+- **Summary**: what the agent did
+- **Cost**: how much the agent run cost
+- **Status**: pending / in-progress / completed / failed
+- **Timestamp**: when it happened
+
+**Design Object field:**
+A standardized reference to a specific design:
+- Format: `{type}/{id}/{name}`
+- Examples:
+  - `faction/tpunhkcjo2c/Colour Out of Space`
+  - `unit/abc123/Elder Thing`
+  - `map/xyz789/Yuggoth`
+- Used to group all Claude interactions related to a specific design
+- Populated automatically when user submits from a design page
+- Can be populated retroactively (user asks you to fill it in for past entries)
+
+## CLAUDE TERMINAL LOG (backend data)
+
+**What it is:** The JSON file that stores all terminal log entries
+**Location:** `~/Claude-Projects/cthulhu-wars-tools/designer/data/terminal-log.json`
+
+**Structure:**
+```json
+{
+  "entries": [
+    {
+      "id": "q_1234567890-001",
+      "type": "BUILD",
+      "user": "cavysupreme",
+      "designObject": "faction/tpunhkcjo2c/Colour Out of Space",
+      "prompt": "Build CS faction with new combat values",
+      "summary": "Updated FactionCS.scala with...",
+      "cost": 1.23,
+      "status": "completed",
+      "at": 1729012345
+    }
+  ]
+}
+```
+
+**Status values:**
+- `pending` - request queued, not started
+- `in-progress` - agent currently working on it
+- `completed` - successfully finished
+- `failed` - agent failed/gave up
+
+**Common terminal log operations you perform:**
+- Update status when agent starts/finishes
+- Add cost after agent completes
+- Populate designObject field when user asks
+- Update summary with final outcome
+
+**API for terminal log:**
+```bash
+# Add new entry
+python3 designer-admin.py terminal-log add \
+  --type BUILD \
+  --user cavysupreme \
+  --prompt "Build CS faction" \
+  --summary "Started build"
+
+# Update existing entry
+python3 designer-admin.py terminal-log update q_1234567890-001 \
+  --status completed \
+  --cost 1.23 \
+  --summary "Completed build"
+```
+
+## BUG REPORT TABLE
+
+**What it is:** A section within the Claude Terminal page showing BUILD/EXTRACT/BUG requests
+Essentially filters the terminal log to show only these types, with status prominently displayed.
+
+**Columns:**
+- ID (request ID)
+- Type (BUILD/EXTRACT/BUG)
+- User (who submitted)
+- Design Object (which faction/unit/map)
+- Prompt (what they asked for)
+- Status (pending/in-progress/completed/failed) ← THIS IS CRITICAL
+- Cost (how much it cost)
+- Date (when submitted)
+
+**Common status problems:**
+- Status shows "pending" but agent finished → you need to update status to "completed"
+- Status shows "in-progress" but agent crashed → you need to update to "failed" or "completed"
+- Status not set at all → defaults to "pending", confusing for completed work
+
+**How to audit/fix status:**
+1. Read terminal log: `cat ~/Claude-Projects/cthulhu-wars-tools/designer/data/terminal-log.json`
+2. For each entry with type BUILD/EXTRACT/BUG, check:
+   - Does it have a .reply file in ~/.cw-admin-queue/done/ ? → status should be "completed"
+   - Is status "pending" but timestamp is old (>1 hour)? → probably completed or failed
+   - Is status "in-progress" but no running job? → probably crashed, mark "failed"
+3. Update via API: `python3 designer-admin.py terminal-log update <id> --status completed`
+
+## HOW VALIDATION WORKS
+
+**Client-side validation (in browser):**
+The designer UI (sections.js, rules.js) validates as you type:
+- Required fields get red outline if empty and you try to submit
+- Dropdown fields validate that selection is from allowed list
+- Numeric fields validate that value is a number
+- Cannot submit build request if required fields are missing
+
+**Missing fields tracking:**
+- `window.Rules.checkMissing(faction)` returns array of missing field paths
+- Example: `["units.rows.abc123.abilityType", "spellbooks.rows.xyz789.cost"]`
+- Red outline applied to fields in this list via CSS class `sx-missing`
+
+**Build button states:**
+- Green "Build" button: all validation passed, ready to submit
+- Grey "Build" button: validation errors present, shows "Fix X issues first"
+- After clicking: button disabled, shows "Submitting..."
+
+**Submit flow:**
+1. User clicks Build button
+2. JS validates all required fields
+3. If validation passes: POST to `/designer/api/factions/<id>/request` with `{type: "build", prompt: "user prompt text"}`
+4. Server creates queue file in ~/.cw-admin-queue/pending/
+5. Agent picks up job, runs build, writes result
+6. Terminal log entry created with status "completed"
+
+## HOW TO READ DESIGNER DATA (for answering user questions)
+
+**List all factions:**
+```bash
+python3 ~/Claude-Projects/cthulhu-wars-tools/tickers/designer-admin.py list-factions
+```
+
+**Get full faction JSON:**
+```bash
+python3 ~/Claude-Projects/cthulhu-wars-tools/tickers/designer-admin.py faction <faction-id>
+```
+
+**Get specific section:**
+```bash
+python3 ~/Claude-Projects/cthulhu-wars-tools/tickers/designer-admin.py faction <faction-id> | jq '.units'
+```
+
+**Patch faction data:**
+```bash
+echo '[{"op":"replace","path":"/meta/color","value":"#ff0000"}]' > /tmp/patch.json
+python3 ~/Claude-Projects/cthulhu-wars-tools/tickers/designer-admin.py patch <faction-id> /tmp/patch.json
+```
+
+**Read terminal log:**
+```bash
+python3 ~/Claude-Projects/cthulhu-wars-tools/tickers/designer-admin.py terminal-log list
+python3 ~/Claude-Projects/cthulhu-wars-tools/tickers/designer-admin.py terminal-log get <entry-id>
+```
+
+**Read Q&A for a design:**
+```bash
+python3 ~/Claude-Projects/cthulhu-wars-tools/tickers/designer-admin.py qa <faction-id> units
+```
+
+## TYPICAL USER WORKFLOWS (so you understand the requests)
+
+**Workflow 1: Create new faction**
+1. User clicks "New Faction" on designer home
+2. Fills in name, acronym in meta section
+3. Adds units one by one (name, type, cost, combat, images)
+4. Adds spellbooks (requirements, costs, text)
+5. Clicks "Build" → queue job for you
+6. You extract data, generate game code, deploy to test server
+7. Terminal log entry created
+
+**Workflow 2: Update existing faction**
+1. User opens existing faction design
+2. Changes unit cost or combat value
+3. Changes spellbook text
+4. Clicks "Build" again
+5. You rebuild with new values, redeploy
+6. Terminal log shows update
+
+**Workflow 3: Extract from guide document**
+1. User has a Word doc with faction design
+2. Uploads it via "Extract" button
+3. You parse the document, populate all sections
+4. Save JSON to designer
+5. User reviews and tweaks extracted data
+6. User clicks "Build" to finalize
+
+**Workflow 4: Fix bug**
+1. User notices unit image is broken or wrong combat value in game
+2. Submits BUG request with description
+3. You diagnose: is it designer data wrong, or game code wrong?
+4. Fix designer data (patch API) or game code (.scala file)
+5. Redeploy if game code changed
+6. Update terminal log status to completed
+
+**Workflow 5: Answer Claude questions**
+1. You encounter ambiguity during extract/build (unclear ability text, missing image)
+2. You post questions via Claude Q&A API
+3. Questions appear in designer UI with text boxes
+4. User types answers, clicks Submit
+5. Answers sent to you via queue
+6. You resume build with answers
+
+## COMMON PROBLEMS YOU SOLVE
+
+**Problem: "Status shows pending but I finished"**
+- Cause: You completed build but didn't update terminal log status
+- Fix: `python3 designer-admin.py terminal-log update <id> --status completed`
+
+**Problem: "Design Object field is empty"**
+- Cause: Old queue jobs didn't auto-populate this field
+- Fix: Read terminal log, find entries for this faction, update each:
+  `python3 designer-admin.py terminal-log update <id> --design-object "faction/abc/Name"`
+
+**Problem: "Image not showing in game"**
+- Cause: Image uploaded to designer but not synced to game server
+- Fix: Redeploy with `--assets` flag to sync images
+
+**Problem: "Validation won't let me submit"**
+- Cause: Required field missing (abilityType if special ability checked, SB cost, etc)
+- Fix: Identify missing fields via `checkMissing()`, tell user which to fill
+
+**Problem: "My faction isn't in the picker"**
+- Cause: Faction built but not added to faction picker arrays
+- Fix: Add to both default picker AND alternate picker, redeploy
+
+**Problem: "Terminal log is cluttered with old entries"**
+- Solution: This is expected, do NOT delete old entries
+- User can filter by design object, user, type, date
+
+═══════════════════════════════════════════════════════════════════════════

@@ -3659,6 +3659,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             self.send_json({"entries": sorted(log.get("entries", []), key=lambda e: e.get("at", 0), reverse=True)})
         elif endpoint == 'agent-output':
             self.handle_admin_agent_output()
+        elif endpoint == 'meta-agent-output':
+            self.handle_meta_agent_output()
         else:
             self.send_error_json("Unknown admin endpoint", 404)
 
@@ -3744,6 +3746,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                     self.send_error_json("Unknown admin endpoint", 404)
             else:
                 self.send_error_json("Invalid admin path", 400)
+        elif endpoint == 'meta-agent-prompt':
+            self.handle_meta_agent_prompt()
         else:
             self.send_error_json("Unknown admin endpoint", 404)
 
@@ -5243,6 +5247,61 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 "requestId": None,
                 "output": f"Error reading agent output: {str(e)}"
             })
+
+    def handle_meta_agent_prompt(self):
+        """POST admin/meta-agent-prompt: writes prompt to /tmp/meta-agent-prompts.log for pickup by meta agent watchdog."""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length).decode('utf-8')
+
+            if not body.strip():
+                self.send_error_json("Empty prompt", 400)
+                return
+
+            # Write to the meta agent prompt file
+            prompt_file = Path("/tmp/meta-agent-prompts.log")
+            with open(prompt_file, 'w', encoding='utf-8') as f:
+                f.write(body)
+
+            self.send_json({"success": True, "message": "Prompt queued for meta agent"})
+        except Exception as e:
+            self.send_error_json(f"Failed to queue prompt: {str(e)}", 500)
+
+    def handle_meta_agent_output(self):
+        """GET admin/meta-agent-output?lines=N: returns recent output from /tmp/meta-agent-stdout.log."""
+        # Parse query parameters
+        parsed = urlparse(self.path)
+        params = parse_qs(parsed.query)
+        max_lines = int(params.get('lines', ['100'])[0])
+
+        output_file = Path("/tmp/meta-agent-stdout.log")
+
+        if not output_file.exists():
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/plain; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(b'(no output yet)')
+            return
+
+        try:
+            with open(output_file, 'r', encoding='utf-8', errors='ignore') as f:
+                lines = f.readlines()
+
+            # Return last N lines
+            if len(lines) > max_lines:
+                lines = lines[-max_lines:]
+
+            output = ''.join(lines)
+
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/plain; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(output.encode('utf-8'))
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-Type', 'text/plain; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(f"Error reading meta agent output: {str(e)}".encode('utf-8'))
 
     def handle_admin_terminal_log(self, entry_id: Optional[str]):
         """POST admin/terminal-log {type,user,prompt,summary,[id],[at]} adds a row;

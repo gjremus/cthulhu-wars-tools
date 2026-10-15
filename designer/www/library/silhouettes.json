@@ -971,5 +971,26 @@
     "type": "Monster",
     "faction": "Yellow Sign",
     "url": "/designer/silhouettes/ys-undead.svg"
+  },
+  {
+    "id": "an-cathedral",
+    "name": "Cathedral",
+    "type": "Building",
+    "faction": "Ancients",
+    "url": "/designer/silhouettes/an-cathedral.svg"
+  },
+  {
+    "id": "ds-chaos-gate",
+    "name": "Chaos Gate",
+    "type": "Building",
+    "faction": "Dreamlands Syndicate",
+    "url": "/designer/silhouettes/ds-chaos-gate.svg"
+  },
+  {
+    "id": "fm-screaming-wall",
+    "name": "Screaming Wall",
+    "type": "Building",
+    "faction": "Fleshmason",
+    "url": "/designer/silhouettes/fm-screaming-wall.svg"
   }
 ]

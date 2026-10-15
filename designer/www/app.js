@@ -851,7 +851,7 @@
         }
 
         // Group by type and sort within each
-        const typeOrder = ['Cultist', 'Monster', 'Terror', 'GOO', 'Elder God'];
+        const typeOrder = ['Cultist', 'Monster', 'Terror', 'GOO', 'Elder God', 'Building', 'Gate'];
         const sections = {};
         typeOrder.forEach(t => { sections[t] = []; });
 
@@ -905,7 +905,9 @@
           'Monster': 'Monsters',
           'Terror': 'Terrors',
           'GOO': 'GOOs / iGOOs',
-          'Elder God': 'Elder Gods'
+          'Elder God': 'Elder Gods',
+          'Building': 'Buildings',
+          'Gate': 'Gates'
         };
 
         const nav = document.createElement('div');
@@ -1162,7 +1164,7 @@
         }
 
         // Group by type
-        const typeOrder = ['Cultist', 'Monster', 'Terror', 'GOO', 'Elder God'];
+        const typeOrder = ['Cultist', 'Monster', 'Terror', 'GOO', 'Elder God', 'Building', 'Gate'];
         const sections = {};
         typeOrder.forEach(t => { sections[t] = []; });
 
@@ -1215,7 +1217,9 @@
           'Monster': 'Monsters',
           'Terror': 'Terrors',
           'GOO': 'GOOs / iGOOs',
-          'Elder God': 'Elder Gods'
+          'Elder God': 'Elder Gods',
+          'Building': 'Buildings',
+          'Gate': 'Gates'
         };
 
         const nav = document.createElement('div');
@@ -3377,6 +3381,10 @@
       const ctx = {
         design,
         faction,
+        // Live build snapshot, for the colored-border "differs from build" field highlighting
+        // (same data the Simple Update screen uses) - shown directly in whichever section the
+        // owner is editing, not only on the Simple Update summary screen.
+        builtDesign: this.state.builtDesign,
         reference: this.state.reference,
         adminView: this.state.adminView ? true : false,  // Mark admin view for UI styling/messaging
         set: (path, value) => {

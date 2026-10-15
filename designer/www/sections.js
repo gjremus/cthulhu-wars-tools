@@ -130,6 +130,34 @@
         border: 1px solid #666;
         cursor: pointer;
       }
+
+      .sx-nav-buttons {
+        position: fixed;
+        right: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        z-index: 1000;
+        transition: opacity 0.2s;
+      }
+      .sx-nav-btn {
+        padding: 10px 16px;
+        background: #444;
+        border: 1px solid #666;
+        color: #eee;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: bold;
+        border-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      }
+      .sx-nav-btn:hover {
+        background: #555;
+      }
+      .sx-nav-btn.sx-hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -158,16 +186,26 @@
     return el;
   }
 
+  // Key used to find a field's input element again later, for the colored-border "value changed
+  // from the live build" highlighting (see applyUpdateHighlighting below). Mirrors the
+  // section/rowId/field identity that Rules.fixedNumbers()/fixedText() already use, so a diff
+  // reported by those functions can be matched straight back to the input that rendered it.
+  // rowId is null for singleton sections (ufa, setup).
+  function uxKey(rowId, field) {
+    return (rowId == null ? '' : rowId) + '::' + field;
+  }
+
   function textField(label, value, onChange, opts = {}) {
     const greyed = opts.greyed || false;
     const hint = opts.hint || '';
     const rows = opts.rows || null;
     const missing = opts.missing || false;
+    const uxAttrs = opts.ux ? {'data-ux': opts.ux} : {};
 
     const inputClass = missing ? 'sx-missing' : '';
     const input = rows
-      ? h('textarea', {className: inputClass, value: value || '', oninput: e => onChange(e.target.value), rows})
-      : h('input', {className: inputClass, type: 'text', value: value || '', oninput: e => onChange(e.target.value)});
+      ? h('textarea', Object.assign({className: inputClass, value: value || '', oninput: e => onChange(e.target.value), rows}, uxAttrs))
+      : h('input', Object.assign({className: inputClass, type: 'text', value: value || '', oninput: e => onChange(e.target.value)}, uxAttrs));
 
     return h('div', {className: 'sx-field' + (greyed ? ' sx-greyed' : '')},
       h('label', {}, label, hint ? h('span', {className: 'sx-hint', title: hint}, 'ⓘ') : null),
@@ -190,6 +228,7 @@
     };
     if (min != null) attrs.min = min;
     if (max != null) attrs.max = max;
+    if (opts.ux) attrs['data-ux'] = opts.ux;
 
     return h('div', {className: 'sx-field' + (greyed ? ' sx-greyed' : '')},
       h('label', {}, label),
@@ -455,6 +494,7 @@
           type: 'number',
           value: row.qty != null ? row.qty : '',
           disabled: row.kind === 'variable',
+          'data-ux': uxKey(row.id, 'qty'),
           oninput: e => ctx.set(`ae.rows.${row.id}.qty`, e.target.value ? parseInt(e.target.value) : null)
         })
       ));
@@ -514,7 +554,7 @@
     const missing = window.Rules.missingFields('ufa', ctx.design);
     const isMissing = path => missing.includes(path);
 
-    container.appendChild(textField('Name', d.name, val => ctx.set('ufa.name', val), {missing: isMissing('ufa.name')}));
+    container.appendChild(textField('Name', d.name, val => ctx.set('ufa.name', val), {missing: isMissing('ufa.name'), ux: uxKey(null, 'name')}));
 
     container.appendChild(selectField('Phase', d.phase, [
       'Setup', 'Action', 'Gather Power', 'Player Order', 'Doom'
@@ -523,13 +563,13 @@
     container.appendChild(selectField('Type', d.type, window.Rules.SB_TYPES, val => ctx.set('ufa.type', val), {missing: isMissing('ufa.type')}));
 
     container.appendChild(checkboxField('Includes Fixed Numeric Cost?', d.hasCost, val => ctx.set('ufa.hasCost', val)));
-    container.appendChild(numberField('Fixed Numeric Cost', d.cost, val => ctx.set('ufa.cost', val), {greyed: !d.hasCost, min: 0, missing: isMissing('ufa.cost')}));
+    container.appendChild(numberField('Fixed Numeric Cost', d.cost, val => ctx.set('ufa.cost', val), {greyed: !d.hasCost, min: 0, missing: isMissing('ufa.cost'), ux: uxKey(null, 'cost')}));
 
     container.appendChild(checkboxField('Includes Fixed Numeric Effect?', d.hasEffect, val => ctx.set('ufa.hasEffect', val)));
-    container.appendChild(numberField('Fixed Numeric Effect', d.effect, val => ctx.set('ufa.effect', val), {greyed: !d.hasEffect, min: 0, missing: isMissing('ufa.effect')}));
+    container.appendChild(numberField('Fixed Numeric Effect', d.effect, val => ctx.set('ufa.effect', val), {greyed: !d.hasEffect, min: 0, missing: isMissing('ufa.effect'), ux: uxKey(null, 'effect')}));
 
     const textLen = 200;
-    container.appendChild(textField('Text', d.text, val => ctx.set('ufa.text', val), {rows: Math.max(3, Math.ceil(textLen / 45)), missing: isMissing('ufa.text')}));
+    container.appendChild(textField('Text', d.text, val => ctx.set('ufa.text', val), {rows: Math.max(3, Math.ceil(textLen / 45)), missing: isMissing('ufa.text'), ux: uxKey(null, 'text')}));
 
     renderClaudeQA(container, ctx, 'ufa');
     renderAdminNotes(container, ctx, 'ufa');
@@ -637,6 +677,7 @@
           className: isMissing(`setup.units.${unit.id}.qty`) ? 'sx-missing' : '',
           type: 'number',
           value: unit.qty != null ? unit.qty : '',
+          'data-ux': uxKey(unit.id, 'qty'),
           oninput: e => ctx.set(`setup.units.${unit.id}.qty`, e.target.value ? parseInt(e.target.value) : null)
         })
       ));
@@ -663,11 +704,11 @@
       ctx.addRow('setup.units', newUnit);
     }}, 'Add unit'));
 
-    container.appendChild(numberField('Starting power', d.power, val => ctx.set('setup.power', val), {min: 0, missing: isMissing('setup.power')}));
+    container.appendChild(numberField('Starting power', d.power, val => ctx.set('setup.power', val), {min: 0, missing: isMissing('setup.power'), ux: uxKey(null, 'power')}));
 
     const aeEnabled = ctx.design.ae && ctx.design.ae.enabled;
     const aeName = aeEnabled && ctx.design.ae.name ? ctx.design.ae.name : 'alternate economy';
-    container.appendChild(numberField('Starting ' + aeName, d.aeStart, val => ctx.set('setup.aeStart', val), {greyed: !aeEnabled, min: 0, missing: isMissing('setup.aeStart')}));
+    container.appendChild(numberField('Starting ' + aeName, d.aeStart, val => ctx.set('setup.aeStart', val), {greyed: !aeEnabled, min: 0, missing: isMissing('setup.aeStart'), ux: uxKey(null, 'aeStart')}));
 
     renderClaudeQA(container, ctx, 'setup');
     renderAdminNotes(container, ctx, 'setup');
@@ -695,7 +736,7 @@
         ctx.set(`units.rows.${unit.id}.type`, val);
       }, {missing: isMissing(`units.rows.${unit.id}.type`)}));
 
-      unitDiv.appendChild(textField('Name', unit.name, val => ctx.set(`units.rows.${unit.id}.name`, val), {missing: isMissing(`units.rows.${unit.id}.name`)}));
+      unitDiv.appendChild(textField('Name', unit.name, val => ctx.set(`units.rows.${unit.id}.name`, val), {missing: isMissing(`units.rows.${unit.id}.name`), ux: uxKey(unit.id, 'name')}));
 
       // Map image
       const defaultArt = ref.defaultUnitArt || {};
@@ -805,7 +846,7 @@ After generating the silhouette, automatically attach it to this unit by setting
       }
       unitDiv.appendChild(silDiv);
 
-      unitDiv.appendChild(numberField('Quantity', unit.qty, val => ctx.set(`units.rows.${unit.id}.qty`, val), {min: 1, max: 20, missing: isMissing(`units.rows.${unit.id}.qty`)}));
+      unitDiv.appendChild(numberField('Quantity', unit.qty, val => ctx.set(`units.rows.${unit.id}.qty`, val), {min: 1, max: 20, missing: isMissing(`units.rows.${unit.id}.qty`), ux: uxKey(unit.id, 'qty')}));
 
       // Cost
       unitDiv.appendChild(selectField('Cost Type', unit.costType, window.Rules.COST_TYPES, val => {
@@ -813,12 +854,12 @@ After generating the silhouette, automatically attach it to this unit by setting
       }, {missing: isMissing(`units.rows.${unit.id}.costType`)}));
 
       if (unit.costType === 'Fixed') {
-        unitDiv.appendChild(numberField('Cost', unit.cost, val => ctx.set(`units.rows.${unit.id}.cost`, val), {min: 0, missing: isMissing(`units.rows.${unit.id}.cost`)}));
+        unitDiv.appendChild(numberField('Cost', unit.cost, val => ctx.set(`units.rows.${unit.id}.cost`, val), {min: 0, missing: isMissing(`units.rows.${unit.id}.cost`), ux: uxKey(unit.id, 'cost')}));
       } else if (unit.costType === 'Variable') {
         unitDiv.appendChild(textField('Cost calculation', unit.costCalc, val => ctx.set(`units.rows.${unit.id}.costCalc`, val), {rows: 2, missing: isMissing(`units.rows.${unit.id}.costCalc`)}));
       } else if (unit.costType === 'Awakening') {
         unitDiv.appendChild(textField('Requirements/process', unit.awakenReq, val => ctx.set(`units.rows.${unit.id}.awakenReq`, val), {rows: 3, missing: isMissing(`units.rows.${unit.id}.awakenReq`)}));
-        unitDiv.appendChild(numberField('Power cost', unit.awakenPower, val => ctx.set(`units.rows.${unit.id}.awakenPower`, val), {min: 0, missing: isMissing(`units.rows.${unit.id}.awakenPower`)}));
+        unitDiv.appendChild(numberField('Power cost', unit.awakenPower, val => ctx.set(`units.rows.${unit.id}.awakenPower`, val), {min: 0, missing: isMissing(`units.rows.${unit.id}.awakenPower`), ux: uxKey(unit.id, 'awakenPower')}));
         unitDiv.appendChild(textField('Region placement', unit.awakenRegion, val => ctx.set(`units.rows.${unit.id}.awakenRegion`, val), {missing: isMissing(`units.rows.${unit.id}.awakenRegion`)}));
       }
 
@@ -830,12 +871,12 @@ After generating the silhouette, automatically attach it to this unit by setting
       const combatGreyed = unit.combatType === 'N/A';
 
       if (unit.combatType === 'Fixed Dice') {
-        unitDiv.appendChild(numberField('Dice', unit.dice, val => ctx.set(`units.rows.${unit.id}.dice`, val), {min: 0, missing: isMissing(`units.rows.${unit.id}.dice`)}));
+        unitDiv.appendChild(numberField('Dice', unit.dice, val => ctx.set(`units.rows.${unit.id}.dice`, val), {min: 0, missing: isMissing(`units.rows.${unit.id}.dice`), ux: uxKey(unit.id, 'dice')}));
       } else if (unit.combatType === 'Variable Dice') {
         unitDiv.appendChild(textField('Dice calculation', unit.diceCalc, val => ctx.set(`units.rows.${unit.id}.diceCalc`, val), {rows: 2, missing: isMissing(`units.rows.${unit.id}.diceCalc`)}));
       } else if (unit.combatType === 'Fixed Results') {
-        unitDiv.appendChild(numberField('Pains', unit.pains, val => ctx.set(`units.rows.${unit.id}.pains`, val), {min: 0, missing: isMissing(`units.rows.${unit.id}.pains`)}));
-        unitDiv.appendChild(numberField('Kills', unit.kills, val => ctx.set(`units.rows.${unit.id}.kills`, val), {min: 0, missing: isMissing(`units.rows.${unit.id}.kills`)}));
+        unitDiv.appendChild(numberField('Pains', unit.pains, val => ctx.set(`units.rows.${unit.id}.pains`, val), {min: 0, missing: isMissing(`units.rows.${unit.id}.pains`), ux: uxKey(unit.id, 'pains')}));
+        unitDiv.appendChild(numberField('Kills', unit.kills, val => ctx.set(`units.rows.${unit.id}.kills`, val), {min: 0, missing: isMissing(`units.rows.${unit.id}.kills`), ux: uxKey(unit.id, 'kills')}));
       } else if (unit.combatType === 'Variable Results') {
         unitDiv.appendChild(textField('Results calculation', unit.resultsCalc, val => ctx.set(`units.rows.${unit.id}.resultsCalc`, val), {rows: 2, missing: isMissing(`units.rows.${unit.id}.resultsCalc`)}));
       }
@@ -1286,6 +1327,7 @@ After generating the silhouette, automatically attach it to this unit by setting
           className: isMissing(`sbr.rows.${row.id}.text`) ? 'sx-missing' : '',
           value: row.text || '',
           rows: 3,
+          'data-ux': uxKey(row.id, 'text'),
           oninput: e => ctx.set(`sbr.rows.${row.id}.text`, e.target.value)
         })
       ));
@@ -1296,6 +1338,7 @@ After generating the silhouette, automatically attach it to this unit by setting
           value: row.shortText || '',
           rows: 3,
           placeholder: 'Brief version for faction card display...',
+          'data-ux': uxKey(row.id, 'shortText'),
           oninput: e => ctx.set(`sbr.rows.${row.id}.shortText`, e.target.value)
         })
       ));
@@ -1310,6 +1353,7 @@ After generating the silhouette, automatically attach it to this unit by setting
           type: 'number',
           value: row.num != null ? row.num : '',
           disabled: !row.hasNum,
+          'data-ux': uxKey(row.id, 'num'),
           oninput: e => ctx.set(`sbr.rows.${row.id}.num`, e.target.value ? parseInt(e.target.value) : null)
         })
       ));
@@ -1378,12 +1422,15 @@ After generating the silhouette, automatically attach it to this unit by setting
       const f = name => `sb.rows.${row.id}.${name}${sfx}`;
       const v = name => row[name + sfx];
       // Name and Text boxes at least 3x their old phone width (about 51px and 38px)
+      // sfx-suffixed field name ('name', 'nameB', 'name2', ...) matches Rules.fixedNumbers()/
+      // fixedText()'s own field naming for this row, so the diff highlighting below can find it.
       tr.appendChild(h('td', {},
         h('input', {
           className: isMissing(f('name')) ? 'sx-missing' : '',
           type: 'text',
           value: v('name') || '',
           style: 'min-width: 155px;',
+          'data-ux': uxKey(row.id, 'name' + sfx),
           oninput: e => ctx.set(f('name'), e.target.value)
         })
       ));
@@ -1403,6 +1450,7 @@ After generating the silhouette, automatically attach it to this unit by setting
         h('input', {
           type: 'number',
           value: v('cost') != null ? v('cost') : 0,
+          'data-ux': uxKey(row.id, 'cost' + sfx),
           oninput: e => ctx.set(f('cost'), e.target.value ? parseInt(e.target.value) : 0)
         })
       ));
@@ -1417,6 +1465,7 @@ After generating the silhouette, automatically attach it to this unit by setting
           type: 'number',
           value: v('effect') != null ? v('effect') : '',
           disabled: !v('hasEffect'),
+          'data-ux': uxKey(row.id, 'effect' + sfx),
           oninput: e => ctx.set(f('effect'), e.target.value ? parseInt(e.target.value) : null)
         })
       ));
@@ -1427,6 +1476,7 @@ After generating the silhouette, automatically attach it to this unit by setting
           value: v('text') || '',
           rows: 3,
           style: 'min-width: 160px;',
+          'data-ux': uxKey(row.id, 'text' + sfx),
           oninput: e => ctx.set(f('text'), e.target.value)
         })
       ));
@@ -1690,6 +1740,7 @@ After generating the silhouette, automatically attach it to this unit by setting
           className: isMissing(`tokens.rows.${row.id}.qty`) ? 'sx-missing' : '',
           type: 'number',
           value: row.qty != null ? row.qty : '',
+          'data-ux': uxKey(row.id, 'qty'),
           oninput: e => ctx.set(`tokens.rows.${row.id}.qty`, e.target.value ? parseInt(e.target.value) : null)
         })
       ));
@@ -1741,6 +1792,7 @@ After generating the silhouette, automatically attach it to this unit by setting
           type: 'number',
           value: row.effect != null ? row.effect : '',
           disabled: !row.hasEffect,
+          'data-ux': uxKey(row.id, 'effect'),
           oninput: e => ctx.set(`tokens.rows.${row.id}.effect`, e.target.value ? parseInt(e.target.value) : null)
         })
       ));
@@ -1873,6 +1925,7 @@ After generating the silhouette, automatically attach it to this unit by setting
           type: 'number',
           value: row.num != null ? row.num : '',
           disabled: !row.hasNum,
+          'data-ux': uxKey(row.id, 'num'),
           oninput: e => ctx.set(`custom.rows.${row.id}.num`, e.target.value ? parseInt(e.target.value) : null)
         })
       ));
@@ -3268,6 +3321,86 @@ After generating the silhouette, automatically attach it to this unit by setting
     }
   }
 
+  // Owner spec (terminal log entries 150-152, revisited): fields whose value differs from the
+  // live build get a colored outline (green = simple update, yellow = rebuild only, orange =
+  // either), and a legend explaining the colors appears whenever any field in the section has
+  // one. This must work in EVERY section where a value can change - not just in the separate
+  // Simple Update summary screen - so it lives here in the shared section renderer, keyed off
+  // the same Rules.fixedNumbers()/fixedText() data the Simple Update screen uses, matched back to
+  // each field's input via the data-ux attribute set by uxKey() above.
+  function applyUpdateHighlighting(key, container, ctx) {
+    const R = window.Rules;
+    if (!R || !R.fixedNumbers || !R.fixedText) return;
+    // Only faction designs carry a comparable "live build" snapshot today; maps and standalone
+    // neutral units have no equivalent built-value tracking yet.
+    if (!ctx.builtDesign || !ctx.design) return;
+
+    const findInput = ux => {
+      const all = container.querySelectorAll('[data-ux]');
+      for (const el of all) {
+        if (el.getAttribute('data-ux') === ux) return el;
+      }
+      return null;
+    };
+
+    let anyDiff = false;
+
+    const designNums = R.fixedNumbers(ctx.design).filter(n => n.section === key);
+    const builtNums = R.fixedNumbers(ctx.builtDesign).filter(n => n.section === key);
+    designNums.forEach(dNum => {
+      const bNum = builtNums.find(b => b.rowId === dNum.rowId && b.field === dNum.field);
+      if (!bNum || bNum.value !== dNum.value) {
+        const el = findInput(uxKey(dNum.rowId, dNum.field));
+        if (el) {
+          el.style.border = '3px solid ' + R.getOutlineColor('number');
+          el.style.backgroundColor = '#1a1a1a';
+          anyDiff = true;
+        }
+      }
+    });
+
+    const designTexts = R.fixedText(ctx.design).filter(t => t.section === key);
+    const builtTexts = R.fixedText(ctx.builtDesign).filter(t => t.section === key);
+    designTexts.forEach(dTxt => {
+      const bTxt = builtTexts.find(b => b.rowId === dTxt.rowId && b.field === dTxt.field);
+      if (!bTxt || bTxt.value !== dTxt.value) {
+        const el = findInput(uxKey(dTxt.rowId, dTxt.field));
+        if (el) {
+          const updateType = R.getUpdateType(dTxt.section, dTxt.field);
+          el.style.border = '3px solid ' + R.getOutlineColor(updateType);
+          el.style.backgroundColor = '#1a1a1a';
+          anyDiff = true;
+        }
+      }
+    });
+
+    if (anyDiff) {
+      container.insertBefore(buildUpdateLegend(), container.firstChild);
+    }
+  }
+
+  // Same legend content/colors as the Simple Update screen (app.js showUpdateLegend), but built
+  // standalone here so it can be dropped into any section, right where the colored fields are.
+  function buildUpdateLegend() {
+    const items = [
+      {color: '#00aa00', label: 'Green outline: Can be updated immediately through Simple Update'},
+      {color: '#ccaa00', label: 'Yellow outline: Must be updated through a rebuild'},
+      {color: '#ff8800', label: 'Orange outline: Can be updated either way (simple or rebuild)'}
+    ];
+
+    const legend = h('div', {style: 'margin-bottom: 20px; padding: 12px; background-color: #1a1a1a; border: 1px solid #444; border-radius: 4px;'});
+    legend.appendChild(h('strong', {style: 'display: block; margin-bottom: 8px;'}, 'Field Update Legend:'));
+
+    items.forEach(item => {
+      legend.appendChild(h('div', {style: 'margin-bottom: 6px;'},
+        h('span', {style: `display: inline-block; width: 16px; height: 16px; background-color: transparent; border: 2px solid ${item.color}; margin-right: 8px; vertical-align: middle;`}),
+        h('span', {style: 'vertical-align: middle;'}, item.label)
+      ));
+    });
+
+    return legend;
+  }
+
   function render(key, container, ctx) {
     injectCSS();
     container.innerHTML = '';
@@ -3299,6 +3432,10 @@ After generating the silhouette, automatically attach it to this unit by setting
       if (ctx.readOnly && ctx.adminView) {
         highlightMissingFields(key, ctx.design, container);
       }
+      // Colored borders + legend for fields that differ from the live build (owner spec,
+      // terminal log 150-152): any faction section the user is actively editing, not just the
+      // separate Simple Update summary screen.
+      applyUpdateHighlighting(key, container, ctx);
       // Free box at the bottom of every design section (not Menu Design)
       const isFactionSection = window.Rules.BUILD_SECTIONS.includes(key);
       const isMapSection = window.Rules.MAP_BUILD_SECTIONS && window.Rules.MAP_BUILD_SECTIONS.includes(key);
