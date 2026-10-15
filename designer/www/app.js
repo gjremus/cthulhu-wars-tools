@@ -1446,8 +1446,13 @@
       loadingMsg.style.color = '#888';
       historyDiv.appendChild(loadingMsg);
 
-      // Fetch terminal log and filter by design name
-      fetch('/designer/api/terminal-log')
+      // Fetch terminal log and filter by design name. Admin's read-only view has no login
+      // session, only its own admin token; everyone else needs the Bearer token to be scoped by name.
+      const logUrl = this.state.adminToken
+        ? `/designer/api/admin/${this.state.adminToken}/terminal-log`
+        : `/designer/api/terminal-log?name=${encodeURIComponent(designName)}`;
+      const logHeaders = this.state.adminToken ? {} : {'Authorization': `Bearer ${this.state.token}`};
+      fetch(logUrl, {headers: logHeaders})
         .then(r => r.ok ? r.json() : Promise.reject(`HTTP ${r.status}`))
         .then(data => {
           const entries = data.entries || [];

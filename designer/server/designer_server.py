@@ -279,6 +279,11 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             self.handle_live_values(m.group(1))
             return
 
+        # Terminal log history for one design, used by the faction/unit/map "Bug Report" screen
+        if path == '/designer/api/terminal-log':
+            self.handle_terminal_log()
+            return
+
         if path.startswith('/designer/api/admin/'):
             self.handle_admin_get(path)
             return
@@ -5081,6 +5086,24 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             entry["updatedAt"] = int(time.time())
             atomic_write(path, log)
         return entry
+
+    def handle_terminal_log(self):
+        """GET /designer/api/terminal-log?name=<design name>: the Claude terminal log entries for one
+        faction/unit/map, used by its "Terminal Log & Bug Report" screen. Requires login; scoped to the
+        requested design name so one user's session can't pull every other user's terminal log."""
+        username = self.verify_session()
+        if not username:
+            self.send_error_json("Unauthorized", 401)
+            return
+        name = parse_qs(urlparse(self.path).query).get('name', [''])[0]
+        with TERMINAL_LOCK:
+            path = self.server.data_dir / "terminal-log.json"
+            log = load_json(path) or {"entries": []}
+            if number_terminal_entries(log):
+                atomic_write(path, log)
+        entries = [e for e in log.get("entries", [])
+                   if name and (e.get("faction") == name or e.get("designObject") == name)]
+        self.send_json({"entries": sorted(entries, key=lambda e: e.get("at", 0), reverse=True)})
 
     def handle_admin_agent_output(self):
         """GET admin/agent-output: returns live JSONL output from the admin queue agent.
