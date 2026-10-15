@@ -351,7 +351,9 @@
         showPicked: false,
         leadsToNext: false,
         next: null,
-        nextTrigger: ''
+        nextTrigger: '',
+        additionalButtons: [],
+        menuInstructions: ''
       };
     } else if (tablePath === 'interactions.rows') {
       return {
@@ -362,6 +364,12 @@
         abilityText: '',
         yourAbility: '',
         interactionDesc: ''
+      };
+    } else if (tablePath === 'menus.rows.additionalButtons.rows') {
+      return {
+        id: newId(),
+        text: '',
+        function: ''
       };
     }
     return null;

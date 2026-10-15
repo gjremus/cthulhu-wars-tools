@@ -1960,6 +1960,64 @@
 
       menuDiv.appendChild(textField('Next Menu triggered by', menu.nextTrigger, val => ctx.set(`menus.rows.${menu.id}.nextTrigger`, val), {greyed: !menu.leadsToNext}));
 
+      // Additional Buttons table
+      menuDiv.appendChild(h('h4', {style: 'margin-top: 24px; margin-bottom: 12px;'}, 'Additional Buttons'));
+      const buttonsTableDiv = h('div', {className: 'sx-table'});
+      const buttonsTable = h('table', {});
+      buttonsTable.appendChild(h('thead', {},
+        h('tr', {},
+          h('th', {}, 'Button Text'),
+          h('th', {}, 'Button Function'),
+          h('th', {style: 'width: 100px;'}, '')
+        )
+      ));
+
+      const buttonsBody = h('tbody', {});
+      if (!menu.additionalButtons) menu.additionalButtons = [];
+      menu.additionalButtons.forEach((btn, btnIdx) => {
+        const tr = h('tr', {});
+        tr.appendChild(h('td', {},
+          h('input', {
+            type: 'text',
+            value: btn.text || '',
+            placeholder: 'e.g. "Cancel"',
+            oninput: e => ctx.set(`menus.rows.${menu.id}.additionalButtons.${btnIdx}.text`, e.target.value)
+          })
+        ));
+        tr.appendChild(h('td', {},
+          h('input', {
+            type: 'text',
+            value: btn.function || '',
+            placeholder: 'e.g. "closeMenu()"',
+            oninput: e => ctx.set(`menus.rows.${menu.id}.additionalButtons.${btnIdx}.function`, e.target.value)
+          })
+        ));
+        tr.appendChild(h('td', {},
+          h('button', {className: 'sx-btn', onclick: async () => {
+            const confirmed = await ctx.confirm('Delete this button?', 'Yes - delete', 'No - cancel');
+            if (confirmed) {
+              menu.additionalButtons.splice(btnIdx, 1);
+              ctx.set(`menus.rows.${menu.id}.additionalButtons`, menu.additionalButtons);
+            }
+          }}, 'Delete')
+        ));
+        buttonsBody.appendChild(tr);
+      });
+      buttonsTable.appendChild(buttonsBody);
+      buttonsTableDiv.appendChild(buttonsTable);
+      menuDiv.appendChild(buttonsTableDiv);
+
+      const addButtonBtn = h('button', {className: 'sx-btn', onclick: () => {
+        if (!menu.additionalButtons) menu.additionalButtons = [];
+        const newBtn = {id: Math.random().toString(36).substr(2, 9), text: '', function: ''};
+        menu.additionalButtons.push(newBtn);
+        ctx.set(`menus.rows.${menu.id}.additionalButtons`, menu.additionalButtons);
+      }}, 'Add additional button');
+      menuDiv.appendChild(addButtonBtn);
+
+      // Menu Instructions
+      menuDiv.appendChild(textField('Menu Instructions', menu.menuInstructions, val => ctx.set(`menus.rows.${menu.id}.menuInstructions`, val), {hint: 'Text displayed below the menu to guide the player'}));
+
       menuDiv.appendChild(h('button', {className: 'sx-btn', onclick: () => showMenuPreview(menu, ctx)}, 'Preview'));
 
       if (idx > 0) {
