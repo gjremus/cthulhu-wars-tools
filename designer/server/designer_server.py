@@ -4078,10 +4078,13 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
 
         self.send_json(request)
 
-    # ---- Simple Update: fixed numbers pushed straight to the build (no ticker) ----
+    # ---- Simple Update: fixed numbers/text pushed straight to the build (no ticker) ----
     # Built factions read their fixed numbers from GET /designer/api/live/<ACR>/values.
     # Each push bumps "rev"; a game pins the rev it started with (?rev=N) so replays never change.
-    SIMPLE_UPDATE_FIELDS = {'qty', 'cost', 'effect', 'costB', 'effectB', 'cost2', 'effect2', 'costB2', 'effectB2', 'power', 'aeStart', 'awakenPower', 'dice', 'pains', 'kills', 'num'}
+    SIMPLE_UPDATE_NUMBER_FIELDS = {'qty', 'cost', 'effect', 'costB', 'effectB', 'cost2', 'effect2', 'costB2', 'effectB2', 'power', 'aeStart', 'awakenPower', 'dice', 'pains', 'kills', 'num'}
+    # Text fields pushed by the "Fixed Text" table (unit/SB/UFA names and text, SBR text) - see Rules.fixedText in app.js
+    SIMPLE_UPDATE_TEXT_FIELDS = {'name', 'text', 'shortText', 'nameB', 'textB', 'name2', 'text2', 'nameB2', 'textB2'}
+    SIMPLE_UPDATE_FIELDS = SIMPLE_UPDATE_NUMBER_FIELDS | SIMPLE_UPDATE_TEXT_FIELDS
 
     @staticmethod
     def simple_update_path(section, row_id, field):
@@ -4124,7 +4127,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         if data.get('type') == 'image_swap':
             return self.handle_image_swap_push(fid, faction, username, data)
 
-        # Handle numeric field updates
+        # Handle numeric and text field updates
         section, row_id, field = data.get('section'), data.get('rowId'), data.get('field')
         if field not in self.SIMPLE_UPDATE_FIELDS or not isinstance(section, str) or not section.isalnum() \
                 or (row_id is not None and not (isinstance(row_id, str) and re.fullmatch(r'[A-Za-z0-9_-]+', row_id))):
@@ -4133,7 +4136,11 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         path = self.simple_update_path(section, row_id, field)
         # The value always comes from the saved design, never from the browser
         value = self.get_path_value(faction["design"], path)
-        if isinstance(value, bool) or not isinstance(value, (int, float)):
+        if field in self.SIMPLE_UPDATE_TEXT_FIELDS:
+            if not isinstance(value, str) or not value:
+                self.send_error_json("That value isn't plain text in the design, so it can't be pushed.")
+                return
+        elif isinstance(value, bool) or not isinstance(value, (int, float)):
             self.send_error_json("That value isn't a plain number in the design, so it can't be pushed.")
             return
         now = int(time.time())

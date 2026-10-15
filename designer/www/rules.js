@@ -1147,7 +1147,7 @@
           sectionTitle: 'Unique Faction Ability',
           rowId: null,
           field: 'cost',
-          name: 'UFA Cost',
+          name: 'UFA',
           value: design.ufa.cost
         });
       }
@@ -1157,7 +1157,7 @@
           sectionTitle: 'Unique Faction Ability',
           rowId: null,
           field: 'effect',
-          name: 'UFA Effect',
+          name: 'UFA',
           value: design.ufa.effect
         });
       }
@@ -1170,7 +1170,7 @@
           sectionTitle: 'Setup',
           rowId: null,
           field: 'power',
-          name: 'Starting Power',
+          name: 'Faction Setup',
           value: design.setup.power
         });
       }
@@ -1180,7 +1180,7 @@
           sectionTitle: 'Setup',
           rowId: null,
           field: 'aeStart',
-          name: 'Starting ' + (design.ae.name || 'AE'),
+          name: design.ae.name || 'AE',
           value: design.setup.aeStart
         });
       }
@@ -1191,7 +1191,7 @@
             sectionTitle: 'Setup',
             rowId: u.id,
             field: 'qty',
-            name: u.name + ' setup quantity',
+            name: u.name,
             value: u.qty
           });
         }
@@ -1206,7 +1206,7 @@
             sectionTitle: 'Units',
             rowId: u.id,
             field: 'qty',
-            name: u.name + ' quantity',
+            name: u.name,
             value: u.qty
           });
         }
@@ -1216,7 +1216,7 @@
             sectionTitle: 'Units',
             rowId: u.id,
             field: 'cost',
-            name: u.name + ' cost',
+            name: u.name,
             value: u.cost
           });
         }
@@ -1226,7 +1226,7 @@
             sectionTitle: 'Units',
             rowId: u.id,
             field: 'awakenPower',
-            name: u.name + ' awaken power',
+            name: u.name,
             value: u.awakenPower
           });
         }
@@ -1236,7 +1236,7 @@
             sectionTitle: 'Units',
             rowId: u.id,
             field: 'dice',
-            name: u.name + ' combat dice',
+            name: u.name,
             value: u.dice
           });
         }
@@ -1247,7 +1247,7 @@
               sectionTitle: 'Units',
               rowId: u.id,
               field: 'pains',
-              name: u.name + ' pains',
+              name: u.name,
               value: u.pains
             });
           }
@@ -1257,7 +1257,7 @@
               sectionTitle: 'Units',
               rowId: u.id,
               field: 'kills',
-              name: u.name + ' kills',
+              name: u.name,
               value: u.kills
             });
           }
@@ -1266,14 +1266,14 @@
     }
 
     if (design.sbr) {
-      design.sbr.rows.forEach(row => {
+      design.sbr.rows.forEach((row, idx) => {
         if (row.hasNum && row.num != null) {
           numbers.push({
             section: 'sbr',
             sectionTitle: 'Spellbook Requirements',
             rowId: row.id,
             field: 'num',
-            name: row.text || 'SBR',
+            name: 'SBR ' + (idx + 1),
             value: row.num
           });
         }
@@ -1288,7 +1288,7 @@
             sectionTitle: 'Spellbooks',
             rowId: row.id,
             field: 'cost',
-            name: row.name + ' cost',
+            name: row.name,
             value: row.cost
           });
         }
@@ -1298,7 +1298,7 @@
             sectionTitle: 'Spellbooks',
             rowId: row.id,
             field: 'effect',
-            name: row.name + ' effect',
+            name: row.name,
             value: row.effect
           });
         }
@@ -1313,10 +1313,10 @@
           const nm = row['name' + sfx];
           if (!nm) return;
           if (row['cost' + sfx] != null) {
-            numbers.push({section: 'sb', sectionTitle: 'Spellbooks', rowId: row.id, field: 'cost' + sfx, name: nm + tag + ' cost', value: row['cost' + sfx]});
+            numbers.push({section: 'sb', sectionTitle: 'Spellbooks', rowId: row.id, field: 'cost' + sfx, name: nm + tag, value: row['cost' + sfx]});
           }
           if (row['hasEffect' + sfx] && row['effect' + sfx] != null) {
-            numbers.push({section: 'sb', sectionTitle: 'Spellbooks', rowId: row.id, field: 'effect' + sfx, name: nm + tag + ' effect', value: row['effect' + sfx]});
+            numbers.push({section: 'sb', sectionTitle: 'Spellbooks', rowId: row.id, field: 'effect' + sfx, name: nm + tag, value: row['effect' + sfx]});
           }
         });
       });
@@ -1330,7 +1330,7 @@
             sectionTitle: 'Tokens',
             rowId: row.id,
             field: 'qty',
-            name: row.name + ' quantity',
+            name: row.name,
             value: row.qty
           });
         }
@@ -1340,7 +1340,7 @@
             sectionTitle: 'Tokens',
             rowId: row.id,
             field: 'effect',
-            name: row.name + ' effect',
+            name: row.name,
             value: row.effect
           });
         }
@@ -1355,7 +1355,7 @@
             sectionTitle: 'Other Custom',
             rowId: row.id,
             field: 'num',
-            name: row.name + ' number',
+            name: row.name,
             value: row.num
           });
         }
@@ -1363,6 +1363,108 @@
     }
 
     return numbers;
+  }
+
+  // Hard-coded text elements that a non-coder can push straight into the live build, mirroring
+  // fixedNumbers() above but for text strings (unit names, SB names/text, SBR text, UFA name/text).
+  // Used by the Simple Update screen's "Fixed Text" table in app.js.
+  function fixedText(design) {
+    const texts = [];
+
+    if (design.units) {
+      design.units.rows.forEach(u => {
+        if (u.name) {
+          texts.push({
+            section: 'units',
+            sectionTitle: 'Units',
+            rowId: u.id,
+            field: 'name',
+            name: u.name,
+            value: u.name
+          });
+        }
+      });
+    }
+
+    if (design.ufa) {
+      if (design.ufa.name) {
+        texts.push({
+          section: 'ufa',
+          sectionTitle: 'Unique Faction Ability',
+          rowId: null,
+          field: 'name',
+          name: 'UFA Name',
+          value: design.ufa.name
+        });
+      }
+      if (design.ufa.text) {
+        texts.push({
+          section: 'ufa',
+          sectionTitle: 'Unique Faction Ability',
+          rowId: null,
+          field: 'text',
+          name: 'UFA Text',
+          value: design.ufa.text
+        });
+      }
+    }
+
+    if (design.sbr) {
+      design.sbr.rows.forEach((row, idx) => {
+        const n = idx + 1;
+        if (row.text) {
+          texts.push({
+            section: 'sbr',
+            sectionTitle: 'Spellbook Requirements',
+            rowId: row.id,
+            field: 'text',
+            name: 'SBR ' + n + ' (full)',
+            value: row.text
+          });
+        }
+        if (row.shortText) {
+          texts.push({
+            section: 'sbr',
+            sectionTitle: 'Spellbook Requirements',
+            rowId: row.id,
+            field: 'shortText',
+            name: 'SBR ' + n + ' (abbreviated)',
+            value: row.shortText
+          });
+        }
+      });
+    }
+
+    if (design.sb) {
+      design.sb.rows.forEach(row => {
+        if (row.name) {
+          texts.push({section: 'sb', sectionTitle: 'Spellbooks', rowId: row.id, field: 'name', name: row.name + ' (card name)', value: row.name});
+        }
+        if (row.text) {
+          texts.push({section: 'sb', sectionTitle: 'Spellbooks', rowId: row.id, field: 'text', name: (row.name || 'Spellbook') + ' (full text)', value: row.text});
+        }
+        // Extra parts: power 2 of a dual powers side, and side B (and its power 2) of a 2 sided spellbook
+        // (same extra/sfx pattern as fixedNumbers' SB block above, so dual/2-sided spellbooks aren't missed)
+        const extra = [];
+        if (row.dual) extra.push(['2', ' (power 2)']);
+        if (sbTwo(design.sb, row)) {
+          extra.push(['B', ' (side B)']);
+          if (row.dualB) extra.push(['B2', ' (side B, power 2)']);
+        }
+        extra.forEach(([sfx, tag]) => {
+          const nm = row['name' + sfx];
+          const txt = row['text' + sfx];
+          if (nm) {
+            texts.push({section: 'sb', sectionTitle: 'Spellbooks', rowId: row.id, field: 'name' + sfx, name: nm + tag + ' (card name)', value: nm});
+          }
+          if (txt) {
+            texts.push({section: 'sb', sectionTitle: 'Spellbooks', rowId: row.id, field: 'text' + sfx, name: (nm || row.name || 'Spellbook') + tag + ' (full text)', value: txt});
+          }
+        });
+      });
+    }
+
+    return texts;
   }
 
   function describeSectionDiff(key, oldDesign, newDesign) {
@@ -1499,6 +1601,7 @@
     missingFields,
     missingMapFields,
     fixedNumbers,
+    fixedText,
     sbTwo,
     sbAnyTwo,
     unitHasAbility,

@@ -3927,6 +3927,13 @@
       title.style.marginTop = '20px';
       this.root.appendChild(title);
 
+      // Owner-mandated scope statement: Simple Update only ever touches text/number values, never
+      // code, rules, or logic. If a text change implies a rule change, that belongs in the full
+      // section editor (and a new build), not here.
+      const scopeNote = document.createElement('p');
+      scopeNote.textContent = 'These simple updated pushes will only change text or numeric values. No code or rules or logic will be changed. If spellbook text changing also changes a rule,or UFA text or ability text, it should be changed in the relevant section. And then possibly menus  changed, and a new build requested.';
+      this.root.appendChild(scopeNote);
+
       // Pushes are recorded by the server straight away (no ticker). The homebrew build only picks
       // them up when the owner runs faction-values.py sync + apply --deploy (it does not read them live).
       const note = document.createElement('p');
@@ -3943,13 +3950,36 @@
       // Render numeric updates section
       this.renderSimpleUpdateNumbers(faction, design, builtDesign);
 
+      // Render text updates section
+      this.renderSimpleUpdateText(faction, design, builtDesign);
+
       // Render image swap section
       this.renderSimpleUpdateImageSwaps(faction);
+    }
+
+    // Readable label for a fixedNumbers() "field" value, shown in its own "Type of value" column.
+    // Side/power variants (costB, cost2, costB2, effectB, ...) share their base field's label since
+    // the side/power is already called out in the Element column (e.g. "Ritual Name (side B)").
+    static simpleUpdateFieldLabel(field) {
+      const FIELD_LABELS = {
+        qty: 'Quantity',
+        cost: 'Cost', costB: 'Cost', cost2: 'Cost', costB2: 'Cost',
+        effect: 'Effect', effectB: 'Effect', effect2: 'Effect', effectB2: 'Effect',
+        dice: 'Combat Dice',
+        pains: 'Pains',
+        kills: 'Kills',
+        awakenPower: 'Awaken Power',
+        num: 'Requirement Number',
+        power: 'Starting Power',
+        aeStart: 'Starting Amount'
+      };
+      return FIELD_LABELS[field] || field;
     }
 
     renderSimpleUpdateNumbers(faction, design, builtDesign) {
       const builtNums = Rules.fixedNumbers(builtDesign);
       const designNums = Rules.fixedNumbers(design);
+      const fieldLabel = App.simpleUpdateFieldLabel;
 
       // Find differences
       const diffs = [];
@@ -3984,7 +4014,116 @@
       const table = document.createElement('table');
       const thead = document.createElement('thead');
       const headerRow = document.createElement('tr');
-      ['Section', 'Name', 'Current value in build', 'Current value in design', 'Action'].forEach(h => {
+      ['Section', 'Element', 'Type of value', 'Current value in build', 'Current value in design', 'Action'].forEach(h => {
+        const th = document.createElement('th');
+        th.textContent = h;
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
+
+      for (const diff of diffs) {
+        const row = document.createElement('tr');
+
+        const sectionCell = document.createElement('td');
+        sectionCell.textContent = diff.sectionTitle;
+        row.appendChild(sectionCell);
+
+        const nameCell = document.createElement('td');
+        nameCell.textContent = diff.name;
+        row.appendChild(nameCell);
+
+        const typeCell = document.createElement('td');
+        typeCell.textContent = fieldLabel(diff.field);
+        row.appendChild(typeCell);
+
+        const buildCell = document.createElement('td');
+        buildCell.textContent = diff.buildValue !== null ? diff.buildValue : '-';
+        row.appendChild(buildCell);
+
+        const designCell = document.createElement('td');
+        designCell.textContent = diff.designValue !== null ? diff.designValue : '-';
+        // Every shown row is, by construction, a mismatch between build and design - highlight it.
+        designCell.style.backgroundColor = '#fff3cd';
+        row.appendChild(designCell);
+
+        const actionCell = document.createElement('td');
+        const pushBtn = document.createElement('button');
+        pushBtn.className = 'small primary';
+        pushBtn.textContent = 'Push design to build';
+        pushBtn.onclick = async () => {
+          try {
+            const label = `${diff.name} ${fieldLabel(diff.field)}`;
+            await this.createRequest(
+              faction.id,
+              'simple_update',
+              `Faction ${faction.name} update, change ${diff.sectionTitle} ${label} to ${diff.designValue}`,
+              {
+                section: diff.section,
+                rowId: diff.rowId,
+                field: diff.field,
+                name: label,
+                buildValue: diff.buildValue,
+                designValue: diff.designValue
+              }
+            );
+            await this.loadFaction(faction.id);
+            alert(`Updated in the build: ${label} is now ${diff.designValue}.`);
+            this.renderSimpleUpdateScreen();
+          } catch (err) {
+            alert('Request failed: ' + err.message);
+          }
+        };
+        actionCell.appendChild(pushBtn);
+        row.appendChild(actionCell);
+
+        tbody.appendChild(row);
+      }
+
+      table.appendChild(tbody);
+      this.root.appendChild(table);
+    }
+
+    renderSimpleUpdateText(faction, design, builtDesign) {
+      const builtTexts = Rules.fixedText(builtDesign);
+      const designTexts = Rules.fixedText(design);
+
+      // Find differences
+      const diffs = [];
+      for (const dTxt of designTexts) {
+        const bTxt = builtTexts.find(b => b.section === dTxt.section && b.rowId === dTxt.rowId && b.field === dTxt.field);
+        if (!bTxt || bTxt.value !== dTxt.value) {
+          diffs.push({
+            section: dTxt.section,
+            sectionTitle: dTxt.sectionTitle,
+            name: dTxt.name,
+            rowId: dTxt.rowId,
+            field: dTxt.field,
+            buildValue: bTxt ? bTxt.value : null,
+            designValue: dTxt.value
+          });
+        }
+      }
+
+      if (diffs.length === 0) {
+        const p = document.createElement('p');
+        p.textContent = 'No fixed text differences found.';
+        this.root.appendChild(p);
+        return;
+      }
+
+      // Section title for text
+      const textTitle = document.createElement('h3');
+      textTitle.textContent = 'Fixed Text';
+      textTitle.style.marginTop = '20px';
+      this.root.appendChild(textTitle);
+
+      const table = document.createElement('table');
+      const thead = document.createElement('thead');
+      const headerRow = document.createElement('tr');
+      ['Section', 'Element', 'Current text in build', 'Current text in design', 'Action'].forEach(h => {
         const th = document.createElement('th');
         th.textContent = h;
         headerRow.appendChild(th);
@@ -4011,6 +4150,8 @@
 
         const designCell = document.createElement('td');
         designCell.textContent = diff.designValue !== null ? diff.designValue : '-';
+        // Every shown row is, by construction, a mismatch between build and design - highlight it.
+        designCell.style.backgroundColor = '#fff3cd';
         row.appendChild(designCell);
 
         const actionCell = document.createElement('td');
@@ -4022,7 +4163,7 @@
             await this.createRequest(
               faction.id,
               'simple_update',
-              `Faction ${faction.name} update, change ${diff.sectionTitle} ${diff.name} fixed value to ${diff.designValue}`,
+              `Faction ${faction.name} update, change ${diff.sectionTitle} ${diff.name} to "${diff.designValue}"`,
               {
                 section: diff.section,
                 rowId: diff.rowId,
@@ -4033,7 +4174,7 @@
               }
             );
             await this.loadFaction(faction.id);
-            alert(`Updated in the build: ${diff.name} is now ${diff.designValue}.`);
+            alert(`Updated in the build: ${diff.name} is now "${diff.designValue}".`);
             this.renderSimpleUpdateScreen();
           } catch (err) {
             alert('Request failed: ' + err.message);
