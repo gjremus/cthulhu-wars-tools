@@ -5154,11 +5154,13 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         return entry
 
     def update_terminal_entry(self, entry_id: str, summary: Optional[str] = None, only_if_default: bool = False,
-                              cost: Optional[float] = None, add_cost: bool = False, cost_note: Optional[str] = None) -> Optional[Dict]:
+                              cost: Optional[float] = None, add_cost: bool = False, cost_note: Optional[str] = None, design_object: Optional[str] = None) -> Optional[Dict]:
         with TERMINAL_LOCK:
             path = self.server.data_dir / "terminal-log.json"
             log = load_json(path) or {"entries": []}
-            entry = next((e for e in log.get("entries", []) if e.get("id") == entry_id), None)
+            # If there are duplicate IDs, take the last one (most recent)
+            matching = [e for e in log.get("entries", []) if e.get("id") == entry_id]
+            entry = matching[-1] if matching else None
             if not entry or (only_if_default and not entry.get("defaultSummary")):
                 return entry
             if summary is not None:
@@ -5174,6 +5176,11 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                     entry.pop("costNote", None)
                 else:
                     entry["costNote"] = str(cost_note)[:60]
+            if design_object is not None:
+                if design_object == "":
+                    entry.pop("designObject", None)
+                else:
+                    entry["designObject"] = str(design_object)[:200]
             entry["updatedAt"] = int(time.time())
             atomic_write(path, log)
         return entry
@@ -5305,7 +5312,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
 
     def handle_admin_terminal_log(self, entry_id: Optional[str]):
         """POST admin/terminal-log {type,user,prompt,summary,[id],[at]} adds a row;
-        POST admin/terminal-log/<id> {summary?,cost?,add?,costNote?} updates that row."""
+        POST admin/terminal-log/<id> {summary?,cost?,add?,costNote?,designObject?} updates that row."""
         body = self.read_json_body()
         if body is None:
             return
@@ -5314,6 +5321,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             cost = body.get('cost')
             add_cost = body.get('add', False)
             cost_note = body.get('costNote') if 'costNote' in body else None
+            design_object = body.get('designObject') if 'designObject' in body else None
             if cost is not None:
                 if not isinstance(cost, (int, float)) or cost < 0:
                     self.send_error_json("cost must be a non-negative number", 400)
@@ -5321,7 +5329,10 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             if cost_note is not None and not isinstance(cost_note, str):
                 self.send_error_json("costNote must be a string", 400)
                 return
-            entry = self.update_terminal_entry(entry_id, summary=summary, cost=cost, add_cost=add_cost, cost_note=cost_note)
+            if design_object is not None and not isinstance(design_object, str):
+                self.send_error_json("designObject must be a string", 400)
+                return
+            entry = self.update_terminal_entry(entry_id, summary=summary, cost=cost, add_cost=add_cost, cost_note=cost_note, design_object=design_object)
             if not entry:
                 self.send_error_json("Entry not found", 404)
                 return
