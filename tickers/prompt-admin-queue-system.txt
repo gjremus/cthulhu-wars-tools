@@ -394,6 +394,14 @@ FILES (homebrew worktree, ~/Claude-Projects/cw-homebrew-wt/solo):
 - Tool: ~/Claude-Projects/cthulhu-wars-tools/scripts/faction-values.py
 
 BUILD STEPS (do these while writing the faction code, not after):
+0. AUTOMATIC: /usr/bin/python3 ~/Claude-Projects/cthulhu-wars-tools/scripts/generate-faction-values.py <fid>
+   scans the design for EVERY fixed number (same list as the designer Simple Update
+   screen) and adds the missing ones to faction-values/<acr>.json with the designer
+   link (merges; never deletes keys). Run it at the start of the build, and it runs
+   again by itself when you mark the faction built (designer-admin.py build-status
+   <fid> built). It prints UNWIRED keys = numbers no Scala reads yet. Every UNWIRED
+   key must be wired (step 3) or the build is NOT done; --strict exits 1 if any remain.
+   Rule-text numbers (e.g. "gain 1 doom") are still added by hand (step 1).
 1. Write faction-values/<acr>.json: one entry per fixed number, key "Unit.what"
    or "BookReq.what", with "value", "min", "max", "what", and "designer" =
    the designer field it comes from (units.rows.<id>.cost / .dice / .qty /
