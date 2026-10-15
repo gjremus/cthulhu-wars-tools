@@ -281,11 +281,33 @@ if [[ $? -ne 0 ]]; then note "server check failed"; exit 0; fi
 
 if [[ -n "$raw" ]]; then
     # Entries look like "[YYYY-MM-DD HH:MM:SS] text" and the text may span several lines.
+    # Image button (2026-10-14): admin.html embeds a picked image as "[IMAGE ATTACHED: name]" plus a
+    # base64 data: URL. The agent cannot see pictures inside prompt text (and a big one overflows the
+    # command line), so each one is saved to $Q/images/ and replaced by a file path to Read.
     new=$(print -r -- "$raw" | python3 -c '
-import re, sys, time, os
+import re, sys, time, os, base64, subprocess
 q = sys.argv[1]
 raw = sys.stdin.read()
 parts = re.split(r"(?m)^\[(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)\] ", raw)
+IMG = re.compile(r"\[IMAGE ATTACHED: ([^\]\n]*)\]\s*data:image/([A-Za-z0-9.+-]+);base64,([A-Za-z0-9+/=\s]+)")
+EXT = {"jpeg": "jpg", "svg+xml": "svg", "x-icon": "ico"}
+def save_images(name, text):
+    k = [0]
+    def repl(m):
+        k[0] += 1
+        orig, kind = m.group(1).strip(), m.group(2).lower()
+        os.makedirs(os.path.join(q, "images"), exist_ok=True)
+        path = os.path.join(q, "images", "%s-%d.%s" % (name, k[0], EXT.get(kind, kind)))
+        try:
+            data = base64.b64decode(re.sub(r"\s", "", m.group(3)))
+            open(path, "wb").write(data)
+        except Exception as e:
+            return "[IMAGE ATTACHED: %s - could not be saved (%s)]" % (orig, e)
+        if len(data) > 3500000 and kind in ("jpeg", "png", "heic", "heif", "webp"):
+            subprocess.run(["/usr/bin/sips", "-Z", "2000", path], capture_output=True)   # keep it readable
+        return ("Attached image (%s): %s\n(Use the Read tool on this file path to view the image "
+                "before you start.)" % (orig or "image", path))
+    return IMG.sub(repl, text)
 n = 0
 for i in range(1, len(parts), 2):
     text = parts[i + 1].strip()
@@ -293,6 +315,7 @@ for i in range(1, len(parts), 2):
         continue
     n += 1
     name = "%d-%03d" % (time.time(), n)
+    text = save_images(name, text)
     open(os.path.join(q, "pending", name), "w").write(text + "\n")
     print(name)
 ' "$Q") || { note "could not queue claimed entries; left on server"; exit 0; }
