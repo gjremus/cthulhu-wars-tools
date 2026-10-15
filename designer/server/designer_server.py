@@ -4111,17 +4111,24 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             return None
         v_file = self.server.data_dir / "factions" / fid / "v" / f"{live_version}.json"
         if not v_file.exists():
-            # Fallback: if liveVersion file doesn't exist (e.g., invalid version string like "HB 9267656"),
-            # try using the faction's current version instead
+            # Fallback for factions built before liveVersion was numeric (e.g. "HB 9267656"):
+            # find the version that was actually built. requestedAt is when the designer's
+            # edits were snapshotted for Claude to build from, so the version that was
+            # "current" at that moment is the one that got built - not whatever "current"
+            # is now, which may have moved on with further unbuilt edits since.
             if isinstance(live_version, str) and not live_version.isdigit():
-                current = faction.get("current")
-                if current:
-                    v_file = self.server.data_dir / "factions" / fid / "v" / f"{current}.json"
-                    if not v_file.exists():
-                        return None
-                    live_version = current
-                else:
+                anchor = faction.get("build", {}).get("requestedAt") or faction.get("build", {}).get("builtAt")
+                resolved = None
+                if anchor:
+                    for v in sorted(faction.get("versions", []), key=lambda v: v.get("n", 0)):
+                        if v.get("created", 0) <= anchor and not v.get("deleted"):
+                            resolved = v.get("n")
+                if resolved is None:
                     return None
+                v_file = self.server.data_dir / "factions" / fid / "v" / f"{resolved}.json"
+                if not v_file.exists():
+                    return None
+                live_version = resolved
             else:
                 return None
         built = load_json(v_file)
