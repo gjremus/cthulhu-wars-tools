@@ -108,13 +108,35 @@ def render_scala(all_factions):
         "// ============================================================================",
         "",
     ]
+
+    # Generate designer faction mappings for LiveValues
+    lines.append("// Designer path mappings for runtime live value overrides")
+    lines.append("object FactionValuesMapping {")
+    lines.append("    val designerMappings: Map[String, Map[String, String]] = Map(")
+    for acr, (p, d) in sorted(all_factions.items()):
+        designer_map = {v.get("designer"): scala_ident(k)
+                       for k, v in d["values"].items()
+                       if v.get("designer")}
+        if designer_map:
+            lines.append(f'        "{acr}" -> Map(')
+            for designer_path, scala_key in sorted(designer_map.items()):
+                lines.append(f'            "{designer_path}" -> "{scala_key}",')
+            lines.append("        ),")
+    lines.append("    )")
+    lines.append("}")
+    lines.append("")
+
+    # Generate faction value objects with dynamic lookups
     for acr, (p, d) in sorted(all_factions.items()):
         lines.append(f"// {d.get('faction', acr)} ({acr}) - from faction-values/{p.name}")
         lines.append(f"object {acr}Values {{")
         width = max(len(scala_ident(k)) for k in d["values"])
         for k, v in d["values"].items():
             what = v.get("what", "").replace("*/", "")
-            lines.append(f"    val {scala_ident(k).ljust(width)} = {v['value']}" + (f"  // {what}" if what else ""))
+            field_name = scala_ident(k)
+            default_value = v['value']
+            # Generate def that checks LiveValues for override
+            lines.append(f"    def {field_name.ljust(width)} = LiveValues.get(\"{acr}\", \"{field_name}\", {default_value})" + (f"  // {what}" if what else ""))
         lines.append("}")
         lines.append("")
     return "\n".join(lines)
