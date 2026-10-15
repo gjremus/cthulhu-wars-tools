@@ -4162,7 +4162,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             atomic_write(requests_file, requests_data)
             # Every designer prompt also goes into the admin console's Claude terminal log
             self.add_terminal_entry("design update", self.display_name(username), request["text"],
-                                    "Pushed live, no rebuild needed.", ref=request["id"],
+                                    "Saved for the build; reaches the game after faction-values.py sync && apply --deploy (no Claude needed).", ref=request["id"],
                                     designObject=faction['name'], faction=faction['name'])
         self.send_json(request)
 

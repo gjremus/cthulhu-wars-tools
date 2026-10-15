@@ -3915,9 +3915,10 @@
       title.style.marginTop = '20px';
       this.root.appendChild(title);
 
-      // Pushes are applied by the server straight away (no ticker), so there is nothing pending to flash
+      // Pushes are recorded by the server straight away (no ticker). The homebrew build only picks
+      // them up when the owner runs faction-values.py sync + apply --deploy (it does not read them live).
       const note = document.createElement('p');
-      note.textContent = 'Pushing a number updates the homebrew build straight away. Games already in progress keep the numbers they started with.';
+      note.textContent = 'Pushing a number saves it for the homebrew build straight away. It shows up in the game after the next values update (faction-values.py sync, then apply --deploy). Games already in progress will use the new number the next time they load.';
       this.root.appendChild(note);
 
       if (!builtDesign) {
