@@ -4407,20 +4407,24 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
 
             build["status"] = status
 
-            if status == 'built' and version:
-                build["liveVersion"] = version
-                build["builtAt"] = int(time.time())
+            if status == 'built':
+                # If no version provided or version is not numeric, use the faction's current version
+                if not version or (isinstance(version, str) and not version.isdigit()):
+                    version = faction.get("current")
+                if version:
+                    build["liveVersion"] = version
+                    build["builtAt"] = int(time.time())
 
-                # Add to history if not already there
-                if not any(h.get("version") == version for h in build.get("history", [])):
-                    build.setdefault("history", []).append({
-                        "version": version,
-                        "builtAt": build["builtAt"]
-                    })
+                    # Add to history if not already there
+                    if not any(h.get("version") == version for h in build.get("history", [])):
+                        build.setdefault("history", []).append({
+                            "version": version,
+                            "builtAt": build["builtAt"]
+                        })
 
-                # Set stability to alpha if not already set
-                if "stability" not in faction:
-                    faction["stability"] = "alpha"
+                    # Set stability to alpha if not already set
+                    if "stability" not in faction:
+                        faction["stability"] = "alpha"
 
             faction["updated"] = int(time.time())
             faction_file = self.server.data_dir / "factions" / fid / "faction.json"
@@ -4542,16 +4546,20 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
 
             build["status"] = status
 
-            if status == 'built' and version:
-                build["liveVersion"] = version
-                build["builtAt"] = int(time.time())
+            if status == 'built':
+                # If no version provided or version is not numeric, use the unit's current version
+                if not version or (isinstance(version, str) and not version.isdigit()):
+                    version = unit.get("current")
+                if version:
+                    build["liveVersion"] = version
+                    build["builtAt"] = int(time.time())
 
-                # Add to history if not already there
-                if not any(h.get("version") == version for h in build.get("history", [])):
-                    build.setdefault("history", []).append({
-                        "version": version,
-                        "builtAt": build["builtAt"]
-                    })
+                    # Add to history if not already there
+                    if not any(h.get("version") == version for h in build.get("history", [])):
+                        build.setdefault("history", []).append({
+                            "version": version,
+                            "builtAt": build["builtAt"]
+                        })
 
             unit["updated"] = int(time.time())
             unit_file = self.units_dir() / uid / "unit.json"
@@ -4723,16 +4731,20 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
 
             build["status"] = status
 
-            if status == 'built' and version:
-                build["liveVersion"] = version
-                build["builtAt"] = int(time.time())
+            if status == 'built':
+                # If no version provided or version is not numeric, use the map's current version
+                if not version or (isinstance(version, str) and not version.isdigit()):
+                    version = map_obj.get("current")
+                if version:
+                    build["liveVersion"] = version
+                    build["builtAt"] = int(time.time())
 
-                # Add to history if not already there
-                if not any(h.get("version") == version for h in build.get("history", [])):
-                    build.setdefault("history", []).append({
-                        "version": version,
-                        "builtAt": build["builtAt"]
-                    })
+                    # Add to history if not already there
+                    if not any(h.get("version") == version for h in build.get("history", [])):
+                        build.setdefault("history", []).append({
+                            "version": version,
+                            "builtAt": build["builtAt"]
+                        })
 
             map_obj["updated"] = int(time.time())
             map_file = self.maps_dir() / mid / "map.json"
