@@ -1197,20 +1197,20 @@ class UnitBuildTest(DesignerServerTest):
         unit = self.request('GET', f'/units/{uid}', token=token)
         self.assertEqual(unit['build']['status'], 'in_progress')
 
-        # Set status to built with version
+        # Set status to built with numeric version (should match unit's current version)
         req = Request(admin_url, data=json.dumps({
             'status': 'built',
-            'version': 'v2.150'
+            'version': 1
         }).encode(), headers={'Content-Type': 'application/json'}, method='POST')
         urlopen(req)
 
         # Verify status and version
         unit = self.request('GET', f'/units/{uid}', token=token)
         self.assertEqual(unit['build']['status'], 'built')
-        self.assertEqual(unit['build']['liveVersion'], 'v2.150')
+        self.assertEqual(unit['build']['liveVersion'], 1)
         self.assertIsNotNone(unit['build']['builtAt'])
         self.assertEqual(len(unit['build']['history']), 1)
-        self.assertEqual(unit['build']['history'][0]['version'], 'v2.150')
+        self.assertEqual(unit['build']['history'][0]['version'], 1)
 
 
 class ClaudeQATest(DesignerServerTest):
