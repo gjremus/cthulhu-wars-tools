@@ -882,8 +882,10 @@ After generating the silhouette, automatically attach it to this unit by setting
             // Unique data per unit + image so the server's duplicate check doesn't fold this into another open bug request
             const data = {kind: 'silhouette', unitId: unit.id, mapImage: unit.mapImage};
             try {
+              let result = null;
               if (fid && ctx.createRequest) {
-                await ctx.createRequest('bug', text, data);  // app.api(): sends the login token, throws on error
+                result = await ctx.createRequest('bug', text, data);  // app.api(): sends the login token, throws on error
+                if (!result) throw new Error('this design is read only');
               } else {
                 const target = fid ? `factions/${fid}` : `units/${ctx.unit ? ctx.unit.id : unit.id}`;
                 const resp = await fetch(`/designer/api/${target}/request`, {
@@ -898,8 +900,14 @@ After generating the silhouette, automatically attach it to this unit by setting
                   const e = await resp.json().catch(() => ({}));
                   throw new Error(e.error ? `${e.error} (HTTP ${resp.status})` : `HTTP ${resp.status}`);
                 }
+                result = await resp.json().catch(() => null);
               }
-              alert('Silhouette generation request submitted to Claude admin console. The silhouette will be automatically attached when ready.');
+              // The server folds a repeat click made within a few minutes into the request already queued
+              if (result && result.duplicate) {
+                alert(`This silhouette was already requested a few minutes ago (request ${result.id}) and is still in the Claude admin queue. It will be attached automatically when ready.`);
+              } else {
+                alert('Silhouette generation request submitted to Claude admin console. The silhouette will be automatically attached when ready.');
+              }
             } catch (err) {
               alert('Failed to submit request: ' + err.message);
             }

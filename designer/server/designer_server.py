@@ -109,6 +109,27 @@ def get_client_ip(handler, headers: Dict[str, str]) -> str:
     return client
 
 
+# A repeat of an identical request is only folded into the earlier one while that earlier one is
+# still genuinely in flight: not yet handed to the queue ("open"), or handed over within the last
+# few minutes (double-click / impatient re-click). A "notified" request older than that is one an
+# agent already picked up and may have abandoned without closing it (2026-10-16: the Pharoah
+# Kephren silhouette request sat "notified" for a day after its agent gave up, and every later
+# click on Generate Silhouette was silently swallowed - no terminal-log row, no queue job).
+DUPLICATE_WINDOW_SECONDS = 600
+
+
+def is_live_duplicate(existing: Dict, req_type: str, key: str, key_val: str, data, now: Optional[float] = None) -> bool:
+    if existing.get("type") != req_type or existing.get(key) != key_val or existing.get("data") != data:
+        return False
+    status = existing.get("status")
+    if status == "open":
+        return True
+    if status == "notified":
+        now = time.time() if now is None else now
+        return now - (existing.get("updated") or existing.get("created") or 0) < DUPLICATE_WINDOW_SECONDS
+    return False
+
+
 def number_terminal_entries(log: Dict) -> bool:
     """Give every terminal-log row a fixed sequence number "n": oldest is 1, new rows count up.
     nextN is kept so numbers are never reused after old rows are trimmed. Returns True if anything changed."""
@@ -1888,11 +1909,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
 
         # Check for duplicate
         for existing in requests:
-            if (existing.get("type") == req_type and
-                existing.get("mid") == mid and
-                existing.get("status") in ("open", "notified") and
-                existing.get("data") == data):
-                self.send_json(existing)
+            if is_live_duplicate(existing, req_type, "mid", mid, data):
+                self.send_json(dict(existing, duplicate=True))
                 return
 
         # Create new request
@@ -3202,12 +3220,9 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
 
         # Check for duplicate (same type + fid + data)
         for existing in requests:
-            if (existing.get("type") == req_type and
-                existing.get("fid") == fid and
-                existing.get("status") in ("open", "notified") and
-                existing.get("data") == data):
-                # Return existing
-                self.send_json(existing)
+            if is_live_duplicate(existing, req_type, "fid", fid, data):
+                # Return existing (flagged, so the page can say "already queued" instead of "submitted")
+                self.send_json(dict(existing, duplicate=True))
                 return
 
         # Create new request
@@ -3501,12 +3516,9 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
 
         # Check for duplicate (same type + uid + data)
         for existing in requests:
-            if (existing.get("type") == req_type and
-                existing.get("uid") == uid and
-                existing.get("status") in ("open", "notified") and
-                existing.get("data") == data):
-                # Return existing
-                self.send_json(existing)
+            if is_live_duplicate(existing, req_type, "uid", uid, data):
+                # Return existing (flagged, so the page can say "already queued" instead of "submitted")
+                self.send_json(dict(existing, duplicate=True))
                 return
 
         # Create new request
