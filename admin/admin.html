@@ -3883,7 +3883,14 @@ function loadClaudeLog() {
 }
 function renderClaudeLog() {
   const q = (document.getElementById('claudelog-search')?.value || '').trim().toLowerCase();
-  const status = e => e.defaultSummary ? 'pending' : ((e.summary || '').toUpperCase() === 'FAILED' ? 'failed' : 'completed');
+  // defaultSummary = placeholder still waiting on an agent -> "pending". Safety net: a row whose text
+  // is the server's own final-state wording ("Done." / "Cancelled.") is finished even if the flag stuck.
+  const status = e => {
+    const s = (e.summary || '').trim();
+    if (e.defaultSummary) return s === 'Done.' ? 'completed' : (s === 'Cancelled.' ? 'cancelled' : 'pending');
+    if (s === 'Cancelled.') return 'cancelled';
+    return s.toUpperCase() === 'FAILED' ? 'failed' : 'completed';
+  };
   const rows = CLAUDE_LOG.filter(e => !q || [e.n, e.type, e.user, e.designObject, status(e), e.prompt, e.summary, e.cost, e.costNote].join(' ').toLowerCase().includes(q));
   const td = 'border:1px solid #000;padding:6px;vertical-align:top;';
   // Long prompts/summaries scroll inside their cell so a row stays readable on a phone

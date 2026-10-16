@@ -4139,15 +4139,20 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             self.sync_build_status(request, status)
             default = {"in_progress": "Being worked on now.", "notified": "Owner notified.",
                        "done": "Done.", "cancelled": "Cancelled.", "open": "Waiting to be picked up."}
-            self.update_terminal_entry(rid, default.get(status, status), only_if_default=True)
+            if status in ("done", "cancelled"):
+                # Final state: close out every placeholder row for this request (never leave "pending").
+                self.finalize_terminal_rows(rid, default[status])
+            else:
+                self.update_terminal_entry(rid, default.get(status, status), only_if_default=True)
 
             # Log admin status changes to terminal
             if status in ("done", "cancelled"):
                 design_name = request.get("designObjectName", request.get("faction") or request.get("mapName") or request.get("unit_name") or "Unknown")
                 req_type = request.get("type", "request")
+                # final=True: this row records a finished action, so it must not show as "pending".
                 self.add_terminal_entry("admin", "admin",
                                        f"Mark {req_type} for {design_name} as {status}",
-                                       f"{default.get(status, status)}", ref=rid, designObject=design_name)
+                                       f"{default.get(status, status)}", ref=rid, designObject=design_name, final=True)
 
             # If marking bug request as done, update bugHistory with response
             if status == "done" and request.get("type") == "bug":
@@ -5262,6 +5267,28 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             entry["updatedAt"] = int(time.time())
             atomic_write(path, log)
         return entry
+
+    def finalize_terminal_rows(self, rid: str, summary: str) -> int:
+        """A request reached a final state (done/cancelled): clear the "placeholder" flag on EVERY
+        terminal-log row still waiting on it, so none of them sit on "pending" in the admin console.
+        Covers the request's own row(s) (id == rid) and the admin-queue copy whose prompt starts
+        "<KIND> <rid>:" (e.g. "FACTION-BUG r_xxx: ..."). Rows that already carry a real summary
+        from an agent are left untouched. Returns how many rows were changed."""
+        changed = 0
+        with TERMINAL_LOCK:
+            path = self.server.data_dir / "terminal-log.json"
+            log = load_json(path) or {"entries": []}
+            for entry in log.get("entries", []):
+                if not entry.get("defaultSummary"):
+                    continue
+                if entry.get("id") == rid or f" {rid}:" in str(entry.get("prompt", ""))[:80]:
+                    entry["summary"] = summary
+                    entry["defaultSummary"] = False
+                    entry["updatedAt"] = int(time.time())
+                    changed += 1
+            if changed:
+                atomic_write(path, log)
+        return changed
 
     def handle_terminal_log(self):
         """GET /designer/api/terminal-log?name=<design name>: the Claude terminal log entries for one
