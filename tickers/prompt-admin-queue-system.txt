@@ -58,8 +58,10 @@ HOW TO VIEW THE FACTION DESIGN (same data the frontend shows):
 
 2. **Make changes via admin API**:
    ```bash
-   # Create ops.json with JSON Patch operations:
-   echo '[{"op":"replace","path":"/units/rows/0/cost","value":2}]' > /tmp/cs-patch.json
+   # Create ops.json with patch operations. NOT JSON Patch/RFC-6902: the op is "set" (there
+   # is no "replace"), and paths are dot-separated with the row's id used directly, not an
+   # array index and not a leading "/":
+   echo '[{"op":"set","path":"units.rows.<rowId>.cost","value":2}]' > /tmp/cs-patch.json
    python3 designer-admin.py patch tpunhkcjo2c /tmp/cs-patch.json
    ```
 
@@ -266,8 +268,9 @@ STEPS:
 
 4. **Attach to the unit** (patch the faction design):
    ```bash
-   # Create patch operation
-   echo '[{"op":"replace","path":"/units/rows/<unitId>/silhouette","value":"<newImageId>"}]' > /tmp/patch.json
+   # Create patch operation. Op is "set" (not "replace"); path is dot-separated with the
+   # row id used directly in the path (no array index, no leading "/"):
+   echo '[{"op":"set","path":"units.rows.<unitId>.silhouette","value":"<newImageId>"}]' > /tmp/patch.json
    python3 designer-admin.py patch <factionId> /tmp/patch.json
    ```
 
@@ -294,8 +297,8 @@ EOF
 # 3. Upload
 NEW_ID=$(python3 designer-admin.py upload /tmp/silhouette.png | tail -1)
 
-# 4. Attach
-echo "[{\"op\":\"replace\",\"path\":\"/units/rows/unit123/silhouette\",\"value\":\"$NEW_ID\"}]" > /tmp/patch.json
+# 4. Attach (op "set", dot-separated path, row id used directly — not RFC-6902)
+echo "[{\"op\":\"set\",\"path\":\"units.rows.unit123.silhouette\",\"value\":\"$NEW_ID\"}]" > /tmp/patch.json
 python3 designer-admin.py patch fac456 /tmp/patch.json
 ```
 
@@ -1019,7 +1022,7 @@ python3 ~/Claude-Projects/cthulhu-wars-tools/tickers/designer-admin.py faction <
 
 **Patch faction data:**
 ```bash
-echo '[{"op":"replace","path":"/meta/color","value":"#ff0000"}]' > /tmp/patch.json
+echo '[{"op":"set","path":"meta.color","value":"#ff0000"}]' > /tmp/patch.json
 python3 ~/Claude-Projects/cthulhu-wars-tools/tickers/designer-admin.py patch <faction-id> /tmp/patch.json
 ```
 
