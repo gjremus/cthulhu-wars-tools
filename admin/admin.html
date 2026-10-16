@@ -363,6 +363,7 @@
     cursor: move;
     border-left: 3px solid var(--accent);
     padding-left: 15px;
+    touch-action: none;
   }
   .nav-drawer a.dragging {
     opacity: 0.4;
@@ -1400,6 +1401,10 @@ function signIn() {
       // Load default tab and update indicators
       loadDefaultTab();
       updateDefaultTabIndicators();
+      // Menu order needs SERVER/TOKEN, which only exist after a successful
+      // sign-in — this is also what makes the saved order sync across
+      // devices logged in with the same token.
+      loadMenuOrder();
       // Make the server URL in the header a clickable link that opens a new
       // game lobby in a fresh tab. Was previously plain text.
       const ind = document.getElementById('server-indicator');
@@ -4454,6 +4459,12 @@ function enableMenuDragging() {
     link.addEventListener('dragover', handleDragOver);
     link.addEventListener('drop', handleDrop);
     link.addEventListener('dragend', handleDragEnd);
+    // HTML5 drag-and-drop (above) is mouse-only — iOS/Android don't fire
+    // dragstart/dragover/drop from touch, so reordering needs its own
+    // touch-event path.
+    link.addEventListener('touchstart', handleTouchStart, {passive: true});
+    link.addEventListener('touchmove', handleTouchMove, {passive: false});
+    link.addEventListener('touchend', handleTouchEnd);
   });
 }
 
@@ -4465,6 +4476,9 @@ function disableMenuDragging() {
     link.removeEventListener('dragover', handleDragOver);
     link.removeEventListener('drop', handleDrop);
     link.removeEventListener('dragend', handleDragEnd);
+    link.removeEventListener('touchstart', handleTouchStart);
+    link.removeEventListener('touchmove', handleTouchMove);
+    link.removeEventListener('touchend', handleTouchEnd);
   });
 }
 
@@ -4494,18 +4508,7 @@ function handleDrop(e) {
 
   const target = e.target.closest('a:not(.section)');
   if (target && draggedElement && draggedElement !== target) {
-    const drawer = document.getElementById('nav-drawer');
-    const allLinks = Array.from(drawer.querySelectorAll('a:not(.section)'));
-    const draggedIndex = allLinks.indexOf(draggedElement);
-    const targetIndex = allLinks.indexOf(target);
-
-    if (draggedIndex < targetIndex) {
-      target.parentNode.insertBefore(draggedElement, target.nextSibling);
-    } else {
-      target.parentNode.insertBefore(draggedElement, target);
-    }
-
-    saveMenuOrder();
+    reorderMenuLink(draggedElement, target);
   }
 
   return false;
@@ -4516,20 +4519,101 @@ function handleDragEnd(e) {
   document.querySelectorAll('#nav-drawer a').forEach(a => a.classList.remove('drag-over'));
 }
 
+function reorderMenuLink(dragged, target) {
+  const drawer = document.getElementById('nav-drawer');
+  const allLinks = Array.from(drawer.querySelectorAll('a:not(.section)'));
+  const draggedIndex = allLinks.indexOf(dragged);
+  const targetIndex = allLinks.indexOf(target);
+
+  if (draggedIndex < targetIndex) {
+    target.parentNode.insertBefore(dragged, target.nextSibling);
+  } else {
+    target.parentNode.insertBefore(dragged, target);
+  }
+
+  saveMenuOrder();
+}
+
+// Touch equivalent of the dragstart/dragover/drop/dragend quartet above.
+// A tap that never moves past the threshold falls through as a normal
+// click (nothing here calls preventDefault), so links still navigate when
+// not in reorder mode's drag gesture.
+const TOUCH_DRAG_THRESHOLD = 10;
+let touchStartX = 0;
+let touchStartY = 0;
+let touchDragging = false;
+
+function handleTouchStart(e) {
+  draggedElement = this;
+  const t = e.touches[0];
+  touchStartX = t.clientX;
+  touchStartY = t.clientY;
+  touchDragging = false;
+}
+
+function handleTouchMove(e) {
+  if (!draggedElement) return;
+  const t = e.touches[0];
+  const dx = t.clientX - touchStartX;
+  const dy = t.clientY - touchStartY;
+
+  if (!touchDragging) {
+    if (Math.abs(dx) < TOUCH_DRAG_THRESHOLD && Math.abs(dy) < TOUCH_DRAG_THRESHOLD) return;
+    touchDragging = true;
+    draggedElement.classList.add('dragging');
+  }
+
+  // Drag is live — stop the page/drawer scrolling underneath the finger.
+  e.preventDefault();
+
+  const el = document.elementFromPoint(t.clientX, t.clientY);
+  const target = el && el.closest('#nav-drawer a:not(.section)');
+  document.querySelectorAll('#nav-drawer a').forEach(a => a.classList.remove('drag-over'));
+  if (target && target !== draggedElement) {
+    target.classList.add('drag-over');
+  }
+}
+
+function handleTouchEnd(e) {
+  if (!draggedElement) return;
+
+  if (touchDragging) {
+    const t = e.changedTouches[0];
+    const el = document.elementFromPoint(t.clientX, t.clientY);
+    const target = el && el.closest('#nav-drawer a:not(.section)');
+    if (target && target !== draggedElement) {
+      reorderMenuLink(draggedElement, target);
+    }
+    // Suppress the synthetic click this touchend would otherwise fire
+    // (which would navigate and close the drawer mid-reorder).
+    e.preventDefault();
+  }
+
+  draggedElement.classList.remove('dragging');
+  document.querySelectorAll('#nav-drawer a').forEach(a => a.classList.remove('drag-over'));
+  draggedElement = null;
+  touchDragging = false;
+}
+
 function saveMenuOrder() {
   const menuLinks = document.querySelectorAll('#nav-drawer a:not(.section)');
   const order = Array.from(menuLinks).map(link => link.getAttribute('data-section'));
+  // Local copy for instant reload on this device; the POST below is what
+  // makes the order show up on other devices logged in with the same token.
   localStorage.setItem('cw_admin_menu_order', JSON.stringify(order));
+
+  fetch(`${SERVER}/designer/api/admin/${TOKEN}/settings`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({menuOrder: order})
+  }).catch(e => console.error('Failed to save menu order to server:', e));
 }
 
-function loadMenuOrder() {
-  const savedOrder = localStorage.getItem('cw_admin_menu_order');
-  if (!savedOrder) return;
+function applyMenuOrder(order) {
+  if (!order || !order.length) return;
 
   try {
-    const order = JSON.parse(savedOrder);
     const drawer = document.getElementById('nav-drawer');
-    const sectionHeader = drawer.querySelector('a.section');
     const menuLinks = Array.from(drawer.querySelectorAll('a:not(.section)'));
 
     // Create a map of section -> link element
@@ -4554,14 +4638,30 @@ function loadMenuOrder() {
       }
     });
   } catch (e) {
-    console.error('Failed to load menu order:', e);
+    console.error('Failed to apply menu order:', e);
   }
 }
 
-// Initialize menu order and default tab on page load
-window.addEventListener('DOMContentLoaded', () => {
-  loadMenuOrder();
-});
+function loadMenuOrder() {
+  // Apply the local cache immediately so there's no layout flash, then
+  // reconcile with the server's copy (shared across every device signed
+  // in with this admin token) once it arrives.
+  try {
+    const cached = localStorage.getItem('cw_admin_menu_order');
+    if (cached) applyMenuOrder(JSON.parse(cached));
+  } catch (e) { /* ignore malformed local cache */ }
+
+  fetch(`${SERVER}/designer/api/admin/${TOKEN}/settings`)
+    .then(r => r.ok ? r.json() : null)
+    .then(settings => {
+      if (settings && settings.menuOrder) {
+        localStorage.setItem('cw_admin_menu_order', JSON.stringify(settings.menuOrder));
+        applyMenuOrder(settings.menuOrder);
+      }
+    })
+    .catch(e => console.error('Failed to load menu order from server:', e));
+}
+
 
 </script>
 

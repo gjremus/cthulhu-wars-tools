@@ -3680,6 +3680,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             self.handle_admin_view_map(parts[6])
         elif endpoint == 'image-usage':
             self.handle_admin_image_usage()
+        elif endpoint == 'settings':
+            self.handle_admin_get_settings()
         elif endpoint == 'terminal-log':
             with TERMINAL_LOCK:
                 path = self.server.data_dir / "terminal-log.json"
@@ -3778,8 +3780,31 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 self.send_error_json("Invalid admin path", 400)
         elif endpoint == 'meta-agent-prompt':
             self.handle_meta_agent_prompt()
+        elif endpoint == 'settings':
+            self.handle_admin_save_settings()
         else:
             self.send_error_json("Unknown admin endpoint", 404)
+
+    def handle_admin_get_settings(self):
+        """GET admin/settings - shared admin console preferences (e.g. menu order),
+        stored server-side so they sync across devices using the same admin token."""
+        settings_file = self.server.data_dir / "admin-settings.json"
+        settings = load_json(settings_file) or {}
+        self.send_json(settings)
+
+    def handle_admin_save_settings(self):
+        """POST admin/settings - merge-save shared admin console preferences."""
+        body = self.read_json_body()
+        if body is None:
+            return
+
+        with WRITE_LOCK:
+            settings_file = self.server.data_dir / "admin-settings.json"
+            settings = load_json(settings_file) or {}
+            settings.update(body)
+            atomic_write(settings_file, settings)
+
+        self.send_json({"ok": True})
 
     def handle_admin_users(self):
         """GET admin/users"""
