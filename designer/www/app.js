@@ -3316,6 +3316,7 @@
     getSectionStatusBadge(key, faction) {
       const claudeQA = faction.claudeQA || {};
       const design = faction.design;
+      const sectionsModified = (faction.build && faction.build.sectionsModified) || {};
 
       // If section has Claude questions, show amber badge with count
       if (claudeQA[key] && claudeQA[key].questions && claudeQA[key].questions.trim()) {
@@ -3330,8 +3331,13 @@
         return '';
       }
 
-      const statusResult = window.Rules.status(key, design);
-      if (statusResult === 'Complete') {
+      const statusResult = window.Rules.status(key, design, sectionsModified);
+      if (statusResult === 'Edited, requires rebuild') {
+        if (this.state.adminView) {
+          return '<span class="status-badge-orange">⚠ Edited</span>';
+        }
+        return '<span class="status-edited">Edited, requires rebuild</span>';
+      } else if (statusResult === 'Complete') {
         return '<span class="status-complete">✓</span>';
       } else if (statusResult === 'Incomplete') {
         if (this.state.adminView) {
@@ -3349,6 +3355,7 @@
     getMapSectionStatusBadge(key, map) {
       const claudeQA = map.claudeQA || {};
       const design = map.design;
+      const sectionsModified = (map.build && map.build.sectionsModified) || {};
 
       // If section has Claude questions, show amber badge
       if (claudeQA[key] && claudeQA[key].questions && claudeQA[key].questions.trim()) {
@@ -3363,9 +3370,14 @@
         return '';
       }
 
-      const statusResult = window.Rules.mapStatus(key, design);
-      // mapStatus typically returns strings like status values, check if incomplete
-      if (statusResult && statusResult.includes('Incomplete')) {
+      const statusResult = window.Rules.mapStatus(key, design, sectionsModified);
+      // Check for different status types
+      if (statusResult === 'Edited, requires rebuild') {
+        if (this.state.adminView) {
+          return '<span class="status-badge-orange">⚠ Edited</span>';
+        }
+        return '<span class="status-edited">Edited, requires rebuild</span>';
+      } else if (statusResult && statusResult.includes('Incomplete')) {
         if (this.state.adminView) {
           return '<span class="status-badge-red">✗ Incomplete</span>';
         }
@@ -3376,7 +3388,8 @@
 
     getBuildStatusLabel(faction) {
       const sectionsWithQuestions = this.getSectionsWithQuestions(faction, Rules.SECTIONS);
-      return this.buildStatusHtml(faction.build.status, Rules.buildReady(faction.design), this.hasClaudeQuestions(faction), sectionsWithQuestions);
+      const sectionsModified = (faction.build && faction.build.sectionsModified) || {};
+      return this.buildStatusHtml(faction.build.status, Rules.buildReady(faction.design, sectionsModified), this.hasClaudeQuestions(faction), sectionsWithQuestions);
     }
 
     getBuildStatusLabelForUnit(unit) {
@@ -4019,6 +4032,7 @@
     renderBuildScreen() {
       const faction = this.state.currentFaction;
       const design = faction.design;
+      const sectionsModified = (faction.build && faction.build.sectionsModified) || {};
 
       this.root.innerHTML = '';
 
@@ -4105,13 +4119,14 @@
       const tbody = document.createElement('tbody');
 
       const incompleteSections = [];
+      const sectionsModified = (faction.build && faction.build.sectionsModified) || {};
 
       for (const key of Rules.BUILD_SECTIONS) {
         const row = document.createElement('tr');
 
         const sectionCell = document.createElement('td');
         const sec = Rules.SECTIONS.find(s => s.key === key);
-        const st = Rules.status(key, design);
+        const st = Rules.status(key, design, sectionsModified);
 
         if (st === 'Incomplete') {
           const link = document.createElement('a');
@@ -4121,13 +4136,20 @@
           link.style.textDecoration = 'underline';
           sectionCell.appendChild(link);
           incompleteSections.push({key, title: sec.title});
+        } else if (st === 'Edited, requires rebuild') {
+          const link = document.createElement('a');
+          link.href = `#/faction/${faction.id}/section/${key}`;
+          link.textContent = sec.title;
+          link.style.color = '#ff8800';
+          link.style.textDecoration = 'underline';
+          sectionCell.appendChild(link);
         } else {
           sectionCell.textContent = sec.title;
         }
         row.appendChild(sectionCell);
 
         const statusCell = document.createElement('td');
-        statusCell.className = `status-${st.toLowerCase().replace('/', '')}`;
+        statusCell.className = `status-${st.toLowerCase().replace(/[^a-z]/g, '')}`;
         statusCell.textContent = st;
         row.appendChild(statusCell);
 
@@ -4196,7 +4218,7 @@
           const executeBtn = document.createElement('button');
           executeBtn.className = 'primary';
           executeBtn.textContent = 'Execute build';
-          executeBtn.disabled = !Rules.buildReady(design) || faction.build.status === 'requested' || faction.build.status === 'in_progress';
+          executeBtn.disabled = !Rules.buildReady(design, sectionsModified) || faction.build.status === 'requested' || faction.build.status === 'in_progress';
           executeBtn.style.marginTop = '20px';
           executeBtn.onclick = async () => {
             try {
@@ -4453,8 +4475,15 @@
       this.renderSimpleUpdateImageSwaps(faction);
     }
 
-    // Check if there are any rebuild-eligible changes (yellow or orange outlines)
+    // Check if there are any rebuild-eligible changes (yellow or orange outlines or edited sections)
     hasRebuildEligibleChanges(faction, design, builtDesign) {
+      // Check if any sections have been modified since last build
+      const sectionsModified = (faction.build && faction.build.sectionsModified) || {};
+      if (Object.keys(sectionsModified).length > 0) {
+        return true;
+      }
+
+      // Check for field-level changes (yellow/orange outline fields)
       const builtTexts = Rules.fixedText(builtDesign);
       const designTexts = Rules.fixedText(design);
 
@@ -4977,9 +5006,7 @@
       title.style.marginTop = '20px';
       this.root.appendChild(title);
 
-      // Terminal log history - fetch from Claude Terminal Log filtered by faction name
-      this.root.appendChild(this.renderTerminalLogHistory(faction.name, 'faction-terminal-log'));
-
+      // Bug report form at top
       const label = document.createElement('label');
       label.textContent = 'Describe the bug:';
       label.style.marginTop = '20px';
@@ -4994,10 +5021,38 @@
       });
       this.root.appendChild(textarea);
 
+      // Image upload and submit buttons
+      const buttonContainer = document.createElement('div');
+      buttonContainer.style.display = 'flex';
+      buttonContainer.style.alignItems = 'center';
+      buttonContainer.style.gap = '8px';
+      buttonContainer.style.marginTop = '12px';
+
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = 'image/*';
+      fileInput.style.display = 'none';
+      fileInput.id = `bug_report_image_${faction.id}`;
+
+      const imageBtn = document.createElement('button');
+      imageBtn.textContent = 'Image';
+      imageBtn.onclick = () => fileInput.click();
+
+      const imageBadge = document.createElement('span');
+      imageBadge.id = `bug_report_badge_${faction.id}`;
+      fileInput.addEventListener('change', () => {
+        if (fileInput.files && fileInput.files[0]) {
+          const file = fileInput.files[0];
+          imageBadge.innerHTML = `📎 ${file.name}`;
+          imageBadge.style.color = '#888';
+          imageBadge.style.fontSize = '9pt';
+        }
+      });
+
       const sendBtn = document.createElement('button');
       sendBtn.className = 'primary';
       sendBtn.textContent = 'Send bug report';
-      sendBtn.style.marginTop = '20px';
+      sendBtn.style.marginLeft = 'auto';
       sendBtn.onclick = async () => {
         const description = textarea.value.trim();
         if (!description) {
@@ -5006,22 +5061,53 @@
         }
 
         try {
-          await this.createRequest(
-            faction.id,
-            'bug',
-            `Bug report for ${faction.name} (built v${faction.build.liveVersion}): ${description}`,
-            {description}
-          );
-          alert('Bug report sent.');
-          localStorage.removeItem(`bug_draft_${faction.id}`);
-          textarea.value = '';
-          // Reload to show new bug in history
-          this.loadFaction(faction.id);
+          const data = {description};
+          if (fileInput.files && fileInput.files[0]) {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+              data.image = {
+                name: fileInput.files[0].name,
+                data: e.target.result
+              };
+              await this.createRequest(
+                faction.id,
+                'bug',
+                `Bug report for ${faction.name} (built v${faction.build.liveVersion}): ${description}`,
+                data
+              );
+              alert('Bug report sent.');
+              localStorage.removeItem(`bug_draft_${faction.id}`);
+              textarea.value = '';
+              fileInput.value = '';
+              imageBadge.innerHTML = '';
+              this.loadFaction(faction.id);
+            };
+            reader.readAsDataURL(fileInput.files[0]);
+          } else {
+            await this.createRequest(
+              faction.id,
+              'bug',
+              `Bug report for ${faction.name} (built v${faction.build.liveVersion}): ${description}`,
+              data
+            );
+            alert('Bug report sent.');
+            localStorage.removeItem(`bug_draft_${faction.id}`);
+            textarea.value = '';
+            this.loadFaction(faction.id);
+          }
         } catch (err) {
           alert('Failed to send bug report: ' + err.message);
         }
       };
-      this.root.appendChild(sendBtn);
+
+      buttonContainer.appendChild(fileInput);
+      buttonContainer.appendChild(imageBtn);
+      buttonContainer.appendChild(imageBadge);
+      buttonContainer.appendChild(sendBtn);
+      this.root.appendChild(buttonContainer);
+
+      // Terminal log history - fetch from Claude Terminal Log filtered by faction name
+      this.root.appendChild(this.renderTerminalLogHistory(faction.name, 'faction-terminal-log'));
 
       const bottomBackBtn = document.createElement('button');
       bottomBackBtn.textContent = 'Exit to Main';
@@ -5193,7 +5279,8 @@
 
     getMapBuildStatusLabel(map) {
       const sectionsWithQuestions = this.getSectionsWithQuestions(map, Rules.MAP_SECTIONS);
-      return this.buildStatusHtml(map.build.status, Rules.mapBuildReady(map.design), this.hasClaudeQuestions(map), sectionsWithQuestions);
+      const sectionsModified = (map.build && map.build.sectionsModified) || {};
+      return this.buildStatusHtml(map.build.status, Rules.mapBuildReady(map.design, sectionsModified), this.hasClaudeQuestions(map), sectionsWithQuestions);
     }
 
     async renderMapSectionScreen(mid, section) {
@@ -5331,6 +5418,7 @@
 
       const map = this.state.currentMap;
       const design = map.design;
+      const sectionsModified = (map.build && map.build.sectionsModified) || {};
 
       this.root.innerHTML = '';
 
@@ -5436,7 +5524,7 @@
         const executeBtn = document.createElement('button');
         executeBtn.className = 'primary';
         executeBtn.textContent = 'Execute build';
-        executeBtn.disabled = !Rules.mapBuildReady(design) || map.build.status === 'requested' || map.build.status === 'in_progress';
+        executeBtn.disabled = !Rules.mapBuildReady(design, sectionsModified) || map.build.status === 'requested' || map.build.status === 'in_progress';
         executeBtn.style.marginTop = '20px';
         executeBtn.onclick = async () => {
           try {

@@ -1162,6 +1162,15 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
 
                 self.set_path_value(design, path, op.get('value'))
 
+                # Track section modifications for built units
+                build = unit.get("build", {})
+                if build.get("status") == "built":
+                    # Initialize sectionsModified if it doesn't exist
+                    if "sectionsModified" not in build:
+                        build["sectionsModified"] = {}
+                    # Record modification timestamp
+                    build["sectionsModified"][section] = now
+
                 # Update session
                 session["last"] = now
                 if session["n"] == unit["current"]:
@@ -1655,6 +1664,17 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         # Apply the operation
         if not self.apply_op_to_design(map_obj["design"], op):
             return False
+
+        # Track section modifications for built maps
+        build = map_obj.get("build", {})
+        if build.get("status") == "built":
+            map_build_sections = ['images', 'bitmaps', 'adjacency', 'units', 'tokens', 'sb', 'glyphs', 'abilities']
+            if section in map_build_sections:
+                # Initialize sectionsModified if it doesn't exist
+                if "sectionsModified" not in build:
+                    build["sectionsModified"] = {}
+                # Record modification timestamp
+                build["sectionsModified"][section] = int(now)
 
         # Update session
         session["last"] = int(now)
@@ -2711,6 +2731,17 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         # Apply the operation
         if not self.apply_op_to_design(faction["design"], op):
             return False
+
+        # Track section modifications for built factions
+        build = faction.get("build", {})
+        if build.get("status") == "built":
+            build_sections = ['ae', 'ufa', 'setup', 'units', 'sbr', 'sb', 'region', 'tokens', 'custom', 'interactions']
+            if section in build_sections:
+                # Initialize sectionsModified if it doesn't exist
+                if "sectionsModified" not in build:
+                    build["sectionsModified"] = {}
+                # Record modification timestamp
+                build["sectionsModified"][section] = int(now)
 
         # Update session
         session["last"] = int(now)
@@ -4530,6 +4561,10 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                             "builtAt": build["builtAt"]
                         })
 
+                    # Clear section modification tracking when built
+                    if "sectionsModified" in build:
+                        del build["sectionsModified"]
+
                     # Set stability to alpha if not already set
                     if "stability" not in faction:
                         faction["stability"] = "alpha"
@@ -4668,6 +4703,10 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                             "version": version,
                             "builtAt": build["builtAt"]
                         })
+
+                    # Clear section modification tracking when built
+                    if "sectionsModified" in build:
+                        del build["sectionsModified"]
 
             unit["updated"] = int(time.time())
             unit_file = self.units_dir() / uid / "unit.json"
@@ -4853,6 +4892,10 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                             "version": version,
                             "builtAt": build["builtAt"]
                         })
+
+                    # Clear section modification tracking when built
+                    if "sectionsModified" in build:
+                        del build["sectionsModified"]
 
             map_obj["updated"] = int(time.time())
             map_file = self.maps_dir() / mid / "map.json"

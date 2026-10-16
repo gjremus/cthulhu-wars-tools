@@ -549,8 +549,11 @@
     return false;
   }
 
-  function status(key, design) {
+  function status(key, design, sectionsModified) {
     const d = design[key];
+
+    // Check if section has been modified since last build
+    const isModified = sectionsModified && sectionsModified[key];
 
     if (key === 'ae') {
       if (isEmpty(key, design)) return 'N/A';
@@ -560,14 +563,14 @@
       if (completeRows.length === 0) return 'Incomplete';
       const partialRows = d.rows.filter(r => !isRowComplete(r, 'ae') && !isRowEmpty(r, blankRow('ae.rows')));
       if (partialRows.length > 0) return 'Incomplete';
-      return 'Complete';
+      return isModified ? 'Edited, requires rebuild' : 'Complete';
     }
 
     if (key === 'ufa') {
       if (!d.name || !d.phase || !d.type || !d.text) return 'Incomplete';
       if (d.hasCost && d.cost == null) return 'Incomplete';
       if (d.hasEffect && d.effect == null) return 'Incomplete';
-      return 'Complete';
+      return isModified ? 'Edited, requires rebuild' : 'Complete';
     }
 
     if (key === 'setup') {
@@ -582,7 +585,7 @@
       if (partialUnits.length > 0) return 'Incomplete';
       const aeEnabled = design.ae && design.ae.enabled;
       if (aeEnabled && d.aeStart == null) return 'Incomplete';
-      return 'Complete';
+      return isModified ? 'Edited, requires rebuild' : 'Complete';
     }
 
     if (key === 'units') {
@@ -590,14 +593,14 @@
       if (completeUnits.length === 0) return 'Incomplete';
       const partialUnits = d.rows.filter(u => !isRowComplete(u, 'unit') && !isRowEmpty(u, blankUnit()));
       if (partialUnits.length > 0) return 'Incomplete';
-      return 'Complete';
+      return isModified ? 'Edited, requires rebuild' : 'Complete';
     }
 
     if (key === 'sbr') {
       for (let row of d.rows) {
         if (!isRowComplete(row, 'sbr')) return 'Incomplete';
       }
-      return 'Complete';
+      return isModified ? 'Edited, requires rebuild' : 'Complete';
     }
 
     if (key === 'sb') {
@@ -608,7 +611,7 @@
       const contentOnly = r => { const c = Object.assign({}, r); delete c.twoSided; return c; };
       const partialRows = d.rows.filter(r => !done(r) && !isRowEmpty(contentOnly(r), blankRow('sb.rows')));
       if (partialRows.length > 0) return 'Incomplete';
-      return 'Complete';
+      return isModified ? 'Edited, requires rebuild' : 'Complete';
     }
 
     if (key === 'region') {
@@ -650,21 +653,24 @@
       );
       if (!ancientSorceryRow) return 'Incomplete';
       if (!ancientSorceryRow.yourAbility || !ancientSorceryRow.interactionDesc) return 'Incomplete';
-      return 'Complete';
+      return isModified ? 'Edited, requires rebuild' : 'Complete';
     }
 
     return 'N/A';
   }
 
-  function mapStatus(key, design) {
+  function mapStatus(key, design, sectionsModified) {
     const d = design[key];
+
+    // Check if section has been modified since last build
+    const isModified = sectionsModified && sectionsModified[key];
 
     if (key === 'images') {
       if (!d.items || d.items.length === 0) return 'Incomplete';
       if (d.items.some(item => !item.image)) return 'Incomplete';
       if (!d.regions || !d.regions.rows || d.regions.rows.length === 0) return 'Incomplete';
       if (d.regions.rows.some(r => !r.name)) return 'Incomplete';
-      return 'Complete';
+      return isModified ? 'Edited, requires rebuild' : 'Complete';
     }
 
     if (key === 'bitmaps') {
@@ -679,7 +685,7 @@
         }
       });
       if (regionIds.some(rid => !placed.has(rid))) return 'Incomplete';
-      return 'Complete';
+      return isModified ? 'Edited, requires rebuild' : 'Complete';
     }
 
     if (key === 'adjacency') {
@@ -706,7 +712,7 @@
         });
       }
       if (regionIds.some(rid => !adjacency[rid] || adjacency[rid].size === 0)) return 'Incomplete';
-      return 'Complete';
+      return isModified ? 'Edited, requires rebuild' : 'Complete';
     }
 
     if (key === 'units') {
@@ -715,7 +721,7 @@
       const partialUnits = (d.rows || []).filter(u => !isRowComplete(u, 'unit') && !isRowEmpty(u, blankUnit()));
       if (completeUnits.length === 0 && partialUnits.length === 0) return 'N/A';
       if (partialUnits.length > 0) return 'Incomplete';
-      return 'Complete';
+      return isModified ? 'Edited, requires rebuild' : 'Complete';
     }
 
     if (key === 'tokens') {
@@ -724,7 +730,7 @@
       if (allEmpty) return 'N/A';
       const completeRows = (d.rows || []).filter(r => isRowComplete(r, 'tokens'));
       const nonEmptyRows = (d.rows || []).filter(r => !isRowEmpty(r, blankMapRow('tokens.rows')));
-      if (completeRows.length === nonEmptyRows.length && completeRows.length > 0) return 'Complete';
+      if (completeRows.length === nonEmptyRows.length && completeRows.length > 0) return isModified ? 'Edited, requires rebuild' : 'Complete';
       return 'Incomplete';
     }
 
@@ -736,7 +742,7 @@
       const reqComplete = reqRows.every(r => isRowComplete(r, 'mapSbRequirement'));
       const bookComplete = bookRows.every(r => isRowComplete(r, 'mapSbBook'));
       if (!reqComplete || !bookComplete) return 'Incomplete';
-      return 'Complete';
+      return isModified ? 'Edited, requires rebuild' : 'Complete';
     }
 
     if (key === 'glyphs') {
@@ -745,7 +751,7 @@
       if (allEmpty) return 'N/A';
       const completeRows = (d.rows || []).filter(r => isRowComplete(r, 'mapGlyph'));
       const nonEmptyRows = (d.rows || []).filter(r => r.name || r.image || r.desc);
-      if (completeRows.length === nonEmptyRows.length && completeRows.length > 0) return 'Complete';
+      if (completeRows.length === nonEmptyRows.length && completeRows.length > 0) return isModified ? 'Edited, requires rebuild' : 'Complete';
       return 'Incomplete';
     }
 
@@ -755,7 +761,7 @@
       if (allEmpty) return 'N/A';
       const completeRows = (d.rows || []).filter(r => isRowComplete(r, 'mapAbility'));
       const nonEmptyRows = (d.rows || []).filter(r => r.name || r.when || r.type || r.who || r.text);
-      if (completeRows.length === nonEmptyRows.length && completeRows.length > 0) return 'Complete';
+      if (completeRows.length === nonEmptyRows.length && completeRows.length > 0) return isModified ? 'Edited, requires rebuild' : 'Complete';
       return 'Incomplete';
     }
 
@@ -766,16 +772,16 @@
     return !!(design.card && design.card.glyph);
   }
 
-  function buildReady(design) {
+  function buildReady(design, sectionsModified) {
     return cardReady(design) && BUILD_SECTIONS.every(key => {
-      const s = status(key, design);
+      const s = status(key, design, sectionsModified);
       return s === 'N/A' || s === 'Complete';
     });
   }
 
-  function mapBuildReady(design) {
+  function mapBuildReady(design, sectionsModified) {
     return MAP_BUILD_SECTIONS.every(key => {
-      const s = mapStatus(key, design);
+      const s = mapStatus(key, design, sectionsModified);
       return s === 'N/A' || s === 'Complete';
     });
   }
