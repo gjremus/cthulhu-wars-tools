@@ -2513,23 +2513,18 @@ function refreshDetail() {
       <pre id="console-errors-feed" class="sim-tail" style="height:18vh;max-height:24vh;">loading…</pre>
     </div>
 
-    <h3>Submit broken game to Claude</h3>
-    <p style="color:#888;font-size:9pt;">Type an error description (optional). The auto-captured browser console errors above (if any) are folded into the submission automatically; an extra textarea below is available for anything DevTools shows that didn't get auto-captured. Claude picks it up on the next ticker tick and posts a fix response.</p>
+    <h3>Report bug</h3>
+    <p style="color:#888;font-size:9pt;">Describe the error and optionally attach a screenshot. The auto-captured browser console errors are automatically included in the submission. Claude picks it up on the next ticker tick.</p>
     <div class="notes-box">
       <textarea id="error-description" rows="3" placeholder="Error description (optional)…"></textarea>
     </div>
-    <div class="notes-box" style="margin-top:6px;">
-      <textarea id="console-output" rows="3" placeholder="Extra console output (optional — auto-captured errors above are already included)…"></textarea>
-    </div>
-    <div style="display:flex;align-items:center;gap:8px;margin:8px 0;">
+    <div style="display:flex;align-items:center;gap:8px;margin:12px 0 8px;">
       <input type="file" id="bug-report-image" accept="image/*" onchange="updateBugReportImageBadge()" />
       <button class="file-input-btn" onclick="document.getElementById('bug-report-image').click()">Image</button>
       <span id="bug-report-image-badge"></span>
-    </div>
-    <p style="margin:6px 0;">
-      <button class="primary" onclick="submitGameToTerminal()">Submit to terminal</button>
+      <button class="primary" style="margin-left:auto;" onclick="submitGameToTerminal()">Submit to terminal</button>
       <span id="submit-terminal-status" style="font-size:9pt;color:var(--text-muted);margin-left:8px;"></span>
-    </p>
+    </div>
 
     <h3>Fix response
       <button class="small" style="margin-left:8px;" onclick="refreshFixResponse()">Refresh</button>
