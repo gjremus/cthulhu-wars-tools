@@ -1291,10 +1291,12 @@ After generating the silhouette, automatically attach it to this unit by setting
     const buttons = h('div', {className: 'sx-overlay-buttons', style: 'position: static; margin-bottom: 10px;'},
       h('button', {className: 'sx-btn', onclick: () => {
         scale *= 1.025;
+        ctx.set(`units.rows.${unit.id}.mapScale`, scale);
         draw();
       }}, 'Grow'),
       h('button', {className: 'sx-btn', onclick: () => {
         scale /= 1.025;
+        ctx.set(`units.rows.${unit.id}.mapScale`, scale);
         draw();
       }}, 'Shrink'),
       h('button', {className: 'sx-btn', onclick: () => {
