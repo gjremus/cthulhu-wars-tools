@@ -115,7 +115,10 @@ def get_client_ip(handler, headers: Dict[str, str]) -> str:
 # agent already picked up and may have abandoned without closing it (2026-10-16: the Pharoah
 # Kephren silhouette request sat "notified" for a day after its agent gave up, and every later
 # click on Generate Silhouette was silently swallowed - no terminal-log row, no queue job).
-DUPLICATE_WINDOW_SECONDS = 600
+# 2026-10-16 (second pass): cut from 10 minutes to 2. The owner's real re-click on Pharoah Kephren a few
+# minutes after an earlier click was folded away and looked like "nothing happened"; a fold is now only for
+# true double-taps, and even a folded click gets its own terminal-log row (send_duplicate below).
+DUPLICATE_WINDOW_SECONDS = 120
 
 
 def is_live_duplicate(existing: Dict, req_type: str, key: str, key_val: str, data, now: Optional[float] = None) -> bool:
@@ -1910,7 +1913,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         # Check for duplicate
         for existing in requests:
             if is_live_duplicate(existing, req_type, "mid", mid, data):
-                self.send_json(dict(existing, duplicate=True))
+                self.send_duplicate(existing, username, text)
                 return
 
         # Create new request
@@ -3222,7 +3225,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         for existing in requests:
             if is_live_duplicate(existing, req_type, "fid", fid, data):
                 # Return existing (flagged, so the page can say "already queued" instead of "submitted")
-                self.send_json(dict(existing, duplicate=True))
+                self.send_duplicate(existing, username, text)
                 return
 
         # Create new request
@@ -3518,7 +3521,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         for existing in requests:
             if is_live_duplicate(existing, req_type, "uid", uid, data):
                 # Return existing (flagged, so the page can say "already queued" instead of "submitted")
-                self.send_json(dict(existing, duplicate=True))
+                self.send_duplicate(existing, username, text)
                 return
 
         # Create new request
@@ -5166,6 +5169,17 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         if t == "simple_update":
             return "design update"
         return "design build"   # build and update both change the built faction
+
+    def send_duplicate(self, existing: Dict, username: str, text: str):
+        """Reply to a repeat click that was folded into a request still in flight. The click is NOT
+        silently swallowed: it gets its own (final) Claude terminal log row pointing at the queued request."""
+        name = existing.get("designObjectName") or existing.get("faction") or existing.get("map") or existing.get("unit")
+        self.add_terminal_entry(self.terminal_type(existing), self.display_name(username),
+                                text or f"{existing.get('type')} request for {name}",
+                                f"Repeat click within {DUPLICATE_WINDOW_SECONDS // 60} minutes of an identical request; "
+                                f"not queued twice - it is already in the Claude admin queue as {existing.get('id')}.",
+                                designObject=name, faction=existing.get("faction"), final=True)
+        self.send_json(dict(existing, duplicate=True))
 
     def add_terminal_entry(self, kind: str, user: str, prompt: str, summary: str, ref: Optional[str] = None, designObject: Optional[str] = None, faction: Optional[str] = None, final: bool = False) -> Dict:
         """Append one row to terminal-log.json. Caller may already hold WRITE_LOCK (it is not re-entrant),
