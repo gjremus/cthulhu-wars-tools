@@ -1973,7 +1973,10 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                     clean_name = map_obj["name"].replace('\n', ' ').replace('[', '').replace(']', '')
                     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
                     display_user = self.display_name(username)
-                    queue_line = f"[{timestamp}] MAP-BUG {req_id}: Bug report for map \"{clean_name}\" from {display_user} (designer map id {mid}).\n"
+                    detail = f" Details: {text}" if text else ""
+                    if data:
+                        detail += f" Data: {json.dumps(data)}"
+                    queue_line = f"[{timestamp}] MAP-BUG {req_id}: Bug report for map \"{clean_name}\" from {display_user} (designer map id {mid}).{detail}\n"
                     with open(self.server.console_queue_path, 'a') as f:
                         f.write(queue_line)
                     queue_written = True
@@ -1990,7 +1993,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 bug_entry = {
                     "bugNumber": req_id,
                     "submittedAt": now,
-                    "description": data.get("description", ""),
+                    "description": data.get("description") or text,
                     "response": None,
                     "respondedAt": None
                 }
@@ -3268,7 +3271,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 bug_entry = {
                     "bugNumber": req_id,
                     "submittedAt": now,
-                    "description": data.get("description", ""),
+                    "description": data.get("description") or text,
                     "response": None,
                     "respondedAt": None
                 }
@@ -3281,7 +3284,15 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                     clean_name = faction["name"].replace('\n', ' ').replace('[', '').replace(']', '')
                     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
                     display_user = self.display_name(username)
-                    queue_line = f"[{timestamp}] FACTION-BUG {req_id}: Bug report for faction \"{clean_name}\" ({faction['acronym']}) from {display_user} (designer faction id {fid}).\n"
+                    # The queue line is what the ticker hands to the agent verbatim - it must carry
+                    # the actual request (text) and structured data (e.g. kind/unitId/mapImage for a
+                    # silhouette request), or the agent only ever sees this generic sentence and has
+                    # no way to know what the bug report is even about.
+                    detail = f" Details: {text}" if text else ""
+                    if data:
+                        detail += f" Data: {json.dumps(data)}"
+                    queue_line = (f"[{timestamp}] FACTION-BUG {req_id}: Bug report for faction \"{clean_name}\" "
+                                  f"({faction['acronym']}) from {display_user} (designer faction id {fid}).{detail}\n")
                     with open(self.server.console_queue_path, 'a') as f:
                         f.write(queue_line)
                     queue_written = True
@@ -3538,7 +3549,10 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 if req_type == "build":
                     queue_line = f"[{timestamp}] UNIT-BUILD {req_id}: Build the neutral unit \"{clean_name}\" designed by {display_user} into the homebrew build (designer unit id {uid}).\n"
                 elif req_type == "bug":
-                    queue_line = f"[{timestamp}] UNIT-BUG {req_id}: Bug report for unit \"{clean_name}\" from {display_user} (designer unit id {uid}).\n"
+                    detail = f" Details: {text}" if text else ""
+                    if data:
+                        detail += f" Data: {json.dumps(data)}"
+                    queue_line = f"[{timestamp}] UNIT-BUG {req_id}: Bug report for unit \"{clean_name}\" from {display_user} (designer unit id {uid}).{detail}\n"
                 else:
                     queue_line = None
 
@@ -3573,7 +3587,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 bug_entry = {
                     "bugNumber": req_id,
                     "submittedAt": now,
-                    "description": data.get("description", ""),
+                    "description": data.get("description") or text,
                     "response": None,
                     "respondedAt": None
                 }
