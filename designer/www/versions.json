@@ -1,6 +1,7 @@
 {
-  "current": "1.024",
+  "current": "1.025",
   "versions": [
+    {"version": "1.025", "date": "2026-10-16", "summary": "Add version tracking and changelog display (clickable version next to My Customs)"},
     {"version": "1.024", "date": "2026-10-16", "summary": "Track section edits after build and show 'Edited, requires rebuild' status"},
     {"version": "1.023", "date": "2026-10-16", "summary": "Fix Grow/Shrink buttons not persisting unit map image scale"},
     {"version": "1.022", "date": "2026-10-16", "summary": "Terminal log: finished requests no longer show as pending"},
