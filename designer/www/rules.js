@@ -218,7 +218,7 @@
       interactions: {
         rows: [
           {id: newId(), otherFaction: 'Sleeper', category: 'Spellbook', ability: 'AncientSorcery', yourAbility: 'ufa', interactionDesc: ''},
-          {id: newId(), otherFaction: 'Neutral Monster', category: 'Elder Thing', ability: 'Mind Control', yourAbility: '', interactionDesc: ''},
+          {id: newId(), otherFaction: 'Neutral Monster', category: 'Elder Thing', ability: 'Mind Control', yourAbility: 'goo', interactionDesc: ''},
           {id: newId(), otherFaction: 'Bubastis', category: 'Faction Region', ability: 'Moon', yourAbility: '', interactionDesc: ''}
         ]
       }
@@ -646,7 +646,7 @@
       const ancientSorceryRow = ((d && d.rows) || []).find(r =>
         r.otherFaction === 'Sleeper' &&
         r.abilityType === 'Spellbook' &&
-        r.ability === 'Ancient Sorcery'
+        r.ability === 'AncientSorcery'
       );
       if (!ancientSorceryRow) return 'Incomplete';
       if (!ancientSorceryRow.yourAbility || !ancientSorceryRow.interactionDesc) return 'Incomplete';
@@ -969,7 +969,7 @@
       const ancientSorceryRow = ((d && d.rows) || []).find(r =>
         r.otherFaction === 'Sleeper' &&
         r.abilityType === 'Spellbook' &&
-        r.ability === 'Ancient Sorcery'
+        r.ability === 'AncientSorcery'
       );
       if (!ancientSorceryRow) {
         missing.push('interactions.rows');

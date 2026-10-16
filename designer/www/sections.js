@@ -3897,6 +3897,17 @@ After generating the silhouette, automatically attach it to this unit by setting
     return abilities;
   };
 
+  // Add instructions about required/optional rows
+  const instructions = h('div', {style: 'margin-bottom: 15px; padding: 10px; background: #1a1a2e; border-left: 3px solid #4a9eff; font-size: 0.9em;'},
+    h('p', {style: 'margin: 0 0 8px 0; font-weight: bold;'}, 'Default Interaction Rows:'),
+    h('ul', {style: 'margin: 5px 0; padding-left: 20px;'},
+      h('li', {style: 'margin: 3px 0;'}, h('strong', {}, 'Row 1 (Sleeper / Ancient Sorcery):'), ' REQUIRED - Cannot be deleted. Fill in your faction\'s UFA.'),
+      h('li', {style: 'margin: 3px 0;'}, h('strong', {}, 'Row 2 (Elder Thing):'), ' Optional - Must be either completed OR deleted.'),
+      h('li', {style: 'margin: 3px 0;'}, h('strong', {}, 'Row 3 (Bubastis / Moon):'), ' Optional - Must be either completed OR deleted.')
+    )
+  );
+  container.appendChild(instructions);
+
   const tableDiv = h('div', {className: 'sx-table'});
   const table = h('table', {});
   const thead = h('thead', {},
@@ -3920,7 +3931,7 @@ After generating the silhouette, automatically attach it to this unit by setting
     // Check if this is the Ancient Sorcery row (required)
     const isAncientSorcery = row.otherFaction === 'Sleeper' &&
                              row.category === 'Spellbook' &&
-                             row.ability === 'Ancient Sorcery';
+                             row.ability === 'AncientSorcery';
 
     if (isAncientSorcery) {
       tr.style.backgroundColor = '#1a2a1a'; // Slight green tint to indicate required row
@@ -4055,7 +4066,8 @@ After generating the silhouette, automatically attach it to this unit by setting
 
   // Help text
   container.appendChild(h('p', {style: 'margin-top: 20px; font-size: 14px; color: #aaa;'},
-    'The Ancient Sorcery row (green background) is required. All other rows are optional. ' +
+    'The Ancient Sorcery row (green background) is required and cannot be deleted. ' +
+    'Rows 2 and 3 are optional but must be either fully completed OR deleted. ' +
     'Use the "?" help icon to view the full text of any selected ability. ' +
     'Use this section to document interactions between your faction\'s abilities and known abilities ' +
     'from other factions, maps, or neutral units.'

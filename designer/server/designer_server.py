@@ -5486,7 +5486,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                                 "greyedReason": "", "infoOnly": False, "confirm": False, "confirmText": "",
                                 "showPicked": False, "leadsToNext": False, "next": None, "nextTrigger": ""}], "adminNotes": ""},
             "interactions": {"rows": [
-                {"id": self.new_id(), "otherFaction": "Sleeper", "abilityType": "Spellbook", "ability": "Ancient Sorcery",
+                {"id": self.new_id(), "otherFaction": "Sleeper", "abilityType": "Spellbook", "ability": "AncientSorcery",
                  "abilityText": "", "yourAbility": "ufa", "interactionDesc": ""},
                 {"id": self.new_id(), "otherFaction": "Neutral Monsters", "abilityType": "Unit Special",
                  "ability": "Blasphemous Obeisance", "abilityText": "", "yourAbility": "", "interactionDesc": ""},
