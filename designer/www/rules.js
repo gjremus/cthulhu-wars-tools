@@ -762,8 +762,12 @@
     return 'N/A';
   }
 
+  function cardReady(design) {
+    return !!(design.card && design.card.glyph);
+  }
+
   function buildReady(design) {
-    return BUILD_SECTIONS.every(key => {
+    return cardReady(design) && BUILD_SECTIONS.every(key => {
       const s = status(key, design);
       return s === 'N/A' || s === 'Complete';
     });
@@ -1626,6 +1630,7 @@
     isMapEmpty,
     status,
     mapStatus,
+    cardReady,
     buildReady,
     mapBuildReady,
     missingFields,

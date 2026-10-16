@@ -2880,6 +2880,10 @@
         glyphBtn.textContent = 'Upload faction glyph';
         glyphBtn.onclick = glyphUpload;
         glyphDiv.appendChild(glyphBtn);
+        const required = document.createElement('div');
+        required.style.cssText = 'font-size: 0.85em; color: #e06c75; margin-top: 4px;';
+        required.textContent = 'Required before the design can be built.';
+        glyphDiv.appendChild(required);
         if (design.card.image) {
           const note = document.createElement('div');
           note.className = 'sx-hint-text';
@@ -4134,13 +4138,24 @@
       this.root.appendChild(table);
 
       // Add plain-language descriptions for incomplete sections
-      if (incompleteSections.length > 0) {
+      const glyphMissing = !Rules.cardReady(design);
+      if (incompleteSections.length > 0 || glyphMissing) {
         const missingDiv = document.createElement('div');
         missingDiv.style.cssText = 'margin-top: 20px; padding: 16px; background: #2a2a2a; border: 1px solid #666; border-radius: 4px;';
         const missingTitle = document.createElement('h3');
         missingTitle.textContent = 'Missing fields';
         missingTitle.style.marginTop = '0';
         missingDiv.appendChild(missingTitle);
+
+        if (glyphMissing) {
+          const p = document.createElement('p');
+          const strong = document.createElement('strong');
+          strong.textContent = 'Faction Card: ';
+          p.appendChild(strong);
+          p.appendChild(document.createTextNode('Upload a faction glyph before the design can be built.'));
+          p.style.margin = '8px 0';
+          missingDiv.appendChild(p);
+        }
 
         incompleteSections.forEach(sec => {
           const missing = Rules.missingFields(sec.key, design);
