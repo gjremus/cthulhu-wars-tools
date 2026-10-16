@@ -5117,15 +5117,20 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
     def terminal_type(request: Dict) -> str:
         t = request.get("type")
         kind = request.get("kind")
+        data = request.get("data", {})
+        data_kind = data.get("kind")
+
         if t == "extract":
             if kind == "map":
                 return "map extraction"
-            return "design menu" if request.get("data", {}).get("target") == "menus" else "design extraction"
+            return "design menu" if data.get("target") == "menus" else "design extraction"
         if t == "bug":
             if kind == "map":
                 return "map bug fix"
             elif kind == "unit":
                 return "unit bug fix"
+            elif data_kind == "silhouette":
+                return "silhouette generation"
             return "design bug fix"
         if t == "build":
             if kind == "map":

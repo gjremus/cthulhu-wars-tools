@@ -217,9 +217,9 @@
       },
       interactions: {
         rows: [
-          {id: newId(), otherFaction: 'Sleeper', abilityType: 'Spellbook', ability: 'Ancient Sorcery', abilityText: '', yourAbility: 'ufa', interactionDesc: ''},
-          {id: newId(), otherFaction: 'Neutral Monsters', abilityType: 'Unit Special', ability: 'Blasphemous Obeisance', abilityText: '', yourAbility: '', interactionDesc: ''},
-          {id: newId(), otherFaction: 'Bubastis', abilityType: 'Unit Special', ability: 'Moon', abilityText: '', yourAbility: '', interactionDesc: ''}
+          {id: newId(), otherFaction: 'Sleeper', category: 'Spellbook', ability: 'AncientSorcery', yourAbility: 'ufa', interactionDesc: ''},
+          {id: newId(), otherFaction: 'Neutral Monster', category: 'Elder Thing', ability: 'Mind Control', yourAbility: '', interactionDesc: ''},
+          {id: newId(), otherFaction: 'Bubastis', category: 'Faction Region', ability: 'Moon', yourAbility: '', interactionDesc: ''}
         ]
       }
     };
@@ -1483,10 +1483,14 @@
   }
 
   // Outline color for a given update type (and for plain numbers, which are always 'simple').
-  function getOutlineColor(updateType) {
+  // Blue = eligible for simple update but currently matches build
+  // Green = eligible for simple update and differs from build
+  function getOutlineColor(updateType, differs = true) {
+    if (updateType === 'number' || updateType === 'simple') {
+      return differs ? '#00aa00' : '#0066ff';  // green if differs, blue if matches
+    }
+
     const COLORS = {
-      number: '#00aa00',   // green - numbers are always simple update
-      simple: '#00aa00',   // green - simple text
       rebuild: '#ccaa00',  // yellow - rebuild only
       either: '#ff8800'    // orange - either simple or rebuild
     };

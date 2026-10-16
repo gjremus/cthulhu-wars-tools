@@ -851,7 +851,7 @@
         }
 
         // Group by type and sort within each
-        const typeOrder = ['Cultist', 'Monster', 'Terror', 'GOO', 'Elder God', 'Building', 'Gate'];
+        const typeOrder = ['Cultist', 'Monster', 'Terror', 'GOO', 'Elder God', 'Building', 'Gate', 'Map Unit'];
         const sections = {};
         typeOrder.forEach(t => { sections[t] = []; });
 
@@ -907,7 +907,8 @@
           'GOO': 'GOOs / iGOOs',
           'Elder God': 'Elder Gods',
           'Building': 'Buildings',
-          'Gate': 'Gates'
+          'Gate': 'Gates',
+          'Map Unit': 'Map Units'
         };
 
         const nav = document.createElement('div');
@@ -1164,7 +1165,7 @@
         }
 
         // Group by type
-        const typeOrder = ['Cultist', 'Monster', 'Terror', 'GOO', 'Elder God', 'Building', 'Gate'];
+        const typeOrder = ['Cultist', 'Monster', 'Terror', 'GOO', 'Elder God', 'Building', 'Gate', 'Map Unit'];
         const sections = {};
         typeOrder.forEach(t => { sections[t] = []; });
 
@@ -1219,7 +1220,8 @@
           'GOO': 'GOOs / iGOOs',
           'Elder God': 'Elder Gods',
           'Building': 'Buildings',
-          'Gate': 'Gates'
+          'Gate': 'Gates',
+          'Map Unit': 'Map Units'
         };
 
         const nav = document.createElement('div');
@@ -1386,6 +1388,274 @@
             btn.onclick = () => {
               close();
               resolve(item.url || `/designer/silhouettes/${item.id}.svg`);
+            };
+
+            grid.appendChild(btn);
+          });
+        };
+
+        renderPage();
+      });
+    }
+
+    async pickTokenImage() {
+      if (this.isReadOnly()) return null;
+
+      return new Promise(async (resolve) => {
+        const layer = document.createElement('div');
+        layer.className = 'library-picker';
+        document.body.appendChild(layer);
+
+        const loading = document.createElement('div');
+        loading.className = 'library-loading';
+        loading.textContent = 'Loading tokens…';
+        layer.appendChild(loading);
+
+        // Load tokens.json (token images from CW/Necro)
+        if (!this.tokensCache) {
+          try {
+            const resp = await fetch('/designer/library/tokens.json');
+            if (!resp.ok) throw new Error('Failed to load tokens');
+            this.tokensCache = await resp.json();
+          } catch (err) {
+            console.error('Token load error:', err);
+            layer.innerHTML = '';
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'library-error';
+            errorDiv.textContent = 'Failed to load tokens: ' + err.message;
+            layer.appendChild(errorDiv);
+            const backBtn = document.createElement('button');
+            backBtn.className = 'library-btn';
+            backBtn.textContent = 'Back';
+            backBtn.onclick = () => {
+              layer.remove();
+              resolve(null);
+            };
+            layer.appendChild(backBtn);
+            return;
+          }
+        }
+
+        // Group by category
+        const categoryOrder = ['Token', 'Map Glyph', 'Library', 'Map Unit'];
+        const sections = {};
+        categoryOrder.forEach(c => { sections[c] = []; });
+
+        this.tokensCache.forEach(item => {
+          if (sections[item.category]) sections[item.category].push(item);
+        });
+
+        Object.keys(sections).forEach(category => {
+          sections[category].sort((a, b) => {
+            if (a.name !== b.name) return a.name.localeCompare(b.name);
+            return (a.faction || '').localeCompare(b.faction || '');
+          });
+        });
+
+        let currentPage = 0;
+        let pages = [];
+        let tileW = 88;
+        let tileH = 115;
+        let cols = 3;
+        let rows = 2;
+        let resizeTimer;
+
+        const close = () => {
+          window.removeEventListener('resize', onResize);
+          window.removeEventListener('orientationchange', onResize);
+          layer.remove();
+        };
+
+        layer.innerHTML = '';
+
+        const topBar = document.createElement('div');
+        topBar.className = 'library-topbar';
+        layer.appendChild(topBar);
+
+        const backBtn = document.createElement('button');
+        backBtn.className = 'library-btn';
+        backBtn.textContent = 'Back';
+        backBtn.onclick = () => {
+          close();
+          resolve(null);
+        };
+        topBar.appendChild(backBtn);
+
+        const categoryJumps = document.createElement('div');
+        categoryJumps.className = 'library-type-jumps';
+        topBar.appendChild(categoryJumps);
+
+        const categoryLabels = {
+          'Token': 'Tokens',
+          'Map Glyph': 'Map Glyphs',
+          'Library': 'Library',
+          'Map Unit': 'Map Units'
+        };
+
+        const nav = document.createElement('div');
+        nav.className = 'library-nav';
+        topBar.appendChild(nav);
+
+        const prevBtn = document.createElement('button');
+        prevBtn.className = 'library-btn';
+        prevBtn.textContent = 'Prev';
+        nav.appendChild(prevBtn);
+
+        const pageLabel = document.createElement('span');
+        pageLabel.className = 'library-page-label';
+        nav.appendChild(pageLabel);
+
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'library-btn';
+        nextBtn.textContent = 'Next';
+        nav.appendChild(nextBtn);
+
+        const grid = document.createElement('div');
+        grid.className = 'library-grid';
+        layer.appendChild(grid);
+
+        // Build pages: paginate within each category
+        const buildPages = (pageSize) => {
+          const newPages = [];
+          categoryOrder.forEach(category => {
+            const items = sections[category];
+            if (items.length === 0) return;
+            for (let i = 0; i < items.length; i += pageSize) {
+              newPages.push({
+                category,
+                items: items.slice(i, Math.min(i + pageSize, items.length))
+              });
+            }
+          });
+          return newPages;
+        };
+
+        // Compute page size from viewport
+        const computePageSize = () => {
+          const vw = window.innerWidth;
+          const vh = window.innerHeight;
+
+          if (vw < 600) {
+            tileW = 88; tileH = 88 * 0.85 + 40;
+          } else if (vw < 1100) {
+            tileW = 120; tileH = 120 * 0.85 + 40;
+          } else {
+            tileW = 160; tileH = 160 * 0.85 + 40;
+          }
+
+          const gap = 12;
+          const topBarH = topBar.offsetHeight || 60;
+          const gridH = grid.clientHeight || (vh - topBarH - 40 - 20 - 24);
+          cols = Math.max(2, Math.floor((vw - 40) / (tileW + gap)));
+          rows = Math.max(1, Math.floor(gridH / (tileH + gap)));
+          const pageSize = Math.max(6, cols * rows);
+
+          const oldCategory = pages[currentPage]?.category;
+          pages = buildPages(pageSize);
+
+          // Keep same category visible after resize
+          if (oldCategory) {
+            const idx = pages.findIndex(p => p.category === oldCategory);
+            if (idx >= 0) currentPage = idx;
+          }
+          currentPage = Math.max(0, Math.min(currentPage, pages.length - 1));
+        };
+
+        const onResize = () => {
+          clearTimeout(resizeTimer);
+          resizeTimer = setTimeout(() => {
+            computePageSize();
+            renderPage();
+          }, 200);
+        };
+
+        window.addEventListener('resize', onResize);
+        window.addEventListener('orientationchange', onResize);
+
+        // Build category jump buttons
+        categoryOrder.forEach(category => {
+          if (sections[category].length === 0) return;
+          const btn = document.createElement('button');
+          btn.className = 'library-type-btn';
+          btn.textContent = categoryLabels[category];
+          btn.dataset.category = category;
+          btn.onclick = () => {
+            const idx = pages.findIndex(p => p.category === category);
+            if (idx >= 0) {
+              currentPage = idx;
+              renderPage();
+            }
+          };
+          categoryJumps.appendChild(btn);
+        });
+
+        // Widest label first
+        pageLabel.textContent = 'Map Glyphs · Page 00 of 00';
+        computePageSize();
+
+        prevBtn.onclick = () => {
+          if (currentPage > 0) {
+            currentPage--;
+            renderPage();
+          }
+        };
+
+        nextBtn.onclick = () => {
+          if (currentPage < pages.length - 1) {
+            currentPage++;
+            renderPage();
+          }
+        };
+
+        const renderPage = () => {
+          if (pages.length === 0) return;
+
+          const page = pages[currentPage];
+          const pageCategory = page.category;
+
+          // Update nav
+          prevBtn.disabled = currentPage === 0;
+          nextBtn.disabled = currentPage >= pages.length - 1;
+          pageLabel.textContent = `${categoryLabels[pageCategory]} · Page ${currentPage + 1} of ${pages.length}`;
+
+          // Update category button highlight
+          categoryJumps.querySelectorAll('.library-type-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.category === pageCategory);
+          });
+
+          // Render tiles
+          grid.innerHTML = '';
+          grid.style.gridTemplateColumns = `repeat(${cols}, ${tileW}px)`;
+
+          page.items.forEach(item => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'library-tile';
+            btn.title = item.faction && item.faction !== 'Neutral' ? `${item.name} (${item.faction})` : item.name;
+            btn.style.height = `${tileH}px`;
+
+            const img = document.createElement('img');
+            img.src = `/designer/library/${item.file}`;
+            img.loading = 'lazy';
+            img.alt = item.name;
+
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'library-tile-name';
+            nameDiv.textContent = item.name;
+
+            const factionDiv = document.createElement('div');
+            factionDiv.className = 'library-tile-faction';
+            if (item.faction && item.faction !== 'Neutral') {
+              factionDiv.textContent = item.faction;
+            }
+
+            btn.appendChild(img);
+            btn.appendChild(nameDiv);
+            btn.appendChild(factionDiv);
+
+            btn.onclick = () => {
+              close();
+              resolve(`/designer/library/${item.file}`);
             };
 
             grid.appendChild(btn);
@@ -3153,6 +3423,11 @@
         exit.textContent = 'Exit to Main';
         exit.onclick = () => { window.location.hash = `#/faction/${fid}`; };
         bottom.appendChild(exit);
+        const factionNameSpan = document.createElement('span');
+        factionNameSpan.textContent = ` | ${faction.name}`;
+        factionNameSpan.style.marginLeft = '12px';
+        factionNameSpan.style.color = '#aaa';
+        bottom.appendChild(factionNameSpan);
         // Placed after any content the screen adds asynchronously
         const hash = window.location.hash;
         setTimeout(() => { if (window.location.hash === hash) this.root.appendChild(bottom); }, 400);
@@ -3234,11 +3509,26 @@
       const design = unit.design;
 
       this.root.innerHTML = '';
+
+      // Top Back button
+      const topBackBtn = document.createElement('button');
+      topBackBtn.textContent = 'Back to My Customs';
+      topBackBtn.onclick = async () => {
+        try {
+          await this.flushSaves();
+        } catch (err) {
+          console.error('Back to My Customs: save failed, navigating anyway', err);
+        }
+        window.location.hash = '#/factions';
+      };
+      this.root.appendChild(topBackBtn);
+
       const titleRow = document.createElement('div');
       titleRow.style.display = 'flex';
       titleRow.style.alignItems = 'center';
       titleRow.style.gap = '12px';
       titleRow.style.marginBottom = '12px';
+      titleRow.style.marginTop = '12px';
 
       const title = document.createElement('h1');
       title.className = 'faction-title';
@@ -3261,6 +3551,7 @@
       const container = document.createElement('div');
       this.root.appendChild(container);
 
+      // Bottom Back button
       const backBtn = document.createElement('button');
       backBtn.textContent = 'Back to My Customs';
       backBtn.style.marginTop = '20px';
@@ -3336,6 +3627,7 @@
         uploadImage: (kind) => this.uploadImage(kind),
         pickLibraryImage: () => this.pickLibraryImage(),
         pickSilhouetteImage: () => this.pickSilhouetteImage(),
+        pickTokenImage: () => this.pickTokenImage(),
         imgUrl: (id) => this.imgUrl(id),
         confirm: (msg, yes, no) => this.confirm(msg, yes, no),
         readOnly: false,
@@ -3359,9 +3651,10 @@
 
       this.root.innerHTML = '';
 
-      const backBtn = document.createElement('button');
-      backBtn.textContent = 'Exit to Main';
-      backBtn.onclick = async () => {
+      // Top Exit to Main button
+      const topBackBtn = document.createElement('button');
+      topBackBtn.textContent = 'Exit to Main';
+      topBackBtn.onclick = async () => {
         try {
           await this.flushSaves();
           await this.closeSession(faction.id);
@@ -3370,13 +3663,40 @@
         }
         window.location.hash = `#/faction/${faction.id}`;
       };
-      backBtn.style.marginTop = '20px';
+
+      const topFactionNameSpan = document.createElement('span');
+      topFactionNameSpan.textContent = ` | ${faction.name}`;
+      topFactionNameSpan.style.marginLeft = '12px';
+      topFactionNameSpan.style.color = '#aaa';
+
+      this.root.appendChild(topBackBtn);
+      this.root.appendChild(topFactionNameSpan);
 
       if (this.isReadOnly()) this.root.appendChild(this.readOnlyBanner());
       const container = document.createElement('div');
       this.root.appendChild(container);
-      // The doc puts Exit to Main at the bottom of every section
+
+      // Bottom Exit to Main button
+      const backBtn = document.createElement('button');
+      backBtn.textContent = 'Exit to Main';
+      backBtn.onclick = async () => {
+        try {
+          await this.flushSaves();
+          await this.closeSession(faction.id);
+        } catch (err) {
+          console.error('Exit to Main: save/close-section failed, navigating anyway', err);
+        }
+        window.location.hash = `#/faction/${faction.id}`;
+      };
+      backBtn.style.marginTop = '20px';
+
+      const factionNameSpan = document.createElement('span');
+      factionNameSpan.textContent = ` | ${faction.name}`;
+      factionNameSpan.style.marginLeft = '12px';
+      factionNameSpan.style.color = '#aaa';
+
       this.root.appendChild(backBtn);
+      this.root.appendChild(factionNameSpan);
 
       const ctx = {
         design,
@@ -3434,6 +3754,7 @@
         uploadImage: (kind) => this.uploadImage(kind),
         pickLibraryImage: () => this.pickLibraryImage(),
         pickSilhouetteImage: () => this.pickSilhouetteImage(),
+        pickTokenImage: () => this.pickTokenImage(),
         imgUrl: (id) => this.imgUrl(id),
         confirm: (msg, yes, no) => this.confirm(msg, yes, no),
         readOnly: this.isReadOnly(),
@@ -3477,6 +3798,12 @@
         window.location.hash = `#/faction/${faction.id}`;
       };
       this.root.appendChild(backBtn);
+
+      const factionNameSpan = document.createElement('span');
+      factionNameSpan.textContent = ` | ${faction.name}`;
+      factionNameSpan.style.marginLeft = '12px';
+      factionNameSpan.style.color = '#aaa';
+      this.root.appendChild(factionNameSpan);
 
       const title = document.createElement('h2');
       title.textContent = 'Versions';
@@ -3697,6 +4024,12 @@
         window.location.hash = `#/faction/${faction.id}`;
       };
       this.root.appendChild(backBtn);
+
+      const factionNameSpan = document.createElement('span');
+      factionNameSpan.textContent = ` | ${faction.name}`;
+      factionNameSpan.style.marginLeft = '12px';
+      factionNameSpan.style.color = '#aaa';
+      this.root.appendChild(factionNameSpan);
 
       const title = document.createElement('h2');
       title.textContent = 'Build';
@@ -4022,9 +4355,13 @@
       }
     }
 
-    renderSimpleUpdateScreen() {
+    async renderSimpleUpdateScreen() {
       const faction = this.state.currentFaction;
-      const design = faction.design;
+
+      // Reload faction data to ensure we have the latest builtDesign
+      await this.loadFaction(faction.id);
+
+      const design = this.state.currentFaction.design;
       const builtDesign = this.state.builtDesign;
 
       this.root.innerHTML = '';
@@ -4035,6 +4372,12 @@
         window.location.hash = `#/faction/${faction.id}`;
       };
       this.root.appendChild(backBtn);
+
+      const factionNameSpan = document.createElement('span');
+      factionNameSpan.textContent = ` | ${faction.name}`;
+      factionNameSpan.style.marginLeft = '12px';
+      factionNameSpan.style.color = '#aaa';
+      this.root.appendChild(factionNameSpan);
 
       // Check if there are rebuild-eligible changes
       const hasRebuildNeeded = this.hasRebuildEligibleChanges(faction, design, builtDesign);
@@ -4143,11 +4486,15 @@
       return 'simple';  // green
     }
 
-    // Get the outline color based on update type
-    static getOutlineColor(updateType) {
+    // Get the outline color based on update type and whether value differs
+    static getOutlineColor(updateType, differs = true) {
+      // Blue = eligible for simple update but currently matches build
+      // Green = eligible for simple update and differs from build
+      if (updateType === 'number' || updateType === 'simple') {
+        return differs ? '#00aa00' : '#0066ff';  // green if differs, blue if matches
+      }
+
       const COLORS = {
-        'number': '#00aa00',    // green - numbers are always simple update
-        'simple': '#00aa00',    // green - simple text
         'rebuild': '#ccaa00',   // yellow - rebuild only
         'either': '#ff8800'     // orange - either simple or rebuild
       };
@@ -4170,7 +4517,8 @@
       legend.appendChild(legendTitle);
 
       const items = [
-        { color: '#00aa00', label: 'Green outline: Can be updated immediately through Simple Update' },
+        { color: '#00aa00', label: 'Green outline: Can be updated immediately through Simple Update (value differs from build)' },
+        { color: '#0066ff', label: 'Blue outline: Can be updated through Simple Update (currently matches build value)' },
         { color: '#ccaa00', label: 'Yellow outline: Must be updated through a rebuild' },
         { color: '#ff8800', label: 'Orange outline: Can be updated either way (simple or rebuild)' }
       ];
@@ -4205,27 +4553,27 @@
       const designNums = Rules.fixedNumbers(design);
       const fieldLabel = App.simpleUpdateFieldLabel;
 
-      // Find differences
-      const diffs = [];
+      // Show ALL fixed numbers, marking which differ and which match
+      const allNums = [];
       for (const dNum of designNums) {
         const bNum = builtNums.find(b => b.section === dNum.section && b.rowId === dNum.rowId && b.field === dNum.field);
-        if (!bNum || bNum.value !== dNum.value) {
-          diffs.push({
-            section: dNum.section,
-            sectionTitle: dNum.sectionTitle,
-            name: dNum.name,
-            rowId: dNum.rowId,
-            field: dNum.field,
-            buildValue: bNum ? bNum.value : null,
-            designValue: dNum.value,
-            type: 'number'
-          });
-        }
+        const differs = !bNum || bNum.value !== dNum.value;
+        allNums.push({
+          section: dNum.section,
+          sectionTitle: dNum.sectionTitle,
+          name: dNum.name,
+          rowId: dNum.rowId,
+          field: dNum.field,
+          buildValue: bNum ? bNum.value : null,
+          designValue: dNum.value,
+          type: 'number',
+          differs: differs  // true = green (can push), false = blue (matches)
+        });
       }
 
-      if (diffs.length === 0) {
+      if (allNums.length === 0) {
         const p = document.createElement('p');
-        p.textContent = 'No fixed number differences found.';
+        p.textContent = 'No fixed numbers found.';
         this.root.appendChild(p);
         return;
       }
@@ -4252,60 +4600,62 @@
 
       const tbody = document.createElement('tbody');
 
-      for (const diff of diffs) {
+      for (const num of allNums) {
         const row = document.createElement('tr');
 
         const sectionCell = document.createElement('td');
-        sectionCell.textContent = diff.sectionTitle;
+        sectionCell.textContent = num.sectionTitle;
         row.appendChild(sectionCell);
 
         const nameCell = document.createElement('td');
-        nameCell.textContent = diff.name;
+        nameCell.textContent = num.name;
         row.appendChild(nameCell);
 
         const typeCell = document.createElement('td');
-        typeCell.textContent = fieldLabel(diff.field);
+        typeCell.textContent = fieldLabel(num.field);
         row.appendChild(typeCell);
 
         const buildCell = document.createElement('td');
-        buildCell.textContent = diff.buildValue !== null ? diff.buildValue : '-';
+        buildCell.textContent = num.buildValue !== null ? num.buildValue : '-';
         row.appendChild(buildCell);
 
         const designCell = document.createElement('td');
-        designCell.textContent = diff.designValue !== null ? diff.designValue : '-';
-        // Numbers are always simple updates - apply green outline, normal background
+        designCell.textContent = num.designValue !== null ? num.designValue : '-';
+        // Green outline = differs (can push), Blue outline = matches (but updatable)
         designCell.style.backgroundColor = '#1a1a1a';
-        designCell.style.border = '3px solid #00aa00';
+        designCell.style.border = num.differs ? '3px solid #00aa00' : '3px solid #0066ff';
         row.appendChild(designCell);
 
         const actionCell = document.createElement('td');
-        const pushBtn = document.createElement('button');
-        pushBtn.className = 'small primary';
-        pushBtn.textContent = 'Push design to build';
-        pushBtn.onclick = async () => {
-          try {
-            const label = `${diff.name} ${fieldLabel(diff.field)}`;
-            await this.createRequest(
-              faction.id,
-              'simple_update',
-              `Faction ${faction.name} update, change ${diff.sectionTitle} ${label} to ${diff.designValue}`,
-              {
-                section: diff.section,
-                rowId: diff.rowId,
-                field: diff.field,
-                name: label,
-                buildValue: diff.buildValue,
-                designValue: diff.designValue
-              }
-            );
-            await this.loadFaction(faction.id);
-            alert(`Updated in the build: ${label} is now ${diff.designValue}.`);
-            this.renderSimpleUpdateScreen();
-          } catch (err) {
-            alert('Request failed: ' + err.message);
-          }
-        };
-        actionCell.appendChild(pushBtn);
+        if (num.differs) {
+          const pushBtn = document.createElement('button');
+          pushBtn.className = 'small primary';
+          pushBtn.textContent = 'Push design to build';
+          pushBtn.onclick = async () => {
+            try {
+              const label = `${num.name} ${fieldLabel(num.field)}`;
+              await this.createRequest(
+                faction.id,
+                'simple_update',
+                `Faction ${faction.name} update, change ${num.sectionTitle} ${label} to ${num.designValue}`,
+                {
+                  section: num.section,
+                  rowId: num.rowId,
+                  field: num.field,
+                  name: label,
+                  buildValue: num.buildValue,
+                  designValue: num.designValue
+                }
+              );
+              await this.loadFaction(faction.id);
+              alert(`Updated in the build: ${label} is now ${num.designValue}.`);
+              this.renderSimpleUpdateScreen();
+            } catch (err) {
+              alert('Request failed: ' + err.message);
+            }
+          };
+          actionCell.appendChild(pushBtn);
+        }
         row.appendChild(actionCell);
 
         tbody.appendChild(row);
@@ -4384,9 +4734,10 @@
 
         const designCell = document.createElement('td');
         designCell.textContent = diff.designValue !== null ? diff.designValue : '-';
-        // Apply outline based on update type
+        // Apply outline based on update type AND whether value differs
         designCell.style.backgroundColor = '#1a1a1a';
-        const outlineColor = App.getOutlineColor(diff.updateType);
+        const differs = diff.designValue !== diff.buildValue;
+        const outlineColor = App.getOutlineColor(diff.updateType, differs);
         designCell.style.border = `3px solid ${outlineColor}`;
         row.appendChild(designCell);
 
@@ -4600,6 +4951,12 @@
       };
       this.root.appendChild(backBtn);
 
+      const factionNameSpan = document.createElement('span');
+      factionNameSpan.textContent = ` | ${faction.name}`;
+      factionNameSpan.style.marginLeft = '12px';
+      factionNameSpan.style.color = '#aaa';
+      this.root.appendChild(factionNameSpan);
+
       const title = document.createElement('h2');
       title.textContent = 'Terminal Log & Bug Report';
       title.style.marginTop = '20px';
@@ -4650,6 +5007,20 @@
         }
       };
       this.root.appendChild(sendBtn);
+
+      const bottomBackBtn = document.createElement('button');
+      bottomBackBtn.textContent = 'Exit to Main';
+      bottomBackBtn.style.marginTop = '20px';
+      bottomBackBtn.onclick = () => {
+        window.location.hash = `#/faction/${faction.id}`;
+      };
+      this.root.appendChild(bottomBackBtn);
+
+      const bottomFactionNameSpan = document.createElement('span');
+      bottomFactionNameSpan.textContent = ` | ${faction.name}`;
+      bottomFactionNameSpan.style.marginLeft = '12px';
+      bottomFactionNameSpan.style.color = '#aaa';
+      this.root.appendChild(bottomFactionNameSpan);
     }
 
     // Map render methods
@@ -4821,6 +5192,32 @@
 
       this.root.innerHTML = '';
 
+      // Top Exit to Main button
+      const topBackBtn = document.createElement('button');
+      topBackBtn.textContent = 'Exit to Main';
+      topBackBtn.onclick = async () => {
+        try {
+          await this.flushSaves();
+          await this.closeMapSession(map.id);
+        } catch (err) {
+          console.error('Exit to Main: save/close-session failed, navigating anyway', err);
+        }
+        window.location.hash = `#/map/${map.id}`;
+      };
+
+      const topMapNameSpan = document.createElement('span');
+      topMapNameSpan.textContent = ` | ${map.name}`;
+      topMapNameSpan.style.marginLeft = '12px';
+      topMapNameSpan.style.color = '#aaa';
+
+      this.root.appendChild(topBackBtn);
+      this.root.appendChild(topMapNameSpan);
+
+      if (this.isReadOnly()) this.root.appendChild(this.readOnlyBanner());
+      const container = document.createElement('div');
+      this.root.appendChild(container);
+
+      // Bottom Exit to Main button
       const backBtn = document.createElement('button');
       backBtn.textContent = 'Exit to Main';
       backBtn.onclick = async () => {
@@ -4834,10 +5231,13 @@
       };
       backBtn.style.marginTop = '20px';
 
-      if (this.isReadOnly()) this.root.appendChild(this.readOnlyBanner());
-      const container = document.createElement('div');
-      this.root.appendChild(container);
+      const mapNameSpan = document.createElement('span');
+      mapNameSpan.textContent = ` | ${map.name}`;
+      mapNameSpan.style.marginLeft = '12px';
+      mapNameSpan.style.color = '#aaa';
+
       this.root.appendChild(backBtn);
+      this.root.appendChild(mapNameSpan);
 
       const ctx = {
         design,
@@ -4887,6 +5287,7 @@
         uploadImage: (kind) => this.uploadImage(kind),
         pickLibraryImage: () => this.pickLibraryImage(),
         pickSilhouetteImage: () => this.pickSilhouetteImage(),
+        pickTokenImage: () => this.pickTokenImage(),
         imgUrl: (id) => this.imgUrl(id),
         confirm: (msg, yes, no) => this.confirm(msg, yes, no),
         readOnly: this.isReadOnly(),
@@ -4924,6 +5325,12 @@
         window.location.hash = `#/map/${map.id}`;
       };
       this.root.appendChild(backBtn);
+
+      const mapNameSpan = document.createElement('span');
+      mapNameSpan.textContent = ` | ${map.name}`;
+      mapNameSpan.style.marginLeft = '12px';
+      mapNameSpan.style.color = '#aaa';
+      this.root.appendChild(mapNameSpan);
 
       const title = document.createElement('h2');
       title.textContent = 'Build';
@@ -5033,6 +5440,20 @@
         };
         this.root.appendChild(executeBtn);
       }
+
+      const bottomBackBtn = document.createElement('button');
+      bottomBackBtn.textContent = 'Exit to Main';
+      bottomBackBtn.style.marginTop = '20px';
+      bottomBackBtn.onclick = () => {
+        window.location.hash = `#/map/${map.id}`;
+      };
+      this.root.appendChild(bottomBackBtn);
+
+      const bottomMapNameSpan = document.createElement('span');
+      bottomMapNameSpan.textContent = ` | ${map.name}`;
+      bottomMapNameSpan.style.marginLeft = '12px';
+      bottomMapNameSpan.style.color = '#aaa';
+      this.root.appendChild(bottomMapNameSpan);
     }
 
     async renderMapVersionsScreen(mid) {
@@ -5051,6 +5472,12 @@
         window.location.hash = `#/map/${map.id}`;
       };
       this.root.appendChild(backBtn);
+
+      const mapNameSpan = document.createElement('span');
+      mapNameSpan.textContent = ` | ${map.name}`;
+      mapNameSpan.style.marginLeft = '12px';
+      mapNameSpan.style.color = '#aaa';
+      this.root.appendChild(mapNameSpan);
 
       const title = document.createElement('h2');
       title.textContent = 'Versions';
@@ -5147,6 +5574,20 @@
 
       table.appendChild(tbody);
       this.root.appendChild(table);
+
+      const bottomBackBtn = document.createElement('button');
+      bottomBackBtn.textContent = 'Exit to Main';
+      bottomBackBtn.style.marginTop = '20px';
+      bottomBackBtn.onclick = () => {
+        window.location.hash = `#/map/${map.id}`;
+      };
+      this.root.appendChild(bottomBackBtn);
+
+      const bottomMapNameSpan = document.createElement('span');
+      bottomMapNameSpan.textContent = ` | ${map.name}`;
+      bottomMapNameSpan.style.marginLeft = '12px';
+      bottomMapNameSpan.style.color = '#aaa';
+      this.root.appendChild(bottomMapNameSpan);
     }
 
     async renderMapBugReportScreen(mid) {
@@ -5165,6 +5606,12 @@
         window.location.hash = `#/map/${map.id}`;
       };
       this.root.appendChild(backBtn);
+
+      const mapNameSpan = document.createElement('span');
+      mapNameSpan.textContent = ` | ${map.name}`;
+      mapNameSpan.style.marginLeft = '12px';
+      mapNameSpan.style.color = '#aaa';
+      this.root.appendChild(mapNameSpan);
 
       const title = document.createElement('h2');
       title.textContent = 'Terminal Log & Bug Report';
@@ -5216,6 +5663,20 @@
         }
       };
       this.root.appendChild(sendBtn);
+
+      const bottomBackBtn = document.createElement('button');
+      bottomBackBtn.textContent = 'Exit to Main';
+      bottomBackBtn.style.marginTop = '20px';
+      bottomBackBtn.onclick = () => {
+        window.location.hash = `#/map/${map.id}`;
+      };
+      this.root.appendChild(bottomBackBtn);
+
+      const bottomMapNameSpan = document.createElement('span');
+      bottomMapNameSpan.textContent = ` | ${map.name}`;
+      bottomMapNameSpan.style.marginLeft = '12px';
+      bottomMapNameSpan.style.color = '#aaa';
+      this.root.appendChild(bottomMapNameSpan);
     }
 
     async renderMapSimpleUpdateScreen(mid) {
@@ -5234,6 +5695,12 @@
         window.location.hash = `#/map/${map.id}`;
       };
       this.root.appendChild(backBtn);
+
+      const mapNameSpan = document.createElement('span');
+      mapNameSpan.textContent = ` | ${map.name}`;
+      mapNameSpan.style.marginLeft = '12px';
+      mapNameSpan.style.color = '#aaa';
+      this.root.appendChild(mapNameSpan);
 
       const title = document.createElement('h2');
       title.textContent = 'Simple Update';
@@ -5279,6 +5746,20 @@
         }
       };
       this.root.appendChild(sendBtn);
+
+      const bottomBackBtn = document.createElement('button');
+      bottomBackBtn.textContent = 'Exit to Main';
+      bottomBackBtn.style.marginTop = '20px';
+      bottomBackBtn.onclick = () => {
+        window.location.hash = `#/map/${map.id}`;
+      };
+      this.root.appendChild(bottomBackBtn);
+
+      const bottomMapNameSpan = document.createElement('span');
+      bottomMapNameSpan.textContent = ` | ${map.name}`;
+      bottomMapNameSpan.style.marginLeft = '12px';
+      bottomMapNameSpan.style.color = '#aaa';
+      this.root.appendChild(bottomMapNameSpan);
     }
 
     // Unit meta sections

@@ -1357,24 +1357,42 @@
     "name": "Cathedral",
     "type": "Building",
     "faction": "Ancients",
-    "file": "an-cathedral.svg"
+    "file": "an-cathedral.webp"
   },
   {
     "name": "Chaos Gate",
-    "type": "Building",
+    "type": "Gate",
     "faction": "Dreamlands Syndicate",
-    "file": "ds-chaos-gate.svg"
+    "file": "ds-chaos-gate.webp"
   },
   {
     "name": "Screaming Wall",
     "type": "Building",
     "faction": "Fleshmason",
-    "file": "fm-screaming-wall.svg"
+    "file": "fm-screaming-wall.webp"
   },
   {
     "name": "Gate",
     "type": "Gate",
     "faction": "Neutral",
     "file": "gate.webp"
+  },
+  {
+    "name": "Lord's Shadow",
+    "type": "Gate",
+    "faction": "The Invasion",
+    "file": "ti-lords-shadow.webp"
+  },
+  {
+    "name": "Prismatic Well",
+    "type": "Gate",
+    "faction": "Colour Out of Space",
+    "file": "cs-prismatic-well.webp"
+  },
+  {
+    "name": "Custodian",
+    "type": "Map Unit",
+    "faction": "Neutral",
+    "file": "custodian.png"
   }
 ]

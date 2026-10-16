@@ -719,8 +719,8 @@
           <th style="border:1px solid #000;padding:6px;text-align:left;width:110px;">Date / time</th>
           <th style="border:1px solid #000;padding:6px;text-align:left;width:95px;">Type</th>
           <th style="border:1px solid #000;padding:6px;text-align:left;width:90px;">User</th>
-          <th style="border:1px solid #000;padding:6px;text-align:left;width:110px;">Faction</th>
           <th style="border:1px solid #000;padding:6px;text-align:left;width:120px;">Design Object</th>
+          <th style="border:1px solid #000;padding:6px;text-align:left;width:85px;">Status</th>
           <th style="border:1px solid #000;padding:6px;text-align:left;width:250px;">Prompt</th>
           <th style="border:1px solid #000;padding:6px;text-align:left;width:250px;">What Claude did</th>
           <th style="border:1px solid #000;padding:6px;text-align:left;width:70px;">Est. cost</th>
@@ -1236,7 +1236,7 @@ function submitMetaAgentPrompt() {
   if (META_AGENT_IMAGE_DATA) {
     body += `\n\n[IMAGE ATTACHED: ${META_AGENT_IMAGE_DATA.name}]\n${META_AGENT_IMAGE_DATA.data}`;
   }
-  fetch(`${SERVER}/admin/${TOKEN}/meta-agent-prompt`, {
+  fetch(`${SERVER}/designer/api/admin/${TOKEN}/meta-agent-prompt`, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain' },
     body: body,
@@ -1258,7 +1258,7 @@ function submitMetaAgentPrompt() {
 }
 
 function refreshMetaAgentOutput() {
-  fetch(`${SERVER}/admin/${TOKEN}/meta-agent-output?lines=500`)
+  fetch(`${SERVER}/designer/api/admin/${TOKEN}/meta-agent-output?lines=500`)
     .then(r => r.text())
     .then(t => {
       const el = document.getElementById('meta-agent-output');
@@ -3873,12 +3873,13 @@ function loadClaudeLog() {
     .then(data => { CLAUDE_LOG = data.entries || []; renderClaudeLog(); })
     .catch(err => {
       document.getElementById('claudelog-body').innerHTML =
-        `<tr><td colspan="7" style="border:1px solid #000;padding:6px;" class="err">Failed to load the log: ${esc(String(err))}</td></tr>`;
+        `<tr><td colspan="9" style="border:1px solid #000;padding:6px;" class="err">Failed to load the log: ${esc(String(err))}</td></tr>`;
     });
 }
 function renderClaudeLog() {
   const q = (document.getElementById('claudelog-search')?.value || '').trim().toLowerCase();
-  const rows = CLAUDE_LOG.filter(e => !q || [e.n, e.type, e.user, e.faction, e.designObject, e.prompt, e.summary, e.cost, e.costNote].join(' ').toLowerCase().includes(q));
+  const status = e => e.defaultSummary ? 'pending' : ((e.summary || '').toUpperCase() === 'FAILED' ? 'failed' : 'completed');
+  const rows = CLAUDE_LOG.filter(e => !q || [e.n, e.type, e.user, e.designObject, status(e), e.prompt, e.summary, e.cost, e.costNote].join(' ').toLowerCase().includes(q));
   const td = 'border:1px solid #000;padding:6px;vertical-align:top;';
   // Long prompts/summaries scroll inside their cell so a row stays readable on a phone
   const box = 'max-height:12em;overflow-y:auto;white-space:pre-wrap;word-break:break-word;';
@@ -3902,8 +3903,8 @@ function renderClaudeLog() {
       <td style="${td}white-space:nowrap;">${when(e.at)}</td>
       <td style="${td}">${esc(e.type || '')}</td>
       <td style="${td}">${esc(e.user || '')}</td>
-      <td style="${td}white-space:nowrap;">${esc(e.faction || '')}</td>
       <td style="${td}white-space:nowrap;">${esc(e.designObject || '')}</td>
+      <td style="${td}white-space:nowrap;">${status(e)}</td>
       <td style="${td}"><div style="${box}">${esc(e.prompt || '')}</div></td>
       <td style="${td}"><div style="${box}">${esc(e.summary || '')}</div></td>
       <td style="${td}text-align:right;">${costCell(e.cost, e.costNote)}</td>

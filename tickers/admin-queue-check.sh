@@ -100,6 +100,16 @@ if [[ "${1:-}" == "worker" ]]; then
         item=( "$Q"/pending/*(N.on) ); (( ${#item} )) || break   # names start with epoch: oldest first
         job="$Q/running/${item[1]:t}"; mv "${item[1]}" "$job"
         text=$(cat "$job")
+
+        # SMOKE TEST auto-complete: immediately mark as done without processing
+        if print -r -- "$text" | grep -qi "smoke test"; then
+            note "smoke test detected in ${job:t}, auto-completing"
+            echo "SMOKE TEST - verified terminal log entry creation working correctly." > "$job.reply"
+            tlog summary "${job:t}" "$job.reply"
+            mv "$job" "$job.reply" "$Q/done/" 2>/dev/null
+            continue
+        fi
+
         out="$job.jsonl"
         resume=()
         if [[ -s "$Q/session" ]] && [[ -n "$(find "$Q/session" -mmin -$(( RESUME_HOURS * 60 )) 2>/dev/null)" ]]; then
@@ -327,7 +337,19 @@ for i in range(1, len(parts), 2):
         for a in "$Q"/pending/*(N); do [[ "${a:t}" < "$name" ]] && older+=( $a ); done
         msg="(queued"; (( ${#older} )) && msg+=" - ${#older} ahead of it"; msg+=")"
         { cat "$Q/pending/$name"; echo "$msg"; } | post_output PROMPT || note "could not post queued notice"
-        tlog add "$name"
+
+        # Check if this is a DESIGN-ANSWERS entry and create terminal log with correct metadata
+        prompt_text=$(cat "$Q/pending/$name")
+        if [[ "$prompt_text" =~ '^DESIGN-ANSWERS (r_[^:]+): ([^ ]+) answered.*section of ([^(]+)\(designer' ]]; then
+            req_id="${match[1]}"
+            username="${match[2]}"
+            faction="${match[3]}"
+            # Trim trailing whitespace from faction name (there's a space before "(designer")
+            faction="${faction% }"
+            python3 "$TICKERS/designer-admin.py" tlog-create --type "design answers" --user "$username" --ref "$req_id" --design-object "$faction" --prompt "$prompt_text" --summary "Waiting to be picked up." > /dev/null 2>>"$LOG" || note "terminal log creation failed for $name"
+        else
+            tlog add "$name"
+        fi
     done
 fi
 

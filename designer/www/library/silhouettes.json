@@ -280,13 +280,6 @@
     "url": "/designer/silhouettes/ds-avatar-thesis.svg"
   },
   {
-    "id": "ds-chaos-gate",
-    "name": "Chaos Gate",
-    "type": "Monster",
-    "faction": "Dread Sovereign",
-    "url": "/designer/silhouettes/ds-chaos-gate.svg"
-  },
-  {
     "id": "ds-larva-antithesis",
     "name": "Larva Antithesis",
     "type": "Monster",
@@ -982,7 +975,7 @@
   {
     "id": "ds-chaos-gate",
     "name": "Chaos Gate",
-    "type": "Building",
+    "type": "Gate",
     "faction": "Dreamlands Syndicate",
     "url": "/designer/silhouettes/ds-chaos-gate.svg"
   },
@@ -992,5 +985,12 @@
     "type": "Building",
     "faction": "Fleshmason",
     "url": "/designer/silhouettes/fm-screaming-wall.svg"
+  },
+  {
+    "id": "cs-prismatic-well",
+    "name": "Prismatic Well",
+    "type": "Gate",
+    "faction": "Colour Out of Space",
+    "url": "/designer/silhouettes/cs-prismatic-well.svg"
   }
 ]

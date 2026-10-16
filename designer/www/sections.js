@@ -230,8 +230,28 @@
 
     const inputClass = missing ? 'sx-missing' : '';
     const input = rows
-      ? h('textarea', Object.assign({className: inputClass, value: value || '', oninput: e => onChange(e.target.value), rows}, uxAttrs))
-      : h('input', Object.assign({className: inputClass, type: 'text', value: value || '', oninput: e => onChange(e.target.value)}, uxAttrs));
+      ? h('textarea', Object.assign({className: inputClass, value: value || '', oninput: e => {
+          onChange(e.target.value);
+          // Update outline in real-time for simple-update eligible text fields
+          if (opts.ux && opts.buildValue !== undefined && opts.updateType) {
+            if (opts.updateType === 'simple' || opts.updateType === 'number') {
+              const differs = e.target.value !== opts.buildValue;
+              e.target.style.border = differs ? '3px solid #00aa00' : '3px solid #0066ff';
+              e.target.style.backgroundColor = '#1a1a1a';
+            }
+          }
+        }, rows}, uxAttrs))
+      : h('input', Object.assign({className: inputClass, type: 'text', value: value || '', oninput: e => {
+          onChange(e.target.value);
+          // Update outline in real-time for simple-update eligible text fields
+          if (opts.ux && opts.buildValue !== undefined && opts.updateType) {
+            if (opts.updateType === 'simple' || opts.updateType === 'number') {
+              const differs = e.target.value !== opts.buildValue;
+              e.target.style.border = differs ? '3px solid #00aa00' : '3px solid #0066ff';
+              e.target.style.backgroundColor = '#1a1a1a';
+            }
+          }
+        }}, uxAttrs));
 
     return h('div', {className: 'sx-field' + (greyed ? ' sx-greyed' : '')},
       h('label', {}, label, hint ? h('span', {className: 'sx-hint', title: hint}, 'ⓘ') : null),
@@ -249,7 +269,17 @@
       type: 'number',
       className: missing ? 'sx-missing' : '',
       value: value != null ? value : '',
-      oninput: e => onChange(e.target.value ? parseInt(e.target.value) : null),
+      oninput: e => {
+        onChange(e.target.value ? parseInt(e.target.value) : null);
+
+        // Real-time outline update for simple-update eligible fields
+        if (opts.ux && opts.buildValue !== undefined) {
+          const num = e.target.value ? parseInt(e.target.value) : null;
+          const differs = num !== opts.buildValue;
+          e.target.style.border = differs ? '3px solid #00aa00' : '3px solid #0066ff';
+          e.target.style.backgroundColor = '#1a1a1a';
+        }
+      },
       inputmode: 'numeric'
     };
     if (min != null) attrs.min = min;
@@ -741,6 +771,8 @@
   }
 
   function renderUnits(container, ctx) {
+    // Field Update Legend for this section is added by applyUpdateHighlighting (shared, 4 colors).
+
     const d = ctx.design.units;
     const ref = ctx.reference || {};
     // ctx.neutral: a stand-alone unit from My Units. One unit only, and nothing that belongs to a
@@ -829,7 +861,10 @@
           onclick: async () => {
             if (!mapIsUniqueUpload) return;
             if (!confirm('Submit to Claude to generate flat white silhouette from your map image?')) return;
-            const factionName = ctx.design.name || 'Unknown Faction';
+            // Faction screens give ctx.faction (+ ctx.createRequest); standalone unit screens give ctx.unit.
+            // (There is no ctx.factionId - using it sent POST /factions/undefined/request.)
+            const fid = ctx.faction ? ctx.faction.id : null;
+            const factionName = (ctx.faction && ctx.faction.name) || (ctx.design.meta && ctx.design.meta.name) || ctx.design.name || 'Unknown Faction';
             const mapImageUrl = ctx.imgUrl(unit.mapImage);
             const text = `Generate silhouette for unit "${unit.name}" in faction "${factionName}".
 
@@ -841,19 +876,29 @@ Convert the map image to a flat white silhouette:
 Map image ID: ${unit.mapImage}
 Map image URL: ${mapImageUrl}
 Unit ID: ${unit.id}
-Faction ID: ${ctx.factionId}
+${fid ? `Faction ID: ${fid}` : `Standalone unit ID: ${ctx.unit ? ctx.unit.id : unit.id}`}
 
 After generating the silhouette, automatically attach it to this unit by setting the silhouette field to the new image ID.`;
+            // Unique data per unit + image so the server's duplicate check doesn't fold this into another open bug request
+            const data = {kind: 'silhouette', unitId: unit.id, mapImage: unit.mapImage};
             try {
-              const resp = await fetch(`/designer/api/factions/${ctx.factionId}/request`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${localStorage.getItem('cw_designer_token')}`
-                },
-                body: JSON.stringify({type: 'bug', text})
-              });
-              if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+              if (fid && ctx.createRequest) {
+                await ctx.createRequest('bug', text, data);  // app.api(): sends the login token, throws on error
+              } else {
+                const target = fid ? `factions/${fid}` : `units/${ctx.unit ? ctx.unit.id : unit.id}`;
+                const resp = await fetch(`/designer/api/${target}/request`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('cw_designer_token')}`
+                  },
+                  body: JSON.stringify({type: 'bug', text, data})
+                });
+                if (!resp.ok) {
+                  const e = await resp.json().catch(() => ({}));
+                  throw new Error(e.error ? `${e.error} (HTTP ${resp.status})` : `HTTP ${resp.status}`);
+                }
+              }
               alert('Silhouette generation request submitted to Claude admin console. The silhouette will be automatically attached when ready.');
             } catch (err) {
               alert('Failed to submit request: ' + err.message);
@@ -1783,13 +1828,26 @@ After generating the silhouette, automatically attach it to this unit by setting
           onclick: () => openImageEditor(row.image, ctx, id => ctx.set(`tokens.rows.${row.id}.image`, id), 'small')
         }));
       } else {
-        imgTd.appendChild(h('div', {
+        const imgDiv = h('div', {style: 'display: flex; flex-direction: column; gap: 4px;'});
+        imgDiv.appendChild(h('div', {
           className: 'sx-img-thumb sx-empty' + (imgMissing ? ' sx-missing' : ''),
           onclick: async () => {
             const id = await ctx.uploadImage('small');
             if (id) ctx.set(`tokens.rows.${row.id}.image`, id);
           }
         }, 'Upload'));
+        imgDiv.appendChild(h('button', {
+          className: 'sx-btn',
+          style: 'font-size: 12px; padding: 4px 8px;',
+          onclick: async () => {
+            const id = await ctx.pickTokenImage();
+            if (id) {
+              ctx.set(`tokens.rows.${row.id}.image`, id);
+              ctx.rerender();
+            }
+          }
+        }, 'CW / Necro'));
+        imgTd.appendChild(imgDiv);
       }
       tr.appendChild(imgTd);
 
@@ -1907,13 +1965,26 @@ After generating the silhouette, automatically attach it to this unit by setting
           onclick: () => openImageEditor(row.image, ctx, id => ctx.set(`custom.rows.${row.id}.image`, id), 'small')
         }));
       } else {
-        imgTd.appendChild(h('div', {
+        const imgDiv = h('div', {style: 'display: flex; flex-direction: column; gap: 4px;'});
+        imgDiv.appendChild(h('div', {
           className: 'sx-img-thumb sx-empty' + (imgMissing ? ' sx-missing' : ''),
           onclick: async () => {
             const id = await ctx.uploadImage('small');
             if (id) ctx.set(`custom.rows.${row.id}.image`, id);
           }
         }, 'Upload'));
+        imgDiv.appendChild(h('button', {
+          className: 'sx-btn',
+          style: 'font-size: 12px; padding: 4px 8px;',
+          onclick: async () => {
+            const id = await ctx.pickTokenImage();
+            if (id) {
+              ctx.set(`custom.rows.${row.id}.image`, id);
+              ctx.rerender();
+            }
+          }
+        }, 'CW / Necro'));
+        imgTd.appendChild(imgDiv);
       }
       tr.appendChild(imgTd);
 
@@ -3372,38 +3443,61 @@ After generating the silhouette, automatically attach it to this unit by setting
       return null;
     };
 
-    let anyDiff = false;
+    let anyOutlined = false;
+    const outline = (el, color) => {
+      el.style.border = '3px solid ' + color;
+      el.style.backgroundColor = '#1a1a1a';
+      anyOutlined = true;
+    };
 
+    // Numbers: always simple-update eligible. Green if differs from build, blue if it matches.
     const designNums = R.fixedNumbers(ctx.design).filter(n => n.section === key);
     const builtNums = R.fixedNumbers(ctx.builtDesign).filter(n => n.section === key);
     designNums.forEach(dNum => {
       const bNum = builtNums.find(b => b.rowId === dNum.rowId && b.field === dNum.field);
-      if (!bNum || bNum.value !== dNum.value) {
-        const el = findInput(uxKey(dNum.rowId, dNum.field));
-        if (el) {
-          el.style.border = '3px solid ' + R.getOutlineColor('number');
-          el.style.backgroundColor = '#1a1a1a';
-          anyDiff = true;
-        }
-      }
+      const el = findInput(uxKey(dNum.rowId, dNum.field));
+      if (!el) return;
+      const differs = !bNum || bNum.value !== dNum.value;
+      outline(el, R.getOutlineColor('number', differs));
+      // Remember the build value so the outline flips green/blue live while typing
+      el.dataset.buildKind = 'number';
+      el.dataset.buildValue = bNum ? String(bNum.value) : '\u0000none';
     });
 
+    // Text: simple fields green/blue; 'either' fields orange when changed; rebuild fields yellow.
     const designTexts = R.fixedText(ctx.design).filter(t => t.section === key);
     const builtTexts = R.fixedText(ctx.builtDesign).filter(t => t.section === key);
     designTexts.forEach(dTxt => {
       const bTxt = builtTexts.find(b => b.rowId === dTxt.rowId && b.field === dTxt.field);
-      if (!bTxt || bTxt.value !== dTxt.value) {
-        const el = findInput(uxKey(dTxt.rowId, dTxt.field));
-        if (el) {
-          const updateType = R.getUpdateType(dTxt.section, dTxt.field);
-          el.style.border = '3px solid ' + R.getOutlineColor(updateType);
-          el.style.backgroundColor = '#1a1a1a';
-          anyDiff = true;
-        }
+      const el = findInput(uxKey(dTxt.rowId, dTxt.field));
+      if (!el) return;
+      const updateType = R.getUpdateType(dTxt.section, dTxt.field);
+      const differs = !bTxt || bTxt.value !== dTxt.value;
+      if (differs || updateType === 'simple' || updateType === 'number') {
+        outline(el, R.getOutlineColor(updateType, differs));
+      }
+      if (updateType === 'simple' || updateType === 'number') {
+        el.dataset.buildKind = 'text';
+        el.dataset.buildValue = bTxt ? String(bTxt.value) : '\u0000none';
       }
     });
 
-    if (anyDiff) {
+    // Live green/blue flip while the user types (one delegated listener per section render)
+    if (!container._sxOutlineListener) {
+      container._sxOutlineListener = true;
+      container.addEventListener('input', e => {
+        const el = e.target;
+        if (!el || !el.dataset || !el.dataset.buildKind) return;
+        const cur = el.dataset.buildKind === 'number'
+          ? (el.value === '' ? '' : String(parseInt(el.value)))
+          : el.value;
+        const differs = cur !== el.dataset.buildValue;
+        el.style.border = '3px solid ' + R.getOutlineColor('simple', differs);
+        el.style.backgroundColor = '#1a1a1a';
+      });
+    }
+
+    if (anyOutlined) {
       container.insertBefore(buildUpdateLegend(), container.firstChild);
     }
   }
@@ -3412,7 +3506,8 @@ After generating the silhouette, automatically attach it to this unit by setting
   // standalone here so it can be dropped into any section, right where the colored fields are.
   function buildUpdateLegend() {
     const items = [
-      {color: '#00aa00', label: 'Green outline: Can be updated immediately through Simple Update'},
+      {color: '#00aa00', label: 'Green outline: Value differs from build - can be pushed immediately through Simple Update'},
+      {color: '#0066ff', label: 'Blue outline: Matches build value - eligible for Simple Update'},
       {color: '#ccaa00', label: 'Yellow outline: Must be updated through a rebuild'},
       {color: '#ff8800', label: 'Orange outline: Can be updated either way (simple or rebuild)'}
     ];
@@ -3641,9 +3736,12 @@ After generating the silhouette, automatically attach it to this unit by setting
         }
       };
 
-      // Update on scroll
+      // Update on scroll - listen to scroll-container instead of window
+      const scrollContainer = document.getElementById('scroll-container');
       const scrollHandler = () => updateButtons();
-      window.addEventListener('scroll', scrollHandler, {passive: true});
+      if (scrollContainer) {
+        scrollContainer.addEventListener('scroll', scrollHandler, {passive: true});
+      }
 
       // Update on resize
       const resizeHandler = () => {
@@ -3652,7 +3750,7 @@ After generating the silhouette, automatically attach it to this unit by setting
         if (newSectionHeight <= newViewportHeight * 2) {
           // Section is now too short, remove buttons
           navButtons.remove();
-          window.removeEventListener('scroll', scrollHandler);
+          if (scrollContainer) scrollContainer.removeEventListener('scroll', scrollHandler);
           window.removeEventListener('resize', resizeHandler);
         } else {
           updateButtons();
@@ -3664,7 +3762,7 @@ After generating the silhouette, automatically attach it to this unit by setting
       const observer = new MutationObserver((mutations) => {
         if (!document.body.contains(container)) {
           navButtons.remove();
-          window.removeEventListener('scroll', scrollHandler);
+          if (scrollContainer) scrollContainer.removeEventListener('scroll', scrollHandler);
           window.removeEventListener('resize', resizeHandler);
           observer.disconnect();
         }
@@ -3689,6 +3787,10 @@ After generating the silhouette, automatically attach it to this unit by setting
       .then(data => {
         window._abilitiesData = data;
         ctx.rerender(); // Re-render once data is loaded
+      })
+      .catch(err => {
+        console.error('Failed to load abilities data:', err);
+        container.appendChild(h('p', {style: 'color: #f88;'}, 'Failed to load abilities data. Please refresh.'));
       });
     container.appendChild(h('p', {}, 'Loading abilities data...'));
     return;
@@ -3696,70 +3798,66 @@ After generating the silhouette, automatically attach it to this unit by setting
 
   const abilitiesData = window._abilitiesData;
 
-  // Helper to get ability type options for a faction
-  const getAbilityTypeOptions = (faction) => {
-    if (!faction) return ['UFA', 'Spellbook', 'Unit Special', 'GOO/iGOO/EG ability'];
-
-    // For neutral categories, show unit names as ability types
-    if (faction === 'Neutral Cultists') {
-      const units = abilitiesData.abilities
-        .filter(a => a.faction === 'Neutral' && a.unit !== 'N/A' && a.unitType === 'Cultist')
-        .map(a => a.unit)
-        .filter((v, i, arr) => arr.indexOf(v) === i) // unique
-        .sort();
-      return units.length > 0 ? units : ['-- No units found --'];
-    }
-
-    if (faction === 'Neutral Monsters') {
-      const units = abilitiesData.abilities
-        .filter(a => a.faction === 'Neutral' && a.unit !== 'N/A' && a.unitType === 'Monster')
-        .map(a => a.unit)
-        .filter((v, i, arr) => arr.indexOf(v) === i)
-        .sort();
-      return units.length > 0 ? units : ['-- No units found --'];
-    }
-
-    if (faction === 'Neutral Terrors') {
-      const units = abilitiesData.abilities
-        .filter(a => a.faction === 'Neutral' && a.unit !== 'N/A' && a.unitType === 'Terror')
-        .map(a => a.unit)
-        .filter((v, i, arr) => arr.indexOf(v) === i)
-        .sort();
-      return units.length > 0 ? units : ['-- No units found --'];
-    }
-
-    // For regular factions, use standard ability types
-    return ['UFA', 'Spellbook', 'Unit Special', 'GOO/iGOO/EG ability'];
+  // Helper to get categories for a faction
+  const getCategories = (faction) => {
+    if (!faction) return [];
+    const categories = abilitiesData.abilities
+      .filter(a => a.faction === faction)
+      .map(a => a.category)
+      .filter((v, i, arr) => arr.indexOf(v) === i) // unique
+      .sort();
+    return categories;
   };
 
-  // Helper to get abilities for a faction/type combination
-  const getAbilities = (faction, type) => {
-    if (!faction || !type) return [];
-
-    // For neutral categories, type is the unit name
-    if (faction === 'Neutral Cultists' || faction === 'Neutral Monsters' || faction === 'Neutral Terrors') {
-      return abilitiesData.abilities.filter(a => a.faction === 'Neutral' && a.unit === type);
-    }
-
-    return abilitiesData.abilities.filter(a => {
-      if (a.faction !== faction) return false;
-      // Map ability types
-      // Note: abilities-data.json doesn't distinguish UFAs from Spellbooks (both have unit='N/A')
-      // so we show all unit='N/A' abilities for both UFA and Spellbook types
-      if ((type === 'UFA' || type === 'Spellbook') && a.unit === 'N/A') return true;
-      if (type === 'Unit Special' && a.unit !== 'N/A') return true;
-      if (type === 'GOO/iGOO/EG ability' && a.unit !== 'N/A') return true;
-      return false;
-    });
+  // Helper to get abilities for a faction/category combination
+  const getAbilities = (faction, category) => {
+    if (!faction || !category) return [];
+    return abilitiesData.abilities
+      .filter(a => a.faction === faction && a.category === category)
+      .sort((a, b) => a.name.localeCompare(b.name));
   };
 
   // Helper to get ability text
-  const getAbilityText = (faction, abilityName) => {
-    // For neutral categories, look up in Neutral faction
-    const lookupFaction = (faction === 'Neutral Cultists' || faction === 'Neutral Monsters' || faction === 'Neutral Terrors')
-      ? 'Neutral' : faction;
-    const ability = abilitiesData.abilities.find(a => a.faction === lookupFaction && a.name === abilityName);
+  const getAbilityText = (faction, category, abilityName) => {
+    const ability = abilitiesData.abilities.find(a =>
+      a.faction === faction && a.category === category && a.name === abilityName
+    );
     return ability ? ability.text : '';
+  };
+
+  // Show ability text overlay
+  const showAbilityTextOverlay = (faction, category, abilityName, text) => {
+    const overlay = h('div', {
+      className: 'confirm-overlay',
+      onclick: (e) => { if (e.target === overlay) overlay.remove(); }
+    });
+
+    const dialog = h('div', {
+      className: 'confirm-dialog',
+      style: 'max-width: 700px; max-height: 80vh; overflow-y: auto;'
+    });
+
+    const title = h('h2', {style: 'margin-bottom: 10px;'}, abilityName);
+    dialog.appendChild(title);
+
+    const subtitle = h('div', {style: 'color: #aaa; font-size: 14px; margin-bottom: 15px;'},
+      `${faction} | ${category}`
+    );
+    dialog.appendChild(subtitle);
+
+    const textDiv = h('div', {
+      style: 'background: #1a1a1a; padding: 15px; border-radius: 4px; margin-bottom: 20px; white-space: pre-wrap; line-height: 1.6;'
+    }, text || '(No text available)');
+    dialog.appendChild(textDiv);
+
+    const closeBtn = h('button', {
+      className: 'primary',
+      onclick: () => overlay.remove()
+    }, 'Close');
+    dialog.appendChild(closeBtn);
+
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
   };
 
   // Get this faction's abilities for dropdown
@@ -3796,9 +3894,9 @@ After generating the silhouette, automatically attach it to this unit by setting
   const thead = h('thead', {},
     h('tr', {},
       h('th', {}, 'Faction/Map'),
-      h('th', {}, 'Ability Type'),
+      h('th', {}, 'Ability Category'),
       h('th', {}, 'Ability'),
-      h('th', {}, 'Ability Text'),
+      h('th', {}, ''),
       h('th', {}, 'Your Faction\'s Ability'),
       h('th', {}, 'Interaction Description'),
       h('th', {}, '')
@@ -3813,7 +3911,7 @@ After generating the silhouette, automatically attach it to this unit by setting
 
     // Check if this is the Ancient Sorcery row (required)
     const isAncientSorcery = row.otherFaction === 'Sleeper' &&
-                             row.abilityType === 'Spellbook' &&
+                             row.category === 'Spellbook' &&
                              row.ability === 'Ancient Sorcery';
 
     if (isAncientSorcery) {
@@ -3827,59 +3925,41 @@ After generating the silhouette, automatically attach it to this unit by setting
         value: row.otherFaction || '',
         onchange: e => {
           ctx.set(`interactions.rows.${row.id}.otherFaction`, e.target.value || null);
+          ctx.set(`interactions.rows.${row.id}.category`, null);
           ctx.set(`interactions.rows.${row.id}.ability`, null);
-          ctx.set(`interactions.rows.${row.id}.abilityText`, '');
-          // Auto-set Ancient Sorcery for Sleeper + Spellbook
-          if (e.target.value === 'Sleeper' && row.abilityType === 'Spellbook') {
-            ctx.set(`interactions.rows.${row.id}.ability`, 'Ancient Sorcery');
-            const text = getAbilityText('Sleeper', 'Ancient Sorcery');
-            ctx.set(`interactions.rows.${row.id}.abilityText`, text);
-          }
         }
       },
         h('option', {value: ''}, '-- Select --'),
-        abilitiesData.factions.filter(f => f !== 'Neutral').map(f => h('option', {value: f}, f)),
-        h('option', {value: 'Neutral Cultists'}, 'Neutral Cultists'),
-        h('option', {value: 'Neutral Monsters'}, 'Neutral Monsters'),
-        h('option', {value: 'Neutral Terrors'}, 'Neutral Terrors')
+        abilitiesData.factions.map(f => h('option', {value: f}, f))
       )
     ));
 
-    // Column 2: Ability Type dropdown (shows unit names for neutral categories, otherwise ability types)
-    const abilityTypeOptions = getAbilityTypeOptions(row.otherFaction);
+    // Column 2: Category dropdown (waterfall based on faction)
+    const availableCategories = getCategories(row.otherFaction);
     tr.appendChild(h('td', {},
       h('select', {
-        className: isMissing(`interactions.rows.${row.id}.abilityType`) ? 'sx-missing' : '',
-        value: row.abilityType || '',
+        className: isMissing(`interactions.rows.${row.id}.category`) ? 'sx-missing' : '',
+        value: row.category || '',
         disabled: !row.otherFaction,
         onchange: e => {
-          ctx.set(`interactions.rows.${row.id}.abilityType`, e.target.value || null);
+          ctx.set(`interactions.rows.${row.id}.category`, e.target.value || null);
           ctx.set(`interactions.rows.${row.id}.ability`, null);
-          ctx.set(`interactions.rows.${row.id}.abilityText`, '');
-          // Auto-set Ancient Sorcery for Sleeper + Spellbook
-          if (row.otherFaction === 'Sleeper' && e.target.value === 'Spellbook') {
-            ctx.set(`interactions.rows.${row.id}.ability`, 'Ancient Sorcery');
-            const text = getAbilityText('Sleeper', 'Ancient Sorcery');
-            ctx.set(`interactions.rows.${row.id}.abilityText`, text);
-          }
         }
       },
         h('option', {value: ''}, '-- Select --'),
-        abilityTypeOptions.map(t => h('option', {value: t}, t))
+        availableCategories.map(c => h('option', {value: c}, c))
       )
     ));
 
-    // Column 3: Ability dropdown (waterfall based on columns 1+2)
-    const availableAbilities = getAbilities(row.otherFaction, row.abilityType);
+    // Column 3: Ability dropdown (waterfall based on faction + category)
+    const availableAbilities = getAbilities(row.otherFaction, row.category);
     tr.appendChild(h('td', {},
       h('select', {
         className: isMissing(`interactions.rows.${row.id}.ability`) ? 'sx-missing' : '',
         value: row.ability || '',
-        disabled: !row.otherFaction || !row.abilityType,
+        disabled: !row.otherFaction || !row.category,
         onchange: e => {
           ctx.set(`interactions.rows.${row.id}.ability`, e.target.value || null);
-          const text = getAbilityText(row.otherFaction, e.target.value);
-          ctx.set(`interactions.rows.${row.id}.abilityText`, text);
         }
       },
         h('option', {value: ''}, '-- Select --'),
@@ -3887,15 +3967,31 @@ After generating the silhouette, automatically attach it to this unit by setting
       )
     ));
 
-    // Column 4: Ability Text (read-only, large)
-    tr.appendChild(h('td', {},
-      h('textarea', {
-        value: row.abilityText || '',
-        disabled: true,
-        rows: 4,
-        style: 'background: #1a1a1a; color: #888; resize: vertical; min-height: 80px;'
-      })
-    ));
+    // Column 4: Help icon (?) - shows ability text overlay
+    const hasAbility = row.otherFaction && row.category && row.ability;
+    const helpIcon = h('button', {
+      className: 'help-icon-btn',
+      disabled: !hasAbility,
+      style: `
+        background: none;
+        border: 1px solid ${hasAbility ? '#666' : '#333'};
+        color: ${hasAbility ? '#aaa' : '#555'};
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        font-size: 14px;
+        cursor: ${hasAbility ? 'pointer' : 'default'};
+        padding: 0;
+        line-height: 1;
+      `,
+      onclick: () => {
+        if (hasAbility) {
+          const text = getAbilityText(row.otherFaction, row.category, row.ability);
+          showAbilityTextOverlay(row.otherFaction, row.category, row.ability, text);
+        }
+      }
+    }, '?');
+    tr.appendChild(h('td', {style: 'text-align: center; padding: 4px;'}, helpIcon));
 
     // Column 5: Your Faction's Ability dropdown
     const yourAbilities = getYourAbilities();
@@ -3915,8 +4011,8 @@ After generating the silhouette, automatically attach it to this unit by setting
       h('textarea', {
         className: isMissing(`interactions.rows.${row.id}.interactionDesc`) ? 'sx-missing' : '',
         value: row.interactionDesc || '',
-        rows: 4,
-        style: 'min-height: 80px; resize: vertical;',
+        rows: 3,
+        style: 'min-height: 60px; resize: vertical; width: 100%;',
         oninput: e => ctx.set(`interactions.rows.${row.id}.interactionDesc`, e.target.value)
       })
     ));
@@ -3952,6 +4048,7 @@ After generating the silhouette, automatically attach it to this unit by setting
   // Help text
   container.appendChild(h('p', {style: 'margin-top: 20px; font-size: 14px; color: #aaa;'},
     'The Ancient Sorcery row (green background) is required. All other rows are optional. ' +
+    'Use the "?" help icon to view the full text of any selected ability. ' +
     'Use this section to document interactions between your faction\'s abilities and known abilities ' +
     'from other factions, maps, or neutral units.'
   ));
