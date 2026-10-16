@@ -4213,7 +4213,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             # Every designer prompt also goes into the admin console's Claude terminal log
             self.add_terminal_entry("design update", self.display_name(username), request["text"],
                                     "Saved for the build; reaches the game after faction-values.py sync && apply --deploy (no Claude needed).", ref=request["id"],
-                                    designObject=faction['name'], faction=faction['name'])
+                                    designObject=faction['name'], faction=faction['name'], final=True)
         self.send_json(request)
 
     def handle_image_swap_push(self, fid: str, faction: Dict, username: str, data: Dict):
@@ -4267,7 +4267,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             # Every designer prompt also goes into the admin console's Claude terminal log
             self.add_terminal_entry("design update", self.display_name(username), request["text"],
                                     "Saved to imageSwaps; needs faction-values.py sync && apply --deploy to go live.",
-                                    ref=request["id"], designObject=faction['name'], faction=faction['name'])
+                                    ref=request["id"], designObject=faction['name'], faction=faction['name'], final=True)
 
         self.send_json(request)
 
@@ -5136,11 +5136,18 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             return "design update"
         return "design build"   # build and update both change the built faction
 
-    def add_terminal_entry(self, kind: str, user: str, prompt: str, summary: str, ref: Optional[str] = None, designObject: Optional[str] = None, faction: Optional[str] = None) -> Dict:
+    def add_terminal_entry(self, kind: str, user: str, prompt: str, summary: str, ref: Optional[str] = None, designObject: Optional[str] = None, faction: Optional[str] = None, final: bool = False) -> Dict:
         """Append one row to terminal-log.json. Caller may already hold WRITE_LOCK (it is not re-entrant),
-        so this uses its own lock."""
+        so this uses its own lock.
+
+        defaultSummary=True means "placeholder, a Claude agent will post the real summary later"
+        and is what makes the admin console show the row as "pending" (admin.html status()).
+        Pass final=True when the summary passed in is already the complete, final word on this
+        request (e.g. a Simple Update applied synchronously - no ticker or agent ever follows up
+        on it), so the row doesn't sit on "pending" forever with no one left to flip it.
+        """
         entry = {"id": ref or f"t_{secrets.token_urlsafe(6)}", "at": int(time.time()), "type": kind,
-                 "user": user, "prompt": str(prompt)[:20000], "summary": str(summary)[:20000], "defaultSummary": True}
+                 "user": user, "prompt": str(prompt)[:20000], "summary": str(summary)[:20000], "defaultSummary": not final}
         if designObject:
             entry["designObject"] = str(designObject)[:200]
         if faction:
