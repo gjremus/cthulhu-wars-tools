@@ -2113,6 +2113,48 @@ After generating the silhouette, automatically attach it to this unit by setting
 
       menuDiv.appendChild(textField('Menu Name', menu.name, val => ctx.set(`menus.rows.${menu.id}.name`, val)));
 
+      // Prompted By field
+      menuDiv.appendChild(selectField('Prompted By', menu.promptedBy, [
+        {value: 'other_menu', label: 'Other Menu'},
+        {value: 'action', label: 'Action'},
+        {value: 'pre_battle', label: 'Pre Battle'},
+        {value: 'post_battle', label: 'Post Battle'},
+        {value: 'doom_phase', label: 'Doom Phase'},
+        {value: 'ritual', label: 'Ritual of Annihilation'},
+        {value: 'setup', label: 'Setup'},
+        {value: 'gather_power', label: 'Gather Power Phase'},
+        {value: 'player_selection', label: 'Player Selection Phase'},
+        {value: 'other', label: 'Other'}
+      ], val => {
+        ctx.set(`menus.rows.${menu.id}.promptedBy`, val);
+        // Clear conditional fields when changing type
+        if (val !== 'other_menu') ctx.set(`menus.rows.${menu.id}.promptedByMenu`, null);
+        if (val !== 'action' && val !== 'doom_phase') ctx.set(`menus.rows.${menu.id}.buttonText`, null);
+        if (val !== 'other') ctx.set(`menus.rows.${menu.id}.otherTrigger`, null);
+      }));
+
+      // Conditional: "Prompted by Menu" - shows if promptedBy === 'other_menu'
+      if (menu.promptedBy === 'other_menu') {
+        const otherMenus = d.rows.filter(m => m.id !== menu.id && m.name).map(m => ({value: m.id, label: m.name}));
+        menuDiv.appendChild(selectField('Prompted by Menu', menu.promptedByMenu, otherMenus,
+          val => ctx.set(`menus.rows.${menu.id}.promptedByMenu`, val),
+          {placeholder: '-- Select Menu --'}));
+      }
+
+      // Conditional: Button Text - shows if promptedBy === 'action' or 'doom_phase'
+      if (menu.promptedBy === 'action' || menu.promptedBy === 'doom_phase') {
+        const label = menu.promptedBy === 'action' ? 'Action Button Text' : 'Doom Button Text';
+        menuDiv.appendChild(textField(label, menu.buttonText,
+          val => ctx.set(`menus.rows.${menu.id}.buttonText`, val)));
+      }
+
+      // Conditional: Other trigger description - shows if promptedBy === 'other'
+      if (menu.promptedBy === 'other') {
+        menuDiv.appendChild(textField('Describe how this menu is triggered', menu.otherTrigger,
+          val => ctx.set(`menus.rows.${menu.id}.otherTrigger`, val),
+          {hint: 'Required: Describe when/how this menu appears'}));
+      }
+
       menuDiv.appendChild(selectField('Section', menu.section, window.Rules.BUILD_SECTIONS.map(k => {
         const s = window.Rules.SECTIONS.find(sec => sec.key === k);
         return {value: k, label: s ? s.title : k};
@@ -3085,9 +3127,13 @@ After generating the silhouette, automatically attach it to this unit by setting
     }}, 'Extract units and other content from wiki');
     container.appendChild(extractBtn);
 
-    // Reuse faction units renderer with neutral flag
-    const neutralCtx = Object.assign({}, ctx, {neutral: true, design: {units: d}});
-    renderUnits(container, neutralCtx);
+    // Reuse the neutral unit renderer once per row (it only draws the first row it is given),
+    // so every map unit is shown, not just the first one.
+    (d.rows || []).forEach((row, idx) => {
+      if (d.rows.length > 1) container.appendChild(h('h3', {}, `Unit ${idx + 1}: ${row.name || ''}`));
+      const neutralCtx = Object.assign({}, ctx, {neutral: true, design: {units: Object.assign({}, d, {rows: [row]})}});
+      renderUnits(container, neutralCtx);
+    });
 
     renderClaudeQA(container, ctx, 'units');
     renderAdminNotes(container, ctx, 'units');
