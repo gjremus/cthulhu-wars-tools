@@ -1,0 +1,30 @@
+{
+  "current": "1.024",
+  "versions": [
+    {"version": "1.024", "date": "2026-10-16", "summary": "Track section edits after build and show 'Edited, requires rebuild' status"},
+    {"version": "1.023", "date": "2026-10-16", "summary": "Fix Grow/Shrink buttons not persisting unit map image scale"},
+    {"version": "1.022", "date": "2026-10-16", "summary": "Terminal log: finished requests no longer show as pending"},
+    {"version": "1.021", "date": "2026-10-16", "summary": "Require a faction glyph before a design can be built"},
+    {"version": "1.020", "date": "2026-10-16", "summary": "Fix admin console menu reorder on mobile and make it sync across devices"},
+    {"version": "1.019", "date": "2026-10-16", "summary": "Fix interactions build validation false-negative on AncientSorcery row"},
+    {"version": "1.018", "date": "2026-10-16", "summary": "Designer: repeat clicks always leave a terminal-log row; fold window 10 min -> 2 min"},
+    {"version": "1.017", "date": "2026-10-16", "summary": "Fix silhouette generation: queue line discarded the actual request content"},
+    {"version": "1.016", "date": "2026-10-16", "summary": "Fix silhouette generation terminal log entries"},
+    {"version": "1.015", "date": "2026-10-15", "summary": "Fix Simple Update requests stuck showing 'pending' forever"},
+    {"version": "1.014", "date": "2026-10-15", "summary": "Designer: let faction editors submit requests (Generate Silhouette 403 for editors)"},
+    {"version": "1.013", "date": "2026-10-15", "summary": "Add floating Legend button for long sections with colored-border legend"},
+    {"version": "1.012", "date": "2026-10-15", "summary": "Add designObject field update support to terminal log API"},
+    {"version": "1.011", "date": "2026-10-15", "summary": "Fix Simple Update version resolution to use requestedAt, not current"},
+    {"version": "1.010", "date": "2026-10-15", "summary": "Fix unit build status test to use numeric version"},
+    {"version": "1.009", "date": "2026-10-15", "summary": "Add fallback for invalid liveVersion in built_design_with_overrides"},
+    {"version": "1.008", "date": "2026-10-15", "summary": "Fix Simple Update build version lookup for factions/units/maps"},
+    {"version": "1.007", "date": "2026-10-15", "summary": "Simple Update gets a Fixed Text table and splits Element/Type of value"},
+    {"version": "1.006", "date": "2026-10-14", "summary": "Hide type/user/cost columns in faction designer bug table"},
+    {"version": "1.005", "date": "2026-10-14", "summary": "Simple Update push wording matches how numbers reach the game"},
+    {"version": "1.004", "date": "2026-10-14", "summary": "Fix Bug Report screen's terminal log table: endpoint 404'd for non-admin users"},
+    {"version": "1.003", "date": "2026-10-14", "summary": "Add additional buttons table and menu instructions to faction designer menus"},
+    {"version": "1.002", "date": "2026-10-14", "summary": "Let cavysupreme edit base factions (GC/CC/BG/YS); log admin terminal entries"},
+    {"version": "1.001", "date": "2026-10-14", "summary": "Fix designer bug history to show Claude Terminal Log"},
+    {"version": "1.000", "date": "2026-10-14", "summary": "Add comprehensive ability types list and interactions section improvements"}
+  ]
+}

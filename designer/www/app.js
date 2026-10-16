@@ -19,7 +19,8 @@
         currentFaction: null,
         currentMap: null,
         builtDesign: null,
-        reference: null
+        reference: null,
+        versions: null
       };
       this.saveQueue = new Map();
       this.saveTimer = null;
@@ -27,17 +28,18 @@
     }
 
     start() {
-      // Load reference data
-      fetch('/designer/reference.json')
-        .then(r => r.json())
-        .then(ref => {
-          this.state.reference = ref;
-          this.startRouter();
-        })
-        .catch(err => {
-          console.error('Failed to load reference.json:', err);
-          this.startRouter();
-        });
+      // Load reference data and version info
+      Promise.all([
+        fetch('/designer/reference.json').then(r => r.json()).catch(() => null),
+        fetch('/designer/versions.json').then(r => r.json()).catch(() => ({current: '1.000', versions: []}))
+      ]).then(([ref, versions]) => {
+        this.state.reference = ref;
+        this.state.versions = versions;
+        this.startRouter();
+      }).catch(err => {
+        console.error('Failed to load startup data:', err);
+        this.startRouter();
+      });
     }
 
     startRouter() {
@@ -2174,6 +2176,16 @@
         title.textContent = 'My Customs';
         header.appendChild(title);
 
+        // Version number (clickable)
+        if (this.state.versions) {
+          const versionSpan = document.createElement('span');
+          versionSpan.textContent = `v${this.state.versions.current}`;
+          versionSpan.style.cssText = 'margin-left: 12px; font-size: 0.6em; color: #60a5fa; cursor: pointer; text-decoration: underline;';
+          versionSpan.title = 'Click to view changelog';
+          versionSpan.onclick = () => this.showChangelogModal();
+          header.appendChild(versionSpan);
+        }
+
         const logoutBtn = document.createElement('button');
         logoutBtn.textContent = 'Logout';
         logoutBtn.onclick = () => this.logout();
@@ -2599,6 +2611,68 @@
       buttons.appendChild(createBtn);
       buttons.appendChild(cancelBtn);
       dialog.appendChild(buttons);
+
+      overlay.appendChild(dialog);
+      document.body.appendChild(overlay);
+    }
+
+    showChangelogModal() {
+      const overlay = document.createElement('div');
+      overlay.className = 'confirm-overlay';
+
+      const dialog = document.createElement('div');
+      dialog.className = 'confirm-dialog';
+      dialog.style.maxWidth = '800px';
+      dialog.style.maxHeight = '80vh';
+      dialog.style.overflow = 'auto';
+
+      const title = document.createElement('h2');
+      title.textContent = 'Designer Changelog';
+      title.style.marginBottom = '20px';
+      dialog.appendChild(title);
+
+      const currentVersion = document.createElement('div');
+      currentVersion.style.cssText = 'margin-bottom: 20px; padding: 12px; background: #2a2a2a; border-radius: 4px;';
+      currentVersion.innerHTML = `<strong>Current Version:</strong> ${this.state.versions.current}`;
+      dialog.appendChild(currentVersion);
+
+      const versionList = document.createElement('div');
+      versionList.style.cssText = 'margin-bottom: 20px;';
+
+      this.state.versions.versions.forEach(v => {
+        const versionEntry = document.createElement('div');
+        versionEntry.style.cssText = 'margin-bottom: 16px; padding: 12px; background: #1a1a1a; border-left: 3px solid #60a5fa; border-radius: 4px;';
+
+        const versionHeader = document.createElement('div');
+        versionHeader.style.cssText = 'display: flex; align-items: baseline; margin-bottom: 6px;';
+
+        const versionNum = document.createElement('span');
+        versionNum.textContent = `v${v.version}`;
+        versionNum.style.cssText = 'font-weight: bold; color: #60a5fa; margin-right: 12px;';
+        versionHeader.appendChild(versionNum);
+
+        const versionDate = document.createElement('span');
+        versionDate.textContent = v.date;
+        versionDate.style.cssText = 'font-size: 0.9em; color: #888;';
+        versionHeader.appendChild(versionDate);
+
+        versionEntry.appendChild(versionHeader);
+
+        const versionSummary = document.createElement('div');
+        versionSummary.textContent = v.summary;
+        versionSummary.style.cssText = 'color: #ddd; font-size: 0.95em;';
+        versionEntry.appendChild(versionSummary);
+
+        versionList.appendChild(versionEntry);
+      });
+
+      dialog.appendChild(versionList);
+
+      const closeBtn = document.createElement('button');
+      closeBtn.textContent = 'Close';
+      closeBtn.className = 'primary';
+      closeBtn.onclick = () => overlay.remove();
+      dialog.appendChild(closeBtn);
 
       overlay.appendChild(dialog);
       document.body.appendChild(overlay);
