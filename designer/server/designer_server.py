@@ -121,6 +121,39 @@ def get_client_ip(handler, headers: Dict[str, str]) -> str:
 DUPLICATE_WINDOW_SECONDS = 120
 
 
+def same_version(a, b) -> bool:
+    """Version numbers can be saved as a number (10) or as text ("9", from the admin build-status
+    call). Compare them as text so a built version is still recognised as built - a plain == between
+    9 and "9" is False, which left the built version unlocked and let edits overwrite its snapshot."""
+    return a is not None and b is not None and str(a) == str(b)
+
+
+def normalize_version(v):
+    """Store numeric versions as int ("9" -> 9); leave labels like "HB 9267656" as they are."""
+    if isinstance(v, str) and v.strip().isdigit():
+        return int(v.strip())
+    return v
+
+
+# Image fields in a design. Uploading one of these into an empty slot used to count as an
+# "addition" (folded into the current version with no bump); images must always bump unless
+# the designer is still inside an open edit session for that section.
+IMAGE_FIELD_HINTS = ("image", "glyph", "silhouette", "art", "icon", "bitmap")
+
+
+def is_image_path(path: str) -> bool:
+    parts = path.split(".")
+    if parts and parts[0] in ("card", "sbImages", "sbImagesB", "images", "bitmaps", "glyphs"):
+        return True
+    last = parts[-1].lower() if parts else ""
+    return any(h in last for h in IMAGE_FIELD_HINTS)
+
+
+def is_image_set(op: Dict) -> bool:
+    """A 'set' that puts an image into a field (blank rows added to an image table are not uploads)."""
+    return op.get("op") == "set" and is_image_path(op.get("path", ""))
+
+
 def is_live_duplicate(existing: Dict, req_type: str, key: str, key_val: str, data, now: Optional[float] = None) -> bool:
     if existing.get("type") != req_type or existing.get(key) != key_val or existing.get("data") != data:
         return False
@@ -428,6 +461,9 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                     action = parts[5]
                     if action == 'stability':
                         self.handle_set_stability(fid)
+                        return
+                    elif action == 'build-update-instructions':
+                        self.handle_build_update_instructions(fid)
                         return
                     elif action == 'copy':
                         self.handle_copy_faction(fid)
@@ -1139,12 +1175,12 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
 
                 # Apply version logic (simplified for single-section unit)
                 section = "unit"
-                is_addition = self.is_unit_addition(unit, op)
+                is_addition = self.is_unit_addition(unit, op) and not is_image_set(op)
 
                 current = unit["current"]
                 max_version = unit["maxVersion"]
                 live_version = unit.get("build", {}).get("liveVersion")
-                is_locked = current < max_version or current == live_version
+                is_locked = current < max_version or same_version(current, live_version)
 
                 session = unit["session"]
                 session_open = (
@@ -1359,7 +1395,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 return
 
             live_version = unit.get("build", {}).get("liveVersion")
-            if version == live_version:
+            if same_version(version, live_version):
                 self.send_error_json("Cannot delete live version")
                 return
 
@@ -1636,13 +1672,13 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             return False
 
         # Determine if this is an addition or change
-        is_addition = self.is_map_addition(map_obj, op)
+        is_addition = self.is_map_addition(map_obj, op) and not is_image_set(op)
 
         # Check if version is locked
         current = map_obj["current"]
         max_version = map_obj["maxVersion"]
         live_version = map_obj.get("build", {}).get("liveVersion")
-        is_locked = current < max_version or current == live_version
+        is_locked = current < max_version or same_version(current, live_version)
 
         # Check open session
         now = time.time()
@@ -1868,7 +1904,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 return
 
             live_version = map_obj.get("build", {}).get("liveVersion")
-            if version == live_version:
+            if same_version(version, live_version):
                 self.send_error_json("Cannot delete live version")
                 return
 
@@ -2443,6 +2479,45 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
 
         self.send_json({"ok": True, "stability": stability})
 
+    def handle_build_update_instructions(self, fid: str):
+        """POST /designer/api/factions/<fid>/build-update-instructions"""
+        username = self.verify_session()
+        if not username:
+            self.send_error_json("Unauthorized", 401)
+            return
+
+        body = self.read_json_body()
+        if not body:
+            return
+
+        instructions = body.get('instructions', '')
+
+        with WRITE_LOCK:
+            faction = self.load_faction(fid)
+            if not faction:
+                self.send_error_json("Faction not found", 404)
+                return
+
+            # Check if owner or editor
+            is_owner = faction["owner"] == username
+            is_editor = username in faction.get("editors", [])
+
+            if not (is_owner or is_editor):
+                self.send_error_json("Forbidden", 403)
+                return
+
+            # Ensure build object exists
+            if "build" not in faction:
+                faction["build"] = {}
+
+            faction["build"]["updateInstructions"] = instructions
+            faction["updated"] = int(time.time())
+
+            faction_file = self.server.data_dir / "factions" / fid / "faction.json"
+            atomic_write(faction_file, faction)
+
+        self.send_json({"ok": True})
+
     def handle_copy_faction(self, fid: str):
         """POST /designer/api/factions/<fid>/copy - Create a duplicate of this faction"""
         username = self.verify_session()
@@ -2701,14 +2776,14 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         # as Rules.backfillDesign in www/rules.js so the page's edits land on the right rows.
         self.backfill_section(faction["design"], section)
 
-        # Determine if this is an addition or change
-        is_addition = self.is_addition(faction, op)
+        # Determine if this is an addition or change (image uploads always count as a change)
+        is_addition = self.is_addition(faction, op) and not is_image_set(op)
 
         # Check if version is locked
         current = faction["current"]
         max_version = faction["maxVersion"]
         live_version = faction.get("build", {}).get("liveVersion")
-        is_locked = current < max_version or current == live_version
+        is_locked = current < max_version or same_version(current, live_version)
 
         # Check open session
         now = time.time()
@@ -2735,7 +2810,9 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         # Track section modifications for built factions
         build = faction.get("build", {})
         if build.get("status") == "built":
-            build_sections = ['ae', 'ufa', 'setup', 'units', 'sbr', 'sb', 'region', 'tokens', 'custom', 'interactions']
+            # Every design part that changes the built faction, incl. card/spellbook images and colour
+            build_sections = ['ae', 'ufa', 'setup', 'units', 'sbr', 'sb', 'region', 'tokens', 'custom', 'menus', 'interactions',
+                              'card', 'sbImages', 'sbImagesB', 'meta']
             if section in build_sections:
                 # Initialize sectionsModified if it doesn't exist
                 if "sectionsModified" not in build:
@@ -3096,7 +3173,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 return
 
             live_version = faction.get("build", {}).get("liveVersion")
-            if version == live_version:
+            if same_version(version, live_version):
                 self.send_error_json("Cannot delete live version")
                 return
 
@@ -4176,15 +4253,6 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             else:
                 self.update_terminal_entry(rid, default.get(status, status), only_if_default=True)
 
-            # Log admin status changes to terminal
-            if status in ("done", "cancelled"):
-                design_name = request.get("designObjectName", request.get("faction") or request.get("mapName") or request.get("unit_name") or "Unknown")
-                req_type = request.get("type", "request")
-                # final=True: this row records a finished action, so it must not show as "pending".
-                self.add_terminal_entry("admin", "admin",
-                                       f"Mark {req_type} for {design_name} as {status}",
-                                       f"{default.get(status, status)}", ref=rid, designObject=design_name, final=True)
-
             # If marking bug request as done, update bugHistory with response
             if status == "done" and request.get("type") == "bug":
                 response_text = body.get('response', '')
@@ -4215,7 +4283,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         """Pushed values that apply to this live build, up to rev (a rebuild starts clean)."""
         values = {}
         for h in lv.get("history", []):
-            if h.get("liveVersion") == live_version and (rev is None or h["rev"] <= rev):
+            if same_version(h.get("liveVersion"), live_version) and (rev is None or h["rev"] <= rev):
                 values[h["path"]] = h["to"]
         return values
 
@@ -4551,7 +4619,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 if not version or (isinstance(version, str) and not version.isdigit()):
                     version = faction.get("current")
                 if version:
-                    build["liveVersion"] = version
+                    build["liveVersion"] = normalize_version(version)
                     build["builtAt"] = int(time.time())
 
                     # Add to history if not already there
@@ -4694,7 +4762,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 if not version or (isinstance(version, str) and not version.isdigit()):
                     version = unit.get("current")
                 if version:
-                    build["liveVersion"] = version
+                    build["liveVersion"] = normalize_version(version)
                     build["builtAt"] = int(time.time())
 
                     # Add to history if not already there
@@ -4883,7 +4951,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 if not version or (isinstance(version, str) and not version.isdigit()):
                     version = map_obj.get("current")
                 if version:
-                    build["liveVersion"] = version
+                    build["liveVersion"] = normalize_version(version)
                     build["builtAt"] = int(time.time())
 
                     # Add to history if not already there

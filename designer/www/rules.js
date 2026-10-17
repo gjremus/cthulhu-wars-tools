@@ -1518,13 +1518,85 @@
     return COLORS[updateType] || '#00aa00';
   }
 
+  // Every field path that differs between two values, with old -> new for plain values.
+  // Used as the catch-all in describeSectionDiff so a real change can never come back as ''.
+  function changedPaths(a, b, prefix, out) {
+    if (eq(a, b)) return out;
+    const isObj = v => v !== null && typeof v === 'object';
+    if (isObj(a) && isObj(b) && Array.isArray(a) === Array.isArray(b)) {
+      if (Array.isArray(a)) {
+        // Rows: match by id when they have one, so an inserted row reads as one change
+        const byId = a.concat(b).every(r => r && typeof r === 'object' && r.id);
+        if (byId) {
+          const ids = [...new Set(a.map(r => r.id).concat(b.map(r => r.id)))];
+          ids.forEach(id => {
+            const ra = a.find(r => r.id === id), rb = b.find(r => r.id === id);
+            const label = prefix + '[' + ((rb && rb.name) || (ra && ra.name) || id) + ']';
+            if (!ra) out.push(label + ' added');
+            else if (!rb) out.push(label + ' removed');
+            else changedPaths(ra, rb, label, out);
+          });
+          return out;
+        }
+        const n = Math.max(a.length, b.length);
+        for (let i = 0; i < n; i++) changedPaths(a[i], b[i], prefix + '[' + i + ']', out);
+        return out;
+      }
+      [...new Set(Object.keys(a).concat(Object.keys(b)))].forEach(k =>
+        changedPaths(a[k], b[k], prefix ? prefix + '.' + k : k, out));
+      return out;
+    }
+    const show = v => {
+      if (v === undefined || v === null || v === '') return '(empty)';
+      const s = typeof v === 'string' ? v : JSON.stringify(v);
+      return s.length > 60 ? '(' + s.length + ' chars)' : s;
+    };
+    out.push((prefix || 'value') + ' ' + show(a) + ' -> ' + show(b));
+    return out;
+  }
+
+  // Parts of a faction design that are not one of the 11 build sections but still change the
+  // built faction (faction card art/glyph, spellbook art, colour). The Update button must check
+  // these too, or an image-only change could never be sent for a rebuild.
+  const EXTRA_UPDATE_SECTIONS = [
+    {key: 'card', title: 'Faction card images'},
+    {key: 'sbImages', title: 'Spellbook images'},
+    {key: 'sbImagesB', title: 'Spellbook images (side B)'},
+    {key: 'meta', title: 'Faction details (colour etc.)'}
+  ];
+  const UPDATE_SECTIONS = BUILD_SECTIONS.concat(EXTRA_UPDATE_SECTIONS.map(s => s.key));
+
+  function sectionTitle(key) {
+    const s = SECTIONS.find(x => x.key === key) || EXTRA_UPDATE_SECTIONS.find(x => x.key === key);
+    return s ? s.title : key;
+  }
+
   function describeSectionDiff(key, oldDesign, newDesign) {
-    const parts = [];
-    const old = oldDesign[key];
-    const neu = newDesign[key];
+    const old = (oldDesign || {})[key];
+    const neu = (newDesign || {})[key];
 
     if (eq(old, neu)) return '';
+    // Section missing on one side (e.g. a design built before 'interactions' existed)
+    if (old == null || neu == null) return neu == null ? 'section removed' : 'section added';
 
+    let parts = [];
+    try {
+      parts = describeKnownChanges(key, old, neu);
+    } catch (e) {
+      parts = [];  // odd shapes in older designs: fall through to the generic list
+    }
+    // The specific wording above only knows some fields. If the section differs in any way it
+    // did not mention, list the changed fields so the change is never reported as "no changes"
+    // (2026-10-17: Fleshmason v10 changed only setup.constraints.water and Update said nothing changed).
+    const generic = changedPaths(old, neu, '', []);
+    const extra = generic.slice(0, 12);
+    if (generic.length > 12) extra.push('and ' + (generic.length - 12) + ' more field change(s)');
+    if (extra.length) parts.push('changed fields: ' + extra.join(', '));
+    return parts.join('; ') || 'section changed';
+  }
+
+  function describeKnownChanges(key, old, neu) {
+    const parts = [];
     if (key === 'ae') {
       if (old.name !== neu.name) parts.push('name changed to "' + neu.name + '"');
       if (old.acronym !== neu.acronym) parts.push('acronym changed to "' + neu.acronym + '"');
@@ -1588,7 +1660,7 @@
       parts.push('menu design changed');
     }
 
-    return parts.join('; ');
+    return parts;
   }
 
   function computeSpellbookGuidance(design) {
@@ -1628,6 +1700,8 @@
   window.Rules = {
     SECTIONS,
     BUILD_SECTIONS,
+    UPDATE_SECTIONS,
+    sectionTitle,
     MAP_SECTIONS,
     MAP_BUILD_SECTIONS,
     MAP_ABILITY_PHASES,

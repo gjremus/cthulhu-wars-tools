@@ -2172,19 +2172,27 @@
         header.style.alignItems = 'center';
         header.style.marginBottom = '20px';
 
+        const titleContainer = document.createElement('div');
+        titleContainer.style.display = 'flex';
+        titleContainer.style.alignItems = 'baseline';
+        titleContainer.style.gap = '8px';
+
         const title = document.createElement('h1');
         title.textContent = 'My Customs';
-        header.appendChild(title);
+        title.style.margin = '0';
+        titleContainer.appendChild(title);
 
         // Version number (clickable)
         if (this.state.versions) {
           const versionSpan = document.createElement('span');
           versionSpan.textContent = `v${this.state.versions.current}`;
-          versionSpan.style.cssText = 'margin-left: 12px; font-size: 0.6em; color: #60a5fa; cursor: pointer; text-decoration: underline;';
+          versionSpan.style.cssText = 'font-size: 0.85em; color: #60a5fa; cursor: pointer; text-decoration: underline;';
           versionSpan.title = 'Click to view changelog';
           versionSpan.onclick = () => this.showChangelogModal();
-          header.appendChild(versionSpan);
+          titleContainer.appendChild(versionSpan);
         }
+
+        header.appendChild(titleContainer);
 
         const logoutBtn = document.createElement('button');
         logoutBtn.textContent = 'Logout';
@@ -3515,7 +3523,7 @@
         exit.onclick = () => { window.location.hash = `#/faction/${fid}`; };
         bottom.appendChild(exit);
         const factionNameSpan = document.createElement('span');
-        factionNameSpan.textContent = ` | ${faction.name}`;
+        factionNameSpan.textContent = ` | ${this.state.currentFaction.name}`;
         factionNameSpan.style.marginLeft = '12px';
         factionNameSpan.style.color = '#aaa';
         bottom.appendChild(factionNameSpan);
@@ -3913,7 +3921,7 @@
       table.appendChild(thead);
 
       const tbody = document.createElement('tbody');
-      const liveVersions = [faction.build.liveVersion, ...faction.liveGameVersions].filter(v => v !== null);
+      const liveVersions = [faction.build.liveVersion, ...faction.liveGameVersions].filter(v => v !== null).map(v => (typeof v === 'string' && /^\d+$/.test(v)) ? Number(v) : v);
 
       for (const ver of faction.versions) {
         const row = document.createElement('tr');
@@ -4193,7 +4201,6 @@
       const tbody = document.createElement('tbody');
 
       const incompleteSections = [];
-      const sectionsModified = (faction.build && faction.build.sectionsModified) || {};
 
       for (const key of Rules.BUILD_SECTIONS) {
         const row = document.createElement('tr');
@@ -4311,30 +4318,83 @@
           };
           this.root.appendChild(executeBtn);
         } else {
+          // Update instructions field (shown after first build)
+          const updateInstructionsDiv = document.createElement('div');
+          updateInstructionsDiv.style.cssText = 'margin-top: 20px; margin-bottom: 20px;';
+
+          const instructionsLabel = document.createElement('label');
+          instructionsLabel.textContent = 'Update comments / instructions';
+          instructionsLabel.style.cssText = 'display: block; margin-bottom: 8px; font-weight: bold;';
+          updateInstructionsDiv.appendChild(instructionsLabel);
+
+          const instructionsTextarea = document.createElement('textarea');
+          instructionsTextarea.value = faction.build.updateInstructions || '';
+          instructionsTextarea.placeholder = 'Add any comments or instructions for Claude when building updates...';
+          instructionsTextarea.style.cssText = 'width: 100%; min-height: 100px; padding: 8px; font-family: inherit; resize: vertical;';
+          instructionsTextarea.onchange = async () => {
+            try {
+              faction.build.updateInstructions = instructionsTextarea.value;
+              await this.api('POST', `/factions/${faction.id}/build-update-instructions`, {
+                instructions: instructionsTextarea.value
+              });
+            } catch (err) {
+              console.error('Failed to save update instructions:', err);
+            }
+          };
+          updateInstructionsDiv.appendChild(instructionsTextarea);
+
+          this.root.appendChild(updateInstructionsDiv);
+
           const updateBtn = document.createElement('button');
           updateBtn.className = 'primary';
           updateBtn.textContent = 'Update';
-          updateBtn.disabled = faction.current === faction.build.liveVersion;
-          updateBtn.style.marginTop = '20px';
+          // Update is allowed whenever the design version differs from the built one. liveVersion
+          // can be stored as text ("9") while current is a number (10), so compare as text -
+          // a strict === between them would never match and could not be trusted either way.
+          const versionsDiffer = String(faction.current) !== String(faction.build.liveVersion);
+          updateBtn.disabled = !versionsDiffer;
+          updateBtn.title = versionsDiffer ? '' : 'The current design version is the one already built.';
+          updateBtn.style.marginTop = '0';
           updateBtn.onclick = async () => {
-            const sections = Rules.BUILD_SECTIONS.filter(key => {
-              const diff = Rules.describeSectionDiff(key, this.state.builtDesign, design);
-              return diff !== '';
-            });
+            const built = this.state.builtDesign;
+            // Every part of the design that can change the built faction, not only the 11 build
+            // sections (faction card images, spellbook images and colour count too).
+            const sections = built
+              ? Rules.UPDATE_SECTIONS.filter(key => Rules.describeSectionDiff(key, built, design) !== '')
+              : [];
 
-            if (sections.length === 0) {
-              alert('No changes detected.');
-              return;
+            if (sections.length === 0 && built) {
+              // Versions differ but no field differs from the built copy: still let the designer
+              // send it (they asked for an update; Claude can confirm), rather than refusing.
+              if (!confirm(`Design v${faction.current} matches built v${faction.build.liveVersion} field for field. Send an update request anyway?`)) return;
             }
 
             try {
-              for (const key of sections) {
-                const sec = Rules.SECTIONS.find(s => s.key === key);
-                const diff = Rules.describeSectionDiff(key, this.state.builtDesign, design);
+              const updateInstructions = faction.build.updateInstructions;
+              const extraText = (updateInstructions && updateInstructions.trim())
+                ? `\n\nUpdate instructions from designer: ${updateInstructions}` : '';
+              if (sections.length === 0) {
+                // No built copy to compare against, or nothing field-level differs: one whole-faction request
+                const why = built ? 'No field-level difference was found against the built copy' : 'The built copy could not be loaded for comparison';
                 await this.createRequest(
                   faction.id,
                   'update',
-                  `${faction.name} update required. ${sec.title} needs to be changed. New version includes ${diff}.`,
+                  `${faction.name} update required from built v${faction.build.liveVersion} to design v${faction.current}. ${why}, so compare the whole design.${extraText}`,
+                  {section: 'all', fromVersion: faction.build.liveVersion, toVersion: faction.current}
+                );
+                alert('Update request created for the whole faction.');
+                return;
+              }
+              for (const key of sections) {
+                const diff = Rules.describeSectionDiff(key, built, design);
+                let requestText = `${faction.name} update required. ${Rules.sectionTitle(key)} needs to be changed. New version includes ${diff}.`;
+                if (updateInstructions && updateInstructions.trim()) {
+                  requestText += `\n\nUpdate instructions from designer: ${updateInstructions}`;
+                }
+                await this.createRequest(
+                  faction.id,
+                  'update',
+                  requestText,
                   {section: key, fromVersion: faction.build.liveVersion, toVersion: faction.current}
                 );
               }
@@ -5687,7 +5747,7 @@
       table.appendChild(thead);
 
       const tbody = document.createElement('tbody');
-      const liveVersions = [map.build.liveVersion, ...map.liveGameVersions].filter(v => v !== null);
+      const liveVersions = [map.build.liveVersion, ...map.liveGameVersions].filter(v => v !== null).map(v => (typeof v === 'string' && /^\d+$/.test(v)) ? Number(v) : v);
 
       for (const ver of map.versions) {
         const row = document.createElement('tr');
@@ -5999,7 +6059,7 @@
       table.appendChild(thead);
 
       const tbody = document.createElement('tbody');
-      const liveVersions = [unit.build && unit.build.liveVersion, ...(unit.liveGameVersions || [])].filter(v => v !== null);
+      const liveVersions = [unit.build && unit.build.liveVersion, ...(unit.liveGameVersions || [])].filter(v => v !== null).map(v => (typeof v === 'string' && /^\d+$/.test(v)) ? Number(v) : v);
 
       for (const ver of unit.versions) {
         const row = document.createElement('tr');
