@@ -1,6 +1,7 @@
 {
-  "current": "1.027",
+  "current": "1.028",
   "versions": [
+    {"version": "1.028", "date": "2026-10-17", "summary": "Add menu options 'All players (turn order)' and 'Some players (turn order)'; conditional description field for faction selection"},
     {"version": "1.027", "date": "2026-10-17", "summary": "Map designer: Move images between Board Images, Bitmaps, Map Glyphs and Tokens, one at a time or several at once with Select"},
     {"version": "1.026", "date": "2026-10-16", "summary": "Add Update comments/instructions textarea; include instructions in update request prompts; add menus to build validation as required"},
     {"version": "1.025", "date": "2026-10-16", "summary": "Add version tracking and changelog display (clickable version next to My Customs)"},
