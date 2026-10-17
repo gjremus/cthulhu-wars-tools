@@ -2209,7 +2209,12 @@ After generating the silhouette, automatically attach it to this unit by setting
         placeholder: itemOptions.length === 0 ? 'No items available' : '-- Select --'
       }));
 
-      menuDiv.appendChild(selectField('Faction prompted', menu.prompted, ['Own', '1 Enemy', 'All enemies (turn order)', 'All enemies (at the same time)', 'All players (at the same time)', 'Any faction on their turn'], val => ctx.set(`menus.rows.${menu.id}.prompted`, val)));
+      menuDiv.appendChild(selectField('Faction prompted', menu.prompted, ['Own', '1 Enemy', 'All enemies (turn order)', 'All enemies (at the same time)', 'All players (turn order)', 'All players (at the same time)', 'Some players (turn order)', 'Any faction on their turn'], val => ctx.set(`menus.rows.${menu.id}.prompted`, val)));
+
+      // Conditional: "Describe faction selection" - shows if prompted === 'Some players (turn order)'
+      if (menu.prompted === 'Some players (turn order)') {
+        menuDiv.appendChild(textField('Describe faction selection', menu.factionSelectionDescription, val => ctx.set(`menus.rows.${menu.id}.factionSelectionDescription`, val)));
+      }
 
       const placeholderHint = 'Placeholders: [Faction], [Region], [Unit], [Power], [Doom], [Enemy], [Spellbook], [Number] (for Pick a number menus)';
       menuDiv.appendChild(textField('Menu Title', menu.title, val => ctx.set(`menus.rows.${menu.id}.title`, val), {hint: placeholderHint}));

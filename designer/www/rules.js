@@ -33,7 +33,7 @@
     {key: 'interactions', title: 'Ability Interactions'}
   ];
 
-  const BUILD_SECTIONS = ['ae', 'ufa', 'setup', 'units', 'sbr', 'sb', 'region', 'tokens', 'custom', 'interactions'];
+  const BUILD_SECTIONS = ['ae', 'ufa', 'setup', 'units', 'sbr', 'sb', 'region', 'tokens', 'custom', 'menus', 'interactions'];
 
   const MAP_SECTIONS = [
     {key: 'images', title: 'Map Images'},
@@ -330,6 +330,7 @@
         section: null,
         item: null,
         prompted: null,
+        factionSelectionDescription: '',
         title: '',
         hasSubtitle: false,
         subtitle: '',
@@ -642,6 +643,16 @@
       const nonEmptyRows = d.rows.filter(r => !isRowEmpty(r, blankRow('custom.rows')));
       if (completeRows.length === nonEmptyRows.length && completeRows.length > 0) return 'Complete';
       return 'Incomplete';
+    }
+
+    if (key === 'menus') {
+      // At least one complete menu is required
+      const completeMenus = d.rows.filter(r => r.name && r.name.trim());
+      if (completeMenus.length === 0) return 'Incomplete';
+      // Check for partial menus (started but not complete)
+      const partialMenus = d.rows.filter(r => !r.name || !r.name.trim());
+      if (partialMenus.length > 0 && d.rows.length > completeMenus.length) return 'Incomplete';
+      return isModified ? 'Edited, requires rebuild' : 'Complete';
     }
 
     if (key === 'interactions') {
