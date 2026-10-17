@@ -4383,6 +4383,14 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         if not re.fullmatch(r'[a-z0-9]{2,3}-[a-z0-9\-]+\.webp', filename, re.IGNORECASE):
             self.send_error_json("Invalid filename. Use format: acronym-name.webp (e.g., fm-glyph.webp)")
             return
+        # The sync step (faction-values.py pull_image_swaps) only picks up files that start with
+        # THIS faction's acronym, so a wrong prefix would be accepted here and then silently never
+        # reach the game. Refuse it up front instead.
+        acr = str(faction.get("acronym", "")).lower()
+        if acr and not filename.lower().startswith(acr + "-"):
+            self.send_error_json(f"Filename must start with this faction's acronym: {acr}-<name>.webp (e.g., {acr}-glyph.webp)")
+            return
+        filename = filename.lower()
 
         # Validate image_id
         if not re.fullmatch(r'[a-f0-9]+\.(webp|png|jpg)', image_id):

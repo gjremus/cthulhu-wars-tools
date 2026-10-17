@@ -4596,6 +4596,10 @@
         const p = document.createElement('p');
         p.textContent = 'No built version available.';
         this.root.appendChild(p);
+        // Image swaps do not depend on the built snapshot (they replace webp files by name), so a
+        // built faction whose liveVersion label cannot be resolved (e.g. "HB 9267656") still gets
+        // its Quick Image Swap rows instead of losing the whole section.
+        if (faction.build && faction.build.status === 'built') this.renderSimpleUpdateImageSwaps(faction);
         return;
       }
 
@@ -4955,11 +4959,36 @@
       this.root.appendChild(table);
     }
 
+    // Standard Quick Image Swap filenames for a faction, in the same naming the game uses
+    // (manual Task 1.3): glyph, card, spellbooks, then one per unit (Cultist -> acolyte).
+    defaultImageSwapFilenames(faction) {
+      const acr = String(faction.acronym || (faction.design && faction.design.meta && faction.design.meta.acronym) || '').toLowerCase();
+      if (!/^[a-z0-9]{2,3}$/.test(acr)) return [];
+      const slug = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+      const names = [`${acr}-glyph.webp`, `${acr}-card.webp`, `${acr}-spellbooks.webp`];
+      const units = (faction.design && faction.design.units && faction.design.units.rows) || [];
+      units.forEach(u => {
+        // Game files drop a leading "The" (The Screaming Wall -> fm-screaming-wall.webp).
+        const s = u.type === 'Cultist' ? 'acolyte' : slug(u.name).replace(/^the-/, '');
+        if (s) names.push(`${acr}-${s}.webp`);
+      });
+      return names;
+    }
+
     renderSimpleUpdateImageSwaps(faction) {
       // Initialize imageSwaps if not present
       if (!faction.design.imageSwaps) {
         faction.design.imageSwaps = {rows: []};
       }
+      // Every built faction always shows a row for each standard swappable picture, starting with
+      // its glyph (<acr>-glyph.webp, the image on the in-game faction card and the picker). Rows
+      // the designer already added are kept; only missing standard filenames are added.
+      const swapRows = faction.design.imageSwaps.rows;
+      const have = new Set(swapRows.map(r => (r.filename || '').toLowerCase()));
+      this.defaultImageSwapFilenames(faction).forEach(fn => {
+        if (!have.has(fn)) { swapRows.push({filename: fn, imageId: null}); have.add(fn); }
+      });
 
       // Section title
       const imgTitle = document.createElement('h3');

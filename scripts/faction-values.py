@@ -287,10 +287,23 @@ def pull_image_swaps(acr, fid):
         if r.returncode != 0:
             print(f"{acr}: could not download image swap {n}: {r.stderr.strip()}")
             continue
+        # The designer accepts webp/png/jpg uploads but always names the swap <acr>-<name>.webp.
+        # Convert anything that is not really webp so the file matches its name.
+        head = (tmp / n).read_bytes()[:12]
+        if not (head[:4] == b"RIFF" and head[8:12] == b"WEBP"):
+            try:
+                from PIL import Image
+                Image.open(tmp / n).save(tmp / (n + ".conv"), "WEBP", quality=90)
+                (tmp / (n + ".conv")).replace(tmp / n)
+                print(f"{acr}: {n} was not webp - converted")
+            except Exception as e:
+                print(f"{acr}: {n} is not webp and could not be converted ({e}) - skipped")
+                continue
         dest = SOLO / "webp" / "images" / n
         if dest.exists() and filecmp.cmp(dest, tmp / n, shallow=False):
             continue
         shutil.copy2(tmp / n, dest)
+        os.chmod(dest, 0o644)  # a 600 file uploads fine but the server returns 403 to the browser
         print(f"{acr}: image swapped -> webp/images/{n}")
         changed = True
     shutil.rmtree(tmp, ignore_errors=True)
