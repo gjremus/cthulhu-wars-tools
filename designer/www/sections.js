@@ -48,6 +48,18 @@
       .sx-btn { padding: 8px 16px; margin: 8px 8px 8px 0; cursor: pointer; background: #444; color: #eee; border: 1px solid #666; }
       .sx-btn:hover { background: #555; }
 
+      /* Map image move / bulk select */
+      .sx-imgmove-bar { display: flex; align-items: center; gap: 8px; margin: 4px 0 8px; flex-wrap: wrap; }
+      .sx-imgmove-bar .sx-btn { margin: 0; padding: 6px 14px; }
+      .sx-imgmove-bar .sx-imgmove-count { color: #fbbf24; font-weight: bold; }
+      .sx-imgmove-bar.sx-selecting { position: sticky; top: 0; z-index: 5; background: #3a2f0b; border: 2px solid #fbbf24; padding: 8px; }
+      .sx-select-mode { outline: 2px dashed #fbbf24; outline-offset: 4px; background: rgba(251, 191, 36, 0.06); }
+      .sx-imgmove-check { width: 22px !important; height: 22px; cursor: pointer; accent-color: #fbbf24; }
+      .sx-imgmove-picked { background: rgba(251, 191, 36, 0.18) !important; }
+      .sx-imgmove-menu .sx-btn { display: block; width: 100%; margin: 8px 0; text-align: left; }
+      .sx-imgmove-menu .sx-imgmove-cancel { margin-top: 16px; text-align: center; }
+      .sx-imgmove-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #14532d; color: #fff; border: 1px solid #22c55e; padding: 10px 18px; z-index: 10001; border-radius: 4px; }
+
       .sx-img-thumb {
         width: 80px;
         height: 80px;
@@ -1791,10 +1803,16 @@ After generating the silhouette, automatically attach it to this unit by setting
     const missing = window.Rules.missingFields('tokens', ctx.design);
     const isMissing = path => missing.includes(path);
 
-    const tableDiv = h('div', {className: 'sx-table'});
+    // Map designer only: move / bulk-select tokens' pictures to other map sections
+    const moveBar = imageMoveToolbar(ctx, 'tokens');
+    if (moveBar) container.appendChild(moveBar);
+    const selecting = imgMoveSelecting(ctx, 'tokens');
+
+    const tableDiv = h('div', {className: 'sx-table' + (selecting ? ' sx-select-mode' : '')});
     const table = h('table', {});
     table.appendChild(h('thead', {},
       h('tr', {},
+        selecting ? h('th', {style: 'width: 40px;'}, '') : null,
         h('th', {}, 'Name'),
         h('th', {}, 'Qty'),
         h('th', {}, 'Image'),
@@ -1809,6 +1827,7 @@ After generating the silhouette, automatically attach it to this unit by setting
     const tbody = h('tbody', {});
     d.rows.forEach((row, idx) => {
       const tr = h('tr', {});
+      if (selecting) tr.appendChild(h('td', {style: 'text-align: center;'}, imageMoveCheckbox(ctx, 'tokens', row, tr)));
 
       tr.appendChild(h('td', {},
         h('input', {
@@ -1895,7 +1914,7 @@ After generating the silhouette, automatically attach it to this unit by setting
       ));
 
       if (idx === 0 && d.rows.length === 1) {
-        tr.appendChild(h('td', {},
+        tr.appendChild(h('td', {}, imageMoveButton(ctx, 'tokens', row),
           h('button', {onclick: async () => {
             const confirmed = await ctx.confirm('Delete all values in this row?', 'Yes - delete', 'No - cancel');
             if (confirmed) {
@@ -1910,7 +1929,7 @@ After generating the silhouette, automatically attach it to this unit by setting
           }}, 'Clear')
         ));
       } else {
-        tr.appendChild(h('td', {},
+        tr.appendChild(h('td', {}, imageMoveButton(ctx, 'tokens', row),
           h('button', {onclick: async () => {
             const confirmed = await ctx.confirm('Are you sure you want to delete this row?', 'Yes - delete', 'No - cancel');
             if (confirmed) ctx.deleteRow('tokens.rows', row.id);
@@ -2420,6 +2439,155 @@ After generating the silhouette, automatically attach it to this unit by setting
     ctx.openOverlay(content);
   }
 
+  // ---- Map image move (per-row "Move" + bulk "Select" mode) ----
+  // Sections of a map design whose rows each hold one picture. Moving a picture creates a NEW
+  // row in the target section (carrying the picture and its label/name) and removes the source row.
+  const MAP_IMAGE_TABLES = [
+    {key: 'images', path: 'images.items', label: 'Board Images', nameField: 'label'},
+    {key: 'bitmaps', path: 'bitmaps.items', label: 'Bitmaps', nameField: null},
+    {key: 'glyphs', path: 'glyphs.rows', label: 'Map Glyphs', nameField: 'name'},
+    {key: 'tokens', path: 'tokens.rows', label: 'Tokens', nameField: 'name'}
+  ];
+  // Selection survives re-renders: {scope: '<mapId>:<sectionKey>', ids: Set}
+  let imgMoveSel = null;
+  let imgMoveBarRefresh = null;
+
+  function imgMoveSpec(key) { return MAP_IMAGE_TABLES.find(t => t.key === key); }
+  function imgMoveScope(ctx, key) { return `${ctx.map && ctx.map.id}:${key}`; }
+  function imgMoveRows(ctx, key) {
+    const spec = imgMoveSpec(key);
+    const rows = spec.path.split('.').reduce((o, k) => (o ? o[k] : undefined), ctx.design);
+    return Array.isArray(rows) ? rows : [];
+  }
+  function imgMoveEnabled(ctx, key) { return !!(ctx.map && !ctx.readOnly && imgMoveSpec(key)); }
+  function imgMoveSelecting(ctx, key) { return !!(imgMoveSel && imgMoveSel.scope === imgMoveScope(ctx, key)); }
+
+  function imgMoveToast(msg) {
+    const t = h('div', {className: 'sx-imgmove-toast'}, msg);
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 2500);
+  }
+
+  // Do the move: add new rows to the target first, then remove the originals.
+  async function moveMapImages(ctx, fromKey, toKey, ids) {
+    const from = imgMoveSpec(fromKey), to = imgMoveSpec(toKey);
+    const rows = imgMoveRows(ctx, fromKey).filter(r => ids.includes(r.id) && r.image);
+    if (!rows.length) return false;
+    const coloured = fromKey === 'bitmaps' && rows.some(r => r.colors && Object.keys(r.colors).length);
+    if (coloured) {
+      const ok = await ctx.confirm('Moving a bitmap out of Bitmaps drops its colour-to-region assignments. Move anyway?', 'Yes - move', 'No - cancel');
+      if (!ok) return false;
+    }
+    const ops = [];
+    // Tokens always show one row; if that lone row is still blank, the moved pictures replace it
+    if (toKey === 'tokens') {
+      const cur = imgMoveRows(ctx, 'tokens');
+      const t = cur[0];
+      if (cur.length === 1 && !t.image && !t.name && t.qty == null && !t.placement && !t.effects && !t.hasEffect && t.effect == null) {
+        ops.push({op: 'deleteRow', path: 'tokens.rows', id: t.id});
+      }
+    }
+    rows.forEach(r => {
+      const nr = window.Rules.blankMapRow(to.path);
+      nr.image = r.image;
+      const name = from.nameField ? r[from.nameField] : '';
+      if (to.nameField && name) nr[to.nameField] = name;
+      ops.push({op: 'addRow', path: to.path, row: nr});
+    });
+    rows.forEach(r => ops.push({op: 'deleteRow', path: from.path, id: r.id}));
+    // The tokens table always keeps at least one (blank) row
+    if (fromKey === 'tokens' && imgMoveRows(ctx, 'tokens').length === rows.length) {
+      ops.push({op: 'addRow', path: 'tokens.rows', row: window.Rules.blankMapRow('tokens.rows')});
+    }
+    if (ctx.applyRowOps) {
+      ctx.applyRowOps(ops); // one save request, applied in order
+    } else {
+      ops.forEach(o => o.op === 'addRow' ? ctx.addRow(o.path, o.row) : ctx.deleteRow(o.path, o.id));
+    }
+    imgMoveToast(`Moved ${rows.length} image${rows.length === 1 ? '' : 's'} to ${to.label}.`);
+    return true;
+  }
+
+  // Pop-up menu: one button per OTHER image section + Cancel. Click outside or Esc also cancels.
+  function openImageMoveMenu(ctx, fromKey, ids) {
+    const overlay = h('div', {className: 'confirm-overlay sx-imgmove-menu'});
+    const dialog = h('div', {className: 'confirm-dialog'});
+    const close = () => { overlay.remove(); document.removeEventListener('keydown', onKey); };
+    const onKey = e => { if (e.key === 'Escape') close(); };
+    dialog.appendChild(h('h3', {}, `Move ${ids.length} image${ids.length === 1 ? '' : 's'} to:`));
+    MAP_IMAGE_TABLES.filter(t => t.key !== fromKey).forEach(t => {
+      dialog.appendChild(h('button', {className: 'sx-btn', 'data-move-to': t.key, onclick: async () => {
+        close();
+        const moved = await moveMapImages(ctx, fromKey, t.key, ids);
+        if (moved && imgMoveSelecting(ctx, fromKey)) { imgMoveSel = null; ctx.rerender(); }
+      }}, t.label));
+    });
+    dialog.appendChild(h('button', {className: 'sx-btn sx-imgmove-cancel', onclick: close}, 'Cancel'));
+    overlay.onclick = e => { if (e.target === overlay) close(); };
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    document.addEventListener('keydown', onKey);
+  }
+
+  // Toolbar at the top of an image section: "Select" normally; "Move (n)" + "Cancel" in select mode.
+  function imageMoveToolbar(ctx, key) {
+    if (!imgMoveEnabled(ctx, key)) return null;
+    // Leaving a section (or switching maps) drops any half-made selection
+    if (imgMoveSel && !imgMoveSelecting(ctx, key)) imgMoveSel = null;
+    const withImages = imgMoveRows(ctx, key).filter(r => r.image);
+    if (!withImages.length) { imgMoveBarRefresh = null; return null; }
+    const bar = h('div', {className: 'sx-imgmove-bar'});
+    if (!imgMoveSelecting(ctx, key)) {
+      imgMoveBarRefresh = null;
+      bar.appendChild(h('button', {className: 'sx-btn', title: 'Pick several images to move at once', onclick: () => {
+        imgMoveSel = {scope: imgMoveScope(ctx, key), ids: new Set()};
+        ctx.rerender();
+      }}, 'Select'));
+      return bar;
+    }
+    bar.classList.add('sx-selecting');
+    const count = h('span', {className: 'sx-imgmove-count'});
+    const moveBtn = h('button', {className: 'sx-btn', onclick: () => {
+      const ids = [...imgMoveSel.ids];
+      if (ids.length) openImageMoveMenu(ctx, key, ids);
+    }}, 'Move');
+    const allBtn = h('button', {className: 'sx-btn', onclick: () => {
+      withImages.forEach(r => imgMoveSel.ids.add(r.id));
+      ctx.rerender();
+    }}, 'Select all');
+    const cancelBtn = h('button', {className: 'sx-btn', onclick: () => { imgMoveSel = null; ctx.rerender(); }}, 'Cancel');
+    imgMoveBarRefresh = () => {
+      const n = imgMoveSel ? imgMoveSel.ids.size : 0;
+      count.textContent = `${n} selected`;
+      moveBtn.textContent = n ? `Move (${n})` : 'Move';
+      moveBtn.disabled = n === 0;
+    };
+    imgMoveBarRefresh();
+    bar.append(h('span', {}, 'Selection mode: tick the images to move.'), count, moveBtn, allBtn, cancelBtn);
+    return bar;
+  }
+
+  // Checkbox shown next to each image while in select mode (null otherwise / for empty rows)
+  function imageMoveCheckbox(ctx, key, row, rowEl) {
+    if (!imgMoveEnabled(ctx, key) || !imgMoveSelecting(ctx, key) || !row.image) return null;
+    const picked = imgMoveSel.ids.has(row.id);
+    if (picked && rowEl) rowEl.classList.add('sx-imgmove-picked');
+    return h('input', {type: 'checkbox', className: 'sx-imgmove-check', checked: picked, title: 'Select to move',
+      onchange: e => {
+        if (!imgMoveSel) return;
+        if (e.target.checked) imgMoveSel.ids.add(row.id); else imgMoveSel.ids.delete(row.id);
+        if (rowEl) rowEl.classList.toggle('sx-imgmove-picked', e.target.checked);
+        if (imgMoveBarRefresh) imgMoveBarRefresh();
+      }});
+  }
+
+  // Per-row "Move" button (hidden in select mode, and on rows with no picture yet)
+  function imageMoveButton(ctx, key, row) {
+    if (!imgMoveEnabled(ctx, key) || imgMoveSelecting(ctx, key) || !row.image) return null;
+    return h('button', {className: 'sx-imgmove-btn', title: 'Move this image to another section',
+      onclick: () => openImageMoveMenu(ctx, key, [row.id])}, 'Move');
+  }
+
   // Map section renderers
 
   function renderMapImages(container, ctx) {
@@ -2429,10 +2597,14 @@ After generating the silhouette, automatically attach it to this unit by setting
 
     // Board images
     container.appendChild(h('h3', {}, 'Board Images'));
+    const moveBar = imageMoveToolbar(ctx, 'images');
+    if (moveBar) container.appendChild(moveBar);
+    const selecting = imgMoveSelecting(ctx, 'images');
 
-    const imagesDiv = h('div', {className: 'sx-table'});
+    const imagesDiv = h('div', {className: 'sx-table' + (selecting ? ' sx-select-mode' : '')});
     const table = h('table', {});
     table.appendChild(h('thead', {}, h('tr', {},
+      selecting ? h('th', {style: 'width: 40px;'}, '') : null,
       h('th', {}, 'Label'),
       h('th', {}, 'Image'),
       h('th', {}, '')
@@ -2441,6 +2613,7 @@ After generating the silhouette, automatically attach it to this unit by setting
     const tbody = h('tbody', {});
     (d.items || []).forEach((item, idx) => {
       const tr = h('tr', {});
+      if (selecting) tr.appendChild(h('td', {style: 'text-align: center;'}, imageMoveCheckbox(ctx, 'images', item, tr)));
       tr.appendChild(h('td', {}, h('input', {
         type: 'text',
         value: item.label || '',
@@ -2465,7 +2638,7 @@ After generating the silhouette, automatically attach it to this unit by setting
       }
       tr.appendChild(imgTd);
 
-      tr.appendChild(h('td', {}, h('button', {onclick: async () => {
+      tr.appendChild(h('td', {}, imageMoveButton(ctx, 'images', item), h('button', {onclick: async () => {
         const confirmed = await ctx.confirm('Delete this image?', 'Yes - delete', 'No - cancel');
         if (confirmed) ctx.deleteRow('images.items', item.id);
       }}, 'Delete')));
@@ -2590,10 +2763,14 @@ After generating the silhouette, automatically attach it to this unit by setting
 
     container.appendChild(h('h3', {}, 'Placement Bitmaps'));
     container.appendChild(h('p', {}, 'Upload a bitmap for each map image. Click a pixel to assign that color to a region.'));
+    const moveBar = imageMoveToolbar(ctx, 'bitmaps');
+    if (moveBar) container.appendChild(moveBar);
+    const selecting = imgMoveSelecting(ctx, 'bitmaps');
 
     (d.items || []).forEach((item, idx) => {
-      const itemDiv = h('div', {style: 'margin: 24px 0; padding: 16px; border: 2px solid #444;'});
-      itemDiv.appendChild(h('h4', {}, `Bitmap ${idx + 1}`));
+      const itemDiv = h('div', {className: selecting ? 'sx-select-mode' : '', style: 'margin: 24px 0; padding: 16px; border: 2px solid #444;'});
+      const check = imageMoveCheckbox(ctx, 'bitmaps', item, itemDiv);
+      itemDiv.appendChild(h('h4', {style: 'display: flex; align-items: center; gap: 8px;'}, check, `Bitmap ${idx + 1}`));
 
       if (!item.image) {
         itemDiv.appendChild(h('button', {className: 'sx-btn', onclick: async () => {
@@ -2702,6 +2879,13 @@ After generating the silhouette, automatically attach it to this unit by setting
           if (id) ctx.set(`bitmaps.items.${item.id}.image`, id);
         }}, 'Replace');
         itemDiv.appendChild(replaceBtn);
+
+        const bmMoveBtn = imageMoveButton(ctx, 'bitmaps', item);
+        if (bmMoveBtn) {
+          bmMoveBtn.className = 'sx-btn sx-imgmove-btn';
+          bmMoveBtn.style.marginLeft = '8px';
+          itemDiv.appendChild(bmMoveBtn);
+        }
 
         const deleteBtn = h('button', {className: 'sx-btn danger', style: 'margin-left: 8px;', onclick: async () => {
           const confirmed = await ctx.confirm('Delete this bitmap?', 'Yes - delete', 'No - cancel');
@@ -3293,10 +3477,14 @@ After generating the silhouette, automatically attach it to this unit by setting
     const isMissing = path => missing.includes(path);
 
     container.appendChild(h('h3', {}, 'Map Glyphs'));
+    const moveBar = imageMoveToolbar(ctx, 'glyphs');
+    if (moveBar) container.appendChild(moveBar);
+    const selecting = imgMoveSelecting(ctx, 'glyphs');
 
-    const tableDiv = h('div', {className: 'sx-table'});
+    const tableDiv = h('div', {className: 'sx-table' + (selecting ? ' sx-select-mode' : '')});
     const table = h('table', {});
     table.appendChild(h('thead', {}, h('tr', {},
+      selecting ? h('th', {style: 'width: 40px;'}, '') : null,
       h('th', {}, 'Name'),
       h('th', {}, 'Image'),
       h('th', {}, 'What it does'),
@@ -3306,6 +3494,7 @@ After generating the silhouette, automatically attach it to this unit by setting
     const tbody = h('tbody', {});
     (d.rows || []).forEach((row, idx) => {
       const tr = h('tr', {});
+      if (selecting) tr.appendChild(h('td', {style: 'text-align: center;'}, imageMoveCheckbox(ctx, 'glyphs', row, tr)));
 
       tr.appendChild(h('td', {}, h('input', {
         className: isMissing(`glyphs.rows.${row.id}.name`) ? 'sx-missing' : '',
@@ -3339,7 +3528,7 @@ After generating the silhouette, automatically attach it to this unit by setting
         oninput: e => ctx.set(`glyphs.rows.${row.id}.desc`, e.target.value)
       })));
 
-      tr.appendChild(h('td', {}, h('button', {onclick: async () => {
+      tr.appendChild(h('td', {}, imageMoveButton(ctx, 'glyphs', row), h('button', {onclick: async () => {
         const confirmed = await ctx.confirm('Delete this glyph?', 'Yes - delete', 'No - cancel');
         if (confirmed) ctx.deleteRow('glyphs.rows', row.id);
       }}, 'Delete')));

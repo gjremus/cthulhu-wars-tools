@@ -5460,6 +5460,20 @@
           this.patchMap(map.id, [{op: 'deleteRow', path: tablePath, id: rowId}]);
           ctx.rerender();
         },
+        // Several addRow/deleteRow ops saved as ONE request so they reach the server in order
+        // (used by the map image "Move" feature).
+        applyRowOps: (ops) => {
+          if (this.isReadOnly() || !ops.length) return;
+          ops.forEach(o => {
+            const parts = o.path.split('.');
+            const last = parts.pop();
+            const parent = parts.reduce((x, k) => x[k], design);
+            if (o.op === 'addRow') parent[last].push(o.row);
+            else if (o.op === 'deleteRow') parent[last] = parent[last].filter(r => r.id !== o.id);
+          });
+          this.patchMap(map.id, ops);
+          ctx.rerender();
+        },
         uploadImage: (kind) => this.uploadImage(kind),
         pickLibraryImage: () => this.pickLibraryImage(),
         pickSilhouetteImage: () => this.pickSilhouetteImage(),
