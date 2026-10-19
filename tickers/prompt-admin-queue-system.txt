@@ -3,6 +3,59 @@ Admin Queue System - Faction Designer Integration
 This prompt documents the faction designer queue processing system.
 
 ═══════════════════════════════════════════════════════════════════════════
+WHEN THE OWNER SAYS "ENTRY 357" OR "PROMPT 351" - WHAT TO DO
+═══════════════════════════════════════════════════════════════════════════
+
+When the owner references:
+- "entry 357"
+- "prompt 351"
+- "Claude terminal log entry 347"
+- "terminal log #353"
+- "check entry 356"
+
+They are referring to the **Claude Terminal Log** - a numbered list of every prompt
+sent to Claude from the admin console and faction designer.
+
+**HOW TO LOOK UP AN ENTRY:**
+
+1. Fetch the terminal log:
+   ```bash
+   cd ~/Claude-Projects/cthulhu-wars-tools/tickers
+   python3 designer-admin.py terminal-log > /tmp/tlog.json
+   ```
+
+2. Find the entry by number (the "n" field):
+   ```bash
+   # Find entry 357
+   jq '.entries[] | select(.n == 357)' /tmp/tlog.json
+
+   # Show just the prompt and summary
+   jq '.entries[] | select(.n == 357) | {n, prompt, summary}' /tmp/tlog.json
+   ```
+
+3. Read what the entry says and do what it asks
+
+**WHAT THE ENTRY CONTAINS:**
+- `n`: The entry number (357, 351, etc.) - THIS IS WHAT THE OWNER REFERENCES
+- `prompt`: What was asked
+- `summary`: What Claude did (or "PENDING" if not done yet)
+- `type`: "admin" (console) or request type (BUILD/EXTRACT/BUG)
+- `user`: Who submitted it
+- `designObject`: What faction/map it's about
+- `cost`: Estimated cost in USD
+
+**COMMON PATTERNS:**
+
+"Deploy entry 351" → Look up entry 351, read its summary, deploy what it describes
+"Fix the bug in entry 353" → Look up entry 353, read the prompt, fix that bug
+"Entry 357 says X is broken" → Look up entry 357, verify what it says
+"Check what entry 356 did" → Look up entry 356, read the summary
+
+**CRITICAL:** The entry NUMBER is how the owner tracks work. When you complete
+work referenced in an entry, UPDATE THAT ENTRY'S SUMMARY so the owner can see
+what you did.
+
+═══════════════════════════════════════════════════════════════════════════
 MANDATORY: UPDATE REQUEST STATUS WHEN WORK IS COMPLETE
 ═══════════════════════════════════════════════════════════════════════════
 
