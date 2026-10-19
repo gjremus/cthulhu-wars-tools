@@ -60,7 +60,7 @@ async function createAndTestGame() {
   // version and silently created games against a stale build. Must match the
   // CURRENT live homebrew version (see cache-bust.txt / deploy-hb-to-vm.sh output)
   // or the server may refuse the game / serve the wrong main.js.
-  const version = 'Homebrew v 2.297';
+  const version = 'Homebrew v 2.347';
   const gameName = `Test ${FACTION} ${Date.now()}`;
 
   // Format: "GC:Normal/FM:Normal/CC:Normal/BG:Normal "
