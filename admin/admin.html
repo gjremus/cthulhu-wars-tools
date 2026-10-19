@@ -371,6 +371,33 @@
   .nav-drawer a.drag-over {
     border-top: 2px solid var(--accent);
   }
+  /* Resizable column handles */
+  .resize-handle {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    cursor: col-resize;
+    user-select: none;
+    touch-action: none; /* Prevent default touch behaviors */
+  }
+  .resize-handle:hover {
+    background: rgba(0, 100, 255, 0.3);
+  }
+  /* Mobile: make handles wider and always visible for easier touch */
+  @media (max-width: 719px) {
+    .resize-handle {
+      width: 10px;
+      background: rgba(0, 100, 255, 0.15);
+    }
+    .resize-handle:active {
+      background: rgba(0, 100, 255, 0.5);
+    }
+  }
+  th[data-col] {
+    user-select: none;
+  }
 </style>
 </head>
 <body>
@@ -714,17 +741,17 @@
         style="width:100%;max-width:400px;padding:8px 10px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:10pt;" />
     </div>
     <div style="overflow-x:auto;">
-      <table id="claudelog-table" style="border-collapse:collapse;width:100%;min-width:640px;font-size:10pt;">
+      <table id="claudelog-table" style="border-collapse:collapse;width:100%;font-size:10pt;table-layout:fixed;">
         <thead><tr>
-          <th style="border:1px solid #000;padding:6px;text-align:left;width:40px;">#</th>
-          <th style="border:1px solid #000;padding:6px;text-align:left;width:110px;">Date / time</th>
-          <th style="border:1px solid #000;padding:6px;text-align:left;width:95px;">Type</th>
-          <th style="border:1px solid #000;padding:6px;text-align:left;width:90px;">User</th>
-          <th style="border:1px solid #000;padding:6px;text-align:left;width:120px;">Design Object</th>
-          <th style="border:1px solid #000;padding:6px;text-align:left;width:85px;">Status</th>
-          <th style="border:1px solid #000;padding:6px;text-align:left;width:250px;">Prompt</th>
-          <th style="border:1px solid #000;padding:6px;text-align:left;width:1000px;">What Claude did</th>
-          <th style="border:1px solid #000;padding:6px;text-align:left;width:40px;">Est. cost</th>
+          <th style="border:1px solid #000;padding:6px;text-align:left;width:40px;position:relative;" data-col="0"># <span class="resize-handle"></span></th>
+          <th style="border:1px solid #000;padding:6px;text-align:left;width:110px;position:relative;" data-col="1">Date / time <span class="resize-handle"></span></th>
+          <th style="border:1px solid #000;padding:6px;text-align:left;width:95px;position:relative;" data-col="2">Type <span class="resize-handle"></span></th>
+          <th style="border:1px solid #000;padding:6px;text-align:left;width:90px;position:relative;" data-col="3">User <span class="resize-handle"></span></th>
+          <th style="border:1px solid #000;padding:6px;text-align:left;width:120px;position:relative;" data-col="4">Design Object <span class="resize-handle"></span></th>
+          <th style="border:1px solid #000;padding:6px;text-align:left;width:85px;position:relative;" data-col="5">Status <span class="resize-handle"></span></th>
+          <th style="border:1px solid #000;padding:6px;text-align:left;width:250px;position:relative;" data-col="6">Prompt <span class="resize-handle"></span></th>
+          <th style="border:1px solid #000;padding:6px;text-align:left;width:2000px;word-wrap:break-word;overflow-wrap:break-word;position:relative;" data-col="7">What Claude did <span class="resize-handle"></span></th>
+          <th style="border:1px solid #000;padding:6px;text-align:left;width:50px;position:relative;" data-col="8">Est. cost <span class="resize-handle"></span></th>
         </tr></thead>
         <tbody id="claudelog-body"><tr><td colspan="9" style="border:1px solid #000;padding:6px;">Loading…</td></tr></tbody>
       </table>
@@ -1112,6 +1139,17 @@ function loadPastRun(name) {
 let CLAUDE_POLL_TIMER = null;
 let AGENT_OUTPUT_POLL_TIMER = null;
 
+// Adaptive polling: slow down when idle, speed up when activity detected
+let LAST_CLAUDE_OUTPUT = '';
+let LAST_CLAUDE_QUEUE = '';
+let LAST_AGENT_OUTPUT = '';
+let CONSECUTIVE_NO_CHANGES = 0;
+let CURRENT_CLAUDE_INTERVAL = 30000;  // Start at 30s
+let CURRENT_AGENT_INTERVAL = 20000;    // Start at 20s
+const MIN_POLL_INTERVAL = 10000;       // Minimum 10s when active
+const MAX_POLL_INTERVAL = 120000;      // Maximum 2min when idle
+const IDLE_THRESHOLD = 5;              // After 5 unchanged polls, consider idle
+
 // Image upload badge and data storage
 let CLAUDE_PROMPT_IMAGE_DATA = null;
 let META_AGENT_IMAGE_DATA = null;
@@ -1210,6 +1248,12 @@ function refreshClaudeOutput() {
       // Keep auto-scroll only if the user was already at the bottom; if they
       // scrolled up to read older context, don't yank them to the new tail.
       if (wasAtBottom) el.scrollTop = el.scrollHeight;
+
+      // Detect changes for adaptive polling
+      if (t !== LAST_CLAUDE_OUTPUT) {
+        LAST_CLAUDE_OUTPUT = t;
+        onPollingActivity();
+      }
     })
     .catch(() => {});
 }
@@ -1223,6 +1267,12 @@ function refreshClaudeQueue() {
       const wasAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 20;
       el.textContent = t || '(queue empty — Claude has caught up)';
       if (wasAtBottom) el.scrollTop = el.scrollHeight;
+
+      // Detect changes for adaptive polling
+      if (t !== LAST_CLAUDE_QUEUE) {
+        LAST_CLAUDE_QUEUE = t;
+        onPollingActivity();
+      }
     })
     .catch(() => {});
 }
@@ -1308,6 +1358,12 @@ function refreshAgentOutput() {
       if (!container) return;
       const wasAtBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 20;
 
+      const currentOutput = JSON.stringify(data);
+      if (currentOutput !== LAST_AGENT_OUTPUT) {
+        LAST_AGENT_OUTPUT = currentOutput;
+        onPollingActivity();
+      }
+
       if (data.status === 'running') {
         const output = data.output || '(empty)';
         const requestId = data.requestId ? ` [${data.requestId}]` : '';
@@ -1326,20 +1382,65 @@ function refreshAgentOutput() {
     });
 }
 
+// Called when any polling detects a change - resets to fast polling
+function onPollingActivity() {
+  CONSECUTIVE_NO_CHANGES = 0;
+  if (CURRENT_CLAUDE_INTERVAL > MIN_POLL_INTERVAL || CURRENT_AGENT_INTERVAL > MIN_POLL_INTERVAL) {
+    // Activity detected while in slow mode - restart polling at fast intervals
+    CURRENT_CLAUDE_INTERVAL = MIN_POLL_INTERVAL;
+    CURRENT_AGENT_INTERVAL = MIN_POLL_INTERVAL;
+    restartPolling();
+  }
+}
+
+// Called on each poll cycle - slows down if no changes detected
+function onPollingCycle() {
+  CONSECUTIVE_NO_CHANGES++;
+  if (CONSECUTIVE_NO_CHANGES >= IDLE_THRESHOLD) {
+    // Idle detected - double the interval (up to max)
+    const newClaudeInterval = Math.min(CURRENT_CLAUDE_INTERVAL * 2, MAX_POLL_INTERVAL);
+    const newAgentInterval = Math.min(CURRENT_AGENT_INTERVAL * 2, MAX_POLL_INTERVAL);
+    if (newClaudeInterval !== CURRENT_CLAUDE_INTERVAL || newAgentInterval !== CURRENT_AGENT_INTERVAL) {
+      CURRENT_CLAUDE_INTERVAL = newClaudeInterval;
+      CURRENT_AGENT_INTERVAL = newAgentInterval;
+      CONSECUTIVE_NO_CHANGES = 0; // Reset so we don't immediately slow down again
+      restartPolling();
+    }
+  }
+}
+
+function restartPolling() {
+  // Stop existing timers
+  if (CLAUDE_POLL_TIMER) {
+    clearInterval(CLAUDE_POLL_TIMER);
+    CLAUDE_POLL_TIMER = null;
+  }
+  if (AGENT_OUTPUT_POLL_TIMER) {
+    clearInterval(AGENT_OUTPUT_POLL_TIMER);
+    AGENT_OUTPUT_POLL_TIMER = null;
+  }
+  // Restart with new intervals
+  startClaudePolling();
+}
+
 function startClaudePolling() {
   if (CLAUDE_POLL_TIMER) return;
+  // Initial refresh
   refreshClaudeOutput();
   refreshClaudeQueue();
   refreshAgentOutput();
+
+  // Set up polling with current intervals
   CLAUDE_POLL_TIMER = setInterval(() => {
     refreshClaudeOutput();
     refreshClaudeQueue();
-  }, 4000);
-  // Poll agent output every 2.5 seconds (faster than the main log)
+    onPollingCycle();
+  }, CURRENT_CLAUDE_INTERVAL);
+
   if (!AGENT_OUTPUT_POLL_TIMER) {
     AGENT_OUTPUT_POLL_TIMER = setInterval(() => {
       refreshAgentOutput();
-    }, 2500);
+    }, CURRENT_AGENT_INTERVAL);
   }
 }
 
@@ -3917,6 +4018,146 @@ function renderClaudeLog() {
       <td style="${td}text-align:right;">${costCell(e.cost, e.costNote)}</td>
     </tr>`).join('') : `<tr><td colspan="9" style="${td}">No prompts logged yet.</td></tr>`;
 }
+
+// Claude Terminal Log: Resizable columns with persistence by device type
+function getDeviceType() {
+  return window.innerWidth >= 720 ? 'desktop' : 'mobile';
+}
+
+function getStorageKey() {
+  return 'claudelog-col-widths-' + getDeviceType();
+}
+
+function saveColumnWidths() {
+  const table = document.getElementById('claudelog-table');
+  if (!table) return;
+  const headers = table.querySelectorAll('th[data-col]');
+  const widths = {};
+  headers.forEach(th => {
+    const col = th.dataset.col;
+    widths[col] = th.style.width || th.offsetWidth + 'px';
+  });
+  localStorage.setItem(getStorageKey(), JSON.stringify(widths));
+}
+
+function loadColumnWidths() {
+  const stored = localStorage.getItem(getStorageKey());
+  const table = document.getElementById('claudelog-table');
+  if (!table) return;
+
+  try {
+    const widths = stored ? JSON.parse(stored) : {};
+    const headers = table.querySelectorAll('th[data-col]');
+    const isMobile = window.innerWidth < 720;
+
+    headers.forEach(th => {
+      const col = th.dataset.col;
+      if (widths[col]) {
+        // Use saved width
+        th.style.width = widths[col];
+      } else if (isMobile && col === '7') {
+        // Default "What Claude did" to 500px on mobile if no saved width
+        th.style.width = '500px';
+      }
+    });
+  } catch (e) {
+    console.error('Failed to load column widths:', e);
+  }
+}
+
+function initColumnResize() {
+  const table = document.getElementById('claudelog-table');
+  if (!table) return;
+
+  let resizing = null;
+  let startX = 0;
+  let startWidth = 0;
+
+  function startResize(pageX, th) {
+    resizing = th;
+    startX = pageX;
+    startWidth = th.offsetWidth;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  }
+
+  function doResize(pageX) {
+    if (!resizing) return;
+    const diff = pageX - startX;
+    const newWidth = Math.max(30, startWidth + diff);
+    resizing.style.width = newWidth + 'px';
+  }
+
+  function endResize() {
+    if (resizing) {
+      saveColumnWidths();
+      resizing = null;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    }
+  }
+
+  table.querySelectorAll('.resize-handle').forEach(handle => {
+    // Mouse events
+    handle.addEventListener('mousedown', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const th = handle.closest('th');
+      startResize(e.pageX, th);
+    });
+
+    // Touch events for mobile
+    handle.addEventListener('touchstart', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const th = handle.closest('th');
+      startResize(e.touches[0].pageX, th);
+    });
+  });
+
+  // Mouse move
+  document.addEventListener('mousemove', e => {
+    if (!resizing) return;
+    doResize(e.pageX);
+  });
+
+  // Touch move for mobile
+  document.addEventListener('touchmove', e => {
+    if (!resizing) return;
+    e.preventDefault(); // Prevent page scroll while resizing
+    doResize(e.touches[0].pageX);
+  }, { passive: false }); // passive: false allows preventDefault
+
+  // Mouse up
+  document.addEventListener('mouseup', endResize);
+
+  // Touch end for mobile
+  document.addEventListener('touchend', endResize);
+  document.addEventListener('touchcancel', endResize);
+
+  // Load saved widths on init
+  loadColumnWidths();
+}
+
+// Reinitialize column resize when terminal log loads
+const originalLoadClaudeLog = window.loadClaudeLog;
+window.loadClaudeLog = function() {
+  if (originalLoadClaudeLog) originalLoadClaudeLog();
+  setTimeout(initColumnResize, 100);
+};
+
+// Initialize on page load
+setTimeout(initColumnResize, 500);
+
+// Re-save widths if device orientation changes (mobile rotation)
+let lastDeviceType = getDeviceType();
+window.addEventListener('resize', () => {
+  const currentType = getDeviceType();
+  if (currentType !== lastDeviceType) {
+    lastDeviceType = currentType;
+    loadColumnWidths();
+  }
+});
 
 function loadDesignerData() {
   if (!SERVER || !TOKEN) return;
