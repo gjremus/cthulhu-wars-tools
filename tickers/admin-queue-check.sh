@@ -33,11 +33,38 @@ mkdir -p "$Q/pending" "$Q/running" "$Q/done"
 note() { echo "[$(date '+%F %T')] $*" >> "$LOG"; }
 
 # Claude Terminal Log tab (admin console): one row per prompt, kept by the designer service.
-# tlog add <name>  |  tlog summary <name> <file>   (row id = q_<queue file name>)
+# tlog add <name>  |  tlog summary <name> <file>   (row id = q_<queue file name> OR request ID if designer submission)
 tlog() {
     local h="$TICKERS/designer-admin.py"
-    if [[ "$1" == add ]]; then python3 "$h" tlog-add admin admin "q_$2" "$Q/pending/$2" > /dev/null 2>>"$LOG"
-    else python3 "$h" tlog-summary "q_$2" "$3" 2>>"$LOG"; fi || note "terminal log update failed ($1 $2)"
+    local name="$2"
+    local id="$name"
+
+    # Check if this is a designer submission by looking for request ID in the file
+    if [[ "$1" == summary ]] && [[ -f "$Q/running/$name" ]]; then
+        local content=$(cat "$Q/running/$name")
+        if [[ "$content" =~ '(MAP-BUG|FACTION-BUG|UNIT-BUG) (r_[^:]+):' ]]; then
+            id="${match[2]}"
+        elif [[ "$content" =~ 'DESIGN-ANSWERS (r_[^:]+):' ]]; then
+            id="${match[1]}"
+        else
+            id="q_$name"
+        fi
+    elif [[ "$1" == add ]]; then
+        # For add, check pending file
+        if [[ -f "$Q/pending/$name" ]]; then
+            local content=$(cat "$Q/pending/$name")
+            if [[ "$content" =~ '(MAP-BUG|FACTION-BUG|UNIT-BUG|DESIGN-ANSWERS) (r_[^:]+):' ]]; then
+                # Designer submission - don't call tlog-add, it was already created with the request ID
+                return 0
+            fi
+        fi
+        id="q_$name"
+    else
+        id="q_$name"
+    fi
+
+    if [[ "$1" == add ]]; then python3 "$h" tlog-add admin admin "$id" "$Q/pending/$name" > /dev/null 2>>"$LOG"
+    else python3 "$h" tlog-summary "$id" "$3" 2>>"$LOG"; fi || note "terminal log update failed ($1 $name)"
 }
 
 # post_output <PROMPT|RESPONSE>  (body on stdin) -> console terminal log, stamped with VM time
@@ -117,6 +144,11 @@ if [[ "${1:-}" == "worker" ]]; then
         fi
         note "start ${job:t} ${resume:+(resume)} :: ${text[1,120]//$'\n'/ }"
         print "Working on it now." > "$job.status"; tlog summary "${job:t}" "$job.status"; rm -f "$job.status"
+        # If this is a designer request, extract request ID and update its status to in_progress
+        if [[ "$text" =~ '(MAP-BUG|FACTION-BUG|UNIT-BUG) (r_[^:]+):' ]]; then
+            req_id="${match[2]}"
+            python3 "$TICKERS/designer-admin.py" request-status "$req_id" "in_progress" 2>>"$LOG" || note "request status update failed for $req_id"
+        fi
         started=0
         ok=0   # set to 1 when a model run produced a result; later tiers are then skipped
 
@@ -255,12 +287,24 @@ PY
             cost=$(cat "$out.cost.tmp")
             rm -f "$out.cost.tmp"
             echo "$cost" > "$job.cost"
-            python3 "$TICKERS/designer-admin.py" tlog-cost "q_${job:t}" "$cost" 2>>"$LOG" || note "could not post cost"
+            # Determine the terminal log entry ID (request ID for designer submissions, q_<name> otherwise)
+            tlog_id="q_${job:t}"
+            if [[ "$text" =~ '(MAP-BUG|FACTION-BUG|UNIT-BUG) (r_[^:]+):' ]]; then
+                tlog_id="${match[2]}"
+            elif [[ "$text" =~ 'DESIGN-ANSWERS (r_[^:]+):' ]]; then
+                tlog_id="${match[1]}"
+            fi
+            python3 "$TICKERS/designer-admin.py" tlog-cost "$tlog_id" "$cost" 2>>"$LOG" || note "could not post cost"
         fi
         # Start the reply with the first words of the request, so replies that come back after
         # a queue are easy to match to what was asked.
         { print -r -- "(re: ${${text//$'\n'/ }[1,70]}...)"; cat "$job.reply"; } | post_output RESPONSE || note "could not post reply to the console"
         tlog summary "${job:t}" "$job.reply"
+        # If this is a designer request, extract request ID and update its status to done
+        if [[ "$text" =~ '(MAP-BUG|FACTION-BUG|UNIT-BUG) (r_[^:]+):' ]]; then
+            req_id="${match[2]}"
+            python3 "$TICKERS/designer-admin.py" request-status "$req_id" "done" 2>>"$LOG" || note "request status update failed for $req_id"
+        fi
 
         # Sync running agent JSONL to server for Live Agent Output display
         if [[ -s "$out" ]]; then
@@ -338,7 +382,7 @@ for i in range(1, len(parts), 2):
         msg="(queued"; (( ${#older} )) && msg+=" - ${#older} ahead of it"; msg+=")"
         { cat "$Q/pending/$name"; echo "$msg"; } | post_output PROMPT || note "could not post queued notice"
 
-        # Check if this is a DESIGN-ANSWERS entry and create terminal log with correct metadata
+        # Check if this is a designer submission (DESIGN-ANSWERS or BUG) and link to the request ID
         prompt_text=$(cat "$Q/pending/$name")
         if [[ "$prompt_text" =~ '^DESIGN-ANSWERS (r_[^:]+): ([^ ]+) answered.*section of ([^(]+)\(designer' ]]; then
             req_id="${match[1]}"
@@ -347,6 +391,13 @@ for i in range(1, len(parts), 2):
             # Trim trailing whitespace from faction name (there's a space before "(designer")
             faction="${faction% }"
             python3 "$TICKERS/designer-admin.py" tlog-create --type "design answers" --user "$username" --ref "$req_id" --design-object "$faction" --prompt "$prompt_text" --summary "Waiting to be picked up." > /dev/null 2>>"$LOG" || note "terminal log creation failed for $name"
+        elif [[ "$prompt_text" =~ '(MAP-BUG|FACTION-BUG|UNIT-BUG) (r_[^:]+):' ]]; then
+            # Designer bug submission - use request ID as terminal log ID
+            bug_type="${match[1]}"
+            req_id="${match[2]}"
+            python3 "$TICKERS/designer-admin.py" tlog-add "bug" "designer" "$req_id" "$Q/pending/$name" > /dev/null 2>>"$LOG" || note "terminal log creation failed for $name"
+            # Update request status to "open" (ready to be processed)
+            python3 "$TICKERS/designer-admin.py" request-status "$req_id" "open" > /dev/null 2>>"$LOG" || note "request status update failed for $req_id"
         else
             tlog add "$name"
         fi
