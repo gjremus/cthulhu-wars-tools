@@ -113,6 +113,126 @@ same way, one tier up. Opus is the last tier; if Opus also hits the limit,
 summarize plainly for the owner instead of continuing to retry.
 
 ═══════════════════════════════════════════════════════════════════════════
+BUG FIX VALIDATION - MANDATORY STEPS BEFORE MARKING COMPLETE
+═══════════════════════════════════════════════════════════════════════════
+
+**CRITICAL:** A bug fix is NOT complete until you've validated it following
+these steps. "Fixed the code and deployed" is NOT enough - you must verify
+the fix actually works in a real game.
+
+**STEP 1: UNDERSTAND THE BUG**
+
+If you have a game name/URL:
+- Run a trace on the game to see the actual error
+- Check the Java console for error messages
+- Look at the game log to understand what happened
+
+If you don't have a game:
+- Check the Faction Build Manual for similar bugs and their fixes
+- Review the code carefully to understand the issue
+- Look for related bugs in the designer bug history
+
+**STEP 2: MAKE THE FIX**
+
+- Fix the Scala code or overlay text
+- Commit your changes with clear commit message
+- Build and deploy to the appropriate server (HB or Main)
+
+**STEP 3: VERIFY THE FIX (MANDATORY)**
+
+For game bugs:
+1. **Reload the game in a local test bed:**
+   ```bash
+   cd ~/Claude-Projects/cthulhu-wars-tools
+   # For live games, create a local replay:
+   # See "Local Replay Test Rig" memory entry for setup
+   ```
+
+2. **Open the game in a browser with puppeteer:**
+   ```bash
+   cd ~/Claude-Projects/cthulhu-wars-tools
+   node scripts/verify-faction-visual.mjs <FACTION-ACR> HB
+   # OR for Main build:
+   node scripts/verify-faction-visual.mjs <FACTION-ACR>
+   ```
+
+3. **Check the browser dev console for errors:**
+   - Puppeteer captures console errors automatically
+   - Check the script output for "ERRORS" or "FAILED REQUESTS"
+   - Zero errors = good, any errors for your faction = not fixed
+
+4. **Take BEFORE and AFTER screenshots:**
+   - Screenshot the bug before fixing
+   - Screenshot the same view after deploying
+   - READ both screenshots with the Read tool
+   - Include both screenshot paths in your summary
+
+For visual bugs (colors, images, overlays, text, menus):
+1. **Use verify-faction-visual.mjs:**
+   - This opens a real game and captures all visual evidence
+   - Screenshots saved to /tmp/verify-<acr>-<date>/
+   - Check V1-V15 from the Visual Audit Checklist
+
+2. **Read every screenshot:**
+   - board.png - units on map
+   - card.png - faction card
+   - panel.png - faction side panel with 6 SBRs
+   - sbr-1..6.png - each requirement popup
+   - sb-1..N.png - each spellbook popup
+   - phone.png - mobile view
+
+3. **Verify the specific issue:**
+   - Wrong color? Compare computed color to designer meta.color
+   - Missing image? Check naturalWidth > 0, no 404s
+   - Text cut off? Check phone.png for overflow
+   - Overlay not showing? Click it and screenshot the popup
+
+For designer bugs:
+- Update BOTH terminal log summary AND request status
+- Check that request status shows "done" in admin console
+- Verify the bugHistory in the faction/unit/map JSON was updated
+
+**STEP 4: DOCUMENT IN SUMMARY**
+
+Your terminal log summary MUST include:
+- What you changed (which files, which lines, what the change was)
+- How you tested it (which script you ran, what you checked)
+- What the result was (error count, screenshot paths, status)
+- Before/after comparison for visual bugs
+
+**EXAMPLE GOOD SUMMARY:**
+```
+Fixed overlay.scala line 234 to use correct unit lookup for FM Bone Sculptor.
+Added missing import for UnitClass at line 12.
+
+Tested with: node scripts/verify-faction-visual.mjs FM HB
+Evidence: /tmp/verify-fm-2026-10-21/
+
+Before: card.png showed blank row for Bone Sculptor
+After: card.png shows full row with correct name, cost 2, combat 2
+
+V4 faction card: PASS - all 6 unit rows visible
+V9 unit images: PASS - 5/5 loaded, 0 broken
+V15 JS errors: PASS - 0 console errors, 0 failed requests
+
+Deployed to HB v2.371
+```
+
+**EXAMPLE BAD SUMMARY:**
+```
+Fixed the bug. Deployed.
+```
+
+**WHEN TO SKIP VALIDATION:**
+
+NEVER. Always validate. Even "trivial" fixes can break things. Even text
+changes can cause crashes if you misquote strings. Always run the test rig.
+
+If you cannot test (game is private, no test rig exists, puppeteer broken):
+Say so explicitly: "NOT VERIFIED - <reason>". Never say "verified" when you
+didn't actually test it.
+
+═══════════════════════════════════════════════════════════════════════════
 COLOUR OUT OF SPACE FACTION - FULL EDIT ACCESS
 ═══════════════════════════════════════════════════════════════════════════
 
