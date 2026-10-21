@@ -4007,7 +4007,7 @@ function renderClaudeLog() {
     }
     return str;
   };
-  document.getElementById('claudelog-body').innerHTML = rows.length ? rows.map(e => `<tr>
+  document.getElementById('claudelog-body').innerHTML = rows.length ? rows.map((e, idx) => `<tr>
       <td style="${td}text-align:right;">${e.n || ''}</td>
       <td style="${td}white-space:nowrap;">${when(e.at)}</td>
       <td style="${td}">${esc(e.type || '')}</td>
@@ -4017,15 +4017,30 @@ function renderClaudeLog() {
       <td style="${td}"><div style="${box}">${esc(e.prompt || '')}</div></td>
       <td style="${td}"><div style="${box}">${esc(e.summary || '')}</div></td>
       <td style="${td}text-align:right;">${costCell(e.cost, e.costNote)}</td>
-      <td style="${td}text-align:center;"><button class="small" onclick="retryClaudeLogEntry(${e.n || 0}, '${esc(e.id || '')}', '${esc(e.prompt || '').replace(/'/g, "\\'")}')">Try again</button></td>
+      <td style="${td}text-align:center;"><button class="small" onclick="retryClaudeLogEntry(${idx})">Try again</button></td>
     </tr>`).join('') : `<tr><td colspan="10" style="${td}">No prompts logged yet.</td></tr>`;
 }
 
-function retryClaudeLogEntry(entryNumber, entryId, originalPrompt) {
-  if (!entryNumber || !originalPrompt) {
+function retryClaudeLogEntry(idx) {
+  // Get the entry from the filtered rows
+  const q = (document.getElementById('claudelog-search')?.value || '').trim().toLowerCase();
+  const status = e => {
+    const s = (e.summary || '').trim();
+    if (e.defaultSummary) return s === 'Done.' ? 'completed' : (s === 'Cancelled.' ? 'cancelled' : 'pending');
+    if (s === 'Cancelled.') return 'cancelled';
+    return s.toUpperCase() === 'FAILED' ? 'failed' : 'completed';
+  };
+  const rows = CLAUDE_LOG.filter(e => !q || [e.n, e.type, e.user, e.designObject, status(e), e.prompt, e.summary, e.cost, e.costNote].join(' ').toLowerCase().includes(q));
+
+  const entry = rows[idx];
+  if (!entry || !entry.n || !entry.prompt) {
     alert('Cannot retry: missing entry information');
     return;
   }
+
+  const entryNumber = entry.n;
+  const entryId = entry.id || '';
+  const originalPrompt = entry.prompt;
 
   // Detect if this is already a retry and extract attempt number
   const attemptMatch = originalPrompt.match(/Re: Entry #\d+ \(attempt (\d+)\)/);
