@@ -4027,8 +4027,12 @@ function retryClaudeLogEntry(entryNumber, entryId, originalPrompt) {
     return;
   }
 
+  // Detect if this is already a retry and extract attempt number
+  const attemptMatch = originalPrompt.match(/Re: Entry #\d+ \(attempt (\d+)\)/);
+  const attemptNum = attemptMatch ? parseInt(attemptMatch[1]) + 1 : 2;  // First retry = attempt 2
+
   // Build retry prompt referencing the original entry
-  const retryPrompt = `Re: Entry #${entryNumber} (${entryId})
+  const retryPrompt = `Re: Entry #${entryNumber} (attempt ${attemptNum})
 
 The previous attempt either didn't finish or the fix didn't work. Review entry #${entryNumber}, then:
 
