@@ -3,17 +3,30 @@ Admin Queue System - Faction Designer Integration
 This prompt documents the faction designer queue processing system.
 
 ═══════════════════════════════════════════════════════════════════════════
-CRITICAL: NEVER DUPLICATE TERMINAL LOG ENTRIES
+CRITICAL: DESIGNER BUG REPORTS - NEVER CREATE NEW ENTRIES
 ═══════════════════════════════════════════════════════════════════════════
 
-**BEFORE CREATING A TERMINAL LOG ENTRY, CHECK IF ONE EXISTS FOR THAT REQUEST ID.**
+**IF THE USERNAME IS NOT "admin", YOU ARE FORBIDDEN FROM CALLING tlog-add.**
 
-Designer bug reports have request IDs like "r_ABC123". If you receive a bug report:
-1. First check: `python3 designer-admin.py terminal-log | grep '"id": "r_ABC123"'`
-2. If found: UPDATE that entry with `tlog-summary r_ABC123 /tmp/summary.txt`
-3. If not found: CREATE new entry with `tlog-add bug <user> r_ABC123 <promptFile>`
+Designer bug reports (username != "admin") have request IDs like "r_ABC123".
+THE ENTRY ALREADY EXISTS. THE DESIGNER SERVICE CREATED IT.
 
-The "Try again" button retries the SAME request with the SAME ID. Update, don't duplicate.
+YOUR ONLY JOB: UPDATE THE EXISTING ENTRY.
+
+```bash
+echo "Your work summary here" > /tmp/summary.txt
+python3 designer-admin.py tlog-summary r_<request-id> /tmp/summary.txt
+python3 designer-admin.py tlog-cost r_<request-id> <cost>
+```
+
+DO NOT check if entry exists first.
+DO NOT call tlog-add.
+DO NOT create a new entry.
+
+ONLY UPDATE THE EXISTING ENTRY.
+
+**If username = "admin":** Admin console submission. You may create entry with tlog-add.
+**If username != "admin":** Designer submission. NEVER CALL tlog-add. Only update.
 
 ═══════════════════════════════════════════════════════════════════════════
 WHEN THE OWNER SAYS "ENTRY 357" OR "PROMPT 351" - WHAT TO DO
@@ -1371,37 +1384,33 @@ python3 designer-admin.py tlog-cost q_abc123 0.15
 ═══════════════════════════════════════════════════════════════════════════
 
 ═══════════════════════════════════════════════════════════════════════════
-TERMINAL LOG ENTRIES - NO DUPLICATES ALLOWED
+TERMINAL LOG ENTRIES - DESIGNER VS ADMIN
 ═══════════════════════════════════════════════════════════════════════════
 
-**ABSOLUTE RULE: ONE ENTRY PER REQUEST ID. NEVER CREATE DUPLICATES.**
+**DESIGNER SUBMISSIONS (username != "admin"):**
+- Request IDs start with "r_" (e.g., r_ABC123)
+- Entry ALREADY EXISTS (created by designer service)
+- You are FORBIDDEN from calling tlog-add
+- ONLY call tlog-summary and tlog-cost to update existing entry
 
-When you receive a bug report or designer submission:
+**ADMIN SUBMISSIONS (username = "admin"):**
+- Request IDs start with "q_" (e.g., q_1729123456-001)
+- Entry created by admin-queue-check.sh when it queues the request
+- You should NOT call tlog-add (entry exists)
+- ONLY call tlog-summary and tlog-cost to update existing entry
 
-1. **CHECK FIRST** - Before doing ANY work, check if a terminal log entry already exists:
-   ```bash
-   cd ~/Claude-Projects/cthulhu-wars-tools/tickers
-   python3 designer-admin.py terminal-log | grep -q '"id": "r_<request-id>"'
-   ```
+**RULE: NEVER CALL tlog-add WHEN PROCESSING REQUESTS**
 
-2. **IF ENTRY EXISTS** - Update the existing entry's summary:
-   ```bash
-   echo "Your updated status here" > /tmp/summary.txt
-   python3 designer-admin.py tlog-summary r_<request-id> /tmp/summary.txt
-   ```
+The entry is ALWAYS created before you see the request:
+- Designer submissions: entry created when designer submits bug/build/extract
+- Admin submissions: entry created when queue script picks up the request
 
-3. **IF ENTRY DOES NOT EXIST** - Only then create a new entry:
-   ```bash
-   python3 designer-admin.py tlog-add bug <user> r_<request-id> <promptFile>
-   ```
-
-**NEVER CREATE A SECOND ENTRY FOR THE SAME REQUEST ID.**
-
-If you get a bug report with request ID "r_ABC123" and there's already a terminal log
-entry with id "r_ABC123", you MUST update that entry, not create a new one.
-
-The same request can be retried multiple times (owner hits "Try again" button).
-Each retry is THE SAME REQUEST with THE SAME ID. Update the existing entry.
+Your job is ONLY to update existing entries with results:
+```bash
+echo "Work summary" > /tmp/summary.txt
+python3 designer-admin.py tlog-summary <request-id> /tmp/summary.txt
+python3 designer-admin.py tlog-cost <request-id> <cost>
+```
 
 ═══════════════════════════════════════════════════════════════════════════
 
