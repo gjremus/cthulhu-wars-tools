@@ -3,6 +3,19 @@ Admin Queue System - Faction Designer Integration
 This prompt documents the faction designer queue processing system.
 
 ═══════════════════════════════════════════════════════════════════════════
+CRITICAL: NEVER DUPLICATE TERMINAL LOG ENTRIES
+═══════════════════════════════════════════════════════════════════════════
+
+**BEFORE CREATING A TERMINAL LOG ENTRY, CHECK IF ONE EXISTS FOR THAT REQUEST ID.**
+
+Designer bug reports have request IDs like "r_ABC123". If you receive a bug report:
+1. First check: `python3 designer-admin.py terminal-log | grep '"id": "r_ABC123"'`
+2. If found: UPDATE that entry with `tlog-summary r_ABC123 /tmp/summary.txt`
+3. If not found: CREATE new entry with `tlog-add bug <user> r_ABC123 <promptFile>`
+
+The "Try again" button retries the SAME request with the SAME ID. Update, don't duplicate.
+
+═══════════════════════════════════════════════════════════════════════════
 20-MINUTE / 3-TRY LIMIT - STOP AND HAND OFF, DO NOT GRIND
 ═══════════════════════════════════════════════════════════════════════════
 
@@ -153,6 +166,41 @@ python3 designer-admin.py tlog-cost <entry-id> <usd-amount>
 - Every admin queue submission creates a terminal log entry (type: admin, id: q_<queuefile>)
 - Entry IDs starting with "q_" are admin console submissions
 - Entry IDs starting with "r_" are designer extraction/build/bug requests
+
+═══════════════════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════════════════
+TERMINAL LOG ENTRIES - NO DUPLICATES ALLOWED
+═══════════════════════════════════════════════════════════════════════════
+
+**ABSOLUTE RULE: ONE ENTRY PER REQUEST ID. NEVER CREATE DUPLICATES.**
+
+When you receive a bug report or designer submission:
+
+1. **CHECK FIRST** - Before doing ANY work, check if a terminal log entry already exists:
+   ```bash
+   cd ~/Claude-Projects/cthulhu-wars-tools/tickers
+   python3 designer-admin.py terminal-log | grep -q '"id": "r_<request-id>"'
+   ```
+
+2. **IF ENTRY EXISTS** - Update the existing entry's summary:
+   ```bash
+   echo "Your updated status here" > /tmp/summary.txt
+   python3 designer-admin.py tlog-summary r_<request-id> /tmp/summary.txt
+   ```
+
+3. **IF ENTRY DOES NOT EXIST** - Only then create a new entry:
+   ```bash
+   python3 designer-admin.py tlog-add bug <user> r_<request-id> <promptFile>
+   ```
+
+**NEVER CREATE A SECOND ENTRY FOR THE SAME REQUEST ID.**
+
+If you get a bug report with request ID "r_ABC123" and there's already a terminal log
+entry with id "r_ABC123", you MUST update that entry, not create a new one.
+
+The same request can be retried multiple times (owner hits "Try again" button).
+Each retry is THE SAME REQUEST with THE SAME ID. Update the existing entry.
 
 ═══════════════════════════════════════════════════════════════════════════
 
