@@ -861,24 +861,25 @@
           }
         }, 'CW / Necro');
         silDiv.appendChild(libraryBtn);
+      }
 
-        // Generate Silhouette button - greyed out unless mapImage is a unique upload
-        // mapIsUniqueUpload = has a custom uploaded map image (not a default library image)
-        const mapIsUniqueUpload = unit.mapImage && (!typeArt || unit.mapImage !== typeArt.url);
-        const genBtnContainer = h('div', {style: 'display: flex; align-items: center; margin-top: 8px; gap: 4px;'});
-        const genBtn = h('button', {
-          className: 'sx-btn',
-          style: `font-size: 12px; padding: 4px 8px; ${mapIsUniqueUpload ? 'background: #4a9eff; cursor: pointer;' : 'background: #555; color: #888; cursor: not-allowed;'}`,
-          disabled: !mapIsUniqueUpload,
-          onclick: async () => {
-            if (!mapIsUniqueUpload) return;
-            if (!confirm('Submit to Claude to generate flat white silhouette from your map image?')) return;
-            // Faction screens give ctx.faction (+ ctx.createRequest); standalone unit screens give ctx.unit.
-            // (There is no ctx.factionId - using it sent POST /factions/undefined/request.)
-            const fid = ctx.faction ? ctx.faction.id : null;
-            const factionName = (ctx.faction && ctx.faction.name) || (ctx.design.meta && ctx.design.meta.name) || ctx.design.name || 'Unknown Faction';
-            const mapImageUrl = ctx.imgUrl(unit.mapImage);
-            const text = `Generate silhouette for unit "${unit.name}" in faction "${factionName}".
+      // Generate Silhouette button - always available if mapImage is a unique upload
+      // mapIsUniqueUpload = has a custom uploaded map image (not a default library image)
+      const mapIsUniqueUpload = unit.mapImage && (!typeArt || unit.mapImage !== typeArt.url);
+      const genBtnContainer = h('div', {style: 'display: flex; align-items: center; margin-top: 8px; gap: 4px;'});
+      const genBtn = h('button', {
+        className: 'sx-btn',
+        style: `font-size: 12px; padding: 4px 8px; ${mapIsUniqueUpload ? 'background: #4a9eff; cursor: pointer;' : 'background: #555; color: #888; cursor: not-allowed;'}`,
+        disabled: !mapIsUniqueUpload,
+        onclick: async () => {
+          if (!mapIsUniqueUpload) return;
+          if (!confirm('Submit to Claude to generate flat white silhouette from your map image?')) return;
+          // Faction screens give ctx.faction (+ ctx.createRequest); standalone unit screens give ctx.unit.
+          // (There is no ctx.factionId - using it sent POST /factions/undefined/request.)
+          const fid = ctx.faction ? ctx.faction.id : null;
+          const factionName = (ctx.faction && ctx.faction.name) || (ctx.design.meta && ctx.design.meta.name) || ctx.design.name || 'Unknown Faction';
+          const mapImageUrl = ctx.imgUrl(unit.mapImage);
+          const text = `Generate silhouette for unit "${unit.name}" in faction "${factionName}".
 
 Convert the map image to a flat white silhouette:
 - Keep the transparent background
@@ -891,53 +892,52 @@ Unit ID: ${unit.id}
 ${fid ? `Faction ID: ${fid}` : `Standalone unit ID: ${ctx.unit ? ctx.unit.id : unit.id}`}
 
 After generating the silhouette, automatically attach it to this unit by setting the silhouette field to the new image ID.`;
-            // Unique data per unit + image so the server's duplicate check doesn't fold this into another open bug request
-            const data = {kind: 'silhouette', unitId: unit.id, mapImage: unit.mapImage};
-            try {
-              let result = null;
-              if (fid && ctx.createRequest) {
-                result = await ctx.createRequest('bug', text, data);  // app.api(): sends the login token, throws on error
-                if (!result) throw new Error('this design is read only');
-              } else {
-                const target = fid ? `factions/${fid}` : `units/${ctx.unit ? ctx.unit.id : unit.id}`;
-                const resp = await fetch(`/designer/api/${target}/request`, {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('cw_designer_token')}`
-                  },
-                  body: JSON.stringify({type: 'bug', text, data})
-                });
-                if (!resp.ok) {
-                  const e = await resp.json().catch(() => ({}));
-                  throw new Error(e.error ? `${e.error} (HTTP ${resp.status})` : `HTTP ${resp.status}`);
-                }
-                result = await resp.json().catch(() => null);
+          // Unique data per unit + image so the server's duplicate check doesn't fold this into another open bug request
+          const data = {kind: 'silhouette', unitId: unit.id, mapImage: unit.mapImage};
+          try {
+            let result = null;
+            if (fid && ctx.createRequest) {
+              result = await ctx.createRequest('bug', text, data);  // app.api(): sends the login token, throws on error
+              if (!result) throw new Error('this design is read only');
+            } else {
+              const target = fid ? `factions/${fid}` : `units/${ctx.unit ? ctx.unit.id : unit.id}`;
+              const resp = await fetch(`/designer/api/${target}/request`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${localStorage.getItem('cw_designer_token')}`
+                },
+                body: JSON.stringify({type: 'bug', text, data})
+              });
+              if (!resp.ok) {
+                const e = await resp.json().catch(() => ({}));
+                throw new Error(e.error ? `${e.error} (HTTP ${resp.status})` : `HTTP ${resp.status}`);
               }
-              // The server folds a repeat click made within a few minutes into the request already queued
-              if (result && result.duplicate) {
-                alert(`This silhouette was already requested a few minutes ago (request ${result.id}) and is still in the Claude admin queue. It will be attached automatically when ready.`);
-              } else {
-                alert('Silhouette generation request submitted to Claude admin console. The silhouette will be automatically attached when ready.');
-              }
-            } catch (err) {
-              alert('Failed to submit request: ' + err.message);
+              result = await resp.json().catch(() => null);
             }
+            // The server folds a repeat click made within a few minutes into the request already queued
+            if (result && result.duplicate) {
+              alert(`This silhouette was already requested a few minutes ago (request ${result.id}) and is still in the Claude admin queue. It will be attached automatically when ready.`);
+            } else {
+              alert('Silhouette generation request submitted to Claude admin console. The silhouette will be automatically attached when ready.');
+            }
+          } catch (err) {
+            alert('Failed to submit request: ' + err.message);
           }
-        }, 'Generate Silhouette');
-        genBtnContainer.appendChild(genBtn);
+        }
+      }, 'Generate Silhouette');
+      genBtnContainer.appendChild(genBtn);
 
-        // Help button
-        const helpBtn = h('button', {
-          className: 'sx-btn',
-          style: 'font-size: 11px; padding: 2px 6px; background: #555; border-radius: 50%; width: 20px; height: 20px; line-height: 16px;',
-          onclick: () => {
-            alert('Generates a silhouette for the faction card, based on the map image. Only available if you upload your own custom map image with a transparent background.');
-          }
-        }, '?');
-        genBtnContainer.appendChild(helpBtn);
-        silDiv.appendChild(genBtnContainer);
-      }
+      // Help button
+      const helpBtn = h('button', {
+        className: 'sx-btn',
+        style: 'font-size: 11px; padding: 2px 6px; background: #555; border-radius: 50%; width: 20px; height: 20px; line-height: 16px;',
+        onclick: () => {
+          alert('Generates a silhouette for the faction card, based on the map image. Only available if you upload your own custom map image with a transparent background.');
+        }
+      }, '?');
+      genBtnContainer.appendChild(helpBtn);
+      silDiv.appendChild(genBtnContainer);
       unitDiv.appendChild(silDiv);
 
       unitDiv.appendChild(numberField('Quantity', unit.qty, val => ctx.set(`units.rows.${unit.id}.qty`, val), {min: 1, max: 20, missing: isMissing(`units.rows.${unit.id}.qty`), ux: uxKey(unit.id, 'qty')}));
