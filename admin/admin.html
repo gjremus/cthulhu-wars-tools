@@ -1352,7 +1352,7 @@ function restartAdminAgent() {
 }
 
 function refreshAgentOutput() {
-  fetch(`${SERVER}/admin/${TOKEN}/agent-output`)
+  fetch(`${SERVER}/designer/api/admin/${TOKEN}/agent-output`)
     .then(r => r.json())
     .then(data => {
       const container = document.getElementById('agent-output-container');
@@ -1365,7 +1365,7 @@ function refreshAgentOutput() {
         onPollingActivity();
       }
 
-      if (data.status === 'running') {
+      if (data.running) {
         const output = data.output || '(empty)';
         const requestId = data.requestId ? ` [${data.requestId}]` : '';
         container.textContent = output;

@@ -1865,8 +1865,8 @@
           headerRow.style.backgroundColor = '#f0f0f0';
           headerRow.style.border = '1px solid #000';
 
-          const allHeaders = ['Entry #', 'Type', 'Submitted', 'User', 'Prompt', 'Claude Response', 'Cost', 'Status'];
-          const hiddenInFactionDesigner = ['Type', 'User', 'Cost'];
+          const allHeaders = ['Entry #', 'Type', 'Submitted', 'User', 'Prompt', 'Claude Response', 'Cost', 'Status', 'Actions'];
+          const hiddenInFactionDesigner = ['Type', 'User', 'Cost', 'Actions'];
           const headers = this.state.adminToken
             ? allHeaders
             : allHeaders.filter(h => !hiddenInFactionDesigner.includes(h));
@@ -1994,6 +1994,27 @@
             statusCell.style.fontSize = '12px';
             row.appendChild(statusCell);
 
+            // Actions (admin view only - retry button for bug reports and design changes)
+            if (isAdminView) {
+              const actionsCell = document.createElement('td');
+              actionsCell.style.padding = '8px';
+              actionsCell.style.border = '1px solid #000';
+              actionsCell.style.textAlign = 'center';
+
+              // Show "Try again" button for bug reports and design changes
+              if (entry.type && (entry.type.includes('bug') || entry.type.includes('design'))) {
+                const retryBtn = document.createElement('button');
+                retryBtn.className = 'small';
+                retryBtn.textContent = 'Try again';
+                retryBtn.style.fontSize = '11px';
+                retryBtn.style.padding = '4px 8px';
+                retryBtn.onclick = () => this.retryDesignerEntry(entry);
+                actionsCell.appendChild(retryBtn);
+              }
+
+              row.appendChild(actionsCell);
+            }
+
             tbody.appendChild(row);
           }
           table.appendChild(tbody);
@@ -2005,6 +2026,67 @@
         });
 
       return historyDiv;
+    }
+
+    retryDesignerEntry(entry) {
+      // Retry a terminal log entry by re-submitting it to the admin queue
+      if (!entry || !entry.n || !entry.prompt) {
+        alert('Cannot retry: missing entry information');
+        return;
+      }
+
+      const entryNumber = entry.n;
+      const originalPrompt = entry.prompt;
+
+      // Detect if this is already a retry and extract attempt number
+      const attemptMatch = originalPrompt.match(/Re: Entry #\d+ \(attempt (\d+)\)/);
+      const attemptNum = attemptMatch ? parseInt(attemptMatch[1]) + 1 : 2;  // First retry = attempt 2
+
+      // Build retry prompt referencing the original entry
+      const retryPrompt = `Re: Entry #${entryNumber} (attempt ${attemptNum})
+
+The previous attempt either didn't finish or the fix didn't work. Review entry #${entryNumber}, then:
+
+1. If the task wasn't completed: finish it following all validation steps
+2. If the fix didn't work: try again and actually validate the fix properly
+
+CRITICAL BUG FIX VALIDATION STEPS (from Faction Build Manual):
+- If you have a game name, run a trace first (don't analyze code blind)
+- Reload the online game in a local test bed so you can rollback and test
+- Open the game in a browser and see what the player sees (use puppeteer)
+- Check the browser dev console for JavaScript errors
+- Check the Faction Build Manual for similar bugs and fixes
+- For visual bugs: take BEFORE and AFTER screenshots, read them both, include paths in summary
+- For designer submissions: update BOTH terminal log summary AND request status
+
+Original task:
+${originalPrompt}`;
+
+      // Submit the retry prompt to the admin queue
+      const submitUrl = this.state.adminToken
+        ? `/designer/api/admin/${this.state.adminToken}/claude-prompt`
+        : null;
+
+      if (!submitUrl) {
+        alert('Admin access required to retry entries');
+        return;
+      }
+
+      fetch(submitUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: retryPrompt,
+      }).then(r => {
+        if (!r.ok) {
+          alert(`Failed to submit retry (HTTP ${r.status})`);
+          return;
+        }
+        alert(`Retry queued for entry #${entryNumber}. Claude will pick it up on the next tick.`);
+        // Refresh the current view to show the new entry
+        window.location.reload();
+      }).catch(e => {
+        alert(`Network error: ${e.message || e}`);
+      });
     }
 
     // Render methods
