@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Live-game health check ticker — every 15 minutes.
+  Checks only games flagged via the admin console "Mark live" button.
+
+  Install:
+    cp tickers/com.gremus.cw-live-game-check.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.gremus.cw-live-game-check.plist
+
+  Uninstall:
+    launchctl unload ~/Library/LaunchAgents/com.gremus.cw-live-game-check.plist
+    rm ~/Library/LaunchAgents/com.gremus.cw-live-game-check.plist
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.gremus.cw-live-game-check</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/gremus/Claude-Projects/cthulhu-wars-tools/tickers/run-live-game-check.sh</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict><key>Minute</key><integer>3</integer></dict>
+    <dict><key>Minute</key><integer>18</integer></dict>
+    <dict><key>Minute</key><integer>33</integer></dict>
+    <dict><key>Minute</key><integer>48</integer></dict>
+  </array>
+  <key>StandardOutPath</key>
+  <string>/tmp/cw-live-game-check.stdout.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/cw-live-game-check.stderr.log</string>
+</dict>
+</plist>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+LaunchAgent: console-grab SWEEP ticker. Fires hourly at :09.
+Runs tools/console-grab.py --sweep over all active (non-bot, not-completed)
+games. Cheap (no AI session) — see run-console-grab-sweep.sh.
+
+Install (parent does this AFTER review):
+  cp ~/claude-projects/cthulhu-wars-tools/tickers/com.gremus.cw-console-grab-sweep.plist ~/Library/LaunchAgents/
+  launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.gremus.cw-console-grab-sweep.plist
+Uninstall:
+  launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.gremus.cw-console-grab-sweep.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.gremus.cw-console-grab-sweep</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>/Users/gremus/Claude-Projects/cthulhu-wars-tools/tickers/run-console-grab-sweep.sh</string>
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Minute</key><integer>9</integer>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/cw-console-grab-sweep.stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/cw-console-grab-sweep.stderr.log</string>
+
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>
