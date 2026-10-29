@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-cd ~/cthulhu-wars-tools
+cd ~/Claude-Projects/cthulhu-wars-tools
 
 # Check if there are changes
 if git diff --quiet && git diff --cached --quiet; then

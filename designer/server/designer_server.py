@@ -109,6 +109,63 @@ def get_client_ip(handler, headers: Dict[str, str]) -> str:
     return client
 
 
+# A repeat of an identical request is only folded into the earlier one while that earlier one is
+# still genuinely in flight: not yet handed to the queue ("open"), or handed over within the last
+# few minutes (double-click / impatient re-click). A "notified" request older than that is one an
+# agent already picked up and may have abandoned without closing it (2026-10-16: the Pharoah
+# Kephren silhouette request sat "notified" for a day after its agent gave up, and every later
+# click on Generate Silhouette was silently swallowed - no terminal-log row, no queue job).
+# 2026-10-16 (second pass): cut from 10 minutes to 2. The owner's real re-click on Pharoah Kephren a few
+# minutes after an earlier click was folded away and looked like "nothing happened"; a fold is now only for
+# true double-taps, and even a folded click gets its own terminal-log row (send_duplicate below).
+DUPLICATE_WINDOW_SECONDS = 120
+
+
+def same_version(a, b) -> bool:
+    """Version numbers can be saved as a number (10) or as text ("9", from the admin build-status
+    call). Compare them as text so a built version is still recognised as built - a plain == between
+    9 and "9" is False, which left the built version unlocked and let edits overwrite its snapshot."""
+    return a is not None and b is not None and str(a) == str(b)
+
+
+def normalize_version(v):
+    """Store numeric versions as int ("9" -> 9); leave labels like "HB 9267656" as they are."""
+    if isinstance(v, str) and v.strip().isdigit():
+        return int(v.strip())
+    return v
+
+
+# Image fields in a design. Uploading one of these into an empty slot used to count as an
+# "addition" (folded into the current version with no bump); images must always bump unless
+# the designer is still inside an open edit session for that section.
+IMAGE_FIELD_HINTS = ("image", "glyph", "silhouette", "art", "icon", "bitmap")
+
+
+def is_image_path(path: str) -> bool:
+    parts = path.split(".")
+    if parts and parts[0] in ("card", "sbImages", "sbImagesB", "images", "bitmaps", "glyphs"):
+        return True
+    last = parts[-1].lower() if parts else ""
+    return any(h in last for h in IMAGE_FIELD_HINTS)
+
+
+def is_image_set(op: Dict) -> bool:
+    """A 'set' that puts an image into a field (blank rows added to an image table are not uploads)."""
+    return op.get("op") == "set" and is_image_path(op.get("path", ""))
+
+
+def is_live_duplicate(existing: Dict, req_type: str, key: str, key_val: str, data, now: Optional[float] = None) -> bool:
+    if existing.get("type") != req_type or existing.get(key) != key_val or existing.get("data") != data:
+        return False
+    status = existing.get("status")
+    if status == "open":
+        return True
+    if status == "notified":
+        now = time.time() if now is None else now
+        return now - (existing.get("updated") or existing.get("created") or 0) < DUPLICATE_WINDOW_SECONDS
+    return False
+
+
 def number_terminal_entries(log: Dict) -> bool:
     """Give every terminal-log row a fixed sequence number "n": oldest is 1, new rows count up.
     nextN is kept so numbers are never reused after old rows are trimmed. Returns True if anything changed."""
@@ -279,6 +336,11 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             self.handle_live_values(m.group(1))
             return
 
+        # Terminal log history for one design, used by the faction/unit/map "Bug Report" screen
+        if path == '/designer/api/terminal-log':
+            self.handle_terminal_log()
+            return
+
         if path.startswith('/designer/api/admin/'):
             self.handle_admin_get(path)
             return
@@ -399,6 +461,9 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                     action = parts[5]
                     if action == 'stability':
                         self.handle_set_stability(fid)
+                        return
+                    elif action == 'build-update-instructions':
+                        self.handle_build_update_instructions(fid)
                         return
                     elif action == 'copy':
                         self.handle_copy_faction(fid)
@@ -635,6 +700,18 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                         "current": faction["current"],
                         "buildStatus": faction.get("build", {}).get("status", "none"),
                         "updated": faction["updated"]
+                    })
+                elif username in faction.get("editors", []):
+                    # Shared with this user with edit access (set by the admin)
+                    factions.append({
+                        "id": faction["id"],
+                        "name": faction["name"],
+                        "acronym": faction["acronym"],
+                        "current": faction["current"],
+                        "buildStatus": faction.get("build", {}).get("status", "none"),
+                        "updated": faction["updated"],
+                        "owner": faction["owner"],
+                        "ownerName": self.display_name(faction["owner"])
                     })
                 elif username in faction.get("viewers", []):
                     # Shared with this user as read only (set by the admin)
@@ -1098,12 +1175,12 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
 
                 # Apply version logic (simplified for single-section unit)
                 section = "unit"
-                is_addition = self.is_unit_addition(unit, op)
+                is_addition = self.is_unit_addition(unit, op) and not is_image_set(op)
 
                 current = unit["current"]
                 max_version = unit["maxVersion"]
                 live_version = unit.get("build", {}).get("liveVersion")
-                is_locked = current < max_version or current == live_version
+                is_locked = current < max_version or same_version(current, live_version)
 
                 session = unit["session"]
                 session_open = (
@@ -1120,6 +1197,15 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                     self.create_new_unit_version(unit, section, uid)
 
                 self.set_path_value(design, path, op.get('value'))
+
+                # Track section modifications for built units
+                build = unit.get("build", {})
+                if build.get("status") == "built":
+                    # Initialize sectionsModified if it doesn't exist
+                    if "sectionsModified" not in build:
+                        build["sectionsModified"] = {}
+                    # Record modification timestamp
+                    build["sectionsModified"][section] = now
 
                 # Update session
                 session["last"] = now
@@ -1309,7 +1395,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 return
 
             live_version = unit.get("build", {}).get("liveVersion")
-            if version == live_version:
+            if same_version(version, live_version):
                 self.send_error_json("Cannot delete live version")
                 return
 
@@ -1586,13 +1672,13 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             return False
 
         # Determine if this is an addition or change
-        is_addition = self.is_map_addition(map_obj, op)
+        is_addition = self.is_map_addition(map_obj, op) and not is_image_set(op)
 
         # Check if version is locked
         current = map_obj["current"]
         max_version = map_obj["maxVersion"]
         live_version = map_obj.get("build", {}).get("liveVersion")
-        is_locked = current < max_version or current == live_version
+        is_locked = current < max_version or same_version(current, live_version)
 
         # Check open session
         now = time.time()
@@ -1614,6 +1700,17 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         # Apply the operation
         if not self.apply_op_to_design(map_obj["design"], op):
             return False
+
+        # Track section modifications for built maps
+        build = map_obj.get("build", {})
+        if build.get("status") == "built":
+            map_build_sections = ['images', 'bitmaps', 'adjacency', 'units', 'tokens', 'sb', 'glyphs', 'abilities']
+            if section in map_build_sections:
+                # Initialize sectionsModified if it doesn't exist
+                if "sectionsModified" not in build:
+                    build["sectionsModified"] = {}
+                # Record modification timestamp
+                build["sectionsModified"][section] = int(now)
 
         # Update session
         session["last"] = int(now)
@@ -1807,7 +1904,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 return
 
             live_version = map_obj.get("build", {}).get("liveVersion")
-            if version == live_version:
+            if same_version(version, live_version):
                 self.send_error_json("Cannot delete live version")
                 return
 
@@ -1871,11 +1968,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
 
         # Check for duplicate
         for existing in requests:
-            if (existing.get("type") == req_type and
-                existing.get("mid") == mid and
-                existing.get("status") in ("open", "notified") and
-                existing.get("data") == data):
-                self.send_json(existing)
+            if is_live_duplicate(existing, req_type, "mid", mid, data):
+                self.send_duplicate(existing, username, text)
                 return
 
         # Create new request
@@ -1901,6 +1995,10 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             requests.append(request)
             requests_data["requests"] = requests
             atomic_write(requests_file, requests_data)
+            # Every designer prompt also goes into the admin console's Claude terminal log
+            self.add_terminal_entry(self.terminal_type(request), self.display_name(username),
+                                    text or f"{req_type} request for map {map_obj['name']}",
+                                    "Waiting to be picked up.", ref=req_id, designObject=map_obj['name'])
 
             # Write to console queue for build requests
             if req_type == "build":
@@ -1952,7 +2050,10 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                     clean_name = map_obj["name"].replace('\n', ' ').replace('[', '').replace(']', '')
                     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
                     display_user = self.display_name(username)
-                    queue_line = f"[{timestamp}] MAP-BUG {req_id}: Bug report for map \"{clean_name}\" from {display_user} (designer map id {mid}).\n"
+                    detail = f" Details: {text}" if text else ""
+                    if data:
+                        detail += f" Data: {json.dumps(data)}"
+                    queue_line = f"[{timestamp}] MAP-BUG {req_id}: Bug report for map \"{clean_name}\" from {display_user} (designer map id {mid}).{detail}\n"
                     with open(self.server.console_queue_path, 'a') as f:
                         f.write(queue_line)
                     queue_written = True
@@ -1969,7 +2070,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 bug_entry = {
                     "bugNumber": req_id,
                     "submittedAt": now,
-                    "description": data.get("description", ""),
+                    "description": data.get("description") or text,
                     "response": None,
                     "respondedAt": None
                 }
@@ -2241,12 +2342,20 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             self.send_error_json("Faction not found", 404)
             return
 
-        # Base factions are visible to everyone (read-only)
+        # Base factions are visible to everyone read-only, except cavysupreme can edit them
         is_base = self.is_base_faction(faction)
-        read_only = is_base or faction["owner"] != username
-        if read_only and not is_base and username not in faction.get("viewers", []):
-            self.send_error_json("Forbidden", 403)
-            return
+        if is_base:
+            read_only = username != "cavysupreme"
+        else:
+            is_owner = faction["owner"] == username
+            is_editor = username in faction.get("editors", [])
+            is_viewer = username in faction.get("viewers", [])
+
+            read_only = not (is_owner or is_editor)
+
+            if not (is_owner or is_editor or is_viewer):
+                self.send_error_json("Forbidden", 403)
+                return
 
         response = dict(faction)
         if read_only:
@@ -2295,7 +2404,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         if not faction:
             self.send_error_json("Faction not found", 404)
             return
-        if faction["owner"] != username and username not in faction.get("viewers", []):
+        if faction["owner"] != username and username not in faction.get("editors", []) and username not in faction.get("viewers", []):
             self.send_error_json("Forbidden", 403)
             return
         self.send_json({"status": self.extract_queue_position(fid)})
@@ -2370,6 +2479,45 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
 
         self.send_json({"ok": True, "stability": stability})
 
+    def handle_build_update_instructions(self, fid: str):
+        """POST /designer/api/factions/<fid>/build-update-instructions"""
+        username = self.verify_session()
+        if not username:
+            self.send_error_json("Unauthorized", 401)
+            return
+
+        body = self.read_json_body()
+        if not body:
+            return
+
+        instructions = body.get('instructions', '')
+
+        with WRITE_LOCK:
+            faction = self.load_faction(fid)
+            if not faction:
+                self.send_error_json("Faction not found", 404)
+                return
+
+            # Check if owner or editor
+            is_owner = faction["owner"] == username
+            is_editor = username in faction.get("editors", [])
+
+            if not (is_owner or is_editor):
+                self.send_error_json("Forbidden", 403)
+                return
+
+            # Ensure build object exists
+            if "build" not in faction:
+                faction["build"] = {}
+
+            faction["build"]["updateInstructions"] = instructions
+            faction["updated"] = int(time.time())
+
+            faction_file = self.server.data_dir / "factions" / fid / "faction.json"
+            atomic_write(faction_file, faction)
+
+        self.send_json({"ok": True})
+
     def handle_copy_faction(self, fid: str):
         """POST /designer/api/factions/<fid>/copy - Create a duplicate of this faction"""
         username = self.verify_session()
@@ -2384,7 +2532,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 return
 
             # Check if owner or if base faction (base cannot be copied)
-            if faction["owner"] != username:
+            if faction["owner"] != username and username not in faction.get("editors", []):
                 self.send_error_json("Forbidden", 403)
                 return
 
@@ -2504,7 +2652,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 self.send_error_json("Faction not found", 404)
                 return
 
-            if faction["owner"] != username:
+            if faction["owner"] != username and username not in faction.get("editors", []):
                 self.send_error_json("Forbidden", 403)
                 return
 
@@ -2566,7 +2714,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 if username != "cavysupreme":
                     self.send_error_json("Base factions are read-only", 403)
                     return
-            elif faction["owner"] != username:
+            elif faction["owner"] != username and username not in faction.get("editors", []):
                 self.send_error_json("Forbidden", 403)
                 return
 
@@ -2628,14 +2776,14 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         # as Rules.backfillDesign in www/rules.js so the page's edits land on the right rows.
         self.backfill_section(faction["design"], section)
 
-        # Determine if this is an addition or change
-        is_addition = self.is_addition(faction, op)
+        # Determine if this is an addition or change (image uploads always count as a change)
+        is_addition = self.is_addition(faction, op) and not is_image_set(op)
 
         # Check if version is locked
         current = faction["current"]
         max_version = faction["maxVersion"]
         live_version = faction.get("build", {}).get("liveVersion")
-        is_locked = current < max_version or current == live_version
+        is_locked = current < max_version or same_version(current, live_version)
 
         # Check open session
         now = time.time()
@@ -2658,6 +2806,19 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         # Apply the operation
         if not self.apply_op_to_design(faction["design"], op):
             return False
+
+        # Track section modifications for built factions
+        build = faction.get("build", {})
+        if build.get("status") == "built":
+            # Every design part that changes the built faction, incl. card/spellbook images and colour
+            build_sections = ['ae', 'ufa', 'setup', 'units', 'sbr', 'sb', 'region', 'tokens', 'custom', 'menus', 'interactions',
+                              'card', 'sbImages', 'sbImagesB', 'meta']
+            if section in build_sections:
+                # Initialize sectionsModified if it doesn't exist
+                if "sectionsModified" not in build:
+                    build["sectionsModified"] = {}
+                # Record modification timestamp
+                build["sectionsModified"][section] = int(now)
 
         # Update session
         session["last"] = int(now)
@@ -2903,7 +3064,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 if username != "cavysupreme":
                     self.send_error_json("Base factions are read-only", 403)
                     return
-            elif faction["owner"] != username:
+            elif faction["owner"] != username and username not in faction.get("editors", []):
                 self.send_error_json("Forbidden", 403)
                 return
 
@@ -2942,7 +3103,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 if username != "cavysupreme":
                     self.send_error_json("Base factions are read-only", 403)
                     return
-            elif faction["owner"] != username:
+            elif faction["owner"] != username and username not in faction.get("editors", []):
                 self.send_error_json("Forbidden", 403)
                 return
 
@@ -3002,7 +3163,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 if username != "cavysupreme":
                     self.send_error_json("Base factions are read-only", 403)
                     return
-            elif faction["owner"] != username:
+            elif faction["owner"] != username and username not in faction.get("editors", []):
                 self.send_error_json("Forbidden", 403)
                 return
 
@@ -3012,7 +3173,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 return
 
             live_version = faction.get("build", {}).get("liveVersion")
-            if version == live_version:
+            if same_version(version, live_version):
                 self.send_error_json("Cannot delete live version")
                 return
 
@@ -3154,7 +3315,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             if username != "cavysupreme":
                 self.send_error_json("Base factions are read-only", 403)
                 return
-        elif faction["owner"] != username:
+        elif faction["owner"] != username and username not in faction.get("editors", []):
+            # Editors may file requests too (same rule as patch/save); viewers may not
             self.send_error_json("Forbidden", 403)
             return
 
@@ -3169,12 +3331,9 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
 
         # Check for duplicate (same type + fid + data)
         for existing in requests:
-            if (existing.get("type") == req_type and
-                existing.get("fid") == fid and
-                existing.get("status") in ("open", "notified") and
-                existing.get("data") == data):
-                # Return existing
-                self.send_json(existing)
+            if is_live_duplicate(existing, req_type, "fid", fid, data):
+                # Return existing (flagged, so the page can say "already queued" instead of "submitted")
+                self.send_duplicate(existing, username, text)
                 return
 
         # Create new request
@@ -3203,7 +3362,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             # Every designer prompt also goes into the admin console's Claude terminal log
             self.add_terminal_entry(self.terminal_type(request), self.display_name(username),
                                     text or f"{req_type} request for {faction['name']}",
-                                    "Waiting to be picked up.", ref=req_id, designObject=faction['name'])
+                                    "Waiting to be picked up.", ref=req_id, designObject=faction['name'], faction=faction['name'])
 
             # Faction builds go straight to the admin console queue (owner's standing OK to attempt them)
             if req_type == "build":
@@ -3238,7 +3397,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 bug_entry = {
                     "bugNumber": req_id,
                     "submittedAt": now,
-                    "description": data.get("description", ""),
+                    "description": data.get("description") or text,
                     "response": None,
                     "respondedAt": None
                 }
@@ -3251,7 +3410,15 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                     clean_name = faction["name"].replace('\n', ' ').replace('[', '').replace(']', '')
                     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
                     display_user = self.display_name(username)
-                    queue_line = f"[{timestamp}] FACTION-BUG {req_id}: Bug report for faction \"{clean_name}\" ({faction['acronym']}) from {display_user} (designer faction id {fid}).\n"
+                    # The queue line is what the ticker hands to the agent verbatim - it must carry
+                    # the actual request (text) and structured data (e.g. kind/unitId/mapImage for a
+                    # silhouette request), or the agent only ever sees this generic sentence and has
+                    # no way to know what the bug report is even about.
+                    detail = f" Details: {text}" if text else ""
+                    if data:
+                        detail += f" Data: {json.dumps(data)}"
+                    queue_line = (f"[{timestamp}] FACTION-BUG {req_id}: Bug report for faction \"{clean_name}\" "
+                                  f"({faction['acronym']}) from {display_user} (designer faction id {fid}).{detail}\n")
                     with open(self.server.console_queue_path, 'a') as f:
                         f.write(queue_line)
                     queue_written = True
@@ -3374,6 +3541,10 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             requests.append(request)
             requests_data["requests"] = requests
             atomic_write(requests_file, requests_data)
+            # Every designer prompt also goes into the admin console's Claude terminal log
+            self.add_terminal_entry("design answers", self.display_name(username),
+                                    f"Answered questions on {section_label} section: {text}" if text else f"Answered questions on {section_label} section",
+                                    "Waiting to be picked up.", ref=req_id, designObject=entity_name)
 
             # Write queue line to console queue file
             queue_written = False
@@ -3392,11 +3563,6 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 request["status"] = "notified"
                 requests_data["requests"] = requests
                 atomic_write(requests_file, requests_data)
-            else:
-                # Fallback: add terminal entry for admin console
-                self.add_terminal_entry("design answers", self.display_name(username),
-                                        f"Answered questions on {section_label} section",
-                                        "Waiting to be picked up.", ref=req_id, designObject=entity_name)
 
         self.send_json(request)
 
@@ -3461,12 +3627,9 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
 
         # Check for duplicate (same type + uid + data)
         for existing in requests:
-            if (existing.get("type") == req_type and
-                existing.get("uid") == uid and
-                existing.get("status") in ("open", "notified") and
-                existing.get("data") == data):
-                # Return existing
-                self.send_json(existing)
+            if is_live_duplicate(existing, req_type, "uid", uid, data):
+                # Return existing (flagged, so the page can say "already queued" instead of "submitted")
+                self.send_duplicate(existing, username, text)
                 return
 
         # Create new request
@@ -3495,6 +3658,10 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             requests.append(request)
             requests_data["requests"] = requests
             atomic_write(requests_file, requests_data)
+            # Every designer prompt also goes into the admin console's Claude terminal log
+            self.add_terminal_entry(self.terminal_type(request), self.display_name(username),
+                                    text or f"{req_type} request for unit {unit_name}",
+                                    "Waiting to be picked up.", ref=req_id, designObject=unit_name)
 
             # Write to console queue
             queue_written = False
@@ -3505,7 +3672,10 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 if req_type == "build":
                     queue_line = f"[{timestamp}] UNIT-BUILD {req_id}: Build the neutral unit \"{clean_name}\" designed by {display_user} into the homebrew build (designer unit id {uid}).\n"
                 elif req_type == "bug":
-                    queue_line = f"[{timestamp}] UNIT-BUG {req_id}: Bug report for unit \"{clean_name}\" from {display_user} (designer unit id {uid}).\n"
+                    detail = f" Details: {text}" if text else ""
+                    if data:
+                        detail += f" Data: {json.dumps(data)}"
+                    queue_line = f"[{timestamp}] UNIT-BUG {req_id}: Bug report for unit \"{clean_name}\" from {display_user} (designer unit id {uid}).{detail}\n"
                 else:
                     queue_line = None
 
@@ -3520,11 +3690,6 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 request["status"] = "notified"
                 requests_data["requests"] = requests
                 atomic_write(requests_file, requests_data)
-            elif req_type == "build":
-                # Fallback: add terminal entry for admin console
-                self.add_terminal_entry("unit build", self.display_name(username),
-                                        text or f"{req_type} request for unit {unit_name}",
-                                        "Waiting to be picked up.", ref=req_id, designObject=unit_name)
 
             # Update unit build status (only for build requests)
             if req_type == "build":
@@ -3545,7 +3710,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 bug_entry = {
                     "bugNumber": req_id,
                     "submittedAt": now,
-                    "description": data.get("description", ""),
+                    "description": data.get("description") or text,
                     "response": None,
                     "respondedAt": None
                 }
@@ -3623,6 +3788,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             self.handle_admin_view_map(parts[6])
         elif endpoint == 'image-usage':
             self.handle_admin_image_usage()
+        elif endpoint == 'settings':
+            self.handle_admin_get_settings()
         elif endpoint == 'terminal-log':
             with TERMINAL_LOCK:
                 path = self.server.data_dir / "terminal-log.json"
@@ -3632,6 +3799,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             self.send_json({"entries": sorted(log.get("entries", []), key=lambda e: e.get("at", 0), reverse=True)})
         elif endpoint == 'agent-output':
             self.handle_admin_agent_output()
+        elif endpoint == 'meta-agent-output':
+            self.handle_meta_agent_output()
         else:
             self.send_error_json("Unknown admin endpoint", 404)
 
@@ -3675,6 +3844,8 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                     self.handle_admin_live_game_versions(fid)
                 elif action == 'viewers':
                     self.handle_admin_viewers(fid)
+                elif action == 'editors':
+                    self.handle_admin_editors(fid)
                 elif action == 'qa':
                     self.handle_admin_post_qa(fid, 'faction')
                 elif action == 'submit-note':
@@ -3715,8 +3886,33 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                     self.send_error_json("Unknown admin endpoint", 404)
             else:
                 self.send_error_json("Invalid admin path", 400)
+        elif endpoint == 'meta-agent-prompt':
+            self.handle_meta_agent_prompt()
+        elif endpoint == 'settings':
+            self.handle_admin_save_settings()
         else:
             self.send_error_json("Unknown admin endpoint", 404)
+
+    def handle_admin_get_settings(self):
+        """GET admin/settings - shared admin console preferences (e.g. menu order),
+        stored server-side so they sync across devices using the same admin token."""
+        settings_file = self.server.data_dir / "admin-settings.json"
+        settings = load_json(settings_file) or {}
+        self.send_json(settings)
+
+    def handle_admin_save_settings(self):
+        """POST admin/settings - merge-save shared admin console preferences."""
+        body = self.read_json_body()
+        if body is None:
+            return
+
+        with WRITE_LOCK:
+            settings_file = self.server.data_dir / "admin-settings.json"
+            settings = load_json(settings_file) or {}
+            settings.update(body)
+            atomic_write(settings_file, settings)
+
+        self.send_json({"ok": True})
 
     def handle_admin_users(self):
         """GET admin/users"""
@@ -4051,15 +4247,11 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             self.sync_build_status(request, status)
             default = {"in_progress": "Being worked on now.", "notified": "Owner notified.",
                        "done": "Done.", "cancelled": "Cancelled.", "open": "Waiting to be picked up."}
-            self.update_terminal_entry(rid, default.get(status, status), only_if_default=True)
-
-            # Log admin status changes to terminal
             if status in ("done", "cancelled"):
-                design_name = request.get("designObjectName", request.get("faction") or request.get("mapName") or request.get("unit_name") or "Unknown")
-                req_type = request.get("type", "request")
-                self.add_terminal_entry("admin", "admin",
-                                       f"Mark {req_type} for {design_name} as {status}",
-                                       f"{default.get(status, status)}", ref=rid, designObject=design_name)
+                # Final state: close out every placeholder row for this request (never leave "pending").
+                self.finalize_terminal_rows(rid, default[status])
+            else:
+                self.update_terminal_entry(rid, default.get(status, status), only_if_default=True)
 
             # If marking bug request as done, update bugHistory with response
             if status == "done" and request.get("type") == "bug":
@@ -4068,10 +4260,13 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
 
         self.send_json(request)
 
-    # ---- Simple Update: fixed numbers pushed straight to the build (no ticker) ----
+    # ---- Simple Update: fixed numbers/text pushed straight to the build (no ticker) ----
     # Built factions read their fixed numbers from GET /designer/api/live/<ACR>/values.
     # Each push bumps "rev"; a game pins the rev it started with (?rev=N) so replays never change.
-    SIMPLE_UPDATE_FIELDS = {'qty', 'cost', 'effect', 'costB', 'effectB', 'cost2', 'effect2', 'costB2', 'effectB2', 'power', 'aeStart', 'awakenPower', 'dice', 'pains', 'kills', 'num'}
+    SIMPLE_UPDATE_NUMBER_FIELDS = {'qty', 'cost', 'effect', 'costB', 'effectB', 'cost2', 'effect2', 'costB2', 'effectB2', 'power', 'aeStart', 'awakenPower', 'dice', 'pains', 'kills', 'num'}
+    # Text fields pushed by the "Fixed Text" table (unit/SB/UFA names and text, SBR text) - see Rules.fixedText in app.js
+    SIMPLE_UPDATE_TEXT_FIELDS = {'name', 'text', 'shortText', 'nameB', 'textB', 'name2', 'text2', 'nameB2', 'textB2'}
+    SIMPLE_UPDATE_FIELDS = SIMPLE_UPDATE_NUMBER_FIELDS | SIMPLE_UPDATE_TEXT_FIELDS
 
     @staticmethod
     def simple_update_path(section, row_id, field):
@@ -4088,7 +4283,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         """Pushed values that apply to this live build, up to rev (a rebuild starts clean)."""
         values = {}
         for h in lv.get("history", []):
-            if h.get("liveVersion") == live_version and (rev is None or h["rev"] <= rev):
+            if same_version(h.get("liveVersion"), live_version) and (rev is None or h["rev"] <= rev):
                 values[h["path"]] = h["to"]
         return values
 
@@ -4098,7 +4293,26 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             return None
         v_file = self.server.data_dir / "factions" / fid / "v" / f"{live_version}.json"
         if not v_file.exists():
-            return None
+            # Fallback for factions built before liveVersion was numeric (e.g. "HB 9267656"):
+            # find the version that was actually built. requestedAt is when the designer's
+            # edits were snapshotted for Claude to build from, so the version that was
+            # "current" at that moment is the one that got built - not whatever "current"
+            # is now, which may have moved on with further unbuilt edits since.
+            if isinstance(live_version, str) and not live_version.isdigit():
+                anchor = faction.get("build", {}).get("requestedAt") or faction.get("build", {}).get("builtAt")
+                resolved = None
+                if anchor:
+                    for v in sorted(faction.get("versions", []), key=lambda v: v.get("n", 0)):
+                        if v.get("created", 0) <= anchor and not v.get("deleted"):
+                            resolved = v.get("n")
+                if resolved is None:
+                    return None
+                v_file = self.server.data_dir / "factions" / fid / "v" / f"{resolved}.json"
+                if not v_file.exists():
+                    return None
+                live_version = resolved
+            else:
+                return None
         built = load_json(v_file)
         for path, value in self.live_overrides(self.load_live_values(fid), live_version).items():
             if self.get_path_value(built, path.rsplit('.', 1)[0]) is not None:
@@ -4114,7 +4328,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         if data.get('type') == 'image_swap':
             return self.handle_image_swap_push(fid, faction, username, data)
 
-        # Handle numeric field updates
+        # Handle numeric and text field updates
         section, row_id, field = data.get('section'), data.get('rowId'), data.get('field')
         if field not in self.SIMPLE_UPDATE_FIELDS or not isinstance(section, str) or not section.isalnum() \
                 or (row_id is not None and not (isinstance(row_id, str) and re.fullmatch(r'[A-Za-z0-9_-]+', row_id))):
@@ -4123,7 +4337,11 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         path = self.simple_update_path(section, row_id, field)
         # The value always comes from the saved design, never from the browser
         value = self.get_path_value(faction["design"], path)
-        if isinstance(value, bool) or not isinstance(value, (int, float)):
+        if field in self.SIMPLE_UPDATE_TEXT_FIELDS:
+            if not isinstance(value, str) or not value:
+                self.send_error_json("That value isn't plain text in the design, so it can't be pushed.")
+                return
+        elif isinstance(value, bool) or not isinstance(value, (int, float)):
             self.send_error_json("That value isn't a plain number in the design, so it can't be pushed.")
             return
         now = int(time.time())
@@ -4150,6 +4368,10 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             }
             requests_data.setdefault("requests", []).append(request)
             atomic_write(requests_file, requests_data)
+            # Every designer prompt also goes into the admin console's Claude terminal log
+            self.add_terminal_entry("design update", self.display_name(username), request["text"],
+                                    "Saved for the build; reaches the game after faction-values.py sync && apply --deploy (no Claude needed).", ref=request["id"],
+                                    designObject=faction['name'], faction=faction['name'], final=True)
         self.send_json(request)
 
     def handle_image_swap_push(self, fid: str, faction: Dict, username: str, data: Dict):
@@ -4161,6 +4383,14 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         if not re.fullmatch(r'[a-z0-9]{2,3}-[a-z0-9\-]+\.webp', filename, re.IGNORECASE):
             self.send_error_json("Invalid filename. Use format: acronym-name.webp (e.g., fm-glyph.webp)")
             return
+        # The sync step (faction-values.py pull_image_swaps) only picks up files that start with
+        # THIS faction's acronym, so a wrong prefix would be accepted here and then silently never
+        # reach the game. Refuse it up front instead.
+        acr = str(faction.get("acronym", "")).lower()
+        if acr and not filename.lower().startswith(acr + "-"):
+            self.send_error_json(f"Filename must start with this faction's acronym: {acr}-<name>.webp (e.g., {acr}-glyph.webp)")
+            return
+        filename = filename.lower()
 
         # Validate image_id
         if not re.fullmatch(r'[a-f0-9]+\.(webp|png|jpg)', image_id):
@@ -4200,6 +4430,10 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             }
             requests_data.setdefault("requests", []).append(request)
             atomic_write(requests_file, requests_data)
+            # Every designer prompt also goes into the admin console's Claude terminal log
+            self.add_terminal_entry("design update", self.display_name(username), request["text"],
+                                    "Saved to imageSwaps; needs faction-values.py sync && apply --deploy to go live.",
+                                    ref=request["id"], designObject=faction['name'], faction=faction['name'], final=True)
 
         self.send_json(request)
 
@@ -4233,6 +4467,12 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
 
         response = dict(faction)
         response["pendingRequests"] = self.get_pending_requests_for_entity(fid, "faction")
+        # Same builtDesign/liveValues the designer page itself gets (handle_get_faction) and the
+        # admin read-only viewer gets (handle_admin_view_faction) - without this, Claude's own
+        # admin CLI looked null here even when the real page had a built version, which caused a
+        # false "builtDesign is null" diagnosis for a bug that was actually just a deploy lag.
+        response["builtDesign"] = self.built_design_with_overrides(fid, faction)
+        response["liveValues"] = self.load_live_values(fid)
         # Add spellbook guidance to design for Claude
         if "design" in response:
             response["design"]["spellbookGuidance"] = compute_spellbook_guidance(response["design"])
@@ -4382,20 +4622,28 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
 
             build["status"] = status
 
-            if status == 'built' and version:
-                build["liveVersion"] = version
-                build["builtAt"] = int(time.time())
+            if status == 'built':
+                # If no version provided or version is not numeric, use the faction's current version
+                if not version or (isinstance(version, str) and not version.isdigit()):
+                    version = faction.get("current")
+                if version:
+                    build["liveVersion"] = normalize_version(version)
+                    build["builtAt"] = int(time.time())
 
-                # Add to history if not already there
-                if not any(h.get("version") == version for h in build.get("history", [])):
-                    build.setdefault("history", []).append({
-                        "version": version,
-                        "builtAt": build["builtAt"]
-                    })
+                    # Add to history if not already there
+                    if not any(h.get("version") == version for h in build.get("history", [])):
+                        build.setdefault("history", []).append({
+                            "version": version,
+                            "builtAt": build["builtAt"]
+                        })
 
-                # Set stability to alpha if not already set
-                if "stability" not in faction:
-                    faction["stability"] = "alpha"
+                    # Clear section modification tracking when built
+                    if "sectionsModified" in build:
+                        del build["sectionsModified"]
+
+                    # Set stability to alpha if not already set
+                    if "stability" not in faction:
+                        faction["stability"] = "alpha"
 
             faction["updated"] = int(time.time())
             faction_file = self.server.data_dir / "factions" / fid / "faction.json"
@@ -4517,16 +4765,24 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
 
             build["status"] = status
 
-            if status == 'built' and version:
-                build["liveVersion"] = version
-                build["builtAt"] = int(time.time())
+            if status == 'built':
+                # If no version provided or version is not numeric, use the unit's current version
+                if not version or (isinstance(version, str) and not version.isdigit()):
+                    version = unit.get("current")
+                if version:
+                    build["liveVersion"] = normalize_version(version)
+                    build["builtAt"] = int(time.time())
 
-                # Add to history if not already there
-                if not any(h.get("version") == version for h in build.get("history", [])):
-                    build.setdefault("history", []).append({
-                        "version": version,
-                        "builtAt": build["builtAt"]
-                    })
+                    # Add to history if not already there
+                    if not any(h.get("version") == version for h in build.get("history", [])):
+                        build.setdefault("history", []).append({
+                            "version": version,
+                            "builtAt": build["builtAt"]
+                        })
+
+                    # Clear section modification tracking when built
+                    if "sectionsModified" in build:
+                        del build["sectionsModified"]
 
             unit["updated"] = int(time.time())
             unit_file = self.units_dir() / uid / "unit.json"
@@ -4698,16 +4954,24 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
 
             build["status"] = status
 
-            if status == 'built' and version:
-                build["liveVersion"] = version
-                build["builtAt"] = int(time.time())
+            if status == 'built':
+                # If no version provided or version is not numeric, use the map's current version
+                if not version or (isinstance(version, str) and not version.isdigit()):
+                    version = map_obj.get("current")
+                if version:
+                    build["liveVersion"] = normalize_version(version)
+                    build["builtAt"] = int(time.time())
 
-                # Add to history if not already there
-                if not any(h.get("version") == version for h in build.get("history", [])):
-                    build.setdefault("history", []).append({
-                        "version": version,
-                        "builtAt": build["builtAt"]
-                    })
+                    # Add to history if not already there
+                    if not any(h.get("version") == version for h in build.get("history", [])):
+                        build.setdefault("history", []).append({
+                            "version": version,
+                            "builtAt": build["builtAt"]
+                        })
+
+                    # Clear section modification tracking when built
+                    if "sectionsModified" in build:
+                        del build["sectionsModified"]
 
             map_obj["updated"] = int(time.time())
             map_file = self.maps_dir() / mid / "map.json"
@@ -4868,6 +5132,30 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             atomic_write(self.server.data_dir / "factions" / fid / "faction.json", faction)
         self.send_json({"id": fid, "viewers": faction["viewers"]})
 
+    def handle_admin_editors(self, fid: str):
+        """POST admin/factions/<fid>/editors {editors:[username...]} -> edit access for those users"""
+        body = self.read_json_body()
+        if body is None:
+            return
+        editors = body.get('editors', [])
+        if not isinstance(editors, list):
+            self.send_error_json("editors must be an array")
+            return
+        users = (load_json(self.server.data_dir / "users.json") or {}).get("users", {})
+        editors = [str(e).strip().lower() for e in editors]
+        missing = [e for e in editors if e not in users]
+        if missing:
+            self.send_error_json(f"No such user: {', '.join(missing)}")
+            return
+        with WRITE_LOCK:
+            faction = self.load_faction(fid)
+            if not faction:
+                self.send_error_json("Faction not found", 404)
+                return
+            faction["editors"] = [e for e in dict.fromkeys(editors) if e != faction["owner"]]
+            atomic_write(self.server.data_dir / "factions" / fid / "faction.json", faction)
+        self.send_json({"id": fid, "editors": faction["editors"]})
+
     def handle_admin_import_faction(self):
         """POST admin/import-faction {owner, name, acronym, design, built:bool, viewers:[], base:bool}
         Creates a design for a user from a faction that already exists in code (no reserved-acronym
@@ -5007,30 +5295,57 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
     def terminal_type(request: Dict) -> str:
         t = request.get("type")
         kind = request.get("kind")
+        data = request.get("data", {})
+        data_kind = data.get("kind")
+
         if t == "extract":
             if kind == "map":
                 return "map extraction"
-            return "design menu" if request.get("data", {}).get("target") == "menus" else "design extraction"
+            return "design menu" if data.get("target") == "menus" else "design extraction"
         if t == "bug":
             if kind == "map":
                 return "map bug fix"
             elif kind == "unit":
                 return "unit bug fix"
+            elif data_kind == "silhouette":
+                return "silhouette generation"
             return "design bug fix"
         if t == "build":
             if kind == "map":
                 return "map build"
             elif kind == "unit":
                 return "unit build"
+        if t == "simple_update":
+            return "design update"
         return "design build"   # build and update both change the built faction
 
-    def add_terminal_entry(self, kind: str, user: str, prompt: str, summary: str, ref: Optional[str] = None, designObject: Optional[str] = None) -> Dict:
+    def send_duplicate(self, existing: Dict, username: str, text: str):
+        """Reply to a repeat click that was folded into a request still in flight. The click is NOT
+        silently swallowed: it gets its own (final) Claude terminal log row pointing at the queued request."""
+        name = existing.get("designObjectName") or existing.get("faction") or existing.get("map") or existing.get("unit")
+        self.add_terminal_entry(self.terminal_type(existing), self.display_name(username),
+                                text or f"{existing.get('type')} request for {name}",
+                                f"Repeat click within {DUPLICATE_WINDOW_SECONDS // 60} minutes of an identical request; "
+                                f"not queued twice - it is already in the Claude admin queue as {existing.get('id')}.",
+                                designObject=name, faction=existing.get("faction"), final=True)
+        self.send_json(dict(existing, duplicate=True))
+
+    def add_terminal_entry(self, kind: str, user: str, prompt: str, summary: str, ref: Optional[str] = None, designObject: Optional[str] = None, faction: Optional[str] = None, final: bool = False) -> Dict:
         """Append one row to terminal-log.json. Caller may already hold WRITE_LOCK (it is not re-entrant),
-        so this uses its own lock."""
+        so this uses its own lock.
+
+        defaultSummary=True means "placeholder, a Claude agent will post the real summary later"
+        and is what makes the admin console show the row as "pending" (admin.html status()).
+        Pass final=True when the summary passed in is already the complete, final word on this
+        request (e.g. a Simple Update applied synchronously - no ticker or agent ever follows up
+        on it), so the row doesn't sit on "pending" forever with no one left to flip it.
+        """
         entry = {"id": ref or f"t_{secrets.token_urlsafe(6)}", "at": int(time.time()), "type": kind,
-                 "user": user, "prompt": str(prompt)[:20000], "summary": str(summary)[:20000], "defaultSummary": True}
+                 "user": user, "prompt": str(prompt)[:20000], "summary": str(summary)[:20000], "defaultSummary": not final}
         if designObject:
             entry["designObject"] = str(designObject)[:200]
+        if faction:
+            entry["faction"] = str(faction)[:200]
         with TERMINAL_LOCK:
             path = self.server.data_dir / "terminal-log.json"
             log = load_json(path) or {"entries": []}
@@ -5041,11 +5356,13 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         return entry
 
     def update_terminal_entry(self, entry_id: str, summary: Optional[str] = None, only_if_default: bool = False,
-                              cost: Optional[float] = None, add_cost: bool = False, cost_note: Optional[str] = None) -> Optional[Dict]:
+                              cost: Optional[float] = None, add_cost: bool = False, cost_note: Optional[str] = None, design_object: Optional[str] = None) -> Optional[Dict]:
         with TERMINAL_LOCK:
             path = self.server.data_dir / "terminal-log.json"
             log = load_json(path) or {"entries": []}
-            entry = next((e for e in log.get("entries", []) if e.get("id") == entry_id), None)
+            # If there are duplicate IDs, take the last one (most recent)
+            matching = [e for e in log.get("entries", []) if e.get("id") == entry_id]
+            entry = matching[-1] if matching else None
             if not entry or (only_if_default and not entry.get("defaultSummary")):
                 return entry
             if summary is not None:
@@ -5061,9 +5378,54 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                     entry.pop("costNote", None)
                 else:
                     entry["costNote"] = str(cost_note)[:60]
+            if design_object is not None:
+                if design_object == "":
+                    entry.pop("designObject", None)
+                else:
+                    entry["designObject"] = str(design_object)[:200]
             entry["updatedAt"] = int(time.time())
             atomic_write(path, log)
         return entry
+
+    def finalize_terminal_rows(self, rid: str, summary: str) -> int:
+        """A request reached a final state (done/cancelled): clear the "placeholder" flag on EVERY
+        terminal-log row still waiting on it, so none of them sit on "pending" in the admin console.
+        Covers the request's own row(s) (id == rid) and the admin-queue copy whose prompt starts
+        "<KIND> <rid>:" (e.g. "FACTION-BUG r_xxx: ..."). Rows that already carry a real summary
+        from an agent are left untouched. Returns how many rows were changed."""
+        changed = 0
+        with TERMINAL_LOCK:
+            path = self.server.data_dir / "terminal-log.json"
+            log = load_json(path) or {"entries": []}
+            for entry in log.get("entries", []):
+                if not entry.get("defaultSummary"):
+                    continue
+                if entry.get("id") == rid or f" {rid}:" in str(entry.get("prompt", ""))[:80]:
+                    entry["summary"] = summary
+                    entry["defaultSummary"] = False
+                    entry["updatedAt"] = int(time.time())
+                    changed += 1
+            if changed:
+                atomic_write(path, log)
+        return changed
+
+    def handle_terminal_log(self):
+        """GET /designer/api/terminal-log?name=<design name>: the Claude terminal log entries for one
+        faction/unit/map, used by its "Terminal Log & Bug Report" screen. Requires login; scoped to the
+        requested design name so one user's session can't pull every other user's terminal log."""
+        username = self.verify_session()
+        if not username:
+            self.send_error_json("Unauthorized", 401)
+            return
+        name = parse_qs(urlparse(self.path).query).get('name', [''])[0]
+        with TERMINAL_LOCK:
+            path = self.server.data_dir / "terminal-log.json"
+            log = load_json(path) or {"entries": []}
+            if number_terminal_entries(log):
+                atomic_write(path, log)
+        entries = [e for e in log.get("entries", [])
+                   if name and (e.get("faction") == name or e.get("designObject") == name)]
+        self.send_json({"entries": sorted(entries, key=lambda e: e.get("at", 0), reverse=True)})
 
     def handle_admin_agent_output(self):
         """GET admin/agent-output: returns live JSONL output from the admin queue agent.
@@ -5117,9 +5479,64 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                 "output": f"Error reading agent output: {str(e)}"
             })
 
+    def handle_meta_agent_prompt(self):
+        """POST admin/meta-agent-prompt: writes prompt to /tmp/meta-agent-prompts.log for pickup by meta agent watchdog."""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length).decode('utf-8')
+
+            if not body.strip():
+                self.send_error_json("Empty prompt", 400)
+                return
+
+            # Write to the meta agent prompt file
+            prompt_file = Path("/tmp/meta-agent-prompts.log")
+            with open(prompt_file, 'w', encoding='utf-8') as f:
+                f.write(body)
+
+            self.send_json({"success": True, "message": "Prompt queued for meta agent"})
+        except Exception as e:
+            self.send_error_json(f"Failed to queue prompt: {str(e)}", 500)
+
+    def handle_meta_agent_output(self):
+        """GET admin/meta-agent-output?lines=N: returns recent output from /tmp/meta-agent-stdout.log."""
+        # Parse query parameters
+        parsed = urlparse(self.path)
+        params = parse_qs(parsed.query)
+        max_lines = int(params.get('lines', ['100'])[0])
+
+        output_file = Path("/tmp/meta-agent-stdout.log")
+
+        if not output_file.exists():
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/plain; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(b'(no output yet)')
+            return
+
+        try:
+            with open(output_file, 'r', encoding='utf-8', errors='ignore') as f:
+                lines = f.readlines()
+
+            # Return last N lines
+            if len(lines) > max_lines:
+                lines = lines[-max_lines:]
+
+            output = ''.join(lines)
+
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/plain; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(output.encode('utf-8'))
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-Type', 'text/plain; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(f"Error reading meta agent output: {str(e)}".encode('utf-8'))
+
     def handle_admin_terminal_log(self, entry_id: Optional[str]):
         """POST admin/terminal-log {type,user,prompt,summary,[id],[at]} adds a row;
-        POST admin/terminal-log/<id> {summary?,cost?,add?,costNote?} updates that row."""
+        POST admin/terminal-log/<id> {summary?,cost?,add?,costNote?,designObject?} updates that row."""
         body = self.read_json_body()
         if body is None:
             return
@@ -5128,6 +5545,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             cost = body.get('cost')
             add_cost = body.get('add', False)
             cost_note = body.get('costNote') if 'costNote' in body else None
+            design_object = body.get('designObject') if 'designObject' in body else None
             if cost is not None:
                 if not isinstance(cost, (int, float)) or cost < 0:
                     self.send_error_json("cost must be a non-negative number", 400)
@@ -5135,7 +5553,10 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             if cost_note is not None and not isinstance(cost_note, str):
                 self.send_error_json("costNote must be a string", 400)
                 return
-            entry = self.update_terminal_entry(entry_id, summary=summary, cost=cost, add_cost=add_cost, cost_note=cost_note)
+            if design_object is not None and not isinstance(design_object, str):
+                self.send_error_json("designObject must be a string", 400)
+                return
+            entry = self.update_terminal_entry(entry_id, summary=summary, cost=cost, add_cost=add_cost, cost_note=cost_note, design_object=design_object)
             if not entry:
                 self.send_error_json("Entry not found", 404)
                 return
@@ -5236,7 +5657,7 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
                                 "greyedReason": "", "infoOnly": False, "confirm": False, "confirmText": "",
                                 "showPicked": False, "leadsToNext": False, "next": None, "nextTrigger": ""}], "adminNotes": ""},
             "interactions": {"rows": [
-                {"id": self.new_id(), "otherFaction": "Sleeper", "abilityType": "Spellbook", "ability": "Ancient Sorcery",
+                {"id": self.new_id(), "otherFaction": "Sleeper", "abilityType": "Spellbook", "ability": "AncientSorcery",
                  "abilityText": "", "yourAbility": "ufa", "interactionDesc": ""},
                 {"id": self.new_id(), "otherFaction": "Neutral Monsters", "abilityType": "Unit Special",
                  "ability": "Blasphemous Obeisance", "abilityText": "", "yourAbility": "", "interactionDesc": ""},

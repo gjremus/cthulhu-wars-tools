@@ -1,0 +1,996 @@
+[
+  {
+    "id": "an-acolyte",
+    "name": "Acolyte",
+    "type": "Cultist",
+    "faction": "Anointed",
+    "url": "/designer/silhouettes/an-acolyte.svg"
+  },
+  {
+    "id": "an-cathedral",
+    "name": "Cathedral",
+    "type": "Monster",
+    "faction": "Anointed",
+    "url": "/designer/silhouettes/an-cathedral.svg"
+  },
+  {
+    "id": "an-reanimated",
+    "name": "Reanimated",
+    "type": "Monster",
+    "faction": "Anointed",
+    "url": "/designer/silhouettes/an-reanimated.svg"
+  },
+  {
+    "id": "an-un-man",
+    "name": "Un Man",
+    "type": "Monster",
+    "faction": "Anointed",
+    "url": "/designer/silhouettes/an-un-man.svg"
+  },
+  {
+    "id": "an-yothan",
+    "name": "Yothan",
+    "type": "Terror",
+    "faction": "Anointed",
+    "url": "/designer/silhouettes/an-yothan.svg"
+  },
+  {
+    "id": "bb-acolyte",
+    "name": "Acolyte",
+    "type": "Cultist",
+    "faction": "Bubastis",
+    "url": "/designer/silhouettes/bb-acolyte.svg"
+  },
+  {
+    "id": "bb-bastet",
+    "name": "Bastet",
+    "type": "Elder God",
+    "faction": "Bubastis",
+    "url": "/designer/silhouettes/bb-bastet.svg"
+  },
+  {
+    "id": "bb-cat-from-mars",
+    "name": "Cat From Mars",
+    "type": "Monster",
+    "faction": "Bubastis",
+    "url": "/designer/silhouettes/bb-cat-from-mars.svg"
+  },
+  {
+    "id": "bb-cat-from-saturn",
+    "name": "Cat From Saturn",
+    "type": "Monster",
+    "faction": "Bubastis",
+    "url": "/designer/silhouettes/bb-cat-from-saturn.svg"
+  },
+  {
+    "id": "bb-cat-from-uranus",
+    "name": "Cat From Uranus",
+    "type": "Monster",
+    "faction": "Bubastis",
+    "url": "/designer/silhouettes/bb-cat-from-uranus.svg"
+  },
+  {
+    "id": "bb-earth-cat",
+    "name": "Earth Cat",
+    "type": "Monster",
+    "faction": "Bubastis",
+    "url": "/designer/silhouettes/bb-earth-cat.svg"
+  },
+  {
+    "id": "bg-acolyte",
+    "name": "Acolyte",
+    "type": "Cultist",
+    "faction": "Black Goat",
+    "url": "/designer/silhouettes/bg-acolyte.svg"
+  },
+  {
+    "id": "bg-dark-young",
+    "name": "Dark Young",
+    "type": "Monster",
+    "faction": "Black Goat",
+    "url": "/designer/silhouettes/bg-dark-young.svg"
+  },
+  {
+    "id": "bg-fungi-from-yuggoth",
+    "name": "Fungi From Yuggoth",
+    "type": "Monster",
+    "faction": "Black Goat",
+    "url": "/designer/silhouettes/bg-fungi-from-yuggoth.svg"
+  },
+  {
+    "id": "bg-ghoul",
+    "name": "Ghoul",
+    "type": "Monster",
+    "faction": "Black Goat",
+    "url": "/designer/silhouettes/bg-ghoul.svg"
+  },
+  {
+    "id": "bg-shub-niggurath",
+    "name": "Shub Niggurath",
+    "type": "Monster",
+    "faction": "Black Goat",
+    "url": "/designer/silhouettes/bg-shub-niggurath.svg"
+  },
+  {
+    "id": "cc-acolyte",
+    "name": "Acolyte",
+    "type": "Cultist",
+    "faction": "Crawling Chaos",
+    "url": "/designer/silhouettes/cc-acolyte.svg"
+  },
+  {
+    "id": "cc-flying-polyp",
+    "name": "Flying Polyp",
+    "type": "Monster",
+    "faction": "Crawling Chaos",
+    "url": "/designer/silhouettes/cc-flying-polyp.svg"
+  },
+  {
+    "id": "cc-hunting-horror",
+    "name": "Hunting Horror",
+    "type": "Monster",
+    "faction": "Crawling Chaos",
+    "url": "/designer/silhouettes/cc-hunting-horror.svg"
+  },
+  {
+    "id": "cc-nightgaunt",
+    "name": "Nightgaunt",
+    "type": "Monster",
+    "faction": "Crawling Chaos",
+    "url": "/designer/silhouettes/cc-nightgaunt.svg"
+  },
+  {
+    "id": "cc-nyarlathotep",
+    "name": "Nyarlathotep",
+    "type": "GOO",
+    "faction": "Crawling Chaos",
+    "url": "/designer/silhouettes/cc-nyarlathotep.svg"
+  },
+  {
+    "id": "cs-acolyte",
+    "name": "Acolyte",
+    "type": "Cultist",
+    "faction": "Colour Out of Space",
+    "url": "/designer/silhouettes/cs-acolyte.svg"
+  },
+  {
+    "id": "cs-effervescent-excrescence",
+    "name": "Effervescent Excrescence",
+    "type": "Monster",
+    "faction": "Colour Out of Space",
+    "url": "/designer/silhouettes/cs-effervescent-excrescence.svg"
+  },
+  {
+    "id": "cs-luminous-globule",
+    "name": "Luminous Globule",
+    "type": "Terror",
+    "faction": "Colour Out of Space",
+    "url": "/designer/silhouettes/cs-luminous-globule.svg"
+  },
+  {
+    "id": "cs-meteorite",
+    "name": "Meteorite",
+    "type": "Monster",
+    "faction": "Colour Out of Space",
+    "url": "/designer/silhouettes/cs-meteorite.svg"
+  },
+  {
+    "id": "cs-prismatic-well",
+    "name": "Prismatic Well",
+    "type": "Monster",
+    "faction": "Colour Out of Space",
+    "url": "/designer/silhouettes/cs-prismatic-well.svg"
+  },
+  {
+    "id": "cs-tulzscha",
+    "name": "Tulzscha",
+    "type": "GOO",
+    "faction": "Colour Out of Space",
+    "url": "/designer/silhouettes/cs-tulzscha.svg"
+  },
+  {
+    "id": "dc-acolyte",
+    "name": "Acolyte",
+    "type": "Cultist",
+    "faction": "Daemon Sultan",
+    "url": "/designer/silhouettes/dc-acolyte.svg"
+  },
+  {
+    "id": "dc-fallen-prophet",
+    "name": "Fallen Prophet",
+    "type": "Monster",
+    "faction": "Daemon Sultan",
+    "url": "/designer/silhouettes/dc-fallen-prophet.svg"
+  },
+  {
+    "id": "dc-mindless-husk",
+    "name": "Mindless Husk",
+    "type": "Monster",
+    "faction": "Daemon Sultan",
+    "url": "/designer/silhouettes/dc-mindless-husk.svg"
+  },
+  {
+    "id": "dgt-acolyte",
+    "name": "Acolyte",
+    "type": "Cultist",
+    "faction": "Tribulation",
+    "url": "/designer/silhouettes/dgt-acolyte.svg"
+  },
+  {
+    "id": "dgt-conquest",
+    "name": "Conquest",
+    "type": "Monster",
+    "faction": "Tribulation",
+    "url": "/designer/silhouettes/dgt-conquest.svg"
+  },
+  {
+    "id": "dgt-death",
+    "name": "Death",
+    "type": "Monster",
+    "faction": "Tribulation",
+    "url": "/designer/silhouettes/dgt-death.svg"
+  },
+  {
+    "id": "dgt-famine",
+    "name": "Famine",
+    "type": "Monster",
+    "faction": "Tribulation",
+    "url": "/designer/silhouettes/dgt-famine.svg"
+  },
+  {
+    "id": "dgt-pestilence",
+    "name": "Pestilence",
+    "type": "Monster",
+    "faction": "Tribulation",
+    "url": "/designer/silhouettes/dgt-pestilence.svg"
+  },
+  {
+    "id": "dgt-war",
+    "name": "War",
+    "type": "Monster",
+    "faction": "Tribulation",
+    "url": "/designer/silhouettes/dgt-war.svg"
+  },
+  {
+    "id": "ds-acolyte",
+    "name": "Acolyte",
+    "type": "Cultist",
+    "faction": "Dread Sovereign",
+    "url": "/designer/silhouettes/ds-acolyte.svg"
+  },
+  {
+    "id": "ds-avatar-antithesis",
+    "name": "Avatar Antithesis",
+    "type": "GOO",
+    "faction": "Dread Sovereign",
+    "url": "/designer/silhouettes/ds-avatar-antithesis.svg"
+  },
+  {
+    "id": "ds-avatar-synthesis",
+    "name": "Avatar Synthesis",
+    "type": "GOO",
+    "faction": "Dread Sovereign",
+    "url": "/designer/silhouettes/ds-avatar-synthesis.svg"
+  },
+  {
+    "id": "ds-avatar-thesis",
+    "name": "Avatar Thesis",
+    "type": "GOO",
+    "faction": "Dread Sovereign",
+    "url": "/designer/silhouettes/ds-avatar-thesis.svg"
+  },
+  {
+    "id": "ds-larva-antithesis",
+    "name": "Larva Antithesis",
+    "type": "Monster",
+    "faction": "Dread Sovereign",
+    "url": "/designer/silhouettes/ds-larva-antithesis.svg"
+  },
+  {
+    "id": "ds-larva-synthesis",
+    "name": "Larva Synthesis",
+    "type": "Monster",
+    "faction": "Dread Sovereign",
+    "url": "/designer/silhouettes/ds-larva-synthesis.svg"
+  },
+  {
+    "id": "ds-larva-thesis",
+    "name": "Larva Thesis",
+    "type": "Monster",
+    "faction": "Dread Sovereign",
+    "url": "/designer/silhouettes/ds-larva-thesis.svg"
+  },
+  {
+    "id": "fb-acolyte",
+    "name": "Acolyte",
+    "type": "Cultist",
+    "faction": "FB",
+    "url": "/designer/silhouettes/fb-acolyte.svg"
+  },
+  {
+    "id": "fb-desiccated",
+    "name": "Desiccated",
+    "type": "Monster",
+    "faction": "FB",
+    "url": "/designer/silhouettes/fb-desiccated.svg"
+  },
+  {
+    "id": "fb-ghatanothoa",
+    "name": "Ghatanothoa",
+    "type": "GOO",
+    "faction": "FB",
+    "url": "/designer/silhouettes/fb-ghatanothoa.svg"
+  },
+  {
+    "id": "fb-revenant",
+    "name": "Revenant",
+    "type": "Monster",
+    "faction": "FB",
+    "url": "/designer/silhouettes/fb-revenant.svg"
+  },
+  {
+    "id": "fbe-byagoona",
+    "name": "Byagoona",
+    "type": "GOO",
+    "faction": "Faceless Blight",
+    "url": "/designer/silhouettes/fbe-byagoona.svg"
+  },
+  {
+    "id": "fm-acolyte",
+    "name": "Acolyte",
+    "type": "Cultist",
+    "faction": "Fleshmason",
+    "url": "/designer/silhouettes/fm-acolyte.svg"
+  },
+  {
+    "id": "fm-body-architect",
+    "name": "Body Architect",
+    "type": "Monster",
+    "faction": "Fleshmason",
+    "url": "/designer/silhouettes/fm-body-architect.svg"
+  },
+  {
+    "id": "fm-bone-sculptor",
+    "name": "Bone Sculptor",
+    "type": "Monster",
+    "faction": "Fleshmason",
+    "url": "/designer/silhouettes/fm-bone-sculptor.svg"
+  },
+  {
+    "id": "fm-muscle-stitcher",
+    "name": "Muscle Stitcher",
+    "type": "Monster",
+    "faction": "Fleshmason",
+    "url": "/designer/silhouettes/fm-muscle-stitcher.svg"
+  },
+  {
+    "id": "fm-screaming-wall",
+    "name": "Screaming Wall",
+    "type": "Monster",
+    "faction": "Fleshmason",
+    "url": "/designer/silhouettes/fm-screaming-wall.svg"
+  },
+  {
+    "id": "gc-acolyte",
+    "name": "Acolyte",
+    "type": "Cultist",
+    "faction": "Great Cthulhu",
+    "url": "/designer/silhouettes/gc-acolyte.svg"
+  },
+  {
+    "id": "gc-cthulhu",
+    "name": "Cthulhu",
+    "type": "GOO",
+    "faction": "Great Cthulhu",
+    "url": "/designer/silhouettes/gc-cthulhu.svg"
+  },
+  {
+    "id": "gc-deep-one",
+    "name": "Deep One",
+    "type": "Monster",
+    "faction": "Great Cthulhu",
+    "url": "/designer/silhouettes/gc-deep-one.svg"
+  },
+  {
+    "id": "gc-shoggoth",
+    "name": "Shoggoth",
+    "type": "Monster",
+    "faction": "Great Cthulhu",
+    "url": "/designer/silhouettes/gc-shoggoth.svg"
+  },
+  {
+    "id": "gc-starspawn",
+    "name": "Starspawn",
+    "type": "Monster",
+    "faction": "Great Cthulhu",
+    "url": "/designer/silhouettes/gc-starspawn.svg"
+  },
+  {
+    "id": "n-abhoth",
+    "name": "Abhoth",
+    "type": "GOO",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-abhoth.svg"
+  },
+  {
+    "id": "n-asteroid-cat",
+    "name": "Asteroid Cat",
+    "type": "Monster",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-asteroid-cat.svg"
+  },
+  {
+    "id": "n-atlach-nacha",
+    "name": "Atlach Nacha",
+    "type": "GOO",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-atlach-nacha.svg"
+  },
+  {
+    "id": "n-azathoth",
+    "name": "Azathoth",
+    "type": "GOO",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-azathoth.svg"
+  },
+  {
+    "id": "n-bokrug",
+    "name": "Bokrug",
+    "type": "GOO",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-bokrug.svg"
+  },
+  {
+    "id": "n-brown-jenkin",
+    "name": "Brown Jenkin",
+    "type": "Terror",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-brown-jenkin.svg"
+  },
+  {
+    "id": "n-byatis",
+    "name": "Byatis",
+    "type": "GOO",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-byatis.svg"
+  },
+  {
+    "id": "n-cat-from-mercury",
+    "name": "Cat From Mercury",
+    "type": "Monster",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-cat-from-mercury.svg"
+  },
+  {
+    "id": "n-cat-from-neptune",
+    "name": "Cat From Neptune",
+    "type": "Terror",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-cat-from-neptune.svg"
+  },
+  {
+    "id": "n-cat-from-venus",
+    "name": "Cat From Venus",
+    "type": "Monster",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-cat-from-venus.svg"
+  },
+  {
+    "id": "n-cthugha",
+    "name": "Cthugha",
+    "type": "GOO",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-cthugha.svg"
+  },
+  {
+    "id": "n-daoloth",
+    "name": "Daoloth",
+    "type": "GOO",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-daoloth.svg"
+  },
+  {
+    "id": "n-dhole",
+    "name": "Dhole",
+    "type": "Terror",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-dhole.svg"
+  },
+  {
+    "id": "n-dimensional-shambler",
+    "name": "Dimensional Shambler",
+    "type": "Monster",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-dimensional-shambler.svg"
+  },
+  {
+    "id": "n-dire-yog-sothoth",
+    "name": "Dire Yog Sothoth",
+    "type": "GOO",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-dire-yog-sothoth.svg"
+  },
+  {
+    "id": "n-elder-shoggoth",
+    "name": "Elder Shoggoth",
+    "type": "Terror",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-elder-shoggoth.svg"
+  },
+  {
+    "id": "n-elder-thing",
+    "name": "Elder Thing",
+    "type": "Monster",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-elder-thing.svg"
+  },
+  {
+    "id": "n-father-dagon",
+    "name": "Father Dagon",
+    "type": "GOO",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-father-dagon.svg"
+  },
+  {
+    "id": "n-ghast",
+    "name": "Ghast",
+    "type": "Monster",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-ghast.svg"
+  },
+  {
+    "id": "n-ghatanothoa",
+    "name": "Ghatanothoa",
+    "type": "GOO",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-ghatanothoa.svg"
+  },
+  {
+    "id": "n-giant-blind-albino-penguins",
+    "name": "Giant Blind Albino Penguins",
+    "type": "Monster",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-giant-blind-albino-penguins.svg"
+  },
+  {
+    "id": "n-glaaki",
+    "name": "Glaaki",
+    "type": "Monster",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-glaaki.svg"
+  },
+  {
+    "id": "n-gnorri",
+    "name": "Gnorri",
+    "type": "Monster",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-gnorri.svg"
+  },
+  {
+    "id": "n-great-race-of-yith",
+    "name": "Great Race Of Yith",
+    "type": "Terror",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-great-race-of-yith.svg"
+  },
+  {
+    "id": "n-gug",
+    "name": "Gug",
+    "type": "Monster",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-gug.svg"
+  },
+  {
+    "id": "n-hagarg-ryonis",
+    "name": "Hagarg Ryonis",
+    "type": "GOO",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-hagarg-ryonis.svg"
+  },
+  {
+    "id": "n-high-priest",
+    "name": "High Priest",
+    "type": "Monster",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-high-priest.svg"
+  },
+  {
+    "id": "n-hound-of-tindalos",
+    "name": "Hound Of Tindalos",
+    "type": "Terror",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-hound-of-tindalos.svg"
+  },
+  {
+    "id": "n-insects-from-shaggai",
+    "name": "Insects From Shaggai",
+    "type": "Monster",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-insects-from-shaggai.svg"
+  },
+  {
+    "id": "n-junior-whateley",
+    "name": "Junior Whateley",
+    "type": "Terror",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-junior-whateley.svg"
+  },
+  {
+    "id": "n-lavinia-whateley-dunwich",
+    "name": "Lavinia Whateley Dunwich",
+    "type": "Cultist",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-lavinia-whateley-dunwich.svg"
+  },
+  {
+    "id": "n-leng-spider",
+    "name": "Leng Spider",
+    "type": "Monster",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-leng-spider.svg"
+  },
+  {
+    "id": "n-moonbeast",
+    "name": "Moonbeast",
+    "type": "Monster",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-moonbeast.svg"
+  },
+  {
+    "id": "n-mother-hydra",
+    "name": "Mother Hydra",
+    "type": "GOO",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-mother-hydra.svg"
+  },
+  {
+    "id": "n-nyogtha",
+    "name": "Nyogtha",
+    "type": "GOO",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-nyogtha.svg"
+  },
+  {
+    "id": "n-quachil-uttaus",
+    "name": "Quachil Uttaus",
+    "type": "Terror",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-quachil-uttaus.svg"
+  },
+  {
+    "id": "n-satyr",
+    "name": "Satyr",
+    "type": "Monster",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-satyr.svg"
+  },
+  {
+    "id": "n-servitor-of-the-outer-gods",
+    "name": "Servitor Of The Outer Gods",
+    "type": "Monster",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-servitor-of-the-outer-gods.svg"
+  },
+  {
+    "id": "n-shantak",
+    "name": "Shantak",
+    "type": "Monster",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-shantak.svg"
+  },
+  {
+    "id": "n-star-vampire",
+    "name": "Star Vampire",
+    "type": "Monster",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-star-vampire.svg"
+  },
+  {
+    "id": "n-the-bloated-woman",
+    "name": "The Bloated Woman",
+    "type": "GOO",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-the-bloated-woman.svg"
+  },
+  {
+    "id": "n-the-shadow-pharaoh",
+    "name": "The Shadow Pharaoh",
+    "type": "Terror",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-the-shadow-pharaoh.svg"
+  },
+  {
+    "id": "n-tulzscha",
+    "name": "Tulzscha",
+    "type": "GOO",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-tulzscha.svg"
+  },
+  {
+    "id": "n-voonith",
+    "name": "Voonith",
+    "type": "Monster",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-voonith.svg"
+  },
+  {
+    "id": "n-wilbur-whateley",
+    "name": "Wilbur Whateley",
+    "type": "Cultist",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-wilbur-whateley.svg"
+  },
+  {
+    "id": "n-wizard-whateley",
+    "name": "Wizard Whateley",
+    "type": "Cultist",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-wizard-whateley.svg"
+  },
+  {
+    "id": "n-ygolonac",
+    "name": "Ygolonac",
+    "type": "GOO",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-ygolonac.svg"
+  },
+  {
+    "id": "n-yig",
+    "name": "Yig",
+    "type": "GOO",
+    "faction": "N",
+    "url": "/designer/silhouettes/n-yig.svg"
+  },
+  {
+    "id": "ow-abomination",
+    "name": "Abomination",
+    "type": "Monster",
+    "faction": "Opener of the Way",
+    "url": "/designer/silhouettes/ow-abomination.svg"
+  },
+  {
+    "id": "ow-acolyte",
+    "name": "Acolyte",
+    "type": "Cultist",
+    "faction": "Opener of the Way",
+    "url": "/designer/silhouettes/ow-acolyte.svg"
+  },
+  {
+    "id": "ow-mutant",
+    "name": "Mutant",
+    "type": "Monster",
+    "faction": "Opener of the Way",
+    "url": "/designer/silhouettes/ow-mutant.svg"
+  },
+  {
+    "id": "ow-spawn-of-yog-sothoth",
+    "name": "Spawn Of Yog Sothoth",
+    "type": "Monster",
+    "faction": "Opener of the Way",
+    "url": "/designer/silhouettes/ow-spawn-of-yog-sothoth.svg"
+  },
+  {
+    "id": "ow-yog-sothoth",
+    "name": "Yog Sothoth",
+    "type": "GOO",
+    "faction": "Opener of the Way",
+    "url": "/designer/silhouettes/ow-yog-sothoth.svg"
+  },
+  {
+    "id": "prm-acolyte",
+    "name": "Acolyte",
+    "type": "Cultist",
+    "faction": "Permeation",
+    "url": "/designer/silhouettes/prm-acolyte.svg"
+  },
+  {
+    "id": "prm-astral-egg",
+    "name": "Astral Egg",
+    "type": "Monster",
+    "faction": "Permeation",
+    "url": "/designer/silhouettes/prm-astral-egg.svg"
+  },
+  {
+    "id": "prm-celestial-fledgling",
+    "name": "Celestial Fledgling",
+    "type": "Monster",
+    "faction": "Permeation",
+    "url": "/designer/silhouettes/prm-celestial-fledgling.svg"
+  },
+  {
+    "id": "prm-ycgnagnnisssz",
+    "name": "Ycgnagnnisssz",
+    "type": "Monster",
+    "faction": "Permeation",
+    "url": "/designer/silhouettes/prm-ycgnagnnisssz.svg"
+  },
+  {
+    "id": "sl-acolyte",
+    "name": "Acolyte",
+    "type": "Cultist",
+    "faction": "SL",
+    "url": "/designer/silhouettes/sl-acolyte.svg"
+  },
+  {
+    "id": "sl-formless-spawn",
+    "name": "Formless Spawn",
+    "type": "Monster",
+    "faction": "SL",
+    "url": "/designer/silhouettes/sl-formless-spawn.svg"
+  },
+  {
+    "id": "sl-serpent-man",
+    "name": "Serpent Man",
+    "type": "Monster",
+    "faction": "SL",
+    "url": "/designer/silhouettes/sl-serpent-man.svg"
+  },
+  {
+    "id": "sl-tsathoggua",
+    "name": "Tsathoggua",
+    "type": "GOO",
+    "faction": "SL",
+    "url": "/designer/silhouettes/sl-tsathoggua.svg"
+  },
+  {
+    "id": "sl-wizard",
+    "name": "Wizard",
+    "type": "Monster",
+    "faction": "SL",
+    "url": "/designer/silhouettes/sl-wizard.svg"
+  },
+  {
+    "id": "ts-acolyte",
+    "name": "Acolyte",
+    "type": "Cultist",
+    "faction": "TS",
+    "url": "/designer/silhouettes/ts-acolyte.svg"
+  },
+  {
+    "id": "ts-glaaki",
+    "name": "Glaaki",
+    "type": "GOO",
+    "faction": "TS",
+    "url": "/designer/silhouettes/ts-glaaki.svg"
+  },
+  {
+    "id": "ts-tendril",
+    "name": "Tendril",
+    "type": "Monster",
+    "faction": "TS",
+    "url": "/designer/silhouettes/ts-tendril.svg"
+  },
+  {
+    "id": "ts-tomb-herd",
+    "name": "Tomb Herd",
+    "type": "Monster",
+    "faction": "TS",
+    "url": "/designer/silhouettes/ts-tomb-herd.svg"
+  },
+  {
+    "id": "tt-acolyte",
+    "name": "Acolyte",
+    "type": "Cultist",
+    "faction": "TT",
+    "url": "/designer/silhouettes/tt-acolyte.svg"
+  },
+  {
+    "id": "tt-high-priest",
+    "name": "High Priest",
+    "type": "Cultist",
+    "faction": "TT",
+    "url": "/designer/silhouettes/tt-high-priest.svg"
+  },
+  {
+    "id": "tt-proto-shoggoth",
+    "name": "Proto Shoggoth",
+    "type": "Monster",
+    "faction": "TT",
+    "url": "/designer/silhouettes/tt-proto-shoggoth.svg"
+  },
+  {
+    "id": "tt-ubbo-sathla",
+    "name": "Ubbo Sathla",
+    "type": "GOO",
+    "faction": "TT",
+    "url": "/designer/silhouettes/tt-ubbo-sathla.svg"
+  },
+  {
+    "id": "ww-acolyte",
+    "name": "Acolyte",
+    "type": "Cultist",
+    "faction": "Windwalker",
+    "url": "/designer/silhouettes/ww-acolyte.svg"
+  },
+  {
+    "id": "ww-gnoph-keh",
+    "name": "Gnoph Keh",
+    "type": "Monster",
+    "faction": "Windwalker",
+    "url": "/designer/silhouettes/ww-gnoph-keh.svg"
+  },
+  {
+    "id": "ww-ithaqua",
+    "name": "Ithaqua",
+    "type": "GOO",
+    "faction": "Windwalker",
+    "url": "/designer/silhouettes/ww-ithaqua.svg"
+  },
+  {
+    "id": "ww-rhan-tegoth",
+    "name": "Rhan Tegoth",
+    "type": "GOO",
+    "faction": "Windwalker",
+    "url": "/designer/silhouettes/ww-rhan-tegoth.svg"
+  },
+  {
+    "id": "ww-wendigo",
+    "name": "Wendigo",
+    "type": "Monster",
+    "faction": "Windwalker",
+    "url": "/designer/silhouettes/ww-wendigo.svg"
+  },
+  {
+    "id": "ys-acolyte",
+    "name": "Acolyte",
+    "type": "Cultist",
+    "faction": "Yellow Sign",
+    "url": "/designer/silhouettes/ys-acolyte.svg"
+  },
+  {
+    "id": "ys-byakhee",
+    "name": "Byakhee",
+    "type": "Monster",
+    "faction": "Yellow Sign",
+    "url": "/designer/silhouettes/ys-byakhee.svg"
+  },
+  {
+    "id": "ys-hastur",
+    "name": "Hastur",
+    "type": "GOO",
+    "faction": "Yellow Sign",
+    "url": "/designer/silhouettes/ys-hastur.svg"
+  },
+  {
+    "id": "ys-king-in-yellow",
+    "name": "King In Yellow",
+    "type": "GOO",
+    "faction": "Yellow Sign",
+    "url": "/designer/silhouettes/ys-king-in-yellow.svg"
+  },
+  {
+    "id": "ys-undead",
+    "name": "Undead",
+    "type": "Monster",
+    "faction": "Yellow Sign",
+    "url": "/designer/silhouettes/ys-undead.svg"
+  },
+  {
+    "id": "an-cathedral",
+    "name": "Cathedral",
+    "type": "Building",
+    "faction": "Ancients",
+    "url": "/designer/silhouettes/an-cathedral.svg"
+  },
+  {
+    "id": "ds-chaos-gate",
+    "name": "Chaos Gate",
+    "type": "Gate",
+    "faction": "Dreamlands Syndicate",
+    "url": "/designer/silhouettes/ds-chaos-gate.svg"
+  },
+  {
+    "id": "fm-screaming-wall",
+    "name": "Screaming Wall",
+    "type": "Building",
+    "faction": "Fleshmason",
+    "url": "/designer/silhouettes/fm-screaming-wall.svg"
+  },
+  {
+    "id": "cs-prismatic-well",
+    "name": "Prismatic Well",
+    "type": "Gate",
+    "faction": "Colour Out of Space",
+    "url": "/designer/silhouettes/cs-prismatic-well.svg"
+  }
+]

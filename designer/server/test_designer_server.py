@@ -887,6 +887,39 @@ class AdminTest(DesignerServerTest):
         self._admin_post(f"factions/{fid}/build-status", {'status': 'built', 'version': cur})
         self.assertEqual(self._live(acr)['values'], {})
 
+    def test_simple_update_legacy_label_version_resolves_to_builtAt_not_current(self):
+        """Factions built before liveVersion was numeric stored a label like "HB 9267656".
+        builtDesign must resolve that to the version actually built (matched by requestedAt),
+        not to the designer's current version - which may have moved on since the build."""
+        token = self.register_user(f'user{secrets.token_hex(4)}')
+        faction = self.create_faction(token)
+        fid = faction['id']
+
+        # version 1 is created at faction creation; make an edit to produce version 2,
+        # which is what gets "built" below (power=10). Then make a further, unbuilt edit
+        # (power=999) that bumps current to version 3 - this must NOT be what Simple
+        # Update reads.
+        self.request('POST', f'/factions/{fid}/patch', {'ops': [{'op': 'set', 'path': 'setup.power', 'value': 10}]}, token=token)
+        built_version = self.request('GET', f'/factions/{fid}', token=token)['current']
+
+        faction_file = self.data_dir / 'factions' / fid / 'faction.json'
+        data = json.loads(faction_file.read_text())
+        built_at = next(v['created'] for v in data['versions'] if v['n'] == built_version)
+        data['build'] = {
+            'status': 'built', 'liveVersion': 'HB abc1234', 'requestedAt': built_at,
+            'builtAt': built_at, 'history': [{'version': 'HB abc1234', 'builtAt': built_at}]
+        }
+        faction_file.write_text(json.dumps(data))
+
+        # Force the next version's "created" into a later second so it can't tie with
+        # built_at - real designer edits are always seconds apart from a build request.
+        time.sleep(1.1)
+        self.request('POST', f'/factions/{fid}/close-session', token=token)
+        self.request('POST', f'/factions/{fid}/patch', {'ops': [{'op': 'set', 'path': 'setup.power', 'value': 999}]}, token=token)
+        f = self.request('GET', f'/factions/{fid}', token=token)
+        self.assertGreater(f['current'], built_version)
+        self.assertEqual(f['builtDesign']['setup']['power'], 10)
+
 
 class UnitSpellbookTest(DesignerServerTest):
     """Test spellbook feature for iGOO/Elder God neutral units."""
@@ -1197,20 +1230,20 @@ class UnitBuildTest(DesignerServerTest):
         unit = self.request('GET', f'/units/{uid}', token=token)
         self.assertEqual(unit['build']['status'], 'in_progress')
 
-        # Set status to built with version
+        # Set status to built with numeric version (should match unit's current version)
         req = Request(admin_url, data=json.dumps({
             'status': 'built',
-            'version': 'v2.150'
+            'version': 1
         }).encode(), headers={'Content-Type': 'application/json'}, method='POST')
         urlopen(req)
 
         # Verify status and version
         unit = self.request('GET', f'/units/{uid}', token=token)
         self.assertEqual(unit['build']['status'], 'built')
-        self.assertEqual(unit['build']['liveVersion'], 'v2.150')
+        self.assertEqual(unit['build']['liveVersion'], 1)
         self.assertIsNotNone(unit['build']['builtAt'])
         self.assertEqual(len(unit['build']['history']), 1)
-        self.assertEqual(unit['build']['history'][0]['version'], 'v2.150')
+        self.assertEqual(unit['build']['history'][0]['version'], 1)
 
 
 class ClaudeQATest(DesignerServerTest):

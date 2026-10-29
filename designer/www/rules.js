@@ -1,8 +1,13 @@
 (function() {
   'use strict';
 
-  const SB_TYPES = ['Ongoing', 'Action', 'Unlimited Action', 'Pre-Battle', 'Battle',
-                    'Post-Battle', 'Movement', 'Gather Power Phase', 'Doom Phase', 'Once Only'];
+  const ABILITY_TYPES = ['Ongoing', 'Action', 'Unlimited Action', 'Pre-Battle', 'Battle',
+                         'Post-Battle', 'Move', 'Recruit Cultist Action', 'Summon Monster/Terror',
+                         'Awaken GOO/EG/iGOO/iEG', 'Create Gate', 'Gather Power Phase',
+                         'First Player Phase', 'Doom Phase', 'Once Only', 'Setup Variant'];
+
+  // Legacy name for backwards compatibility
+  const SB_TYPES = ABILITY_TYPES;
 
   const UNIT_TYPES = ['Cultist', 'Monster', 'Terror', 'Great Old One', 'Elder God',
                       'Building', 'Custom Gate'];
@@ -28,7 +33,7 @@
     {key: 'interactions', title: 'Ability Interactions'}
   ];
 
-  const BUILD_SECTIONS = ['ae', 'ufa', 'setup', 'units', 'sbr', 'sb', 'region', 'tokens', 'custom', 'interactions'];
+  const BUILD_SECTIONS = ['ae', 'ufa', 'setup', 'units', 'sbr', 'sb', 'region', 'tokens', 'custom', 'menus', 'interactions'];
 
   const MAP_SECTIONS = [
     {key: 'images', title: 'Map Images'},
@@ -212,9 +217,9 @@
       },
       interactions: {
         rows: [
-          {id: newId(), otherFaction: 'Sleeper', abilityType: 'Spellbook', ability: 'Ancient Sorcery', abilityText: '', yourAbility: 'ufa', interactionDesc: ''},
-          {id: newId(), otherFaction: 'Neutral Monsters', abilityType: 'Unit Special', ability: 'Blasphemous Obeisance', abilityText: '', yourAbility: '', interactionDesc: ''},
-          {id: newId(), otherFaction: 'Bubastis', abilityType: 'Unit Special', ability: 'Moon', abilityText: '', yourAbility: '', interactionDesc: ''}
+          {id: newId(), otherFaction: 'Sleeper', category: 'Spellbook', ability: 'AncientSorcery', yourAbility: 'ufa', interactionDesc: ''},
+          {id: newId(), otherFaction: 'Neutral Monster', category: 'Elder Thing', ability: 'Mind Control', yourAbility: 'goo', interactionDesc: ''},
+          {id: newId(), otherFaction: 'Bubastis', category: 'Faction Region', ability: 'Moon', yourAbility: '', interactionDesc: ''}
         ]
       }
     };
@@ -287,6 +292,7 @@
       relatedSb: [],
       relatedSbNames: [],
       hasAbility: false,
+      abilityType: null,
       abilityName: '',
       abilityText: '',
       spellbook: {
@@ -324,6 +330,7 @@
         section: null,
         item: null,
         prompted: null,
+        factionSelectionDescription: '',
         title: '',
         hasSubtitle: false,
         subtitle: '',
@@ -345,7 +352,9 @@
         showPicked: false,
         leadsToNext: false,
         next: null,
-        nextTrigger: ''
+        nextTrigger: '',
+        additionalButtons: [],
+        menuInstructions: ''
       };
     } else if (tablePath === 'interactions.rows') {
       return {
@@ -356,6 +365,12 @@
         abilityText: '',
         yourAbility: '',
         interactionDesc: ''
+      };
+    } else if (tablePath === 'menus.rows.additionalButtons.rows') {
+      return {
+        id: newId(),
+        text: '',
+        function: ''
       };
     }
     return null;
@@ -535,8 +550,11 @@
     return false;
   }
 
-  function status(key, design) {
+  function status(key, design, sectionsModified) {
     const d = design[key];
+
+    // Check if section has been modified since last build
+    const isModified = sectionsModified && sectionsModified[key];
 
     if (key === 'ae') {
       if (isEmpty(key, design)) return 'N/A';
@@ -546,14 +564,14 @@
       if (completeRows.length === 0) return 'Incomplete';
       const partialRows = d.rows.filter(r => !isRowComplete(r, 'ae') && !isRowEmpty(r, blankRow('ae.rows')));
       if (partialRows.length > 0) return 'Incomplete';
-      return 'Complete';
+      return isModified ? 'Edited, requires rebuild' : 'Complete';
     }
 
     if (key === 'ufa') {
       if (!d.name || !d.phase || !d.type || !d.text) return 'Incomplete';
       if (d.hasCost && d.cost == null) return 'Incomplete';
       if (d.hasEffect && d.effect == null) return 'Incomplete';
-      return 'Complete';
+      return isModified ? 'Edited, requires rebuild' : 'Complete';
     }
 
     if (key === 'setup') {
@@ -568,7 +586,7 @@
       if (partialUnits.length > 0) return 'Incomplete';
       const aeEnabled = design.ae && design.ae.enabled;
       if (aeEnabled && d.aeStart == null) return 'Incomplete';
-      return 'Complete';
+      return isModified ? 'Edited, requires rebuild' : 'Complete';
     }
 
     if (key === 'units') {
@@ -576,14 +594,14 @@
       if (completeUnits.length === 0) return 'Incomplete';
       const partialUnits = d.rows.filter(u => !isRowComplete(u, 'unit') && !isRowEmpty(u, blankUnit()));
       if (partialUnits.length > 0) return 'Incomplete';
-      return 'Complete';
+      return isModified ? 'Edited, requires rebuild' : 'Complete';
     }
 
     if (key === 'sbr') {
       for (let row of d.rows) {
         if (!isRowComplete(row, 'sbr')) return 'Incomplete';
       }
-      return 'Complete';
+      return isModified ? 'Edited, requires rebuild' : 'Complete';
     }
 
     if (key === 'sb') {
@@ -594,7 +612,7 @@
       const contentOnly = r => { const c = Object.assign({}, r); delete c.twoSided; return c; };
       const partialRows = d.rows.filter(r => !done(r) && !isRowEmpty(contentOnly(r), blankRow('sb.rows')));
       if (partialRows.length > 0) return 'Incomplete';
-      return 'Complete';
+      return isModified ? 'Edited, requires rebuild' : 'Complete';
     }
 
     if (key === 'region') {
@@ -627,30 +645,43 @@
       return 'Incomplete';
     }
 
+    if (key === 'menus') {
+      // At least one complete menu is required
+      const completeMenus = d.rows.filter(r => r.name && r.name.trim());
+      if (completeMenus.length === 0) return 'Incomplete';
+      // Check for partial menus (started but not complete)
+      const partialMenus = d.rows.filter(r => !r.name || !r.name.trim());
+      if (partialMenus.length > 0 && d.rows.length > completeMenus.length) return 'Incomplete';
+      return isModified ? 'Edited, requires rebuild' : 'Complete';
+    }
+
     if (key === 'interactions') {
       // Only Ancient Sorcery row is required
       const ancientSorceryRow = ((d && d.rows) || []).find(r =>
         r.otherFaction === 'Sleeper' &&
         r.abilityType === 'Spellbook' &&
-        r.ability === 'Ancient Sorcery'
+        r.ability === 'AncientSorcery'
       );
       if (!ancientSorceryRow) return 'Incomplete';
       if (!ancientSorceryRow.yourAbility || !ancientSorceryRow.interactionDesc) return 'Incomplete';
-      return 'Complete';
+      return isModified ? 'Edited, requires rebuild' : 'Complete';
     }
 
     return 'N/A';
   }
 
-  function mapStatus(key, design) {
+  function mapStatus(key, design, sectionsModified) {
     const d = design[key];
+
+    // Check if section has been modified since last build
+    const isModified = sectionsModified && sectionsModified[key];
 
     if (key === 'images') {
       if (!d.items || d.items.length === 0) return 'Incomplete';
       if (d.items.some(item => !item.image)) return 'Incomplete';
       if (!d.regions || !d.regions.rows || d.regions.rows.length === 0) return 'Incomplete';
       if (d.regions.rows.some(r => !r.name)) return 'Incomplete';
-      return 'Complete';
+      return isModified ? 'Edited, requires rebuild' : 'Complete';
     }
 
     if (key === 'bitmaps') {
@@ -665,7 +696,7 @@
         }
       });
       if (regionIds.some(rid => !placed.has(rid))) return 'Incomplete';
-      return 'Complete';
+      return isModified ? 'Edited, requires rebuild' : 'Complete';
     }
 
     if (key === 'adjacency') {
@@ -692,7 +723,7 @@
         });
       }
       if (regionIds.some(rid => !adjacency[rid] || adjacency[rid].size === 0)) return 'Incomplete';
-      return 'Complete';
+      return isModified ? 'Edited, requires rebuild' : 'Complete';
     }
 
     if (key === 'units') {
@@ -701,7 +732,7 @@
       const partialUnits = (d.rows || []).filter(u => !isRowComplete(u, 'unit') && !isRowEmpty(u, blankUnit()));
       if (completeUnits.length === 0 && partialUnits.length === 0) return 'N/A';
       if (partialUnits.length > 0) return 'Incomplete';
-      return 'Complete';
+      return isModified ? 'Edited, requires rebuild' : 'Complete';
     }
 
     if (key === 'tokens') {
@@ -710,7 +741,7 @@
       if (allEmpty) return 'N/A';
       const completeRows = (d.rows || []).filter(r => isRowComplete(r, 'tokens'));
       const nonEmptyRows = (d.rows || []).filter(r => !isRowEmpty(r, blankMapRow('tokens.rows')));
-      if (completeRows.length === nonEmptyRows.length && completeRows.length > 0) return 'Complete';
+      if (completeRows.length === nonEmptyRows.length && completeRows.length > 0) return isModified ? 'Edited, requires rebuild' : 'Complete';
       return 'Incomplete';
     }
 
@@ -722,7 +753,7 @@
       const reqComplete = reqRows.every(r => isRowComplete(r, 'mapSbRequirement'));
       const bookComplete = bookRows.every(r => isRowComplete(r, 'mapSbBook'));
       if (!reqComplete || !bookComplete) return 'Incomplete';
-      return 'Complete';
+      return isModified ? 'Edited, requires rebuild' : 'Complete';
     }
 
     if (key === 'glyphs') {
@@ -731,7 +762,7 @@
       if (allEmpty) return 'N/A';
       const completeRows = (d.rows || []).filter(r => isRowComplete(r, 'mapGlyph'));
       const nonEmptyRows = (d.rows || []).filter(r => r.name || r.image || r.desc);
-      if (completeRows.length === nonEmptyRows.length && completeRows.length > 0) return 'Complete';
+      if (completeRows.length === nonEmptyRows.length && completeRows.length > 0) return isModified ? 'Edited, requires rebuild' : 'Complete';
       return 'Incomplete';
     }
 
@@ -741,23 +772,27 @@
       if (allEmpty) return 'N/A';
       const completeRows = (d.rows || []).filter(r => isRowComplete(r, 'mapAbility'));
       const nonEmptyRows = (d.rows || []).filter(r => r.name || r.when || r.type || r.who || r.text);
-      if (completeRows.length === nonEmptyRows.length && completeRows.length > 0) return 'Complete';
+      if (completeRows.length === nonEmptyRows.length && completeRows.length > 0) return isModified ? 'Edited, requires rebuild' : 'Complete';
       return 'Incomplete';
     }
 
     return 'N/A';
   }
 
-  function buildReady(design) {
-    return BUILD_SECTIONS.every(key => {
-      const s = status(key, design);
+  function cardReady(design) {
+    return !!(design.card && design.card.glyph);
+  }
+
+  function buildReady(design, sectionsModified) {
+    return cardReady(design) && BUILD_SECTIONS.every(key => {
+      const s = status(key, design, sectionsModified);
       return s === 'N/A' || s === 'Complete';
     });
   }
 
-  function mapBuildReady(design) {
+  function mapBuildReady(design, sectionsModified) {
     return MAP_BUILD_SECTIONS.every(key => {
-      const s = mapStatus(key, design);
+      const s = mapStatus(key, design, sectionsModified);
       return s === 'N/A' || s === 'Complete';
     });
   }
@@ -873,6 +908,7 @@
         }
         if (u.combatType === 'Variable Results' && !u.resultsCalc) missing.push(`units.rows.${u.id}.resultsCalc`);
         if (unitHasAbility(u)) {
+          if (!u.abilityType) missing.push(`units.rows.${u.id}.abilityType`);
           if (!u.abilityText) missing.push(`units.rows.${u.id}.abilityText`);
         }
       });
@@ -954,7 +990,7 @@
       const ancientSorceryRow = ((d && d.rows) || []).find(r =>
         r.otherFaction === 'Sleeper' &&
         r.abilityType === 'Spellbook' &&
-        r.ability === 'Ancient Sorcery'
+        r.ability === 'AncientSorcery'
       );
       if (!ancientSorceryRow) {
         missing.push('interactions.rows');
@@ -1133,7 +1169,7 @@
           sectionTitle: 'Unique Faction Ability',
           rowId: null,
           field: 'cost',
-          name: 'UFA Cost',
+          name: 'UFA',
           value: design.ufa.cost
         });
       }
@@ -1143,7 +1179,7 @@
           sectionTitle: 'Unique Faction Ability',
           rowId: null,
           field: 'effect',
-          name: 'UFA Effect',
+          name: 'UFA',
           value: design.ufa.effect
         });
       }
@@ -1156,7 +1192,7 @@
           sectionTitle: 'Setup',
           rowId: null,
           field: 'power',
-          name: 'Starting Power',
+          name: 'Faction Setup',
           value: design.setup.power
         });
       }
@@ -1166,7 +1202,7 @@
           sectionTitle: 'Setup',
           rowId: null,
           field: 'aeStart',
-          name: 'Starting ' + (design.ae.name || 'AE'),
+          name: design.ae.name || 'AE',
           value: design.setup.aeStart
         });
       }
@@ -1177,7 +1213,7 @@
             sectionTitle: 'Setup',
             rowId: u.id,
             field: 'qty',
-            name: u.name + ' setup quantity',
+            name: u.name,
             value: u.qty
           });
         }
@@ -1192,7 +1228,7 @@
             sectionTitle: 'Units',
             rowId: u.id,
             field: 'qty',
-            name: u.name + ' quantity',
+            name: u.name,
             value: u.qty
           });
         }
@@ -1202,7 +1238,7 @@
             sectionTitle: 'Units',
             rowId: u.id,
             field: 'cost',
-            name: u.name + ' cost',
+            name: u.name,
             value: u.cost
           });
         }
@@ -1212,7 +1248,7 @@
             sectionTitle: 'Units',
             rowId: u.id,
             field: 'awakenPower',
-            name: u.name + ' awaken power',
+            name: u.name,
             value: u.awakenPower
           });
         }
@@ -1222,7 +1258,7 @@
             sectionTitle: 'Units',
             rowId: u.id,
             field: 'dice',
-            name: u.name + ' combat dice',
+            name: u.name,
             value: u.dice
           });
         }
@@ -1233,7 +1269,7 @@
               sectionTitle: 'Units',
               rowId: u.id,
               field: 'pains',
-              name: u.name + ' pains',
+              name: u.name,
               value: u.pains
             });
           }
@@ -1243,7 +1279,7 @@
               sectionTitle: 'Units',
               rowId: u.id,
               field: 'kills',
-              name: u.name + ' kills',
+              name: u.name,
               value: u.kills
             });
           }
@@ -1252,14 +1288,14 @@
     }
 
     if (design.sbr) {
-      design.sbr.rows.forEach(row => {
+      design.sbr.rows.forEach((row, idx) => {
         if (row.hasNum && row.num != null) {
           numbers.push({
             section: 'sbr',
             sectionTitle: 'Spellbook Requirements',
             rowId: row.id,
             field: 'num',
-            name: row.text || 'SBR',
+            name: 'SBR ' + (idx + 1),
             value: row.num
           });
         }
@@ -1274,7 +1310,7 @@
             sectionTitle: 'Spellbooks',
             rowId: row.id,
             field: 'cost',
-            name: row.name + ' cost',
+            name: row.name,
             value: row.cost
           });
         }
@@ -1284,7 +1320,7 @@
             sectionTitle: 'Spellbooks',
             rowId: row.id,
             field: 'effect',
-            name: row.name + ' effect',
+            name: row.name,
             value: row.effect
           });
         }
@@ -1299,10 +1335,10 @@
           const nm = row['name' + sfx];
           if (!nm) return;
           if (row['cost' + sfx] != null) {
-            numbers.push({section: 'sb', sectionTitle: 'Spellbooks', rowId: row.id, field: 'cost' + sfx, name: nm + tag + ' cost', value: row['cost' + sfx]});
+            numbers.push({section: 'sb', sectionTitle: 'Spellbooks', rowId: row.id, field: 'cost' + sfx, name: nm + tag, value: row['cost' + sfx]});
           }
           if (row['hasEffect' + sfx] && row['effect' + sfx] != null) {
-            numbers.push({section: 'sb', sectionTitle: 'Spellbooks', rowId: row.id, field: 'effect' + sfx, name: nm + tag + ' effect', value: row['effect' + sfx]});
+            numbers.push({section: 'sb', sectionTitle: 'Spellbooks', rowId: row.id, field: 'effect' + sfx, name: nm + tag, value: row['effect' + sfx]});
           }
         });
       });
@@ -1316,7 +1352,7 @@
             sectionTitle: 'Tokens',
             rowId: row.id,
             field: 'qty',
-            name: row.name + ' quantity',
+            name: row.name,
             value: row.qty
           });
         }
@@ -1326,7 +1362,7 @@
             sectionTitle: 'Tokens',
             rowId: row.id,
             field: 'effect',
-            name: row.name + ' effect',
+            name: row.name,
             value: row.effect
           });
         }
@@ -1341,7 +1377,7 @@
             sectionTitle: 'Other Custom',
             rowId: row.id,
             field: 'num',
-            name: row.name + ' number',
+            name: row.name,
             value: row.num
           });
         }
@@ -1351,13 +1387,216 @@
     return numbers;
   }
 
+  // Hard-coded text elements that a non-coder can push straight into the live build, mirroring
+  // fixedNumbers() above but for text strings (unit names, SB names/text, SBR text, UFA name/text).
+  // Used by the Simple Update screen's "Fixed Text" table in app.js.
+  function fixedText(design) {
+    const texts = [];
+
+    if (design.units) {
+      design.units.rows.forEach(u => {
+        if (u.name) {
+          texts.push({
+            section: 'units',
+            sectionTitle: 'Units',
+            rowId: u.id,
+            field: 'name',
+            name: u.name,
+            value: u.name
+          });
+        }
+      });
+    }
+
+    if (design.ufa) {
+      if (design.ufa.name) {
+        texts.push({
+          section: 'ufa',
+          sectionTitle: 'Unique Faction Ability',
+          rowId: null,
+          field: 'name',
+          name: 'UFA Name',
+          value: design.ufa.name
+        });
+      }
+      if (design.ufa.text) {
+        texts.push({
+          section: 'ufa',
+          sectionTitle: 'Unique Faction Ability',
+          rowId: null,
+          field: 'text',
+          name: 'UFA Text',
+          value: design.ufa.text
+        });
+      }
+    }
+
+    if (design.sbr) {
+      design.sbr.rows.forEach((row, idx) => {
+        const n = idx + 1;
+        if (row.text) {
+          texts.push({
+            section: 'sbr',
+            sectionTitle: 'Spellbook Requirements',
+            rowId: row.id,
+            field: 'text',
+            name: 'SBR ' + n + ' (full)',
+            value: row.text
+          });
+        }
+        if (row.shortText) {
+          texts.push({
+            section: 'sbr',
+            sectionTitle: 'Spellbook Requirements',
+            rowId: row.id,
+            field: 'shortText',
+            name: 'SBR ' + n + ' (abbreviated)',
+            value: row.shortText
+          });
+        }
+      });
+    }
+
+    if (design.sb) {
+      design.sb.rows.forEach(row => {
+        if (row.name) {
+          texts.push({section: 'sb', sectionTitle: 'Spellbooks', rowId: row.id, field: 'name', name: row.name + ' (card name)', value: row.name});
+        }
+        if (row.text) {
+          texts.push({section: 'sb', sectionTitle: 'Spellbooks', rowId: row.id, field: 'text', name: (row.name || 'Spellbook') + ' (full text)', value: row.text});
+        }
+        // Extra parts: power 2 of a dual powers side, and side B (and its power 2) of a 2 sided spellbook
+        // (same extra/sfx pattern as fixedNumbers' SB block above, so dual/2-sided spellbooks aren't missed)
+        const extra = [];
+        if (row.dual) extra.push(['2', ' (power 2)']);
+        if (sbTwo(design.sb, row)) {
+          extra.push(['B', ' (side B)']);
+          if (row.dualB) extra.push(['B2', ' (side B, power 2)']);
+        }
+        extra.forEach(([sfx, tag]) => {
+          const nm = row['name' + sfx];
+          const txt = row['text' + sfx];
+          if (nm) {
+            texts.push({section: 'sb', sectionTitle: 'Spellbooks', rowId: row.id, field: 'name' + sfx, name: nm + tag + ' (card name)', value: nm});
+          }
+          if (txt) {
+            texts.push({section: 'sb', sectionTitle: 'Spellbooks', rowId: row.id, field: 'text' + sfx, name: (nm || row.name || 'Spellbook') + tag + ' (full text)', value: txt});
+          }
+        });
+      });
+    }
+
+    return texts;
+  }
+
+  // Determine if a fixedNumbers()/fixedText() field is a simple update only (green), rebuild-only
+  // (yellow), or either (orange) - the colored-border rule from the Simple Update spec (owner
+  // request, 2026-10). Shared by the Simple Update screen (app.js, Fixed Text table) and by the
+  // per-section field highlighting in sections.js, which shows the same borders + legend directly
+  // in whichever section the value was actually changed, not only in the Simple Update summary.
+  function getUpdateType(section, field) {
+    // Spellbook and SBR full text (not the abbreviated SBR card text) can be either a simple
+    // update or a rebuild, depending on whether the change is cosmetic or a rules change.
+    if ((section === 'sb' || section === 'sbr') && (field === 'name' || field === 'text')) {
+      return 'either'; // orange
+    }
+    return 'simple'; // green
+  }
+
+  // Outline color for a given update type (and for plain numbers, which are always 'simple').
+  // Blue = eligible for simple update but currently matches build
+  // Green = eligible for simple update and differs from build
+  function getOutlineColor(updateType, differs = true) {
+    if (updateType === 'number' || updateType === 'simple') {
+      return differs ? '#00aa00' : '#0066ff';  // green if differs, blue if matches
+    }
+
+    const COLORS = {
+      rebuild: '#ccaa00',  // yellow - rebuild only
+      either: '#ff8800'    // orange - either simple or rebuild
+    };
+    return COLORS[updateType] || '#00aa00';
+  }
+
+  // Every field path that differs between two values, with old -> new for plain values.
+  // Used as the catch-all in describeSectionDiff so a real change can never come back as ''.
+  function changedPaths(a, b, prefix, out) {
+    if (eq(a, b)) return out;
+    const isObj = v => v !== null && typeof v === 'object';
+    if (isObj(a) && isObj(b) && Array.isArray(a) === Array.isArray(b)) {
+      if (Array.isArray(a)) {
+        // Rows: match by id when they have one, so an inserted row reads as one change
+        const byId = a.concat(b).every(r => r && typeof r === 'object' && r.id);
+        if (byId) {
+          const ids = [...new Set(a.map(r => r.id).concat(b.map(r => r.id)))];
+          ids.forEach(id => {
+            const ra = a.find(r => r.id === id), rb = b.find(r => r.id === id);
+            const label = prefix + '[' + ((rb && rb.name) || (ra && ra.name) || id) + ']';
+            if (!ra) out.push(label + ' added');
+            else if (!rb) out.push(label + ' removed');
+            else changedPaths(ra, rb, label, out);
+          });
+          return out;
+        }
+        const n = Math.max(a.length, b.length);
+        for (let i = 0; i < n; i++) changedPaths(a[i], b[i], prefix + '[' + i + ']', out);
+        return out;
+      }
+      [...new Set(Object.keys(a).concat(Object.keys(b)))].forEach(k =>
+        changedPaths(a[k], b[k], prefix ? prefix + '.' + k : k, out));
+      return out;
+    }
+    const show = v => {
+      if (v === undefined || v === null || v === '') return '(empty)';
+      const s = typeof v === 'string' ? v : JSON.stringify(v);
+      return s.length > 60 ? '(' + s.length + ' chars)' : s;
+    };
+    out.push((prefix || 'value') + ' ' + show(a) + ' -> ' + show(b));
+    return out;
+  }
+
+  // Parts of a faction design that are not one of the 11 build sections but still change the
+  // built faction (faction card art/glyph, spellbook art, colour). The Update button must check
+  // these too, or an image-only change could never be sent for a rebuild.
+  const EXTRA_UPDATE_SECTIONS = [
+    {key: 'card', title: 'Faction card images'},
+    {key: 'sbImages', title: 'Spellbook images'},
+    {key: 'sbImagesB', title: 'Spellbook images (side B)'},
+    {key: 'meta', title: 'Faction details (colour etc.)'}
+  ];
+  const UPDATE_SECTIONS = BUILD_SECTIONS.concat(EXTRA_UPDATE_SECTIONS.map(s => s.key));
+
+  function sectionTitle(key) {
+    const s = SECTIONS.find(x => x.key === key) || EXTRA_UPDATE_SECTIONS.find(x => x.key === key);
+    return s ? s.title : key;
+  }
+
   function describeSectionDiff(key, oldDesign, newDesign) {
-    const parts = [];
-    const old = oldDesign[key];
-    const neu = newDesign[key];
+    const old = (oldDesign || {})[key];
+    const neu = (newDesign || {})[key];
 
     if (eq(old, neu)) return '';
+    // Section missing on one side (e.g. a design built before 'interactions' existed)
+    if (old == null || neu == null) return neu == null ? 'section removed' : 'section added';
 
+    let parts = [];
+    try {
+      parts = describeKnownChanges(key, old, neu);
+    } catch (e) {
+      parts = [];  // odd shapes in older designs: fall through to the generic list
+    }
+    // The specific wording above only knows some fields. If the section differs in any way it
+    // did not mention, list the changed fields so the change is never reported as "no changes"
+    // (2026-10-17: Fleshmason v10 changed only setup.constraints.water and Update said nothing changed).
+    const generic = changedPaths(old, neu, '', []);
+    const extra = generic.slice(0, 12);
+    if (generic.length > 12) extra.push('and ' + (generic.length - 12) + ' more field change(s)');
+    if (extra.length) parts.push('changed fields: ' + extra.join(', '));
+    return parts.join('; ') || 'section changed';
+  }
+
+  function describeKnownChanges(key, old, neu) {
+    const parts = [];
     if (key === 'ae') {
       if (old.name !== neu.name) parts.push('name changed to "' + neu.name + '"');
       if (old.acronym !== neu.acronym) parts.push('acronym changed to "' + neu.acronym + '"');
@@ -1421,7 +1660,7 @@
       parts.push('menu design changed');
     }
 
-    return parts.join('; ');
+    return parts;
   }
 
   function computeSpellbookGuidance(design) {
@@ -1461,11 +1700,14 @@
   window.Rules = {
     SECTIONS,
     BUILD_SECTIONS,
+    UPDATE_SECTIONS,
+    sectionTitle,
     MAP_SECTIONS,
     MAP_BUILD_SECTIONS,
     MAP_ABILITY_PHASES,
     MAP_ABILITY_TYPES,
     NEUTRAL_UNIT_TYPES,
+    ABILITY_TYPES,
     SB_TYPES,
     UNIT_TYPES,
     COST_TYPES,
@@ -1479,11 +1721,15 @@
     isMapEmpty,
     status,
     mapStatus,
+    cardReady,
     buildReady,
     mapBuildReady,
     missingFields,
     missingMapFields,
     fixedNumbers,
+    fixedText,
+    getUpdateType,
+    getOutlineColor,
     sbTwo,
     sbAnyTwo,
     unitHasAbility,

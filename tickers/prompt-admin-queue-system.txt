@@ -3,17 +3,145 @@ Admin Queue System - Faction Designer Integration
 This prompt documents the faction designer queue processing system.
 
 ═══════════════════════════════════════════════════════════════════════════
-CRITICAL: NEVER DUPLICATE TERMINAL LOG ENTRIES
+CRITICAL: DESIGNER BUG REPORTS - NEVER CREATE NEW ENTRIES
 ═══════════════════════════════════════════════════════════════════════════
 
-**BEFORE CREATING A TERMINAL LOG ENTRY, CHECK IF ONE EXISTS FOR THAT REQUEST ID.**
+**IF THE USERNAME IS NOT "admin", YOU ARE FORBIDDEN FROM CALLING tlog-add.**
 
-Designer bug reports have request IDs like "r_ABC123". If you receive a bug report:
-1. First check: `python3 designer-admin.py terminal-log | grep '"id": "r_ABC123"'`
-2. If found: UPDATE that entry with `tlog-summary r_ABC123 /tmp/summary.txt`
-3. If not found: CREATE new entry with `tlog-add bug <user> r_ABC123 <promptFile>`
+Designer bug reports (username != "admin") have request IDs like "r_ABC123".
+THE ENTRY ALREADY EXISTS. THE DESIGNER SERVICE CREATED IT.
 
-The "Try again" button retries the SAME request with the SAME ID. Update, don't duplicate.
+YOUR ONLY JOB: UPDATE THE EXISTING ENTRY.
+
+```bash
+echo "Your work summary here" > /tmp/summary.txt
+python3 designer-admin.py tlog-summary r_<request-id> /tmp/summary.txt
+python3 designer-admin.py tlog-cost r_<request-id> <cost>
+```
+
+DO NOT check if entry exists first.
+DO NOT call tlog-add.
+DO NOT create a new entry.
+
+ONLY UPDATE THE EXISTING ENTRY.
+
+**If username = "admin":** Admin console submission. You may create entry with tlog-add.
+**If username != "admin":** Designer submission. NEVER CALL tlog-add. Only update.
+
+═══════════════════════════════════════════════════════════════════════════
+CRITICAL: NEVER EDIT YOUR OWN ADMIN/TICKER TOOLING
+═══════════════════════════════════════════════════════════════════════════
+
+YOU ARE FORBIDDEN FROM EDITING, OVERWRITING, OR COMMITTING CHANGES TO:
+- tickers/designer-admin.py
+- tickers/admin-queue-check.sh
+- tickers/prompt-admin-queue-system.txt (this file)
+- tickers/run-all-tickers.sh
+- designer/server/designer_server.py (admin/terminal-log layer)
+- any other script that runs you, queues your jobs, or logs your work
+
+This applies EVEN IF you hit an error, deadlock, or bug inside one of these
+files while doing an unrelated job (e.g. a faction bug fix). If one of these
+files is broken:
+1. Work around it (retry, use a cached value, skip the step) if you can.
+2. If you cannot work around it, mark the job "NOT VERIFIED - <reason>" or
+   leave a clear note, and STOP. Do not patch the tool.
+3. Report the problem back through the terminal log / summary so the owner
+   can fix it themselves.
+
+Self-modifying your own infrastructure has happened before (see
+tickers/designer-admin.py git history, Oct 14 "token() deadlock" fix made
+mid-job) and the owner has explicitly required this never happen again,
+with or without a separate "auto-update" setting.
+
+═══════════════════════════════════════════════════════════════════════════
+WHEN THE OWNER SAYS "ENTRY 357" OR "PROMPT 351" - WHAT TO DO
+═══════════════════════════════════════════════════════════════════════════
+
+When the owner references:
+- "entry 357"
+- "prompt 351"
+- "Claude terminal log entry 347"
+- "terminal log #353"
+- "check entry 356"
+
+They are referring to the **Claude Terminal Log** - a numbered list of every prompt
+sent to Claude from the admin console and faction designer.
+
+**HOW TO LOOK UP AN ENTRY:**
+
+1. Fetch the terminal log:
+   ```bash
+   cd ~/Claude-Projects/cthulhu-wars-tools/tickers
+   python3 designer-admin.py terminal-log > /tmp/tlog.json
+   ```
+
+2. Find the entry by number (the "n" field):
+   ```bash
+   # Find entry 357
+   jq '.entries[] | select(.n == 357)' /tmp/tlog.json
+
+   # Show just the prompt and summary
+   jq '.entries[] | select(.n == 357) | {n, prompt, summary}' /tmp/tlog.json
+   ```
+
+3. Read what the entry says and do what it asks
+
+**WHAT THE ENTRY CONTAINS:**
+- `n`: The entry number (357, 351, etc.) - THIS IS WHAT THE OWNER REFERENCES
+- `prompt`: What was asked
+- `summary`: What Claude did (or "PENDING" if not done yet)
+- `type`: "admin" (console) or request type (BUILD/EXTRACT/BUG)
+- `user`: Who submitted it
+- `designObject`: What faction/map it's about
+- `cost`: Estimated cost in USD
+
+**COMMON PATTERNS:**
+
+"Deploy entry 351" → Look up entry 351, read its summary, deploy what it describes
+"Fix the bug in entry 353" → Look up entry 353, read the prompt, fix that bug
+"Entry 357 says X is broken" → Look up entry 357, verify what it says
+"Check what entry 356 did" → Look up entry 356, read the summary
+
+**CRITICAL:** The entry NUMBER is how the owner tracks work. When you complete
+work referenced in an entry, UPDATE THAT ENTRY'S SUMMARY so the owner can see
+what you did.
+
+═══════════════════════════════════════════════════════════════════════════
+MANDATORY: UPDATE REQUEST STATUS WHEN WORK IS COMPLETE
+═══════════════════════════════════════════════════════════════════════════
+
+CRITICAL RULE - YOU MUST FOLLOW THIS EVERY SINGLE TIME:
+
+When you finish work on ANY request (build, extract, bug, menu, etc.):
+
+1. **Update the terminal log** with your summary and cost:
+   ```bash
+   echo "Your work summary" > /tmp/summary.txt
+   python3 designer-admin.py tlog-summary <request-id> /tmp/summary.txt
+   python3 designer-admin.py tlog-cost <request-id> <usd-cost>
+   ```
+
+2. **Update the request status to "done"**:
+   ```bash
+   python3 designer-admin.py request-status <request-id> done
+   ```
+
+DO NOT SKIP STEP 2. If you only update the terminal log but forget to update the
+request status, the request will show as "PENDING" forever in the admin console,
+even though the work is complete. This is THE MOST COMMON MISTAKE.
+
+**When to mark status="done":**
+- You completed the work successfully
+- You added summary and cost to terminal log
+- The .reply file exists in ~/.cw-admin-queue/done/
+
+**When to mark status="cancelled":**
+- The request was a duplicate or test
+- The user explicitly asked to cancel it
+- The request is invalid/impossible
+
+NEVER leave a request in status="notified" or "open" after you finish working on it.
 
 ═══════════════════════════════════════════════════════════════════════════
 20-MINUTE / 3-TRY LIMIT - STOP AND HAND OFF, DO NOT GRIND
@@ -35,6 +163,945 @@ whether it is a Sonnet or an Opus run - has these SAME instructions: if IT
 also can't solve it in 20 minutes or 3 tries, it stops and hands off the
 same way, one tier up. Opus is the last tier; if Opus also hits the limit,
 summarize plainly for the owner instead of continuing to retry.
+
+═══════════════════════════════════════════════════════════════════════════
+BUG FIX VALIDATION - MANDATORY STEPS BEFORE MARKING COMPLETE
+═══════════════════════════════════════════════════════════════════════════
+
+**CRITICAL:** A bug fix is NOT complete until you've validated it following
+these steps. "Fixed the code and deployed" is NOT enough - you must verify
+the fix actually works in a real game.
+
+**STEP 1: UNDERSTAND THE BUG**
+
+If you have a game name/URL:
+- Run a trace on the game to see the actual error
+- Check the Java console for error messages
+- Look at the game log to understand what happened
+
+If you don't have a game:
+- Check the Faction Build Manual for similar bugs and their fixes
+- Review the code carefully to understand the issue
+- Look for related bugs in the designer bug history
+
+**STEP 2: MAKE THE FIX**
+
+- Fix the Scala code or overlay text
+- Commit your changes with clear commit message
+- Build and deploy to the appropriate server (HB or Main)
+
+**STEP 3: VERIFY THE FIX (MANDATORY)**
+
+For game bugs:
+1. **Reload the game in a local test bed:**
+   ```bash
+   cd ~/Claude-Projects/cthulhu-wars-tools
+   # For live games, create a local replay:
+   # See "Local Replay Test Rig" memory entry for setup
+   ```
+
+2. **Open the game in a browser with puppeteer:**
+   ```bash
+   cd ~/Claude-Projects/cthulhu-wars-tools
+   node scripts/verify-faction-visual.mjs <FACTION-ACR> HB
+   # OR for Main build:
+   node scripts/verify-faction-visual.mjs <FACTION-ACR>
+   ```
+
+3. **Check the browser dev console for errors:**
+   - Puppeteer captures console errors automatically
+   - Check the script output for "ERRORS" or "FAILED REQUESTS"
+   - Zero errors = good, any errors for your faction = not fixed
+
+4. **Take BEFORE and AFTER screenshots:**
+   - Screenshot the bug before fixing
+   - Screenshot the same view after deploying
+   - READ both screenshots with the Read tool
+   - Include both screenshot paths in your summary
+
+For visual bugs (colors, images, overlays, text, menus):
+1. **Use verify-faction-visual.mjs:**
+   - This opens a real game and captures all visual evidence
+   - Screenshots saved to /tmp/verify-<acr>-<date>/
+   - Check V1-V15 from the Visual Audit Checklist
+
+2. **Read every screenshot:**
+   - board.png - units on map
+   - card.png - faction card
+   - panel.png - faction side panel with 6 SBRs
+   - sbr-1..6.png - each requirement popup
+   - sb-1..N.png - each spellbook popup
+   - phone.png - mobile view
+
+3. **Verify the specific issue:**
+   - Wrong color? Compare computed color to designer meta.color
+   - Missing image? Check naturalWidth > 0, no 404s
+   - Text cut off? Check phone.png for overflow
+   - Overlay not showing? Click it and screenshot the popup
+
+For designer bugs:
+- Update BOTH terminal log summary AND request status
+- Check that request status shows "done" in admin console
+- Verify the bugHistory in the faction/unit/map JSON was updated
+
+**STEP 4: DOCUMENT IN SUMMARY**
+
+Your terminal log summary MUST include:
+- What you changed (which files, which lines, what the change was)
+- How you tested it (which script you ran, what you checked)
+- What the result was (error count, screenshot paths, status)
+- Before/after comparison for visual bugs
+
+**EXAMPLE GOOD SUMMARY:**
+```
+Fixed overlay.scala line 234 to use correct unit lookup for FM Bone Sculptor.
+Added missing import for UnitClass at line 12.
+
+Tested with: node scripts/verify-faction-visual.mjs FM HB
+Evidence: /tmp/verify-fm-2026-10-21/
+
+Before: card.png showed blank row for Bone Sculptor
+After: card.png shows full row with correct name, cost 2, combat 2
+
+V4 faction card: PASS - all 6 unit rows visible
+V9 unit images: PASS - 5/5 loaded, 0 broken
+V15 JS errors: PASS - 0 console errors, 0 failed requests
+
+Deployed to HB v2.371
+```
+
+**EXAMPLE BAD SUMMARY:**
+```
+Fixed the bug. Deployed.
+```
+
+**WHEN TO SKIP VALIDATION:**
+
+NEVER. Always validate. Even "trivial" fixes can break things. Even text
+changes can cause crashes if you misquote strings. Always run the test rig.
+
+If you cannot test (game is private, no test rig exists, puppeteer broken):
+Say so explicitly: "NOT VERIFIED - <reason>". Never say "verified" when you
+didn't actually test it.
+
+═══════════════════════════════════════════════════════════════════════════
+COLOUR OUT OF SPACE FACTION - FULL EDIT ACCESS
+═══════════════════════════════════════════════════════════════════════════
+
+You have FULL EDIT ACCESS to the "Colour Out of Space" faction design:
+- Faction ID: tpunhkcjo2c
+- Faction Name: Colour Out of Space
+- Acronym: CS
+- Owner: CavySupreme
+
+USE THIS ACCESS to validate changes you make to the faction designer. When you:
+- Fix bugs in the CS faction build
+- Update CS faction mechanics or values
+- Modify CS faction assets or configuration
+
+HOW TO VIEW THE FACTION DESIGN (same data the frontend shows):
+
+1. **Fetch the full faction JSON** (exactly what the designer UI loads):
+   ```bash
+   cd ~/Claude-Projects/cthulhu-wars-tools/tickers
+   python3 designer-admin.py faction tpunhkcjo2c
+   ```
+
+   This returns the complete faction design with all sections:
+   - meta (name, acronym, color, stability)
+   - units (all unit rows with costs, combat, abilities)
+   - spellbooks (all SBs with requirements, types, abilities)
+   - unfactionedAbilities (UFAs)
+   - interactions (faction/map interactions)
+   - simpleUpdate (quick-update image/value rows)
+   - customLogic (any custom code notes)
+   - claudeQA (questions/answers for each section)
+
+2. **Make changes via admin API**:
+   ```bash
+   # Create ops.json with patch operations. NOT JSON Patch/RFC-6902: the op is "set" (there
+   # is no "replace"), and paths are dot-separated with the row's id used directly, not an
+   # array index and not a leading "/":
+   echo '[{"op":"set","path":"units.rows.<rowId>.cost","value":2}]' > /tmp/cs-patch.json
+   python3 designer-admin.py patch tpunhkcjo2c /tmp/cs-patch.json
+   ```
+
+3. **Verify changes by fetching again**:
+   ```bash
+   python3 designer-admin.py faction tpunhkcjo2c | jq '.units.rows[0].cost'
+   ```
+
+4. **View in browser** (if someone needs to see the visual UI):
+   The faction is at: https://cwo.freeddns.org/designer/#/design/tpunhkcjo2c
+   - Owner: CavySupreme (full edit access)
+   - Editor: scrolltest_7jyc2n (full edit access for testing/validation)
+
+   The test user (scrolltest_7jyc2n) has full edit access, so changes made via the admin
+   API can be verified by logging in as that user and viewing the faction in the designer UI.
+   (You as the admin agent use the API; the test user is for manual browser verification.)
+
+VALIDATION WORKFLOW:
+
+When you make changes to CS faction code (FactionCS.scala, unit costs, abilities),
+you SHOULD verify the designer reflects those changes:
+1. Read the current designer state (designer-admin.py faction)
+2. Check if numbers/values match your code changes
+3. If they don't match, use the patch API to sync them
+4. Re-read to confirm
+
+This ensures the designer and game code stay in sync, so future "Push design to
+build" operations work correctly.
+5. If the change affects anything a player SEES (color, images, card text, spellbook
+   text, ability text, menus): designer matching is NOT enough. Open a real CS game
+   (cd ~/Claude-Projects/cthulhu-wars-tools && node scripts/verify-faction-visual.mjs CS),
+   READ the screenshots it saves, and record PASS/FAIL per the "VISUAL AUDIT CHECKLIST" (V1-V15).
+
+HOW TO VIEW THE DESIGNER FRONTEND IN A BROWSER (automation with puppeteer):
+
+You have access to puppeteer for browser automation. Use this to actually VIEW the
+designer frontend like a user would, not just read JSON via the API.
+
+1. **Write a puppeteer script** to automate the browser:
+
+```javascript
+#!/usr/bin/env node
+import puppeteer from 'puppeteer';
+
+(async () => {
+  const browser = await puppeteer.launch({
+    headless: false,  // Set true for screenshots only, false to watch it work
+    executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    devtools: false
+  });
+
+  const page = await browser.newPage();
+
+  // Log console errors from the page
+  page.on('console', msg => {
+    if (msg.type() === 'error') console.log(`❌ Page error: ${msg.text()}`);
+  });
+
+  try {
+    // 1. Go to designer
+    console.log('Loading designer...');
+    await page.goto('https://cwo.freeddns.org/designer/', {
+      waitUntil: 'domcontentloaded',
+      timeout: 30000
+    });
+
+    // 2. Log in as test user (scrolltest_7jyc2n)
+    // You need the PASSWORD - it's stored in the designer database users.json
+    // For the test user, the password is likely simple (like "test" or same as username)
+    console.log('Logging in as scrolltest_7jyc2n...');
+    await page.type('#username', 'scrolltest_7jyc2n');
+    await page.type('#password', 'test');  // Or fetch from users.json if needed
+    await page.click('button[type="submit"]');
+    await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 10000 });
+
+    // 3. Navigate to CS faction
+    console.log('Opening CS faction...');
+    await page.goto('https://cwo.freeddns.org/designer/#/design/tpunhkcjo2c', {
+      waitUntil: 'domcontentloaded',
+      timeout: 10000
+    });
+
+    // Wait for faction to load
+    await page.waitForSelector('.design-view', { timeout: 10000 });
+
+    // 4. Take screenshot
+    await page.screenshot({ path: '/tmp/cs-faction-designer.png', fullPage: true });
+    console.log('✓ Screenshot saved to /tmp/cs-faction-designer.png');
+
+    // 5. Check specific sections or interact with UI
+    // Example: click on Units tab
+    const unitsTab = await page.$('button:has-text("Units")');
+    if (unitsTab) {
+      await unitsTab.click();
+      await page.waitForTimeout(1000);
+      await page.screenshot({ path: '/tmp/cs-units-section.png' });
+    }
+
+    // Keep browser open for manual inspection (remove this in headless mode)
+    if (!browser.headless) {
+      console.log('Browser open for inspection. Press Ctrl+C to close.');
+      await new Promise(r => setTimeout(r, 300000)); // 5 min
+    }
+
+  } catch (e) {
+    console.error(`Error: ${e.message}`);
+    await page.screenshot({ path: '/tmp/designer-error.png' });
+  }
+
+  await browser.close();
+})();
+```
+
+2. **Run the script**:
+```bash
+cd /tmp
+# Write script to /tmp/view-cs-faction.mjs
+node /tmp/view-cs-faction.mjs
+```
+
+3. **Get test user password** (if you don't know it):
+```bash
+# Read users.json from the VM to get the password hash or reset it
+ssh -i ~/.ssh/oracle_cw_ed25519 oracle-cw-server@cwo.freeddns.org \
+  "cat /opt/cwo/designer/data/users.json" | jq '.users.scrolltest_7jyc2n'
+```
+
+4. **For headless automation** (screenshots only, no visible browser):
+   - Set `headless: true` in puppeteer.launch()
+   - Remove the setTimeout at the end
+   - Script will run, take screenshots, and exit automatically
+
+5. **Check screenshots**:
+```bash
+open /tmp/cs-faction-designer.png
+# or
+Read /tmp/cs-faction-designer.png
+```
+
+WHEN TO USE BROWSER AUTOMATION:
+
+- Verifying visual layout of the designer
+- Testing that buttons/tabs work correctly
+- Confirming images load properly
+- Checking for JavaScript errors in the console
+- Taking screenshots to show the owner what you fixed
+
+Don't just use the API - if you made changes that affect the UI, actually LOOK at
+the UI with puppeteer to verify it works.
+
+IMPORTANT: Everything above checks the DESIGNER only. The designer and the GAME are
+different websites that load images and colors from different places. Anything a
+player sees in a game (faction color, glyph, unit images, silhouettes, faction card,
+spellbook popups) must ALSO be checked in an actual game - see "VISUAL VERIFICATION
+IN ACTUAL GAMES" and the "VISUAL AUDIT CHECKLIST" (V1-V15) below.
+
+═══════════════════════════════════════════════════════════════════════════
+VERSION CHANGELOG GUIDELINES - REQUIRED FOR ALL UI CHANGES
+═══════════════════════════════════════════════════════════════════════════
+
+When you make ANY changes to the designer UI (frontend, user-facing features), you
+MUST update the version number and add a changelog entry.
+
+**Version File**: /Users/gremus/Claude-Projects/cthulhu-wars-tools/designer/www/versions.json
+
+**Versioning**:
+- Start at v1.000, increment by 0.001 for each update
+- Update the "current" field to the new version
+- Add new entry at the TOP of the "versions" array
+
+**Writing Changelog Summaries**:
+
+1. **Brief and user-focused**: Describe the impact to the END USER, not technical details
+2. **Action-oriented**: Use verbs like "Fixed", "Added", "Improved", "Updated"
+3. **Specific enough to understand**: User should know what functionality was affected
+
+**Good Examples**:
+- "Fixed silhouette generation errors"
+- "Bug table cleanup"
+- "Add Update comments/instructions textarea"
+- "Track section edits after build"
+
+**Bad Examples** (too technical):
+- "Add designObject field update support to terminal log API"
+- "Designer: repeat clicks always leave a terminal-log row"
+
+**CRITICAL RULE - ADMIN CHANGES**:
+
+ANY changes to the admin console, Claude terminal UI, admin-only features, test user
+access, queue system, meta agent, or backend admin functionality should be summarized
+simply as:
+
+    "Admin fixes"
+
+This includes:
+- Admin console improvements
+- Claude terminal log changes
+- Admin view modifications
+- Permission changes for admin/test users
+- Backend admin functionality
+- Queue system changes
+- Meta agent updates
+
+**Examples**:
+- Let cavysupreme edit base factions → "Admin fixes"
+- Fix admin console menu reorder → "Admin fixes"
+- Terminal log finished requests no longer show pending → "Admin fixes"
+
+After updating versions.json, deploy it:
+```bash
+scp www/versions.json cwo:/opt/cwo/designer/www/versions.json
+```
+
+═══════════════════════════════════════════════════════════════════════════
+VISUAL VERIFICATION IN ACTUAL GAMES - MANDATORY FOR ALL VISUAL CHANGES
+═══════════════════════════════════════════════════════════════════════════
+
+**CRITICAL RULE: IT IS NOT ENOUGH TO MAKE A CHANGE AND SAY "DONE"**
+
+For ANY change that affects what players SEE in an actual game, you MUST verify it in
+a real game browser:
+- Colors, glyphs, overlays
+- Faction cards, unit images
+- Text formatting, text color
+- Spellbook overlays, abilities
+- Map visuals, region colors
+- Any UI element that appears during gameplay
+
+**HOW TO VERIFY IN AN ACTUAL GAME:**
+
+**Method 1: Find and Check Existing Games (Fastest)**
+
+1. **Find games via admin console:**
+   ```bash
+   # Get list of all active games
+   curl -s https://cwo.im/admin.html | grep -oP 'game-[a-z0-9-]+' | sort -u | head -20
+
+   # Or look for games with specific faction/map:
+   # Check admin console at https://cwo.im/admin.html
+   # Look for "Active Games" section
+   ```
+
+2. **Open game in browser with puppeteer:**
+   ```javascript
+   const puppeteer = require('puppeteer');
+   const browser = await puppeteer.launch({headless: 'new', args: ['--no-sandbox']});
+   const page = await browser.newPage();
+
+   // Navigate to game
+   await page.goto('https://cwo.im/solo/?game=<game-id>', {waitUntil: 'networkidle0'});
+   await new Promise(r => setTimeout(r, 3000));
+
+   // Take screenshot
+   await page.screenshot({path: '/tmp/game-verify.png', fullPage: true});
+
+   // Check specific elements
+   const hasCorrectColor = await page.evaluate(() => {
+     const element = document.querySelector('.faction-card');
+     return window.getComputedStyle(element).color === 'rgb(255, 0, 0)';
+   });
+
+   console.log('Verification:', hasCorrectColor ? 'PASS' : 'FAIL');
+   await browser.close();
+   ```
+
+3. **Check Java console for errors:**
+   ```javascript
+   page.on('console', msg => console.log('GAME LOG:', msg.text()));
+
+   // Look for errors after your change is triggered
+   const errors = await page.evaluate(() => {
+     return window.__gameErrors || [];
+   });
+   ```
+
+**Method 2: Spin Up Test Game (When No Suitable Game Exists)**
+
+1. **Create a test game via the game server:**
+   ```bash
+   # SSH to game server
+   ssh cwo
+
+   # Use the game admin API to create test game
+   # (Specific commands depend on game server setup)
+   ```
+
+2. **Or use the solo setup page:**
+   ```javascript
+   const page = await browser.newPage();
+   await page.goto('https://cwo.im/solo/', {waitUntil: 'networkidle0'});
+
+   // Select faction you're testing
+   await page.click('button[data-faction="YourFaction"]');
+
+   // Start game
+   await page.click('button#start-game');
+   await new Promise(r => setTimeout(r, 5000));
+
+   // Get game URL
+   const gameUrl = page.url();
+   console.log('Test game created:', gameUrl);
+
+   // Now verify your visual changes
+   await page.screenshot({path: '/tmp/test-game.png', fullPage: true});
+   ```
+
+**What to Verify:**
+
+- **Colors match**: Use browser dev tools to check computed styles
+- **Images load**: Check network tab for 404s
+- **Text renders correctly**: No overflow, correct font, readable
+- **Overlays appear**: Faction cards, spellbook text overlays show up
+- **No visual glitches**: No overlapping text, broken layouts
+- **Console is clean**: No JavaScript errors
+
+**When to Verify:**
+
+- After any code change to faction builds (HB or Main)
+- After deploying designer changes that affect game assets
+- After updating overlays, cards, or visual elements
+- Before marking any visual bug as "fixed"
+- Before marking any faction build as "complete"
+
+**Example Verification Flow:**
+
+```bash
+# 1. Make your change (e.g., fix faction card color)
+# 2. Deploy it
+scp ~/cw-homebrew/target/scala-2.13/HB.js cwo:/opt/cwo/hb/HB.js
+
+# 3. Find a game with that faction
+curl -s https://cwo.im/admin.html | grep "YourFaction"
+
+# 4. Open game in puppeteer and screenshot
+node verify-game.js game-abc123
+
+# 5. READ the screenshot and confirm the fix
+# 6. ONLY THEN say "verified in actual game"
+```
+
+**DO NOT:**
+- Say "done" without actually looking at a game
+- Rely on unit tests alone for visual changes
+- Assume the change worked without verification
+- Skip verification because "it should work"
+
+**DO:**
+- Take screenshots of before/after
+- Check multiple games if the change is risky
+- Verify on both desktop and mobile view if relevant
+- Document what you verified in your summary
+
+───────────────────────────────────────────────────────────────────────────
+VISUAL AUDIT CHECKLIST - EVERY VISUAL ITEM NEEDS AN "IN-GAME" CHECK
+(added 2026-10-16: visual bugs were slipping through because agents changed code,
+ never opened a game, and said "done")
+───────────────────────────────────────────────────────────────────────────
+
+**THE RULE, IN PLAIN WORDS:**
+"Done" means: you opened a REAL GAME (not the designer, not the Scala source, not
+a unit test), took screenshots, OPENED THOSE SCREENSHOTS WITH THE Read TOOL AND
+LOOKED AT THEM, and wrote down what you saw.
+
+- A build/audit/visual-bug summary with NO in-game screenshot paths = NOT DONE.
+- "It loads with no errors" is NOT a visual check. A page can load cleanly and
+  still show a white faction card, a missing glyph, or cut-off spellbook text.
+- "The image shows in the designer" is NOT a visual check. The designer and the
+  game load images from DIFFERENT places. Only the game counts.
+- Taking a screenshot and NOT reading it is the same as not taking it.
+- If you could not get a screenshot (puppeteer crashed, game would not open), say
+  so plainly: "NOT VISUALLY VERIFIED - <reason>". Never write "verified".
+
+**THE ONE COMMAND TO RUN FIRST (tested 2026-10-16 on Fleshmason, HB v2.324):**
+```bash
+cd ~/Claude-Projects/cthulhu-wars-tools && node scripts/verify-faction-visual.mjs <ACR> [HB]
+```
+It starts a REAL 4-player local game with <ACR> as Player 1, then saves to
+/tmp/verify-<acr>-<date>/: picker.png, board.png, panel.png (faction panel with its
+6 spellbook-requirement rows), sbr-1..6.png (each requirement popup), card.png +
+card-full.png (faction card), sb-1..N.png (each spellbook popup, names taken from
+the card), phone.png (390 wide). It prints image load results, card text colors and
+fonts, the requirement-row count, JS errors and failed downloads, and exits 1 on
+any automatic problem. It does NOT judge looks - you still READ every screenshot
+and fill in V1-V15. If it fails on menus, the error.png screenshot shows where.
+
+**WHERE THE GAME IS (checked in the browser 2026-10-16):**
+- WARNING: https://cwo.freeddns.org/HB/?setup=4:GC-<ACR>-CC-BG does NOT open a
+  game. It shows the MAIN MENU (Quick Game / Local Game / Online Game). Any
+  "loaded with no errors" result from that link is a check of the menu, not of the
+  faction. (test-faction-build.mjs uses that link - its PASS does not prove the
+  faction works; use verify-faction-visual.mjs.)
+- Real way into a game with a chosen faction (what the script does):
+  https://cwo.freeddns.org/HB/ -> "Local Game" -> "4 Players" -> "Alternate faction
+  selection" -> Player 1 row: untick "All", WAIT ~1s (the row redraws), then tick
+  the checkbox whose label has img src ending "/<acr>-glyph.webp" -> "Generate"
+  -> "Continue" -> "Start game". (Quick Game picks RANDOM factions - not usable.)
+  If the glyph is not in the picker, that itself is a FAIL (V14) - or the
+  "Tested / Beta" stability box (unticked by default) is hiding the faction.
+- Load with waitUntil 'domcontentloaded' + a few seconds' wait. 'networkidle2'
+  sometimes times out on this site.
+- Existing live game:        https://cwo.freeddns.org/HB/play/<secret>  (READ ONLY -
+  never click actions in a live game; see "NEVER Touch Live Games")
+- In-game page parts (real, checked):
+    faction side panel name  = `.name span.<acr>`  (click it -> opens the faction card)
+    faction card             = `.faction-table`
+    spellbook requirement row = `.spellbook` inside the faction's side panel (click
+                               -> torn-paper popup with the full requirement text)
+    spellbook popup          = click the spellbook NAME on the card (yellow text
+                               after "Spellbook:") -> open-book popup with name,
+                               type and full text
+    unit images              = img files named <acr>-<unit>.webp / .svg
+    faction color            = computed color of `span.<acr>`
+- The older examples above (cwo.im/solo/?game=, button[data-faction], '.faction-card')
+  were never checked against the real site - use the facts here instead.
+- Existing helper scripts (reuse them, do not reinvent):
+    ~/Claude-Projects/cthulhu-wars-tools/scripts/verify-faction-visual.mjs <ACR> [HB] (REAL game, all visual evidence - USE THIS)
+    ~/Claude-Projects/cthulhu-wars-tools/scripts/test-faction-build.mjs <ACR> [HB]   (load + JS errors - menu only, see warning)
+    ~/Claude-Projects/cthulhu-wars-tools/scripts/test-game-url.mjs "<game url>"      (live game, errors)
+    ~/Claude-Projects/cthulhu-wars-tools/scripts/sw-card-screenshot.mjs <outdir>     (card screenshot example)
+- PUPPETEER LOCATION GOTCHA: puppeteer is installed ONLY in
+  ~/Claude-Projects/cthulhu-wars-tools/node_modules. A script saved in /tmp will
+  fail with "Cannot find package 'puppeteer'". Save your verify scripts in
+  ~/Claude-Projects/cthulhu-wars-tools/scripts/ (name them verify-<acr>-*.mjs)
+  and run them from ~/Claude-Projects/cthulhu-wars-tools.
+- CHROME GOTCHA (found 2026-10-16): do NOT set executablePath to
+  '/Applications/Google Chrome.app/...'. With puppeteer 25.1.0 the installed Chrome
+  drops the connection ~2 seconds after the page opens ("Session closed",
+  "detached Frame", "Connection closed") - even on example.com. Leave
+  executablePath OUT so puppeteer uses its own bundled Chrome, which works.
+  The older helper scripts listed above still set the system Chrome path; if one
+  fails with those errors, that is the cause, not the faction.
+- Save screenshots to an evidence folder: /tmp/verify-<acr>-<date>/
+
+**CHECKLIST - each line = one thing a player sees. Each needs an in-game check.**
+
+| # | Visual item | HOW to check in the game | PASS means |
+|---|---|---|---|
+| V1 | Faction COLOR (meta.color) | Screenshot faction card + board; read computed color/background of `.faction-table` header and the faction's units on the map | Matches the designer hex (within a shade); not white/black/default grey; same color everywhere the faction appears |
+| V2 | TEXT COLOR on the faction card | Screenshot card; compare text color vs its background color (example E4) | Text clearly readable against its background; no white-on-white or dark-on-dark |
+| V3 | Faction GLYPH / symbol (<acr>-glyph.webp) | Find every `img` whose src contains `<acr>-glyph`; check it loaded (example E3); screenshot the picker and the card | Image loaded (naturalWidth > 0), correct art (not another faction's glyph), not stretched |
+| V4 | FACTION CARD (overlay.scala) | Click `.name span.<acr>` in the faction's side panel to open the card; screenshot `.faction-table` alone (example E2) | Every unit row present with right name/cost/combat; GOO special abilities in notes; nothing overlapping; nothing cut off at the edges |
+| V5 | SPELLBOOK slots on the card (the "6 spellbooks per faction" rule) | Count the `.spellbook` requirement rows in the faction side panel (panel.png) AND the spellbook names on the card (example E5) | Exactly 6 SB slots (unless owner said otherwise); a 2-sided SB = 2 connected slots; a dual-power SB = ONE slot |
+| V6 | SPELLBOOK OVERLAYS (popup text) | Click EACH spellbook name on the card (yellow text after "Spellbook:"); screenshot each open-book popup sb-N.png (example E5) | Popup opens for all 6; name, cost, requirement and effect text match the design; dual-power SB shows BOTH powers; 2-sided SB shows both sides |
+| V7 | SB REQUIREMENT text (SBRs) | Click each of the 6 requirement rows in the side panel; read each torn-paper popup sbr-1..6.png (side-panel rows are cut off with "..." on purpose - the popup must show the full text) | Every requirement visible, readable, numbers match faction-values/<acr>.json |
+| V8 | UFA / special ability text | Find the ability on the card; screenshot it; click it if it has a popup | Name + text present, readable, not truncated |
+| V9 | UNIT MAP IMAGES (<acr>-<unit>.webp) | Get the game to a state with units on the map (setup places them); check every faction image loaded (example E3) and look at the board screenshot | No broken-image icons; every unit shows its OWN art; size looks like other factions' units |
+| V10 | SILHOUETTES (white unit shapes on the card) | Zoom screenshot of the card unit rows | Each unit row has a white silhouette; correct shape; no colored pixels; no black box behind it |
+| V11 | Unit info SVGs (webp/info/<acr>-<unit>.svg) | Click / hover a unit; screenshot the info popup | SVG loads; text matches the design |
+| V12 | Text formatting | Look at the card + popup screenshots at 1400x1000 AND a phone size (390x844) | Correct font (same as other factions), no text running outside its box, no "..." cut-offs, no raw code like `<ACR>Values.X` or `undefined` / `NaN` |
+| V13 | Buttons and menus during play | Screenshot the action menu (`#action`) when it is this faction's turn | Every faction action appears with a clear label; multi-region menus NAME the region in the title; no blank buttons |
+| V14 | Picker entries | Screenshot the default picker AND the alternate picker | Faction appears in BOTH, with right name, glyph and color |
+| V15 | JavaScript errors | Capture console + pageerror + failed requests the whole time (example E6) | Zero errors; zero 404s for this faction's files |
+
+Rows V1-V15 that do not apply (e.g. no silhouettes yet) must be written as
+"N/A - <reason>", never silently skipped.
+
+**WHEN EACH CHECK IS REQUIRED:**
+- New faction build / full rebuild: ALL of V1-V15.
+- Faction audit (Manual Section 6.0): ALL of V1-V15, PLUS the Section 6.0 items.
+- "6 spellbooks" / ability audit: V4, V5, V6, V7, V8, V12, V15 at minimum.
+- Image swap / Simple Update image / --assets deploy: V3, V9, V10, V14, V15 for
+  every swapped image.
+- Silhouette generation: V10 (after attaching it AND deploying).
+- Any color change (meta.color, CSS, overlay colors): V1, V2, V3, V14, V15.
+- Overlay text / numbers change: V4, V6, V7, V8, V12, V15.
+- Visual BUG report: reproduce it first (screenshot BEFORE the fix), then after
+  the fix take the SAME screenshot again. Both paths go in the summary.
+
+**HOW TO DOCUMENT (paste into your tlog summary / .reply):**
+```
+VISUAL VERIFICATION - <ACR> - <build HB vX.Y> - <date>
+How: node scripts/verify-faction-visual.mjs <ACR> HB  (real local game, <ACR> = Player 1)
+Evidence folder: /tmp/verify-<acr>-<date>/
+V1 color      PASS  card header rgb(122, 30, 140) = designer #7a1e8c  (card.png)
+V3 glyph      PASS  fm-glyph.webp loaded 128x128, correct art      (picker.png)
+V5 SB slots   PASS  6 slots counted                                 (card.png)
+V6 overlays   FAIL  SB "Bone Song" popup shows only power 1 of 2    (sb-3.png)
+V9 unit imgs  PASS  5/5 loaded, 0 broken                            (board.png)
+V15 errors    PASS  0 console errors, 0 failed requests
+...
+RESULT: NOT DONE - V6 failed (fixing next)
+```
+Every PASS must name the screenshot you READ to decide it. A row with no
+screenshot or number behind it does not count.
+
+───────────────────────────────────────────────────────────────────────────
+PUPPETEER EXAMPLES FOR VISUAL CHECKS
+These are the TESTED pieces of scripts/verify-faction-visual.mjs (run on
+Fleshmason 2026-10-16). Run the script first. Copy these only when you need an
+extra check it does not do (e.g. a later game moment, a menu, a battle screen).
+Save as ~/Claude-Projects/cthulhu-wars-tools/scripts/verify-<acr>-<what>.mjs
+Run:   cd ~/Claude-Projects/cthulhu-wars-tools && node scripts/verify-<acr>-<what>.mjs FM
+───────────────────────────────────────────────────────────────────────────
+
+**E1 - Open a REAL game with the faction (error capture switched on FIRST)**
+```javascript
+import puppeteer from 'puppeteer';
+import fs from 'fs';
+
+const ACR = process.argv[2].toUpperCase(), acr = ACR.toLowerCase();   // e.g. FM
+const BUILD = process.argv[3] || 'HB';
+const OUT = `/tmp/verify-${acr}-${new Date().toISOString().slice(0, 10)}`;
+fs.mkdirSync(OUT, { recursive: true });
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+const browser = await puppeteer.launch({
+  headless: true,
+  // NO executablePath: the system Chrome breaks with this puppeteer (see CHROME GOTCHA)
+  args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  defaultViewport: { width: 1400, height: 1000 }
+});
+const page = await browser.newPage();
+
+// E6 part 1 - error capture. Attach BEFORE goto or you miss load-time errors.
+const errors = [], failed = [];
+page.on('console',  m => { if (m.type() === 'error') errors.push(m.text()); });
+page.on('pageerror', e => errors.push('PAGEERROR: ' + e.message));
+page.on('requestfailed', r => failed.push(r.url() + ' ' + (r.failure()?.errorText || '')));
+page.on('response', r => { if (r.status() >= 400) failed.push(r.status() + ' ' + r.url()); });
+
+// Click the first element whose own text is exactly t ("^text" = starts with)
+const clickText = t => page.evaluate(t => {
+  const m = e => t.startsWith('^') ? e.textContent.trim().startsWith(t.slice(1)) : e.textContent.trim() === t;
+  const el = [...document.querySelectorAll('*')].find(e => e.children.length === 0 && m(e));
+  if (!el) return false; el.click(); return true;
+}, t);
+
+await page.goto(`https://cwo.freeddns.org/${BUILD}/`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+await sleep(5000);
+for (const c of ['Local Game', '4 Players', 'Alternate faction selection']) { await clickText(c); await sleep(2500); }
+
+// Reserve the faction for Player 1: untick "All", WAIT for the redraw, then tick it.
+await page.evaluate(acr => {
+  const lab = [...document.querySelectorAll('label')].find(l => l.querySelector(`img[src$="/${acr}-glyph.webp"]`));
+  const all = [...lab.parentElement.querySelectorAll('label')].find(l => l.textContent.trim() === 'All').querySelector('input');
+  if (all.checked) all.click();
+}, acr);
+await sleep(1000);
+await page.evaluate(acr => {   // find the checkbox AGAIN - the old one was replaced
+  const lab = [...document.querySelectorAll('label')].find(l => l.querySelector(`img[src$="/${acr}-glyph.webp"]`));
+  const cb = lab.querySelector('input'); if (!cb.checked) cb.click();
+}, acr);
+await sleep(1000);
+for (const c of ['Generate', 'Continue', 'Start game']) { await clickText(c); await sleep(4000); }
+// Now the board, the 4 faction side panels and the setup prompts are on screen.
+```
+
+**E2 - Take screenshots (whole screen, faction panel, faction card, phone)**
+```javascript
+await page.screenshot({ path: `${OUT}/board.png` });            // what the player sees
+
+// Open the faction card: click the faction's short name in its side panel
+const openCard = () => page.evaluate(acr =>
+  [...document.querySelectorAll(`span.${acr}`)].find(s => s.parentElement.classList.contains('name'))?.click(), acr);
+await openCard();
+await sleep(2500);
+const card = await page.$('.faction-table');
+if (card) await card.screenshot({ path: `${OUT}/card.png` });   // card only, easier to read
+else console.log('FAIL: .faction-table not found - card did not open');
+
+// Phone size, for V12 (this is where cut-off / overlapping text shows up)
+await page.setViewport({ width: 390, height: 844 });
+await sleep(1500);
+await page.screenshot({ path: `${OUT}/phone.png` });
+await page.setViewport({ width: 1400, height: 1000 });
+```
+THEN: use the Read tool on board.png, card.png, phone.png and actually look.
+
+**E3 - Check that images loaded (glyph, unit art, silhouettes)**
+```javascript
+const imgs = await page.evaluate(acr => [...document.images]
+  .filter(i => i.src.toLowerCase().split('/').pop().startsWith(acr + '-'))
+  .map(i => ({ file: i.src.split('/').pop(), ok: i.complete && i.naturalWidth > 0,
+               size: `${i.naturalWidth}x${i.naturalHeight}` })), acr);
+const byFile = {};   // the same unit icon appears once per map spot - group them
+for (const i of imgs) { const k = `${i.ok ? 'OK    ' : 'BROKEN'} ${i.file} ${i.size}`; byFile[k] = (byFile[k] || 0) + 1; }
+Object.entries(byFile).forEach(([k, n]) => console.log(`  ${k}${n > 1 ? `  (x${n})` : ''}`));
+// Some art is a CSS background (e.g. webp/info/<acr>-background.webp):
+const bgs = await page.evaluate(acr => [...new Set([...document.querySelectorAll('*')]
+  .map(e => getComputedStyle(e).backgroundImage)
+  .filter(b => b && b !== 'none' && b.toLowerCase().includes('/' + acr + '-')))], acr);
+console.log('Background images:', bgs);
+// FAIL if any BROKEN, or if NO <acr>- images at all. A background URL can still
+// 404 - the "failed" list from E6 catches that.
+// "Loaded" is not "correct": READ the screenshots - right art, own art per unit,
+// not stretched, silhouettes are the unit's real shape.
+```
+
+**E4 - Check computed colors and fonts (faction color, text readability)**
+```javascript
+const factionColor = await page.evaluate(acr => {
+  const s = document.querySelector(`span.${acr}`); return s ? getComputedStyle(s).color : null; }, acr);
+console.log(`Faction name color (span.${acr}):`, factionColor);
+const cardText = await page.evaluate(() => {
+  const t = document.querySelector('.faction-table'); if (!t) return null;
+  return [...t.querySelectorAll('*')].filter(e => e.children.length === 0 && e.textContent.trim())
+    .slice(0, 25).map(e => { const s = getComputedStyle(e);
+      return `${e.textContent.trim().slice(0, 28).padEnd(28)} color=${s.color} font=${s.fontFamily.split(',')[0]} ${s.fontSize}`; });
+});
+cardText?.forEach(l => console.log('  ' + l));
+// Compare against the design:  designer-admin.py faction <fid> | jq -r '.meta.color'
+// Convert hex to rgb:  #f3c8c8 -> rgb(243, 200, 200)
+// Readability: very light text on a very light background (or dark on dark) -> FAIL (V2).
+// Font: card text should be "Bohemian Typewriter" and the title "Abaddon", like other factions.
+// Also search the card text for 'undefined', 'NaN', 'Values.' -> FAIL (V12).
+```
+
+**E5 - Open every spellbook requirement and every spellbook popup**
+```javascript
+// a) The 6 requirement rows in the faction's side panel (V5 count + V7 text).
+//    The panel is re-drawn after each click, so find it again every time.
+const rowCount = await page.evaluate(acr => {
+  let p = [...document.querySelectorAll(`span.${acr}`)].find(s => s.parentElement.classList.contains('name'));
+  while (p && !p.querySelector('.spellbook')) p = p.parentElement;
+  return p ? p.querySelectorAll('.spellbook').length : 0; }, acr);
+console.log('Spellbook requirement rows:', rowCount, rowCount === 6 ? 'PASS' : 'FAIL (expected 6)');
+for (let i = 0; i < rowCount; i++) {
+  await page.evaluate((acr, i) => {
+    let p = [...document.querySelectorAll(`span.${acr}`)].find(s => s.parentElement.classList.contains('name'));
+    while (p && !p.querySelector('.spellbook')) p = p.parentElement;
+    p.querySelectorAll('.spellbook')[i].click();
+  }, acr, i);
+  await sleep(1500);
+  await page.screenshot({ path: `${OUT}/sbr-${i + 1}.png` });   // torn-paper popup
+  await page.keyboard.press('Escape'); await sleep(600);
+}
+
+// b) Each spellbook NAME on the faction card (V6). Names = text after "Spellbook(s):"
+await openCard(); await sleep(2000);
+const sbNames = await page.evaluate(() => {
+  const t = document.querySelector('.faction-table'); if (!t) return [];
+  const names = [];
+  for (const m of t.innerText.matchAll(/Spellbooks?:\s*([^\n.]+)/g))
+    m[1].split(',').map(x => x.trim()).filter(Boolean).forEach(n => names.push(n));
+  return [...new Set(names)];
+});
+console.log('Spellbooks on card:', sbNames.length, sbNames);   // compare with the design's 6
+for (const [i, n] of sbNames.entries()) {
+  const ok = await clickText(n); await sleep(1500);
+  if (ok) await page.screenshot({ path: `${OUT}/sb-${i + 1}.png` });   // open-book popup
+  else console.log(`FAIL: could not click "${n}"`);
+  await page.keyboard.press('Escape'); await sleep(600);
+  await openCard(); await sleep(1500);               // re-open the card for the next one
+}
+// Then READ sbr-1..6.png and sb-1..N.png. Check: popup opened, full name + type +
+// text, both powers for dual-power SBs, both sides for 2-sided SBs, numbers right.
+// Cross-check names:  designer-admin.py faction <fid> | jq -r '.spellbooks.rows[].name'
+```
+
+**E6 - Report JavaScript errors and failed downloads (end of every script)**
+```javascript
+console.log('\n=== ERRORS ===');
+console.log(errors.length ? errors.join('\n') : '(none)');
+console.log('=== FAILED REQUESTS ===');
+console.log(failed.length ? failed.join('\n') : '(none)');
+console.log('Screenshots in', OUT);
+await browser.close();
+process.exit(errors.length || failed.some(f => f.toLowerCase().includes('/' + acr + '-')) ? 1 : 0);
+```
+
+**Common reasons a check fails and what it usually means:**
+- Image 404 in the game but fine in the designer -> assets not deployed; redeploy
+  with --assets (see "Deploy --assets Flag"); NOT a code bug.
+- Glyph shows another faction's art -> wrong file name in the build, or the swap
+  was never synced (faction-values.py sync + apply --deploy).
+- Card opens but rows missing -> overlay.scala row list incomplete.
+- Text shows `undefined`, `NaN` or a raw value name -> values file key not wired.
+- 7+ spellbook slots -> dual-power SB counted as two, or 2-sided SB not linked.
+- Every unit row on the card shows the SAME generic figure -> placeholder
+  silhouettes, real ones never made/attached (V10 FAIL). Seen on Fleshmason 2026-10-16.
+- Card fine at 1400 wide but headings run together / words split ("Buildi ng") at
+  phone width -> V12 finding; report it (seen on Fleshmason 2026-10-16).
+- Script stops on a menu button -> look at error.png; the menu text may have
+  changed, or the faction is missing from the alternate picker (V14 FAIL).
+
+═══════════════════════════════════════════════════════════════════════════
+SILHOUETTE GENERATION
+═══════════════════════════════════════════════════════════════════════════
+
+Designers can request silhouette generation from their custom uploaded map images.
+A silhouette is a flat white version of the map image with transparent background,
+used on faction cards.
+
+WHEN YOU RECEIVE A SILHOUETTE GENERATION REQUEST:
+
+The request will include:
+- Unit name
+- Faction name
+- Map image ID
+- Map image URL (use this to download the source image)
+- Unit ID
+- Faction ID
+
+STEPS:
+
+1. **Download the source map image**:
+   ```bash
+   cd /tmp
+   python3 ~/Claude-Projects/cthulhu-wars-tools/tickers/designer-admin.py image <imageId>
+   # This downloads and converts to PNG, prints the local path
+   ```
+
+2. **Generate the silhouette** using ImageMagick or Python PIL:
+   ```bash
+   # Method 1: ImageMagick
+   convert input.png -channel RGB -negate -colorspace gray -negate \
+     -threshold 50% -fill white -opaque black output-silhouette.png
+
+   # Method 2: Python PIL (better for preserving transparency)
+   python3 << 'EOF'
+   from PIL import Image
+   import sys
+
+   img = Image.open('input.png').convert('RGBA')
+   pixels = img.load()
+   for y in range(img.height):
+       for x in range(img.width):
+           r, g, b, a = pixels[x, y]
+           if a > 0:  # Not transparent
+               pixels[x, y] = (255, 255, 255, a)  # White, preserve alpha
+   img.save('output-silhouette.png')
+   print('✓ Silhouette generated')
+   EOF
+   ```
+
+3. **Upload the silhouette**:
+   ```bash
+   cd ~/Claude-Projects/cthulhu-wars-tools/tickers
+   python3 designer-admin.py upload /tmp/output-silhouette.png
+   # Prints the new image ID
+   ```
+
+4. **Attach to the unit** (patch the faction design):
+   ```bash
+   # Create patch operation. Op is "set" (not "replace"); path is dot-separated with the
+   # row id used directly in the path (no array index, no leading "/"):
+   echo '[{"op":"set","path":"units.rows.<unitId>.silhouette","value":"<newImageId>"}]' > /tmp/patch.json
+   python3 designer-admin.py patch <factionId> /tmp/patch.json
+   ```
+
+5. **Verify the silhouette visually** (required):
+   - Use the Read tool on /tmp/output-silhouette.png and LOOK at it: flat white
+     shape, transparent background, same outline as the unit, no colored pixels,
+     no black box.
+   - After the faction is rebuilt / deployed with --assets: open a game with the
+     faction, open the faction card (example E2), screenshot `.faction-table`, and
+     check V10 - the silhouette shows on the right unit row and looks correct.
+   - If the faction has not been rebuilt yet, say "silhouette attached in designer;
+     NOT yet visible in game until rebuild" - do not say it is done in game.
+
+6. **Report completion** with a summary of what you did, the new silhouette image ID,
+   and the screenshot paths you checked.
+
+EXAMPLE WORKFLOW:
+
+```bash
+# 1. Download source
+IMG_PATH=$(python3 designer-admin.py image abc123xyz)
+
+# 2. Generate silhouette
+python3 << 'EOF'
+from PIL import Image
+img = Image.open("$IMG_PATH").convert('RGBA')
+pixels = img.load()
+for y in range(img.height):
+    for x in range(img.width):
+        r, g, b, a = pixels[x, y]
+        if a > 0: pixels[x, y] = (255, 255, 255, a)
+img.save('/tmp/silhouette.png')
+EOF
+
+# 3. Upload
+NEW_ID=$(python3 designer-admin.py upload /tmp/silhouette.png | tail -1)
+
+# 4. Attach (op "set", dot-separated path, row id used directly — not RFC-6902)
+echo "[{\"op\":\"set\",\"path\":\"units.rows.unit123.silhouette\",\"value\":\"$NEW_ID\"}]" > /tmp/patch.json
+python3 designer-admin.py patch fac456 /tmp/patch.json
+```
 
 ═══════════════════════════════════════════════════════════════════════════
 SIMPLE UPDATE SECTION
@@ -90,18 +1157,157 @@ For DGT:
 - dgt-famine.webp
 - dgt-death.webp
 
-HOW IT WORKS:
-- Designer uploads new image with matching filename
-- System detects the file and swaps it in the webp/images folder
-- Change appears in game immediately (no rebuild required)
-- Assets are deployed via deploy-homebrew-to-vm.sh --assets
+HOW IT WORKS (corrected 2026-10-14 - the old text here was wrong):
+- Designer uploads a new image with the matching filename and pushes it.
+  The designer server only stores it on the VM in
+  /opt/cwo/designer/data/factions/<fid>/imageSwaps/. NOTHING copies it into the
+  game by itself.
+- The image reaches the game with the same script as numbers (no Claude):
+    /usr/bin/python3 ~/Claude-Projects/cthulhu-wars-tools/scripts/faction-values.py sync
+    /usr/bin/python3 ~/Claude-Projects/cthulhu-wars-tools/scripts/faction-values.py apply --deploy
+  sync copies the swap into solo/webp/images; apply commits it (git add -f) and
+  deploys with --assets.
+- VERIFY IN GAME (required after every image swap): run
+  node scripts/verify-faction-visual.mjs <ACR> (from ~/Claude-Projects/cthulhu-wars-tools;
+  it does the E3 image-loaded check and E2 screenshots in a real game), and READ the
+  screenshots. Check for EACH
+  swapped file: it loads (naturalWidth > 0, no 404), it is the NEW art (not the old
+  one - the browser may cache, so compare against the uploaded file), and it is not
+  stretched or squashed. Glyph swap = V3 + V14 (both pickers). Card / spellbook
+  image swap = V4 + V5. Unit image swap = V9. Record PASS/FAIL + screenshot path.
 
 IMPORTANT NOTES:
 - Simple Update section name may also appear as "Quick Update" in some docs
   (they are THE SAME SECTION)
-- This is purely for IMAGE swaps - code changes still require full rebuild
+- Fixed NUMBERS also go through Simple Update ("Push design to build") - see the
+  QUICK UPDATE VALUES FILE section below. They only reach the game if the build
+  wrote every number into solo/faction-values/<acr>.json.
 - Unit info SVGs (webp/info/<acr>-<unit>.svg) are NOT in Simple Update
   (those are generated during build and rarely need swapping)
+
+═══════════════════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════════════════
+QUICK UPDATE VALUES FILE - REQUIRED FOR EVERY FACTION BUILD
+═══════════════════════════════════════════════════════════════════════════
+
+The owner must be able to change a faction's fixed numbers WITHOUT Claude.
+That only works if every fixed number lives in ONE values file that a script
+changes. Full instructions: Faction Build Complete Manual, Task 1.6a.
+
+RULE: NO fixed faction number may be typed into Scala code or overlay text.
+Unit cost / combat / count / setup count, SBR thresholds, SB costs, fixed
+amounts in SB and UFA effects -> ALL go in the values file.
+(Calculations like "number of players" or "in play plus one" stay as code.)
+
+FILES (homebrew worktree, ~/Claude-Projects/cw-homebrew-wt/solo):
+- faction-values/<acr>.json   the ONE place the numbers live (copy fm.json as a template)
+- FactionValues.scala         GENERATED (object <ACR>Values). Never edit by hand.
+- Tool: ~/Claude-Projects/cthulhu-wars-tools/scripts/faction-values.py
+
+BUILD STEPS (do these while writing the faction code, not after):
+0. AUTOMATIC: /usr/bin/python3 ~/Claude-Projects/cthulhu-wars-tools/scripts/generate-faction-values.py <fid>
+   scans the design for EVERY fixed number (same list as the designer Simple Update
+   screen) and adds the missing ones to faction-values/<acr>.json with the designer
+   link (merges; never deletes keys). Run it at the start of the build, and it runs
+   again by itself when you mark the faction built (designer-admin.py build-status
+   <fid> built). It prints UNWIRED keys = numbers no Scala reads yet. Every UNWIRED
+   key must be wired (step 3) or the build is NOT done; --strict exits 1 if any remain.
+   Rule-text numbers (e.g. "gain 1 doom") are still added by hand (step 1).
+1. Write faction-values/<acr>.json: one entry per fixed number, key "Unit.what"
+   or "BookReq.what", with "value", "min", "max", "what", and "designer" =
+   the designer field it comes from (units.rows.<id>.cost / .dice / .qty /
+   .awakenPower, sb.rows.<id>.cost / .costB, sbr.rows.<id>.num, ufa.cost,
+   setup.units.<id>.qty). Row ids: designer-admin.py faction <fid>.
+2. /usr/bin/python3 .../faction-values.py gen   (key Unit.cost -> <ACR>Values.Unit_cost)
+3. Use <ACR>Values.X in EVERY place the number appears: FactionUnitClass cost,
+   allUnits counts, Requirement text, satisfyIf thresholds, power/doom checks
+   and deductions, menu labels, Battle.scala hooks, AND overlay.scala text
+   (faction card unit rows, requirement(...), spellbook(...) cost + effect text).
+4. If combat differs from cost, add combatOf(uclass) in the expansion reading
+   <ACR>Values.<Unit>_combat and use it in strength() (see FMExpansion).
+5. grep your faction file for literal numbers in power/doom/thresholds; every
+   hit must be a calculation or a standard all-faction rule.
+6. faction-values.py check must print "matches". Commit the json and
+   FactionValues.scala together with the code.
+7. Prove it: set one value to a different number, rebuild, run
+   node scripts/test-faction-values-local.mjs <url> <ACR> "<key>" "<text>",
+   see the new number, then set it back. Missing this = build NOT done.
+8. **VISUAL VERIFICATION (REQUIRED)**: Open an actual game in the browser with puppeteer
+   and verify ALL visual elements:
+   - Faction card displays correctly (colors, text, unit rows)
+   - Spellbook overlays show up with correct text
+   - Unit images load (not 404)
+   - Glyphs appear correctly
+   - Text is readable and not cut off
+   - No JavaScript errors in console
+   See "VISUAL VERIFICATION IN ACTUAL GAMES" section above for detailed instructions.
+   Take screenshots and READ them to confirm. Missing this = build NOT done.
+   Use the "VISUAL AUDIT CHECKLIST" (V1-V15) and the puppeteer examples E1-E6 in
+   that section. A new faction build needs ALL of V1-V15 with PASS / FAIL / N/A
+   and a screenshot path for each, pasted into the summary. In particular:
+   - V5 + V6: count the 6 SB slots on the IN-GAME card and click EACH spellbook;
+     screenshot each popup (sb-1.png ... sb-6.png) and read them.
+   - V9 + V3: unit images and glyph must load IN THE GAME (naturalWidth > 0, no
+     404s). Loading in the designer proves nothing.
+   - V1 + V2: read the computed faction color from the game and compare to the
+     designer meta.color hex; text must be readable against its background.
+   A summary that says "built" or "done" with no in-game screenshot paths will be
+   treated as NOT DONE and redone.
+
+OWNER FLOW (for reference - no Claude involved):
+  faction-values.py list FM
+  faction-values.py set FM BoneSculptor.cost 2
+  faction-values.py apply --deploy
+or designer "Push design to build" then: faction-values.py sync && faction-values.py apply --deploy
+
+If you are asked to "change a cost / number" for a faction that already has a
+values file: do NOT edit Scala. Use faction-values.py set + apply --deploy.
+
+═══════════════════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════════════════
+SILHOUETTE GENERATION
+═══════════════════════════════════════════════════════════════════════════
+
+Designers can request automatic silhouette generation from their uploaded map images.
+A silhouette is a flat white version of the unit image with transparent background.
+
+WHEN REQUESTED:
+- Designer clicks "Generate Silhouette" button in Units section
+- Button only appears when designer has uploaded a unique map image (not from CW/Necro library)
+- Request comes through as a bug report type with text like:
+  "Generate silhouette for unit [name]. Convert map image to flat white silhouette..."
+
+HOW TO GENERATE:
+1. Read the original map image using the provided image ID
+2. Keep the transparent background
+3. Replace ALL colored pixels (any non-transparent pixel) with solid white (#FFFFFF)
+4. Save as new image with "-silhouette" suffix
+5. Upload the silhouette image to the designer
+6. Update the unit's silhouette field with the new image ID
+
+TECHNICAL APPROACH:
+- Use image processing tools (ImageMagick, PIL, etc.)
+- Command example: `convert input.png -alpha extract -negate output.png`
+- Or: Load image, iterate pixels, set RGB to (255,255,255) where alpha > 0
+- Maintain original dimensions and alpha channel
+
+IMPORTANT:
+- Silhouettes are flat white with transparent background
+- Do NOT keep any colored pixels
+- Do NOT add black borders or outlines
+- Maintain the exact same shape/alpha as the original
+
+UPDATE THE DESIGNER:
+After generating, update the unit's silhouette field in the faction JSON:
+```
+units.rows[unit_id].silhouette = "new_silhouette_image_id"
+```
+
+VERIFY (required): READ the generated PNG with the Read tool before uploading, and
+after the next rebuild/deploy check V10 in an actual game (faction card screenshot).
+See "SILHOUETTE GENERATION" step 5 above and the "VISUAL AUDIT CHECKLIST".
 
 ═══════════════════════════════════════════════════════════════════════════
 
@@ -146,10 +1352,43 @@ echo "Fixed X, deployed to Y, cache Z" > /tmp/summary.txt
 python3 designer-admin.py tlog-summary <entry-id> /tmp/summary.txt
 ```
 
-**HOW TO ADD COST:**
-When work has a known cost (from agent runs):
+**HOW TO ADD COST (REQUIRED):**
+When you complete work on an entry, you MUST log the estimated cost:
 ```
 python3 designer-admin.py tlog-cost <entry-id> <usd-amount>
+```
+
+To estimate cost:
+- Check your usage at the end of the conversation (token counts, tool uses)
+- Use rough estimates: $0.01-0.05 for simple tasks, $0.10-0.50 for complex ones
+- If you spawned agents, sum their reported costs
+- Better to log an estimate than skip cost logging entirely
+
+**SUMMARY REQUIREMENTS (CRITICAL):**
+Your summary MUST be a COMPLETE layman's description of what you actually did.
+DO NOT just write "Done" or "Fixed" or "Built the faction".
+
+Your summary must include:
+1. WHAT you changed (which files, which code sections, what the change was)
+2. HOW you tested it (what you did to confirm it works)
+3. WHAT the result was (e.g., "Game now loads without crash", "Icons now display correctly")
+
+GOOD summary:
+"Fixed overlay.scala line 234 to use correct unit lookup. Added missing import for UnitType. Tested by loading game in Chrome - faction card now shows all 6 spellbooks without overlap. Deployed to HB v2.295."
+
+BAD summary:
+"Done"
+"Fixed the bug"
+"Built the faction"
+
+Example workflow after completing a task:
+```
+# Update summary with FULL DETAILS
+echo "Fixed overlay.scala line 234 to use correct unit lookup. Added missing import for UnitType. Tested by loading game in Chrome - faction card now shows all 6 spellbooks without overlap. Deployed to HB v2.295." > /tmp/summary.txt
+python3 designer-admin.py tlog-summary q_abc123 /tmp/summary.txt
+
+# Log cost (REQUIRED)
+python3 designer-admin.py tlog-cost q_abc123 0.15
 ```
 
 **COMMON WORKFLOW:**
@@ -159,6 +1398,7 @@ python3 designer-admin.py tlog-cost <entry-id> <usd-amount>
 4. Read the entry's prompt and summary
 5. Do the requested work
 6. Update the entry summary with results
+7. Log the estimated cost (REQUIRED - see "HOW TO ADD COST" above)
 
 **CRITICAL:**
 - ALWAYS use `python3 designer-admin.py terminal-log` to read the log
@@ -170,37 +1410,33 @@ python3 designer-admin.py tlog-cost <entry-id> <usd-amount>
 ═══════════════════════════════════════════════════════════════════════════
 
 ═══════════════════════════════════════════════════════════════════════════
-TERMINAL LOG ENTRIES - NO DUPLICATES ALLOWED
+TERMINAL LOG ENTRIES - DESIGNER VS ADMIN
 ═══════════════════════════════════════════════════════════════════════════
 
-**ABSOLUTE RULE: ONE ENTRY PER REQUEST ID. NEVER CREATE DUPLICATES.**
+**DESIGNER SUBMISSIONS (username != "admin"):**
+- Request IDs start with "r_" (e.g., r_ABC123)
+- Entry ALREADY EXISTS (created by designer service)
+- You are FORBIDDEN from calling tlog-add
+- ONLY call tlog-summary and tlog-cost to update existing entry
 
-When you receive a bug report or designer submission:
+**ADMIN SUBMISSIONS (username = "admin"):**
+- Request IDs start with "q_" (e.g., q_1729123456-001)
+- Entry created by admin-queue-check.sh when it queues the request
+- You should NOT call tlog-add (entry exists)
+- ONLY call tlog-summary and tlog-cost to update existing entry
 
-1. **CHECK FIRST** - Before doing ANY work, check if a terminal log entry already exists:
-   ```bash
-   cd ~/Claude-Projects/cthulhu-wars-tools/tickers
-   python3 designer-admin.py terminal-log | grep -q '"id": "r_<request-id>"'
-   ```
+**RULE: NEVER CALL tlog-add WHEN PROCESSING REQUESTS**
 
-2. **IF ENTRY EXISTS** - Update the existing entry's summary:
-   ```bash
-   echo "Your updated status here" > /tmp/summary.txt
-   python3 designer-admin.py tlog-summary r_<request-id> /tmp/summary.txt
-   ```
+The entry is ALWAYS created before you see the request:
+- Designer submissions: entry created when designer submits bug/build/extract
+- Admin submissions: entry created when queue script picks up the request
 
-3. **IF ENTRY DOES NOT EXIST** - Only then create a new entry:
-   ```bash
-   python3 designer-admin.py tlog-add bug <user> r_<request-id> <promptFile>
-   ```
-
-**NEVER CREATE A SECOND ENTRY FOR THE SAME REQUEST ID.**
-
-If you get a bug report with request ID "r_ABC123" and there's already a terminal log
-entry with id "r_ABC123", you MUST update that entry, not create a new one.
-
-The same request can be retried multiple times (owner hits "Try again" button).
-Each retry is THE SAME REQUEST with THE SAME ID. Update the existing entry.
+Your job is ONLY to update existing entries with results:
+```bash
+echo "Work summary" > /tmp/summary.txt
+python3 designer-admin.py tlog-summary <request-id> /tmp/summary.txt
+python3 designer-admin.py tlog-cost <request-id> <cost>
+```
 
 ═══════════════════════════════════════════════════════════════════════════
 
@@ -256,6 +1492,12 @@ Spellbooks with multiple powers on 1 spellbook side should be treated as a singl
 - Spellbook overlays - clicking on a spellbook with 2 powers should bring up an overlay describing BOTH powers
 - Moonbeast - blocking a 2 power spellbook with a Moonbeast blocks BOTH powers
 - Copying a spell book (Nodens, not yet coded) - copying a 2 power spellbook copies BOTH powers
+- VERIFY IN GAME (required): screenshot the in-game faction card and COUNT the SB/SBR
+  slots (must be 6 or fewer - V5). Click every multi-power spellbook and screenshot
+  the popup (example E5); READ it and confirm BOTH powers are described (V6).
+  A 2-sided spellbook must show as 2 CONNECTED slots on the card and its popup must
+  show the side that is face up. Writing "dual=true set" without these screenshots
+  is NOT a verification.
 
 Multi sided Spelllbooks
 
@@ -295,5 +1537,811 @@ Files that MUST be tracked:
 
 Never deploy without committing first. Git history is the source of truth for
 all UI changes and allows rollback if issues occur.
+
+═══════════════════════════════════════════════════════════════════════════
+GAME BUILD DEPLOYMENT - MAIN AND HOMEBREW
+═══════════════════════════════════════════════════════════════════════════
+
+Both Main and Homebrew game builds have WORKING deployment infrastructure:
+
+**Homebrew Build (HB):**
+Location: /Users/gremus/Claude-Projects/cw-homebrew-wt/
+Deploy script: ~/cthulhu-wars-tools/server-deploy/deploy-hb-to-vm.sh
+Live URL: https://cwo.freeddns.org/HB/
+Current version: v2.341+ (check common.sbt for latest)
+
+**Main Build:**
+Location: /Users/gremus/Claude-Projects/cthulhu-wars-Main/
+Deploy script: ~/cthulhu-wars-tools/server-deploy/deploy-main-to-vm.sh
+Live URL: https://cwo.freeddns.org/
+Current version: main-v2.4.163+ (check common.sbt for latest)
+
+DEPLOYMENT PROCESS (both builds work identically):
+
+1. **Commit your changes first:**
+   ```bash
+   cd /Users/gremus/Claude-Projects/cw-homebrew-wt  # or cthulhu-wars-Main
+   git add solo/YourChangedFile.scala
+   git commit -m "Your commit message"
+   ```
+
+2. **Deploy:**
+   ```bash
+   # Homebrew:
+   ~/cthulhu-wars-tools/server-deploy/deploy-hb-to-vm.sh
+
+   # Main:
+   ~/cthulhu-wars-tools/server-deploy/deploy-main-to-vm.sh
+   ```
+
+3. The deploy script automatically:
+   - Bumps version number in common.sbt
+   - Commits the version bump
+   - Pushes to git
+   - Builds with sbt fullLinkJS
+   - Uploads to server
+   - Verifies hash matches
+   - Verifies site returns HTTP 200
+
+IMPORTANT NOTES:
+
+- **--no-bump flag:** The deploy script will REFUSE --no-bump if code has changed
+  since the last version bump. This is correct behavior - every code change needs
+  a new version number. Just run without --no-bump.
+
+- **Both builds work:** If deployment fails, it's NOT because "infrastructure is
+  broken" - both Main and HB deploy successfully. Check the actual error message:
+  - Uncommitted changes? Commit them first
+  - SSH timeout? Wait and retry
+  - Build error? Fix the Scala compilation error
+  - Hash mismatch? Clean rebuild (rm -rf target/)
+
+- **Assets flag:** Add --assets if you changed images/fonts (slow, only when needed)
+
+- **Build choice:**
+  - Use HB for homebrews and designer faction builds
+  - Use Main for base game bug fixes
+  - Most designer work goes to HB
+
+═══════════════════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════════════════
+FACTION BUILD COMPLETE MANUAL - YOUR PRIMARY GUIDE
+═══════════════════════════════════════════════════════════════════════════
+
+**CRITICAL:** The Faction Build Complete Manual is your PRIMARY GUIDE for all
+faction builds, audits, and bug fixes. This is THE authoritative document.
+
+Location:
+~/Library/CloudStorage/GoogleDrive-gremus@salesforce.com/My Drive/Personal/Games/Cthulhu Wars/Designer/faction-build-complete-manual.md
+
+ALWAYS read this manual BEFORE starting any faction build or audit work.
+
+The manual contains:
+- Task 1.0: Crash Prevention Checklist (5 common crash patterns)
+- Task 2.0: Showstopper Crash Tests (MUST pass before rules validation)
+- Section 4.0: Common Crash Patterns lookup table
+- Section 6.0: Complete audit checklist with explicit testable steps
+- Section 7.0: Why Builds Crash (explains the 7 showstopper types)
+- Section 8.0: Evidence requirements (11 files, cross-agent verification)
+
+**For faction builds:** Follow the manual step-by-step. Do not skip steps.
+**For audits:** Use Section 6.0 checklist. Every check must be testable.
+**Visual part of every build AND audit:** Section 6.0 is NOT complete until the
+"VISUAL AUDIT CHECKLIST" (V1-V15, in the VISUAL VERIFICATION IN ACTUAL GAMES
+section) has been run in an actual game, every row marked PASS / FAIL / N/A with
+the screenshot path, and every screenshot READ with the Read tool. Any Section 6.0
+item about colors, images, glyphs, silhouettes, the faction card, spellbook
+overlays, ability text, text formatting or menus maps to a V-row - check it in the
+game, not in the designer and not by reading Scala. Audit = "looked at the game".
+**For bug fixes:** Check Section 4.0 patterns first, then Section 7.0.
+
+The manual was updated 2026-10-14 to explain how broken factions passed
+previous audits and includes explicit testable steps so audits actually catch
+problems. Follow it exactly.
+
+═══════════════════════════════════════════════════════════════════════════
+UNIT SPECIAL ABILITIES - EXTRACTION GUIDANCE
+═══════════════════════════════════════════════════════════════════════════
+
+When extracting faction designs from guides, PAY SPECIAL ATTENTION to special abilities:
+
+**GOOs (Great Old Ones) ALMOST ALWAYS have special abilities:**
+- Most GOOs have at least one special ability that is NOT a spellbook
+- GOO special abilities usually have names (e.g., "Immortal", "Eternal", "Devour")
+- These abilities live on the FACTION CARD in the GOO's notes section
+- Look for abilities in the GOO's description section of the faction guide
+- Common GOO abilities: custom combat effects, movement rules, awakening effects, etc.
+
+**Check "Notes" sections on ALL units:**
+- Notes that are NOT spellbook names might be special abilities
+- Examples:
+  - "Move after combat" = special ability
+  - "Cannot be killed" = special ability
+  - "Requires 6 SBs" = spellbook requirement (NOT a special ability)
+  - "Vermiculite Hypertrophy" = spellbook name (NOT a special ability)
+- If a note describes how the unit works or breaks normal rules, it's a special ability
+
+**Special Ability vs Spellbook - WHERE they live:**
+- Special ability = lives on the FACTION CARD in the unit's notes section
+- Spellbook = lives on SPELLBOOK IMAGES (separate cards)
+- Special ability = inherent to the unit, doesn't cost Power to acquire
+- Spellbook = costs Power to acquire, unlocks new actions/effects
+- If in doubt: check the guide images - is it on the faction card or a spellbook card?
+
+**Required fields when special ability checkbox is ticked:**
+- Ability Type (dropdown) - REQUIRED, must be one of the 16 ability types
+- Ability Text - REQUIRED
+- Ability Name - optional
+
+When building or auditing a faction, specifically verify:
+1. Does each GOO have a special ability? (should be YES)
+2. Are there any unit notes that are actually special abilities?
+3. Does each special ability have an Ability Type selected?
+4. VISUAL (required after build): does each special ability / UFA actually SHOW in
+   the game? Open the in-game faction card (example E2), screenshot it, READ it, and
+   confirm every GOO ability name + text is in that GOO's notes, readable and not
+   cut off (V4 + V8). If the ability has a popup, click it and screenshot that too.
+
+═══════════════════════════════════════════════════════════════════════════
+FACTION DESIGNER SYSTEM - COMPLETE OVERVIEW
+═══════════════════════════════════════════════════════════════════════════
+
+This is the COMPLETE context for the faction designer system that users interact with
+and that you support through this admin queue.
+
+## THE CUSTOMER DESIGNER (Web Interface)
+
+**What it is:**
+A web application at https://cwo.freeddns.org/designer/ where users design custom
+factions, neutral units, and maps for Cthulhu Wars Online. Think of it as a structured
+form that captures all the data needed to build game content.
+
+**Who uses it:**
+- Faction designers (like CavySupreme, Zehk, FBE) who create homebrew factions
+- The admin (for importing base factions and making mass updates)
+- You (via API) to verify builds and fix bugs
+
+**Three types of designs:**
+1. **Factions** - complete playable factions with units, spellbooks, abilities
+2. **Neutral Units** - standalone units usable by multiple factions (Elder Things, Servitors)
+3. **Maps** - custom game boards with regions, gates, glyphs
+
+## FACTION DESIGNER - SECTIONS AND DATA STRUCTURE
+
+A faction design has these sections (each section = one collapsible accordion in the UI):
+
+### 1. META Section
+- Faction name, acronym, color
+- Stability setting (experimental / stable)
+- Admin notes (private, only admins see these)
+
+### 2. UNITS Section
+Each unit is a row in a table with:
+- **Basic**: name, type (Cultist/Monster/Terror/GOO/Elder God), cost, combat
+- **Images**: map image (URL or upload), silhouette image (white SVG for faction card)
+- **Special Ability**: checkbox, ability name, ability type (dropdown), ability text
+- **Spellbook Requirements**: which spellbooks are needed to recruit this unit
+- **Related Spellbooks**: spellbooks that unlock when recruiting this unit
+- **Notes**: free-text field (often contains spellbook names or ability descriptions)
+
+**Validation rules for units:**
+- Name required
+- Type required
+- Cost required (number)
+- Combat required for non-Cultists
+- If special ability checked: ability type AND ability text required
+- Map image required (except "Other Custom" types)
+- Silhouette optional
+
+**Buttons for units:**
+- Add Unit (creates new empty row)
+- Delete Unit (removes row)
+- Generate Silhouette (creates white silhouette from map image - only enabled if unit has custom/unique map image)
+- CW/Necro button (choose from library of official faction images)
+
+### 3. SPELLBOOKS Section
+Each spellbook is a row with:
+- **Basic**: name, type (11 types: Start of Battle, Battle, Desecrate, Instant, etc)
+- **Cost**: how much Power to buy it
+- **Requirements**: numeric (how many of X type), glyphs, specific other SBs
+- **Effect**: fixed numeric effect (like "+1 Combat") and effect text
+- **Text**: full rules text
+- **Two-sided**: checkbox, if checked adds Side B with separate name/type/cost/text
+- **Dual powers**: checkbox, if checked adds Power 2 fields (one SB = two abilities)
+- **Earned by SBR**: checkbox (SB Ritual earns this for free)
+- **Replaceable**: checkbox (can be replaced by SB Ritual)
+
+**Validation rules for spellbooks:**
+- Name required
+- Type required
+- Cost required
+- Text required
+- If two-sided: Side B name/type/cost/text all required
+- If dual powers: Power 2 name/type/text all required
+
+**Special spellbook logic:**
+- "All 2-sided" checkbox at top: makes EVERY spellbook two-sided at once
+- Each spellbook can be individually toggled back to 1-sided
+- Dual powers is separate from two-sided (can have dual-power single-sided SB)
+
+### 4. UNFACTIONED ABILITIES (UFAs) Section
+Passive abilities that apply to the whole faction, not tied to a unit or SB.
+- Name, ability type, text
+- 1-2 UFAs per faction is typical
+- Example: "Cultists are Undead" (global rule)
+
+### 5. INTERACTIONS Section
+Special rules for how this faction interacts with maps or other factions.
+- Map interactions: "On Yuggoth map, Cultists can fly"
+- Faction interactions: "When playing against Yellow Sign, X happens"
+
+### 6. SIMPLE UPDATE Section
+Quick-update rows for common changes (images, costs, combat values).
+Used for mass updates without editing full JSON.
+- Numeric fields (costs, combat, counts)
+- Text fields (names, descriptions)
+- Image fields (map images, silhouettes)
+
+### 7. CUSTOM LOGIC Section
+Free-text notes for special coding requirements that don't fit the structured form.
+Example: "Cthulhu's Eternal Lies requires custom overlay to show regeneration counter"
+
+## HOW TO ACCESS THE ADMIN CONSOLE
+
+The admin console is a web interface for monitoring games, managing designer
+work, and viewing agent activity.
+
+**URL:** https://cwo.freeddns.org/admin.html
+
+IMPORTANT: The admin console does NOT require a token in the URL. Just open that
+URL directly in a browser. The token is only used by backend scripts for API calls.
+
+**Admin Token Location (for API calls only):**
+The token is stored at:
+~/Library/CloudStorage/GoogleDrive-gremus@salesforce.com/My Drive/Personal/Games/Cthulhu Wars/Maps/Library at Celaeno/Server Deployment/owner-admin-token.txt
+
+This token is read automatically by designer-admin.py and designer-bridge.py.
+You do NOT need to read it manually - the Python scripts handle it.
+
+**If you need to check the admin console programmatically:**
+
+```javascript
+// Open admin console with puppeteer
+const page = await browser.newPage();
+await page.goto('https://cwo.freeddns.org/admin.html', {
+  waitUntil: 'domcontentloaded',
+  timeout: 30000
+});
+await page.waitForSelector('.game-row', { timeout: 10000 });
+await page.screenshot({ path: '/tmp/admin-console.png' });
+```
+
+## ADMIN CONSOLE - TABS AND WHAT THEY SHOW
+
+The admin console has 9 main tabs, accessed via buttons at the top:
+
+**1. GAMES TAB**
+Shows list of all live games (solo, online, testing).
+
+Each game displays:
+- Game name (e.g., "4p GC vs YS")
+- Factions playing (acronyms like GC, YS, CC, BG)
+- Player count and start date
+- Status badges: completed (green), broken (red), errored (orange), live (green flag)
+- Build indicator: Main, HB, Library, MNU, TT, BB
+
+**How to find games by name:**
+- Type in the search box at top of Games tab
+- Searches game names AND faction names
+- Updates in real-time as you type
+- Example: type "FM" to find all games with Fleshmason faction
+
+**Filtering games:**
+Check boxes to filter by:
+- Player count: 2p, 3p, 4p, 5p, 6p, etc.
+- Status: completed, broken, errored, live-monitored
+- Bots: all bots, any bots, no bots
+- Build: Main, HB, Library, MNU, TT, BB
+- Filters AND together (all checked filters must match)
+
+**Viewing game details:**
+1. Click any game row in the list
+2. Right panel shows full details:
+   - Game ID and URL
+   - Full faction list with colors
+   - Complete game log (all actions chronologically)
+   - Current game state (power, doom, units on map)
+   - Admin notes field
+   - Replay link (if generated)
+   - Broken/live flag toggles
+
+**Information available for each game:**
+- Name: Custom or auto-generated (e.g., "4p GC-YS-CC-BG")
+- ID: Internal game ID (e.g., "game-abc123xyz")
+- Secret: URL path component for game access
+- Factions: All factions with their colors
+- Players: Names and bot indicators
+- Date: When game was created
+- Build: Which build (Main/HB/Library/MNU/TT/BB)
+- Status: Completed, in-progress, broken, errored
+- Game Log: Full action history
+- Current State: Live power/doom/positions
+- Notes: Admin-only annotations
+
+**2. USERS TAB**
+- List of all designer user accounts
+- View factions owned by each user
+- Reset user passwords
+- Edit permissions (admin/viewer/editor)
+
+**3. FACTION DESIGNS TAB**
+- List of all faction designs in designer
+- Shows: name, owner, build status, last updated
+- Click faction to view full details
+- Shows missing fields, Q&A status, section completion
+- Submit BUILD/EXTRACT/BUG requests
+
+**4. NEUTRAL UNITS TAB**
+- List of all neutral unit designs (Elder Things, Servitors, etc.)
+- Similar layout to faction designs
+
+**5. MAPS TAB**
+- List of all custom map designs
+- View map meta, regions, gates, interactions
+
+**6. QUEUE TAB**
+- Pending/running/done BUILD/EXTRACT/BUG requests
+- Shows: request ID, type, user, faction, prompt, status
+- Filter by status
+
+**7. CLAUDE TERMINAL TAB**
+- Complete log of ALL Claude agent interactions
+- Entry number, type, user, design object, prompt, summary, cost, date
+- This is THE central activity log for all designer work
+- Filter by type, user, design object, date range
+
+**8. AGENT OUTPUT TAB**
+- Live transcript of currently running admin agent
+- Shows real-time progress of active queue jobs
+- Auto-refreshes
+
+**9. SERVER STATS TAB**
+- VM performance metrics (CPU, memory, disk, network)
+- Collected by cron job (collect-stats.py)
+- Shows free-tier health
+
+## HOW TO FIND GAMES IN THE ADMIN CONSOLE
+
+**COMMON LOOKUP SCENARIOS:**
+
+1. **"Find the game where X crashed":**
+   - Open Games tab
+   - Check "errored" or "broken" filter
+   - Search for faction name if known
+   - Sort by date to see recent games
+   - Click game to view log and see crash details
+
+2. **"Find all games with faction FM":**
+   - Open Games tab
+   - Type "FM" in search box
+   - Or filter by build "HB" (if homebrew)
+   - Each result shows FM in faction list
+
+3. **"Find live monitored games":**
+   - Open Games tab
+   - Check "Live (monitored)" filter
+   - These have green "live" flag
+   - Used to track important ongoing games
+
+4. **"Find recent 4-player games":**
+   - Open Games tab
+   - Check "4p" filter
+   - Sort by date (newest first)
+   - Clear other filters with "Clear all filters" button
+
+**USING PUPPETEER TO FIND GAMES:**
+
+```javascript
+// Open admin console
+const page = await browser.newPage();
+await page.goto('https://cwo.freeddns.org/admin.html', {
+  waitUntil: 'domcontentloaded',
+  timeout: 30000
+});
+await page.waitForSelector('.game-row', { timeout: 10000 });
+
+// Get all visible game rows
+const games = await page.evaluate(() => {
+  return [...document.querySelectorAll('.game-row')].map(row => ({
+    id: row.getAttribute('data-game-id'),
+    name: row.querySelector('.game-name')?.textContent.trim(),
+    meta: row.querySelector('.game-meta')?.textContent.trim(),
+    broken: row.classList.contains('broken'),
+    completed: row.classList.contains('completed'),
+    errored: row.classList.contains('errored'),
+    live: row.querySelector('.live-flag.on') !== null
+  }));
+});
+
+// Find specific game by name
+const targetGame = games.find(g => g.name.includes('FM'));
+
+// Click game to view details
+if (targetGame) {
+  await page.click(`.game-row[data-game-id="${targetGame.id}"]`);
+  await page.waitForTimeout(2000);
+  await page.screenshot({ path: '/tmp/game-detail.png' });
+
+  // Read game log
+  const logText = await page.evaluate(() => {
+    const logEntries = [...document.querySelectorAll('.log-entry')];
+    return logEntries.map(e => e.textContent.trim()).join('\n');
+  });
+  console.log('Game log:', logText);
+}
+```
+
+## ADMIN CONSOLE - KEY ACTIONS YOU CAN PERFORM
+
+**Key admin actions:**
+- Import faction (bulk create from JSON)
+- Reset user password
+- View/edit any design (via API with designer-admin.py)
+- Submit BUILD/EXTRACT/BUG requests to queue
+- View agent transcripts in real-time
+- Submit prompts to admin agent or meta agent
+- Mark games as broken or live-monitored
+- Add notes to games for tracking
+- Generate replays for completed games
+- Filter and search across all games/factions/users
+
+## CLAUDE TERMINAL PAGE
+
+**What it is:** A log showing every time Claude (any agent) interacts with the designer.
+Shows what the agent did, why, and the outcome.
+
+**When entries are created:**
+- User submits a design for BUILD/EXTRACT/BUG → queue job → agent runs → terminal log entry
+- Agent asks questions via Claude Q&A → terminal log entry
+- Agent completes a build → terminal log entry with cost
+- User answers Claude's questions → terminal log entry
+
+**Entry fields:**
+- **Type**: BUILD, EXTRACT, BUG, QA-ASKED, QA-ANSWERED
+- **User**: who submitted the request
+- **Design Object**: which faction/unit/map (if applicable)
+- **Prompt**: what the user asked for
+- **Summary**: what the agent did
+- **Cost**: how much the agent run cost
+- **Status**: pending / in-progress / completed / failed
+- **Timestamp**: when it happened
+
+**Design Object field:**
+A standardized reference to a specific design:
+- Format: `{type}/{id}/{name}`
+- Examples:
+  - `faction/tpunhkcjo2c/Colour Out of Space`
+  - `unit/abc123/Elder Thing`
+  - `map/xyz789/Yuggoth`
+- Used to group all Claude interactions related to a specific design
+- Populated automatically when user submits from a design page
+- Can be populated retroactively (user asks you to fill it in for past entries)
+
+## CLAUDE TERMINAL LOG (backend data)
+
+**What it is:** The JSON file that stores all terminal log entries
+**Location:** `~/Claude-Projects/cthulhu-wars-tools/designer/data/terminal-log.json`
+
+**Structure:**
+```json
+{
+  "entries": [
+    {
+      "id": "q_1234567890-001",
+      "n": 42,
+      "type": "BUILD",
+      "user": "cavysupreme",
+      "designObject": "Colour Out of Space",
+      "faction": "Colour Out of Space",
+      "prompt": "Build CS faction with new combat values",
+      "summary": "Updated FactionCS.scala with...",
+      "cost": 1.23,
+      "at": 1729012345,
+      "updatedAt": 1729012456,
+      "defaultSummary": false
+    }
+  ]
+}
+```
+
+**Common terminal log operations you perform:**
+- Add entry when starting work (via tlog-add)
+- Update summary when finishing (via tlog-summary)
+- Add cost after completing (via tlog-cost)
+
+**API for terminal log:**
+```bash
+# Add new entry (when starting work)
+python3 designer-admin.py tlog-add "design build" "cavysupreme" "r_abc123" /tmp/prompt.txt
+
+# Update summary (when finishing work)
+echo "Updated FactionCS.scala with new combat values" > /tmp/summary.txt
+python3 designer-admin.py tlog-summary r_abc123 /tmp/summary.txt
+
+# Add cost (when work is done)
+python3 designer-admin.py tlog-cost r_abc123 1.23
+```
+
+## BUG REPORT TABLE
+
+**What it is:** A section within the Claude Terminal page showing BUILD/EXTRACT/BUG requests.
+Essentially filters the terminal log to show only these types.
+
+**Columns:**
+- # (sequential number)
+- ID (request ID)
+- Type (BUILD/EXTRACT/BUG/MENU/admin)
+- User (who submitted)
+- Design Object (which faction/unit/map, if applicable)
+- Prompt (what they asked for)
+- Summary (what was done - filled in after work completes)
+- Cost (how much it cost in USD)
+- Date (when submitted)
+
+**IMPORTANT: The terminal log is a HISTORICAL LOG, not a task tracker.**
+- Entries are added when work starts (via tlog-add)
+- Summary is filled in when work completes (via tlog-summary)
+- Cost is added when work finishes (via tlog-cost)
+- There is NO "status" field - completion is tracked by the presence of a summary and cost
+
+**Completion tracking:**
+Queue jobs (in ~/.cw-admin-queue/) track status by FOLDER:
+- pending/ = not started yet
+- running/ = currently being worked on
+- done/ = completed (has .reply file with result)
+
+**When you finish work on a queue job:**
+1. Write your summary to the terminal log: `python3 designer-admin.py tlog-summary <id> <summaryFile>`
+2. Add the cost: `python3 designer-admin.py tlog-cost <id> <usd-amount>`
+3. The job file automatically moves from running/ to done/ when your agent exits
+
+**How to check if work is truly complete:**
+- Check ~/.cw-admin-queue/done/<job-id>.reply exists
+- Check terminal log entry has both summary and cost filled in
+- If summary/cost are missing but .reply exists, fill them in now
+
+## HOW VALIDATION WORKS
+
+**Client-side validation (in browser):**
+The designer UI (sections.js, rules.js) validates as you type:
+- Required fields get red outline if empty and you try to submit
+- Dropdown fields validate that selection is from allowed list
+- Numeric fields validate that value is a number
+- Cannot submit build request if required fields are missing
+
+**Missing fields tracking:**
+- `window.Rules.checkMissing(faction)` returns array of missing field paths
+- Example: `["units.rows.abc123.abilityType", "spellbooks.rows.xyz789.cost"]`
+- Red outline applied to fields in this list via CSS class `sx-missing`
+
+**Build button states:**
+- Green "Build" button: all validation passed, ready to submit
+- Grey "Build" button: validation errors present, shows "Fix X issues first"
+- After clicking: button disabled, shows "Submitting..."
+
+**Submit flow:**
+1. User clicks Build button
+2. JS validates all required fields
+3. If validation passes: POST to `/designer/api/factions/<id>/request` with `{type: "build", prompt: "user prompt text"}`
+4. Server creates queue file in ~/.cw-admin-queue/pending/
+5. Agent picks up job from pending/, moves to running/
+6. Terminal log entry created (via tlog-add) when agent starts
+7. Agent completes work, writes summary and cost to terminal log
+8. Job moves to done/ folder with .reply file
+
+## HOW TO READ DESIGNER DATA (for answering user questions)
+
+**List all factions:**
+```bash
+python3 ~/Claude-Projects/cthulhu-wars-tools/tickers/designer-admin.py list-factions
+```
+
+**Get full faction JSON:**
+```bash
+python3 ~/Claude-Projects/cthulhu-wars-tools/tickers/designer-admin.py faction <faction-id>
+```
+
+**Get specific section:**
+```bash
+python3 ~/Claude-Projects/cthulhu-wars-tools/tickers/designer-admin.py faction <faction-id> | jq '.units'
+```
+
+**Patch faction data:**
+```bash
+echo '[{"op":"set","path":"meta.color","value":"#ff0000"}]' > /tmp/patch.json
+python3 ~/Claude-Projects/cthulhu-wars-tools/tickers/designer-admin.py patch <faction-id> /tmp/patch.json
+```
+
+**Read terminal log:**
+```bash
+python3 ~/Claude-Projects/cthulhu-wars-tools/tickers/designer-admin.py terminal-log list
+python3 ~/Claude-Projects/cthulhu-wars-tools/tickers/designer-admin.py terminal-log get <entry-id>
+```
+
+**Read Q&A for a design:**
+```bash
+python3 ~/Claude-Projects/cthulhu-wars-tools/tickers/designer-admin.py qa <faction-id> units
+```
+
+## TYPICAL USER WORKFLOWS (so you understand the requests)
+
+**Workflow 1: Create new faction**
+1. User clicks "New Faction" on designer home
+2. Fills in name, acronym in meta section
+3. Adds units one by one (name, type, cost, combat, images)
+4. Adds spellbooks (requirements, costs, text)
+5. Clicks "Build" → queue job for you
+6. You extract data, generate game code, deploy to test server
+7. Terminal log entry created
+
+**Workflow 2: Update existing faction**
+1. User opens existing faction design
+2. Changes unit cost or combat value
+3. Changes spellbook text
+4. Clicks "Build" again
+5. You rebuild with new values, redeploy
+6. Terminal log shows update
+
+**Workflow 3: Extract from guide document**
+1. User has a Word doc with faction design
+2. Uploads it via "Extract" button
+3. You parse the document, populate all sections
+4. Save JSON to designer
+5. User reviews and tweaks extracted data
+6. User clicks "Build" to finalize
+
+**Workflow 4: Fix bug**
+1. User notices unit image is broken or wrong combat value in game
+2. Submits BUG request with description
+3. You diagnose: is it designer data wrong, or game code wrong?
+4. Fix designer data (patch API) or game code (.scala file)
+5. Redeploy if game code changed
+5a. If the bug is VISUAL (image, color, card, overlay, text, menu): screenshot the
+    bug in a game BEFORE fixing, then take the SAME screenshot AFTER the deploy,
+    READ both, and put both paths in the summary. No after-screenshot = not fixed.
+6. Update terminal log status to completed
+
+**Workflow 5: Answer Claude questions**
+1. You encounter ambiguity during extract/build (unclear ability text, missing image)
+2. You post questions via Claude Q&A API
+3. Questions appear in designer UI with text boxes
+4. User types answers, clicks Submit
+5. Answers sent to you via queue
+6. You resume build with answers
+
+## COMMON PROBLEMS YOU SOLVE
+
+**Problem: "Summary or cost not showing in terminal log"**
+- Cause: You completed work but didn't update terminal log with summary and cost
+- Fix: Add summary and cost to the terminal log entry:
+  ```bash
+  echo "Your work summary here" > /tmp/summary.txt
+  python3 designer-admin.py tlog-summary <entry-id> /tmp/summary.txt
+  python3 designer-admin.py tlog-cost <entry-id> <cost-in-usd>
+  ```
+
+**Problem: "How do I know if work is complete?"**
+- Check the admin queue: `ls ~/.cw-admin-queue/done/<job-id>.reply`
+- If .reply file exists but terminal log has no summary/cost, fill them in now
+
+**Problem: "Image not showing in game"**
+- Cause: Image uploaded to designer but not synced to game server
+- Fix: Redeploy with `--assets` flag to sync images
+- Verify: open a game with the faction, run example E3 (image loaded check) and E6
+  (failed requests), screenshot the board/card and READ it. Fixed = 0 broken images
+  for that faction AND the screenshot shows the art.
+
+**Problem: "Wrong color / unreadable text / card looks broken in game"**
+- Check: open the game, run E2 (screenshots) + E4 (computed colors), READ the
+  screenshots. Compare to designer meta.color. Fix the overlay/CSS/build, redeploy,
+  repeat the SAME screenshots, and report both before and after.
+
+**Problem: "Validation won't let me submit"**
+- Cause: Required field missing (abilityType if special ability checked, SB cost, etc)
+- Fix: Identify missing fields via `checkMissing()`, tell user which to fill
+
+**Problem: "My faction isn't in the picker"**
+- Cause: Faction built but not added to faction picker arrays
+- Fix: Add to both default picker AND alternate picker, redeploy
+
+**Problem: "Terminal log is cluttered with old entries"**
+- Solution: This is expected, do NOT delete old entries
+- User can filter by design object, user, type, date
+
+═══════════════════════════════════════════════════════════════════════════
+BROWSER AUTOMATION TOOLS - VERIFYING CHANGES IN ACTUAL GAMES
+═══════════════════════════════════════════════════════════════════════════
+
+CRITICAL: For ANY visual change, you MUST verify it in an actual game with screenshots.
+
+**Tool Location:** `/Users/gremus/cthulhu-wars-tools/scripts/`
+
+**Primary Tool: test-faction-build.mjs**
+```bash
+cd /Users/gremus/cthulhu-wars-tools/scripts
+node test-faction-build.mjs <FACTION-ACR>
+```
+
+This opens headless Chrome, creates a 4-player game, and saves screenshots to:
+`/tmp/verify-<acr>-<timestamp>/`
+
+**Mandatory Usage:**
+- After building ANY faction
+- After fixing ANY visual bug (colors, glyphs, overlays, cards, sprites)
+- After updating ANY faction images
+- Before marking ANY visual change as "done"
+
+**Workflow:**
+1. Make fix/change in code or designer
+2. Deploy to appropriate server (HB/Main)
+3. Run: `cd /Users/gremus/cthulhu-wars-tools/scripts && node test-faction-build.mjs <ACR>`
+4. Screenshots saved to `/tmp/verify-<acr>-YYYYMMDD-HHMMSS/`
+5. Read screenshots with Read tool
+6. Verify change appears correctly
+7. Include screenshot paths in terminal log summary
+8. Mark request as done
+
+**Example Terminal Log Summary:**
+```
+Fixed DS Avatar combat card display. Verified in browser:
+- Before: /tmp/verify-ds-20261017-120000/faction-card.png
+- After: /tmp/verify-ds-20261017-120530/faction-card.png
+Avatar combat values now show correctly on faction card.
+Cost: $0.23
+```
+
+**Finding Existing Games:**
+```bash
+# List recent games
+ssh cwo "ls -lt /opt/cwo/hb/games/ | head -20"
+
+# Find game by date
+ssh cwo "find /opt/cwo/hb/games -name '*.game' -newermt '2026-10-16'"
+
+# Get game log
+ssh cwo "cat /opt/cwo/hb/games/<game-id>.game" | grep "^LOG:"
+```
+
+**Checking Specific Game State:**
+```bash
+cd /Users/gremus/cthulhu-wars-tools/scripts
+node check-game-state.mjs <GAME-URL-OR-ID>
+```
+
+**Before/After Visual Comparison:**
+```bash
+# Take "before" screenshot
+cd /Users/gremus/cthulhu-wars-tools/scripts
+node test-faction-build.mjs FM
+mv /tmp/verify-fm-* /tmp/before-fix/
+
+# Make fix, deploy
+
+# Take "after" screenshot
+node test-faction-build.mjs FM
+mv /tmp/verify-fm-* /tmp/after-fix/
+
+# Read both with Read tool and compare
+```
+
+**Checking JavaScript Errors:**
+```bash
+cd /Users/gremus/cthulhu-wars-tools/scripts
+node test-faction-build.mjs <ACR> 2>&1 | grep -i "error\|exception"
+```
+
+**NEVER SKIP BROWSER VERIFICATION for visual changes.** Code analysis is NOT enough.
+Screenshots are proof the fix worked. No screenshots = work not verified = not done.
 
 ═══════════════════════════════════════════════════════════════════════════

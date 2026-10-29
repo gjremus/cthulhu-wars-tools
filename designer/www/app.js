@@ -19,7 +19,8 @@
         currentFaction: null,
         currentMap: null,
         builtDesign: null,
-        reference: null
+        reference: null,
+        versions: null
       };
       this.saveQueue = new Map();
       this.saveTimer = null;
@@ -27,17 +28,18 @@
     }
 
     start() {
-      // Load reference data
-      fetch('/designer/reference.json')
-        .then(r => r.json())
-        .then(ref => {
-          this.state.reference = ref;
-          this.startRouter();
-        })
-        .catch(err => {
-          console.error('Failed to load reference.json:', err);
-          this.startRouter();
-        });
+      // Load reference data and version info
+      Promise.all([
+        fetch('/designer/reference.json').then(r => r.json()).catch(() => null),
+        fetch('/designer/versions.json').then(r => r.json()).catch(() => ({current: '1.000', versions: []}))
+      ]).then(([ref, versions]) => {
+        this.state.reference = ref;
+        this.state.versions = versions;
+        this.startRouter();
+      }).catch(err => {
+        console.error('Failed to load startup data:', err);
+        this.startRouter();
+      });
     }
 
     startRouter() {
@@ -802,6 +804,11 @@
     }
 
     imgUrl(id) {
+      // If id is already a full URL or path, return as-is
+      if (!id) return '';
+      if (id.startsWith('/') || id.startsWith('http://') || id.startsWith('https://')) {
+        return id;
+      }
       return `/designer/img/${id}`;
     }
 
@@ -846,7 +853,7 @@
         }
 
         // Group by type and sort within each
-        const typeOrder = ['Cultist', 'Monster', 'Terror', 'GOO', 'Elder God'];
+        const typeOrder = ['Cultist', 'Monster', 'Terror', 'GOO', 'Elder God', 'Building', 'Gate', 'Map Unit'];
         const sections = {};
         typeOrder.forEach(t => { sections[t] = []; });
 
@@ -900,7 +907,10 @@
           'Monster': 'Monsters',
           'Terror': 'Terrors',
           'GOO': 'GOOs / iGOOs',
-          'Elder God': 'Elder Gods'
+          'Elder God': 'Elder Gods',
+          'Building': 'Buildings',
+          'Gate': 'Gates',
+          'Map Unit': 'Map Units'
         };
 
         const nav = document.createElement('div');
@@ -1132,35 +1142,36 @@
         layer.appendChild(loading);
 
         // Load silhouettes.json (silhouette images from CW/Necro factions)
-        let silhouettes;
-        try {
-          const resp = await fetch('/designer/library/silhouettes.json');
-          if (!resp.ok) throw new Error('Failed to load silhouettes');
-          silhouettes = await resp.json();
-        } catch (err) {
-          console.error('Silhouette load error:', err);
-          layer.innerHTML = '';
-          const errorDiv = document.createElement('div');
-          errorDiv.className = 'library-error';
-          errorDiv.textContent = 'Failed to load silhouettes: ' + err.message;
-          layer.appendChild(errorDiv);
-          const backBtn = document.createElement('button');
-          backBtn.className = 'library-btn';
-          backBtn.textContent = 'Back to unit';
-          backBtn.onclick = () => {
-            layer.remove();
-            resolve(null);
-          };
-          layer.appendChild(backBtn);
-          return;
+        if (!this.silhouettesCache) {
+          try {
+            const resp = await fetch('/designer/library/silhouettes.json');
+            if (!resp.ok) throw new Error('Failed to load silhouettes');
+            this.silhouettesCache = await resp.json();
+          } catch (err) {
+            console.error('Silhouette load error:', err);
+            layer.innerHTML = '';
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'library-error';
+            errorDiv.textContent = 'Failed to load silhouettes: ' + err.message;
+            layer.appendChild(errorDiv);
+            const backBtn = document.createElement('button');
+            backBtn.className = 'library-btn';
+            backBtn.textContent = 'Back to unit';
+            backBtn.onclick = () => {
+              layer.remove();
+              resolve(null);
+            };
+            layer.appendChild(backBtn);
+            return;
+          }
         }
 
         // Group by type
-        const typeOrder = ['Cultist', 'Monster', 'Terror', 'GOO', 'Elder God'];
+        const typeOrder = ['Cultist', 'Monster', 'Terror', 'GOO', 'Elder God', 'Building', 'Gate', 'Map Unit'];
         const sections = {};
         typeOrder.forEach(t => { sections[t] = []; });
 
-        silhouettes.forEach(item => {
+        this.silhouettesCache.forEach(item => {
           if (sections[item.type]) sections[item.type].push(item);
         });
 
@@ -1170,6 +1181,20 @@
             return (a.faction || '').localeCompare(b.faction || '');
           });
         });
+
+        let currentPage = 0;
+        let pages = [];
+        let tileW = 88;
+        let tileH = 115;
+        let cols = 3;
+        let rows = 2;
+        let resizeTimer;
+
+        const close = () => {
+          window.removeEventListener('resize', onResize);
+          window.removeEventListener('orientationchange', onResize);
+          layer.remove();
+        };
 
         layer.innerHTML = '';
 
@@ -1181,7 +1206,7 @@
         backBtn.className = 'library-btn';
         backBtn.textContent = 'Back to unit';
         backBtn.onclick = () => {
-          layer.remove();
+          close();
           resolve(null);
         };
         topBar.appendChild(backBtn);
@@ -1195,94 +1220,451 @@
           'Monster': 'Monsters',
           'Terror': 'Terrors',
           'GOO': 'GOOs / iGOOs',
-          'Elder God': 'Elder Gods'
+          'Elder God': 'Elder Gods',
+          'Building': 'Buildings',
+          'Gate': 'Gates',
+          'Map Unit': 'Map Units'
         };
 
+        const nav = document.createElement('div');
+        nav.className = 'library-nav';
+        topBar.appendChild(nav);
+
+        const prevBtn = document.createElement('button');
+        prevBtn.className = 'library-btn';
+        prevBtn.textContent = 'Prev';
+        nav.appendChild(prevBtn);
+
+        const pageLabel = document.createElement('span');
+        pageLabel.className = 'library-page-label';
+        nav.appendChild(pageLabel);
+
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'library-btn';
+        nextBtn.textContent = 'Next';
+        nav.appendChild(nextBtn);
+
+        const grid = document.createElement('div');
+        grid.className = 'library-grid';
+        layer.appendChild(grid);
+
+        // Build pages: paginate within each type
+        const buildPages = (pageSize) => {
+          const newPages = [];
+          typeOrder.forEach(type => {
+            const items = sections[type];
+            if (items.length === 0) return;
+            for (let i = 0; i < items.length; i += pageSize) {
+              newPages.push({
+                type,
+                items: items.slice(i, Math.min(i + pageSize, items.length))
+              });
+            }
+          });
+          return newPages;
+        };
+
+        // Compute page size from viewport
+        const computePageSize = () => {
+          const vw = window.innerWidth;
+          const vh = window.innerHeight;
+
+          if (vw < 600) {
+            tileW = 88; tileH = 88 * 0.85 + 40;
+          } else if (vw < 1100) {
+            tileW = 120; tileH = 120 * 0.85 + 40;
+          } else {
+            tileW = 160; tileH = 160 * 0.85 + 40;
+          }
+
+          const gap = 12;
+          const topBarH = topBar.offsetHeight || 60;
+          const gridH = grid.clientHeight || (vh - topBarH - 40 - 20 - 24);
+          cols = Math.max(2, Math.floor((vw - 40) / (tileW + gap)));
+          rows = Math.max(1, Math.floor(gridH / (tileH + gap)));
+          const pageSize = Math.max(6, cols * rows);
+
+          const oldType = pages[currentPage]?.type;
+          pages = buildPages(pageSize);
+
+          // Keep same type visible after resize
+          if (oldType) {
+            const idx = pages.findIndex(p => p.type === oldType);
+            if (idx >= 0) currentPage = idx;
+          }
+          currentPage = Math.max(0, Math.min(currentPage, pages.length - 1));
+        };
+
+        const onResize = () => {
+          clearTimeout(resizeTimer);
+          resizeTimer = setTimeout(() => {
+            computePageSize();
+            renderPage();
+          }, 200);
+        };
+
+        window.addEventListener('resize', onResize);
+        window.addEventListener('orientationchange', onResize);
+
+        // Build type jump buttons
         typeOrder.forEach(type => {
           if (sections[type].length === 0) return;
           const btn = document.createElement('button');
           btn.className = 'library-type-btn';
           btn.textContent = typeLabels[type];
+          btn.dataset.type = type;
           btn.onclick = () => {
-            const typeSection = document.querySelector(`.silhouette-section[data-type="${type}"]`);
-            if (typeSection) typeSection.scrollIntoView({behavior: 'smooth', block: 'start'});
+            const idx = pages.findIndex(p => p.type === type);
+            if (idx >= 0) {
+              currentPage = idx;
+              renderPage();
+            }
           };
           typeJumps.appendChild(btn);
         });
 
-        const grid = document.createElement('div');
-        grid.className = 'library-grid';
-        grid.style.height = 'auto';
-        grid.style.overflow = 'auto';
-        grid.style.padding = '20px';
-        layer.appendChild(grid);
+        // Widest label first
+        pageLabel.textContent = 'GOOs / iGOOs · Page 00 of 00';
+        computePageSize();
 
-        // Render all types in scrollable grid
-        typeOrder.forEach(type => {
-          const items = sections[type];
-          if (items.length === 0) return;
+        prevBtn.onclick = () => {
+          if (currentPage > 0) {
+            currentPage--;
+            renderPage();
+          }
+        };
 
-          const sectionDiv = document.createElement('div');
-          sectionDiv.className = 'silhouette-section';
-          sectionDiv.dataset.type = type;
-          sectionDiv.style.marginBottom = '30px';
-          grid.appendChild(sectionDiv);
+        nextBtn.onclick = () => {
+          if (currentPage < pages.length - 1) {
+            currentPage++;
+            renderPage();
+          }
+        };
 
-          const heading = document.createElement('h3');
-          heading.textContent = typeLabels[type];
-          heading.style.marginBottom = '12px';
-          heading.style.fontSize = '16px';
-          heading.style.fontWeight = 'bold';
-          sectionDiv.appendChild(heading);
+        const renderPage = () => {
+          if (pages.length === 0) return;
 
-          const itemsGrid = document.createElement('div');
-          itemsGrid.style.display = 'grid';
-          itemsGrid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(100px, 1fr))';
-          itemsGrid.style.gap = '12px';
-          sectionDiv.appendChild(itemsGrid);
+          const page = pages[currentPage];
+          const pageType = page.type;
 
-          items.forEach(item => {
-            const tile = document.createElement('div');
-            tile.style.cursor = 'pointer';
-            tile.style.border = '1px solid #444';
-            tile.style.padding = '8px';
-            tile.style.borderRadius = '4px';
-            tile.style.textAlign = 'center';
-            tile.style.background = '#1a1a1a';
-            tile.onclick = () => {
-              layer.remove();
-              resolve(item.id);
-            };
+          // Update nav
+          prevBtn.disabled = currentPage === 0;
+          nextBtn.disabled = currentPage >= pages.length - 1;
+          pageLabel.textContent = `${typeLabels[pageType]} · Page ${currentPage + 1} of ${pages.length}`;
+
+          // Update type button highlight
+          typeJumps.querySelectorAll('.library-type-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.type === pageType);
+          });
+
+          // Render tiles
+          grid.innerHTML = '';
+          grid.style.gridTemplateColumns = `repeat(${cols}, ${tileW}px)`;
+
+          page.items.forEach(item => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'library-tile';
+            btn.title = item.faction && item.faction !== 'Neutral' ? `${item.name} (${item.faction})` : item.name;
+            btn.style.height = `${tileH}px`;
 
             const img = document.createElement('img');
-            img.src = item.url || `/designer/images/${item.id}`;
-            img.style.width = '80px';
-            img.style.height = '80px';
-            img.style.objectFit = 'contain';
-            img.style.display = 'block';
-            img.style.margin = '0 auto';
-            img.style.background = '#333'; // Dark background to see white silhouettes
-            tile.appendChild(img);
+            img.src = item.url || `/designer/silhouettes/${item.id}.svg`;
+            img.loading = 'lazy';
+            img.alt = item.name;
 
-            const label = document.createElement('div');
-            label.textContent = item.name;
-            label.style.fontSize = '11px';
-            label.style.marginTop = '4px';
-            label.style.color = '#ccc';
-            label.style.wordBreak = 'break-word';
-            tile.appendChild(label);
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'library-tile-name';
+            nameDiv.textContent = item.name;
 
-            if (item.faction) {
-              const factionLabel = document.createElement('div');
-              factionLabel.textContent = item.faction;
-              factionLabel.style.fontSize = '9px';
-              factionLabel.style.color = '#888';
-              tile.appendChild(factionLabel);
+            const factionDiv = document.createElement('div');
+            factionDiv.className = 'library-tile-faction';
+            if (item.faction && item.faction !== 'Neutral') {
+              factionDiv.textContent = item.faction;
             }
 
-            itemsGrid.appendChild(tile);
+            btn.appendChild(img);
+            btn.appendChild(nameDiv);
+            btn.appendChild(factionDiv);
+
+            btn.onclick = () => {
+              close();
+              resolve(item.url || `/designer/silhouettes/${item.id}.svg`);
+            };
+
+            grid.appendChild(btn);
+          });
+        };
+
+        renderPage();
+      });
+    }
+
+    async pickTokenImage() {
+      if (this.isReadOnly()) return null;
+
+      return new Promise(async (resolve) => {
+        const layer = document.createElement('div');
+        layer.className = 'library-picker';
+        document.body.appendChild(layer);
+
+        const loading = document.createElement('div');
+        loading.className = 'library-loading';
+        loading.textContent = 'Loading tokens…';
+        layer.appendChild(loading);
+
+        // Load tokens.json (token images from CW/Necro)
+        if (!this.tokensCache) {
+          try {
+            const resp = await fetch('/designer/library/tokens.json');
+            if (!resp.ok) throw new Error('Failed to load tokens');
+            this.tokensCache = await resp.json();
+          } catch (err) {
+            console.error('Token load error:', err);
+            layer.innerHTML = '';
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'library-error';
+            errorDiv.textContent = 'Failed to load tokens: ' + err.message;
+            layer.appendChild(errorDiv);
+            const backBtn = document.createElement('button');
+            backBtn.className = 'library-btn';
+            backBtn.textContent = 'Back';
+            backBtn.onclick = () => {
+              layer.remove();
+              resolve(null);
+            };
+            layer.appendChild(backBtn);
+            return;
+          }
+        }
+
+        // Group by category
+        const categoryOrder = ['Token', 'Map Glyph', 'Library', 'Map Unit'];
+        const sections = {};
+        categoryOrder.forEach(c => { sections[c] = []; });
+
+        this.tokensCache.forEach(item => {
+          if (sections[item.category]) sections[item.category].push(item);
+        });
+
+        Object.keys(sections).forEach(category => {
+          sections[category].sort((a, b) => {
+            if (a.name !== b.name) return a.name.localeCompare(b.name);
+            return (a.faction || '').localeCompare(b.faction || '');
           });
         });
+
+        let currentPage = 0;
+        let pages = [];
+        let tileW = 88;
+        let tileH = 115;
+        let cols = 3;
+        let rows = 2;
+        let resizeTimer;
+
+        const close = () => {
+          window.removeEventListener('resize', onResize);
+          window.removeEventListener('orientationchange', onResize);
+          layer.remove();
+        };
+
+        layer.innerHTML = '';
+
+        const topBar = document.createElement('div');
+        topBar.className = 'library-topbar';
+        layer.appendChild(topBar);
+
+        const backBtn = document.createElement('button');
+        backBtn.className = 'library-btn';
+        backBtn.textContent = 'Back';
+        backBtn.onclick = () => {
+          close();
+          resolve(null);
+        };
+        topBar.appendChild(backBtn);
+
+        const categoryJumps = document.createElement('div');
+        categoryJumps.className = 'library-type-jumps';
+        topBar.appendChild(categoryJumps);
+
+        const categoryLabels = {
+          'Token': 'Tokens',
+          'Map Glyph': 'Map Glyphs',
+          'Library': 'Library',
+          'Map Unit': 'Map Units'
+        };
+
+        const nav = document.createElement('div');
+        nav.className = 'library-nav';
+        topBar.appendChild(nav);
+
+        const prevBtn = document.createElement('button');
+        prevBtn.className = 'library-btn';
+        prevBtn.textContent = 'Prev';
+        nav.appendChild(prevBtn);
+
+        const pageLabel = document.createElement('span');
+        pageLabel.className = 'library-page-label';
+        nav.appendChild(pageLabel);
+
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'library-btn';
+        nextBtn.textContent = 'Next';
+        nav.appendChild(nextBtn);
+
+        const grid = document.createElement('div');
+        grid.className = 'library-grid';
+        layer.appendChild(grid);
+
+        // Build pages: paginate within each category
+        const buildPages = (pageSize) => {
+          const newPages = [];
+          categoryOrder.forEach(category => {
+            const items = sections[category];
+            if (items.length === 0) return;
+            for (let i = 0; i < items.length; i += pageSize) {
+              newPages.push({
+                category,
+                items: items.slice(i, Math.min(i + pageSize, items.length))
+              });
+            }
+          });
+          return newPages;
+        };
+
+        // Compute page size from viewport
+        const computePageSize = () => {
+          const vw = window.innerWidth;
+          const vh = window.innerHeight;
+
+          if (vw < 600) {
+            tileW = 88; tileH = 88 * 0.85 + 40;
+          } else if (vw < 1100) {
+            tileW = 120; tileH = 120 * 0.85 + 40;
+          } else {
+            tileW = 160; tileH = 160 * 0.85 + 40;
+          }
+
+          const gap = 12;
+          const topBarH = topBar.offsetHeight || 60;
+          const gridH = grid.clientHeight || (vh - topBarH - 40 - 20 - 24);
+          cols = Math.max(2, Math.floor((vw - 40) / (tileW + gap)));
+          rows = Math.max(1, Math.floor(gridH / (tileH + gap)));
+          const pageSize = Math.max(6, cols * rows);
+
+          const oldCategory = pages[currentPage]?.category;
+          pages = buildPages(pageSize);
+
+          // Keep same category visible after resize
+          if (oldCategory) {
+            const idx = pages.findIndex(p => p.category === oldCategory);
+            if (idx >= 0) currentPage = idx;
+          }
+          currentPage = Math.max(0, Math.min(currentPage, pages.length - 1));
+        };
+
+        const onResize = () => {
+          clearTimeout(resizeTimer);
+          resizeTimer = setTimeout(() => {
+            computePageSize();
+            renderPage();
+          }, 200);
+        };
+
+        window.addEventListener('resize', onResize);
+        window.addEventListener('orientationchange', onResize);
+
+        // Build category jump buttons
+        categoryOrder.forEach(category => {
+          if (sections[category].length === 0) return;
+          const btn = document.createElement('button');
+          btn.className = 'library-type-btn';
+          btn.textContent = categoryLabels[category];
+          btn.dataset.category = category;
+          btn.onclick = () => {
+            const idx = pages.findIndex(p => p.category === category);
+            if (idx >= 0) {
+              currentPage = idx;
+              renderPage();
+            }
+          };
+          categoryJumps.appendChild(btn);
+        });
+
+        // Widest label first
+        pageLabel.textContent = 'Map Glyphs · Page 00 of 00';
+        computePageSize();
+
+        prevBtn.onclick = () => {
+          if (currentPage > 0) {
+            currentPage--;
+            renderPage();
+          }
+        };
+
+        nextBtn.onclick = () => {
+          if (currentPage < pages.length - 1) {
+            currentPage++;
+            renderPage();
+          }
+        };
+
+        const renderPage = () => {
+          if (pages.length === 0) return;
+
+          const page = pages[currentPage];
+          const pageCategory = page.category;
+
+          // Update nav
+          prevBtn.disabled = currentPage === 0;
+          nextBtn.disabled = currentPage >= pages.length - 1;
+          pageLabel.textContent = `${categoryLabels[pageCategory]} · Page ${currentPage + 1} of ${pages.length}`;
+
+          // Update category button highlight
+          categoryJumps.querySelectorAll('.library-type-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.category === pageCategory);
+          });
+
+          // Render tiles
+          grid.innerHTML = '';
+          grid.style.gridTemplateColumns = `repeat(${cols}, ${tileW}px)`;
+
+          page.items.forEach(item => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'library-tile';
+            btn.title = item.faction && item.faction !== 'Neutral' ? `${item.name} (${item.faction})` : item.name;
+            btn.style.height = `${tileH}px`;
+
+            const img = document.createElement('img');
+            img.src = `/designer/library/${item.file}`;
+            img.loading = 'lazy';
+            img.alt = item.name;
+
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'library-tile-name';
+            nameDiv.textContent = item.name;
+
+            const factionDiv = document.createElement('div');
+            factionDiv.className = 'library-tile-faction';
+            if (item.faction && item.faction !== 'Neutral') {
+              factionDiv.textContent = item.faction;
+            }
+
+            btn.appendChild(img);
+            btn.appendChild(nameDiv);
+            btn.appendChild(factionDiv);
+
+            btn.onclick = () => {
+              close();
+              resolve(`/designer/library/${item.file}`);
+            };
+
+            grid.appendChild(btn);
+          });
+        };
+
+        renderPage();
       });
     }
 
@@ -1426,6 +1808,284 @@
         dialog.appendChild(buttons);
         div.appendChild(dialog);
         document.body.appendChild(div);
+      });
+    }
+
+    // Helper: Render Claude Terminal Log history for a design
+    renderTerminalLogHistory(designName, containerId) {
+      const historyDiv = document.createElement('div');
+      historyDiv.style.marginTop = '30px';
+      historyDiv.style.marginBottom = '30px';
+      historyDiv.id = containerId;
+
+      const historyTitle = document.createElement('h3');
+      historyTitle.textContent = 'Claude Terminal Log (All Work on This Design)';
+      historyTitle.style.marginBottom = '15px';
+      historyDiv.appendChild(historyTitle);
+
+      const loadingMsg = document.createElement('p');
+      loadingMsg.textContent = 'Loading terminal log...';
+      loadingMsg.style.color = '#888';
+      historyDiv.appendChild(loadingMsg);
+
+      // Fetch terminal log and filter by design name. Admin's read-only view has no login
+      // session, only its own admin token; everyone else needs the Bearer token to be scoped by name.
+      const logUrl = this.state.adminToken
+        ? `/designer/api/admin/${this.state.adminToken}/terminal-log`
+        : `/designer/api/terminal-log?name=${encodeURIComponent(designName)}`;
+      const logHeaders = this.state.adminToken ? {} : {'Authorization': `Bearer ${this.state.token}`};
+      fetch(logUrl, {headers: logHeaders})
+        .then(r => r.ok ? r.json() : Promise.reject(`HTTP ${r.status}`))
+        .then(data => {
+          const entries = data.entries || [];
+          // Filter for all entries matching this design's name
+          const logs = entries.filter(e =>
+            e.faction === designName || e.designObject === designName
+          ).sort((a, b) => b.at - a.at); // Most recent first
+
+          loadingMsg.remove();
+
+          if (logs.length === 0) {
+            const noLogs = document.createElement('p');
+            noLogs.textContent = 'No terminal log entries yet.';
+            noLogs.style.color = '#888';
+            historyDiv.appendChild(noLogs);
+            return;
+          }
+
+          const table = document.createElement('table');
+          table.style.width = '100%';
+          table.style.borderCollapse = 'collapse';
+          table.style.border = '1px solid #000';
+          table.style.fontSize = '14px';
+
+          // Table header
+          const thead = document.createElement('thead');
+          const headerRow = document.createElement('tr');
+          headerRow.style.backgroundColor = '#f0f0f0';
+          headerRow.style.border = '1px solid #000';
+
+          const allHeaders = ['Entry #', 'Type', 'Submitted', 'User', 'Prompt', 'Claude Response', 'Cost', 'Status', 'Actions'];
+          const hiddenInFactionDesigner = ['Type', 'User', 'Cost', 'Actions'];
+          const headers = this.state.adminToken
+            ? allHeaders
+            : allHeaders.filter(h => !hiddenInFactionDesigner.includes(h));
+
+          for (const headerText of headers) {
+            const th = document.createElement('th');
+            th.textContent = headerText;
+            th.style.padding = '8px';
+            th.style.textAlign = 'left';
+            th.style.border = '1px solid #000';
+            th.style.fontWeight = 'bold';
+            headerRow.appendChild(th);
+          }
+          thead.appendChild(headerRow);
+          table.appendChild(thead);
+
+          // Table body
+          const tbody = document.createElement('tbody');
+          const isAdminView = this.state.adminToken;
+          for (const entry of logs) {
+            const row = document.createElement('tr');
+            row.style.border = '1px solid #000';
+
+            // Entry Number
+            const numCell = document.createElement('td');
+            numCell.textContent = entry.n || '';
+            numCell.style.padding = '8px';
+            numCell.style.border = '1px solid #000';
+            numCell.style.textAlign = 'right';
+            row.appendChild(numCell);
+
+            // Type (hidden in faction designer)
+            if (isAdminView) {
+              const typeCell = document.createElement('td');
+              const typeShort = (entry.type || '')
+                .replace('design ', '')
+                .replace('extraction', 'extract')
+                .replace('bug fix', 'bug');
+              typeCell.textContent = typeShort;
+              typeCell.style.padding = '8px';
+              typeCell.style.border = '1px solid #000';
+              typeCell.style.whiteSpace = 'nowrap';
+              typeCell.style.fontSize = '12px';
+              row.appendChild(typeCell);
+            }
+
+            // Submitted date
+            const dateCell = document.createElement('td');
+            const date = new Date(entry.at * 1000);
+            dateCell.textContent = date.toLocaleString();
+            dateCell.style.padding = '8px';
+            dateCell.style.border = '1px solid #000';
+            dateCell.style.fontSize = '12px';
+            dateCell.style.whiteSpace = 'nowrap';
+            row.appendChild(dateCell);
+
+            // User (hidden in faction designer)
+            if (isAdminView) {
+              const userCell = document.createElement('td');
+              userCell.textContent = entry.user || '';
+              userCell.style.padding = '8px';
+              userCell.style.border = '1px solid #000';
+              userCell.style.fontSize = '12px';
+              row.appendChild(userCell);
+            }
+
+            // Prompt
+            const promptCell = document.createElement('td');
+            promptCell.textContent = entry.prompt || '';
+            promptCell.style.padding = '8px';
+            promptCell.style.border = '1px solid #000';
+            promptCell.style.maxWidth = '250px';
+            promptCell.style.overflow = 'hidden';
+            promptCell.style.textOverflow = 'ellipsis';
+            promptCell.title = entry.prompt || '';
+            promptCell.style.fontSize = '12px';
+            row.appendChild(promptCell);
+
+            // Summary (Claude's response)
+            const summaryCell = document.createElement('td');
+            summaryCell.textContent = entry.summary || '';
+            summaryCell.style.padding = '8px';
+            summaryCell.style.border = '1px solid #000';
+            summaryCell.style.maxWidth = '250px';
+            summaryCell.style.overflow = 'hidden';
+            summaryCell.style.textOverflow = 'ellipsis';
+            summaryCell.title = entry.summary || '';
+            summaryCell.style.fontSize = '12px';
+            row.appendChild(summaryCell);
+
+            // Cost (hidden in faction designer)
+            if (isAdminView) {
+              const costCell = document.createElement('td');
+              if (entry.cost !== undefined && entry.cost !== null) {
+                costCell.textContent = '$' + entry.cost.toFixed(2);
+                if (entry.costNote) {
+                  costCell.title = entry.costNote;
+                }
+              } else {
+                costCell.textContent = '—';
+              }
+              costCell.style.padding = '8px';
+              costCell.style.border = '1px solid #000';
+              costCell.style.textAlign = 'right';
+              costCell.style.whiteSpace = 'nowrap';
+              costCell.style.fontSize = '12px';
+              row.appendChild(costCell);
+            }
+
+            // Status
+            const statusCell = document.createElement('td');
+            if (entry.summary && !entry.defaultSummary) {
+              statusCell.textContent = 'Done';
+              statusCell.style.color = '#008000';
+            } else if (entry.summary) {
+              statusCell.textContent = 'Pending';
+              statusCell.style.color = '#ff8800';
+            } else {
+              statusCell.textContent = 'Queued';
+              statusCell.style.color = '#888';
+            }
+            statusCell.style.padding = '8px';
+            statusCell.style.border = '1px solid #000';
+            statusCell.style.whiteSpace = 'nowrap';
+            statusCell.style.fontSize = '12px';
+            row.appendChild(statusCell);
+
+            // Actions (admin view only - retry button for bug reports and design changes)
+            if (isAdminView) {
+              const actionsCell = document.createElement('td');
+              actionsCell.style.padding = '8px';
+              actionsCell.style.border = '1px solid #000';
+              actionsCell.style.textAlign = 'center';
+
+              // Show "Try again" button for bug reports and design changes
+              if (entry.type && (entry.type.includes('bug') || entry.type.includes('design'))) {
+                const retryBtn = document.createElement('button');
+                retryBtn.className = 'small';
+                retryBtn.textContent = 'Try again';
+                retryBtn.style.fontSize = '11px';
+                retryBtn.style.padding = '4px 8px';
+                retryBtn.onclick = () => this.retryDesignerEntry(entry);
+                actionsCell.appendChild(retryBtn);
+              }
+
+              row.appendChild(actionsCell);
+            }
+
+            tbody.appendChild(row);
+          }
+          table.appendChild(tbody);
+          historyDiv.appendChild(table);
+        })
+        .catch(err => {
+          loadingMsg.textContent = `Failed to load terminal log: ${err}`;
+          loadingMsg.style.color = '#c00';
+        });
+
+      return historyDiv;
+    }
+
+    retryDesignerEntry(entry) {
+      // Retry a terminal log entry by re-submitting it to the admin queue
+      if (!entry || !entry.n || !entry.prompt) {
+        alert('Cannot retry: missing entry information');
+        return;
+      }
+
+      const entryNumber = entry.n;
+      const originalPrompt = entry.prompt;
+
+      // Detect if this is already a retry and extract attempt number
+      const attemptMatch = originalPrompt.match(/Re: Entry #\d+ \(attempt (\d+)\)/);
+      const attemptNum = attemptMatch ? parseInt(attemptMatch[1]) + 1 : 2;  // First retry = attempt 2
+
+      // Build retry prompt referencing the original entry
+      const retryPrompt = `Re: Entry #${entryNumber} (attempt ${attemptNum})
+
+The previous attempt either didn't finish or the fix didn't work. Review entry #${entryNumber}, then:
+
+1. If the task wasn't completed: finish it following all validation steps
+2. If the fix didn't work: try again and actually validate the fix properly
+
+CRITICAL BUG FIX VALIDATION STEPS (from Faction Build Manual):
+- If you have a game name, run a trace first (don't analyze code blind)
+- Reload the online game in a local test bed so you can rollback and test
+- Open the game in a browser and see what the player sees (use puppeteer)
+- Check the browser dev console for JavaScript errors
+- Check the Faction Build Manual for similar bugs and fixes
+- For visual bugs: take BEFORE and AFTER screenshots, read them both, include paths in summary
+- For designer submissions: update BOTH terminal log summary AND request status
+
+Original task:
+${originalPrompt}`;
+
+      // Submit the retry prompt to the admin queue
+      const submitUrl = this.state.adminToken
+        ? `/designer/api/admin/${this.state.adminToken}/claude-prompt`
+        : null;
+
+      if (!submitUrl) {
+        alert('Admin access required to retry entries');
+        return;
+      }
+
+      fetch(submitUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: retryPrompt,
+      }).then(r => {
+        if (!r.ok) {
+          alert(`Failed to submit retry (HTTP ${r.status})`);
+          return;
+        }
+        alert(`Retry queued for entry #${entryNumber}. Claude will pick it up on the next tick.`);
+        // Refresh the current view to show the new entry
+        window.location.reload();
+      }).catch(e => {
+        alert(`Network error: ${e.message || e}`);
       });
     }
 
@@ -1594,9 +2254,27 @@
         header.style.alignItems = 'center';
         header.style.marginBottom = '20px';
 
+        const titleContainer = document.createElement('div');
+        titleContainer.style.display = 'flex';
+        titleContainer.style.alignItems = 'baseline';
+        titleContainer.style.gap = '8px';
+
         const title = document.createElement('h1');
         title.textContent = 'My Customs';
-        header.appendChild(title);
+        title.style.margin = '0';
+        titleContainer.appendChild(title);
+
+        // Version number (clickable)
+        if (this.state.versions) {
+          const versionSpan = document.createElement('span');
+          versionSpan.textContent = `v${this.state.versions.current}`;
+          versionSpan.style.cssText = 'font-size: 0.85em; color: #60a5fa; cursor: pointer; text-decoration: underline;';
+          versionSpan.title = 'Click to view changelog';
+          versionSpan.onclick = () => this.showChangelogModal();
+          titleContainer.appendChild(versionSpan);
+        }
+
+        header.appendChild(titleContainer);
 
         const logoutBtn = document.createElement('button');
         logoutBtn.textContent = 'Logout';
@@ -2028,6 +2706,68 @@
       document.body.appendChild(overlay);
     }
 
+    showChangelogModal() {
+      const overlay = document.createElement('div');
+      overlay.className = 'confirm-overlay';
+
+      const dialog = document.createElement('div');
+      dialog.className = 'confirm-dialog';
+      dialog.style.maxWidth = '800px';
+      dialog.style.maxHeight = '80vh';
+      dialog.style.overflow = 'auto';
+
+      const title = document.createElement('h2');
+      title.textContent = 'Designer Changelog';
+      title.style.marginBottom = '20px';
+      dialog.appendChild(title);
+
+      const currentVersion = document.createElement('div');
+      currentVersion.style.cssText = 'margin-bottom: 20px; padding: 12px; background: #2a2a2a; border-radius: 4px;';
+      currentVersion.innerHTML = `<strong>Current Version:</strong> ${this.state.versions.current}`;
+      dialog.appendChild(currentVersion);
+
+      const versionList = document.createElement('div');
+      versionList.style.cssText = 'margin-bottom: 20px;';
+
+      this.state.versions.versions.forEach(v => {
+        const versionEntry = document.createElement('div');
+        versionEntry.style.cssText = 'margin-bottom: 16px; padding: 12px; background: #1a1a1a; border-left: 3px solid #60a5fa; border-radius: 4px;';
+
+        const versionHeader = document.createElement('div');
+        versionHeader.style.cssText = 'display: flex; align-items: baseline; margin-bottom: 6px;';
+
+        const versionNum = document.createElement('span');
+        versionNum.textContent = `v${v.version}`;
+        versionNum.style.cssText = 'font-weight: bold; color: #60a5fa; margin-right: 12px;';
+        versionHeader.appendChild(versionNum);
+
+        const versionDate = document.createElement('span');
+        versionDate.textContent = v.date;
+        versionDate.style.cssText = 'font-size: 0.9em; color: #888;';
+        versionHeader.appendChild(versionDate);
+
+        versionEntry.appendChild(versionHeader);
+
+        const versionSummary = document.createElement('div');
+        versionSummary.textContent = v.summary;
+        versionSummary.style.cssText = 'color: #ddd; font-size: 0.95em;';
+        versionEntry.appendChild(versionSummary);
+
+        versionList.appendChild(versionEntry);
+      });
+
+      dialog.appendChild(versionList);
+
+      const closeBtn = document.createElement('button');
+      closeBtn.textContent = 'Close';
+      closeBtn.className = 'primary';
+      closeBtn.onclick = () => overlay.remove();
+      dialog.appendChild(closeBtn);
+
+      overlay.appendChild(dialog);
+      document.body.appendChild(overlay);
+    }
+
     showCreateMapDialog() {
       const overlay = document.createElement('div');
       overlay.className = 'confirm-overlay';
@@ -2304,6 +3044,10 @@
         glyphBtn.textContent = 'Upload faction glyph';
         glyphBtn.onclick = glyphUpload;
         glyphDiv.appendChild(glyphBtn);
+        const required = document.createElement('div');
+        required.style.cssText = 'font-size: 0.85em; color: #e06c75; margin-top: 4px;';
+        required.textContent = 'Required before the design can be built.';
+        glyphDiv.appendChild(required);
         if (design.card.image) {
           const note = document.createElement('div');
           note.className = 'sx-hint-text';
@@ -2409,12 +3153,12 @@
       };
       sectionsDiv.appendChild(updateBtn);
 
-      // Bug Report button
+      // Terminal Log / Bug Report button (always enabled)
       const bugBtn = document.createElement('button');
       bugBtn.className = 'section-button';
-      bugBtn.disabled = faction.build.status !== 'built';
+      bugBtn.dataset.nav = '1'; // Keep visible in read-only mode
       const bugName = document.createElement('span');
-      bugName.textContent = 'Bug Report';
+      bugName.textContent = 'Terminal Log & Bug Report';
       bugBtn.appendChild(bugName);
       bugBtn.onclick = () => {
         window.location.hash = `#/faction/${faction.id}/bug-report`;
@@ -2736,6 +3480,7 @@
     getSectionStatusBadge(key, faction) {
       const claudeQA = faction.claudeQA || {};
       const design = faction.design;
+      const sectionsModified = (faction.build && faction.build.sectionsModified) || {};
 
       // If section has Claude questions, show amber badge with count
       if (claudeQA[key] && claudeQA[key].questions && claudeQA[key].questions.trim()) {
@@ -2750,8 +3495,13 @@
         return '';
       }
 
-      const statusResult = window.Rules.status(key, design);
-      if (statusResult === 'Complete') {
+      const statusResult = window.Rules.status(key, design, sectionsModified);
+      if (statusResult === 'Edited, requires rebuild') {
+        if (this.state.adminView) {
+          return '<span class="status-badge-orange">⚠ Edited</span>';
+        }
+        return '<span class="status-edited">Edited, requires rebuild</span>';
+      } else if (statusResult === 'Complete') {
         return '<span class="status-complete">✓</span>';
       } else if (statusResult === 'Incomplete') {
         if (this.state.adminView) {
@@ -2769,6 +3519,7 @@
     getMapSectionStatusBadge(key, map) {
       const claudeQA = map.claudeQA || {};
       const design = map.design;
+      const sectionsModified = (map.build && map.build.sectionsModified) || {};
 
       // If section has Claude questions, show amber badge
       if (claudeQA[key] && claudeQA[key].questions && claudeQA[key].questions.trim()) {
@@ -2783,9 +3534,14 @@
         return '';
       }
 
-      const statusResult = window.Rules.mapStatus(key, design);
-      // mapStatus typically returns strings like status values, check if incomplete
-      if (statusResult && statusResult.includes('Incomplete')) {
+      const statusResult = window.Rules.mapStatus(key, design, sectionsModified);
+      // Check for different status types
+      if (statusResult === 'Edited, requires rebuild') {
+        if (this.state.adminView) {
+          return '<span class="status-badge-orange">⚠ Edited</span>';
+        }
+        return '<span class="status-edited">Edited, requires rebuild</span>';
+      } else if (statusResult && statusResult.includes('Incomplete')) {
         if (this.state.adminView) {
           return '<span class="status-badge-red">✗ Incomplete</span>';
         }
@@ -2796,7 +3552,8 @@
 
     getBuildStatusLabel(faction) {
       const sectionsWithQuestions = this.getSectionsWithQuestions(faction, Rules.SECTIONS);
-      return this.buildStatusHtml(faction.build.status, Rules.buildReady(faction.design), this.hasClaudeQuestions(faction), sectionsWithQuestions);
+      const sectionsModified = (faction.build && faction.build.sectionsModified) || {};
+      return this.buildStatusHtml(faction.build.status, Rules.buildReady(faction.design, sectionsModified), this.hasClaudeQuestions(faction), sectionsWithQuestions);
     }
 
     getBuildStatusLabelForUnit(unit) {
@@ -2847,6 +3604,11 @@
         exit.textContent = 'Exit to Main';
         exit.onclick = () => { window.location.hash = `#/faction/${fid}`; };
         bottom.appendChild(exit);
+        const factionNameSpan = document.createElement('span');
+        factionNameSpan.textContent = ` | ${this.state.currentFaction.name}`;
+        factionNameSpan.style.marginLeft = '12px';
+        factionNameSpan.style.color = '#aaa';
+        bottom.appendChild(factionNameSpan);
         // Placed after any content the screen adds asynchronously
         const hash = window.location.hash;
         setTimeout(() => { if (window.location.hash === hash) this.root.appendChild(bottom); }, 400);
@@ -2928,11 +3690,26 @@
       const design = unit.design;
 
       this.root.innerHTML = '';
+
+      // Top Back button
+      const topBackBtn = document.createElement('button');
+      topBackBtn.textContent = 'Back to My Customs';
+      topBackBtn.onclick = async () => {
+        try {
+          await this.flushSaves();
+        } catch (err) {
+          console.error('Back to My Customs: save failed, navigating anyway', err);
+        }
+        window.location.hash = '#/factions';
+      };
+      this.root.appendChild(topBackBtn);
+
       const titleRow = document.createElement('div');
       titleRow.style.display = 'flex';
       titleRow.style.alignItems = 'center';
       titleRow.style.gap = '12px';
       titleRow.style.marginBottom = '12px';
+      titleRow.style.marginTop = '12px';
 
       const title = document.createElement('h1');
       title.className = 'faction-title';
@@ -2955,6 +3732,7 @@
       const container = document.createElement('div');
       this.root.appendChild(container);
 
+      // Bottom Back button
       const backBtn = document.createElement('button');
       backBtn.textContent = 'Back to My Customs';
       backBtn.style.marginTop = '20px';
@@ -2989,10 +3767,9 @@
       };
       this.root.appendChild(updateBtn);
 
-      // Bug Report button
+      // Terminal Log / Bug Report button (always enabled)
       const bugBtn = document.createElement('button');
-      bugBtn.textContent = 'Bug Report';
-      bugBtn.disabled = !(unit.build && unit.build.status === 'built');
+      bugBtn.textContent = 'Terminal Log & Bug Report';
       bugBtn.style.marginTop = '10px';
       bugBtn.style.marginLeft = '10px';
       bugBtn.onclick = () => {
@@ -3031,6 +3808,7 @@
         uploadImage: (kind) => this.uploadImage(kind),
         pickLibraryImage: () => this.pickLibraryImage(),
         pickSilhouetteImage: () => this.pickSilhouetteImage(),
+        pickTokenImage: () => this.pickTokenImage(),
         imgUrl: (id) => this.imgUrl(id),
         confirm: (msg, yes, no) => this.confirm(msg, yes, no),
         readOnly: false,
@@ -3054,9 +3832,10 @@
 
       this.root.innerHTML = '';
 
-      const backBtn = document.createElement('button');
-      backBtn.textContent = 'Exit to Main';
-      backBtn.onclick = async () => {
+      // Top Exit to Main button
+      const topBackBtn = document.createElement('button');
+      topBackBtn.textContent = 'Exit to Main';
+      topBackBtn.onclick = async () => {
         try {
           await this.flushSaves();
           await this.closeSession(faction.id);
@@ -3065,17 +3844,48 @@
         }
         window.location.hash = `#/faction/${faction.id}`;
       };
-      backBtn.style.marginTop = '20px';
+
+      const topFactionNameSpan = document.createElement('span');
+      topFactionNameSpan.textContent = ` | ${faction.name}`;
+      topFactionNameSpan.style.marginLeft = '12px';
+      topFactionNameSpan.style.color = '#aaa';
+
+      this.root.appendChild(topBackBtn);
+      this.root.appendChild(topFactionNameSpan);
 
       if (this.isReadOnly()) this.root.appendChild(this.readOnlyBanner());
       const container = document.createElement('div');
       this.root.appendChild(container);
-      // The doc puts Exit to Main at the bottom of every section
+
+      // Bottom Exit to Main button
+      const backBtn = document.createElement('button');
+      backBtn.textContent = 'Exit to Main';
+      backBtn.onclick = async () => {
+        try {
+          await this.flushSaves();
+          await this.closeSession(faction.id);
+        } catch (err) {
+          console.error('Exit to Main: save/close-section failed, navigating anyway', err);
+        }
+        window.location.hash = `#/faction/${faction.id}`;
+      };
+      backBtn.style.marginTop = '20px';
+
+      const factionNameSpan = document.createElement('span');
+      factionNameSpan.textContent = ` | ${faction.name}`;
+      factionNameSpan.style.marginLeft = '12px';
+      factionNameSpan.style.color = '#aaa';
+
       this.root.appendChild(backBtn);
+      this.root.appendChild(factionNameSpan);
 
       const ctx = {
         design,
         faction,
+        // Live build snapshot, for the colored-border "differs from build" field highlighting
+        // (same data the Simple Update screen uses) - shown directly in whichever section the
+        // owner is editing, not only on the Simple Update summary screen.
+        builtDesign: this.state.builtDesign,
         reference: this.state.reference,
         adminView: this.state.adminView ? true : false,  // Mark admin view for UI styling/messaging
         set: (path, value) => {
@@ -3125,6 +3935,7 @@
         uploadImage: (kind) => this.uploadImage(kind),
         pickLibraryImage: () => this.pickLibraryImage(),
         pickSilhouetteImage: () => this.pickSilhouetteImage(),
+        pickTokenImage: () => this.pickTokenImage(),
         imgUrl: (id) => this.imgUrl(id),
         confirm: (msg, yes, no) => this.confirm(msg, yes, no),
         readOnly: this.isReadOnly(),
@@ -3169,6 +3980,12 @@
       };
       this.root.appendChild(backBtn);
 
+      const factionNameSpan = document.createElement('span');
+      factionNameSpan.textContent = ` | ${faction.name}`;
+      factionNameSpan.style.marginLeft = '12px';
+      factionNameSpan.style.color = '#aaa';
+      this.root.appendChild(factionNameSpan);
+
       const title = document.createElement('h2');
       title.textContent = 'Versions';
       title.style.marginTop = '20px';
@@ -3186,7 +4003,7 @@
       table.appendChild(thead);
 
       const tbody = document.createElement('tbody');
-      const liveVersions = [faction.build.liveVersion, ...faction.liveGameVersions].filter(v => v !== null);
+      const liveVersions = [faction.build.liveVersion, ...faction.liveGameVersions].filter(v => v !== null).map(v => (typeof v === 'string' && /^\d+$/.test(v)) ? Number(v) : v);
 
       for (const ver of faction.versions) {
         const row = document.createElement('tr');
@@ -3379,6 +4196,7 @@
     renderBuildScreen() {
       const faction = this.state.currentFaction;
       const design = faction.design;
+      const sectionsModified = (faction.build && faction.build.sectionsModified) || {};
 
       this.root.innerHTML = '';
 
@@ -3388,6 +4206,12 @@
         window.location.hash = `#/faction/${faction.id}`;
       };
       this.root.appendChild(backBtn);
+
+      const factionNameSpan = document.createElement('span');
+      factionNameSpan.textContent = ` | ${faction.name}`;
+      factionNameSpan.style.marginLeft = '12px';
+      factionNameSpan.style.color = '#aaa';
+      this.root.appendChild(factionNameSpan);
 
       const title = document.createElement('h2');
       title.textContent = 'Build';
@@ -3465,7 +4289,7 @@
 
         const sectionCell = document.createElement('td');
         const sec = Rules.SECTIONS.find(s => s.key === key);
-        const st = Rules.status(key, design);
+        const st = Rules.status(key, design, sectionsModified);
 
         if (st === 'Incomplete') {
           const link = document.createElement('a');
@@ -3475,13 +4299,20 @@
           link.style.textDecoration = 'underline';
           sectionCell.appendChild(link);
           incompleteSections.push({key, title: sec.title});
+        } else if (st === 'Edited, requires rebuild') {
+          const link = document.createElement('a');
+          link.href = `#/faction/${faction.id}/section/${key}`;
+          link.textContent = sec.title;
+          link.style.color = '#ff8800';
+          link.style.textDecoration = 'underline';
+          sectionCell.appendChild(link);
         } else {
           sectionCell.textContent = sec.title;
         }
         row.appendChild(sectionCell);
 
         const statusCell = document.createElement('td');
-        statusCell.className = `status-${st.toLowerCase().replace('/', '')}`;
+        statusCell.className = `status-${st.toLowerCase().replace(/[^a-z]/g, '')}`;
         statusCell.textContent = st;
         row.appendChild(statusCell);
 
@@ -3492,13 +4323,24 @@
       this.root.appendChild(table);
 
       // Add plain-language descriptions for incomplete sections
-      if (incompleteSections.length > 0) {
+      const glyphMissing = !Rules.cardReady(design);
+      if (incompleteSections.length > 0 || glyphMissing) {
         const missingDiv = document.createElement('div');
         missingDiv.style.cssText = 'margin-top: 20px; padding: 16px; background: #2a2a2a; border: 1px solid #666; border-radius: 4px;';
         const missingTitle = document.createElement('h3');
         missingTitle.textContent = 'Missing fields';
         missingTitle.style.marginTop = '0';
         missingDiv.appendChild(missingTitle);
+
+        if (glyphMissing) {
+          const p = document.createElement('p');
+          const strong = document.createElement('strong');
+          strong.textContent = 'Faction Card: ';
+          p.appendChild(strong);
+          p.appendChild(document.createTextNode('Upload a faction glyph before the design can be built.'));
+          p.style.margin = '8px 0';
+          missingDiv.appendChild(p);
+        }
 
         incompleteSections.forEach(sec => {
           const missing = Rules.missingFields(sec.key, design);
@@ -3539,7 +4381,7 @@
           const executeBtn = document.createElement('button');
           executeBtn.className = 'primary';
           executeBtn.textContent = 'Execute build';
-          executeBtn.disabled = !Rules.buildReady(design) || faction.build.status === 'requested' || faction.build.status === 'in_progress';
+          executeBtn.disabled = !Rules.buildReady(design, sectionsModified) || faction.build.status === 'requested' || faction.build.status === 'in_progress';
           executeBtn.style.marginTop = '20px';
           executeBtn.onclick = async () => {
             try {
@@ -3558,30 +4400,83 @@
           };
           this.root.appendChild(executeBtn);
         } else {
+          // Update instructions field (shown after first build)
+          const updateInstructionsDiv = document.createElement('div');
+          updateInstructionsDiv.style.cssText = 'margin-top: 20px; margin-bottom: 20px;';
+
+          const instructionsLabel = document.createElement('label');
+          instructionsLabel.textContent = 'Update comments / instructions';
+          instructionsLabel.style.cssText = 'display: block; margin-bottom: 8px; font-weight: bold;';
+          updateInstructionsDiv.appendChild(instructionsLabel);
+
+          const instructionsTextarea = document.createElement('textarea');
+          instructionsTextarea.value = faction.build.updateInstructions || '';
+          instructionsTextarea.placeholder = 'Add any comments or instructions for Claude when building updates...';
+          instructionsTextarea.style.cssText = 'width: 100%; min-height: 100px; padding: 8px; font-family: inherit; resize: vertical;';
+          instructionsTextarea.onchange = async () => {
+            try {
+              faction.build.updateInstructions = instructionsTextarea.value;
+              await this.api('POST', `/factions/${faction.id}/build-update-instructions`, {
+                instructions: instructionsTextarea.value
+              });
+            } catch (err) {
+              console.error('Failed to save update instructions:', err);
+            }
+          };
+          updateInstructionsDiv.appendChild(instructionsTextarea);
+
+          this.root.appendChild(updateInstructionsDiv);
+
           const updateBtn = document.createElement('button');
           updateBtn.className = 'primary';
           updateBtn.textContent = 'Update';
-          updateBtn.disabled = faction.current === faction.build.liveVersion;
-          updateBtn.style.marginTop = '20px';
+          // Update is allowed whenever the design version differs from the built one. liveVersion
+          // can be stored as text ("9") while current is a number (10), so compare as text -
+          // a strict === between them would never match and could not be trusted either way.
+          const versionsDiffer = String(faction.current) !== String(faction.build.liveVersion);
+          updateBtn.disabled = !versionsDiffer;
+          updateBtn.title = versionsDiffer ? '' : 'The current design version is the one already built.';
+          updateBtn.style.marginTop = '0';
           updateBtn.onclick = async () => {
-            const sections = Rules.BUILD_SECTIONS.filter(key => {
-              const diff = Rules.describeSectionDiff(key, this.state.builtDesign, design);
-              return diff !== '';
-            });
+            const built = this.state.builtDesign;
+            // Every part of the design that can change the built faction, not only the 11 build
+            // sections (faction card images, spellbook images and colour count too).
+            const sections = built
+              ? Rules.UPDATE_SECTIONS.filter(key => Rules.describeSectionDiff(key, built, design) !== '')
+              : [];
 
-            if (sections.length === 0) {
-              alert('No changes detected.');
-              return;
+            if (sections.length === 0 && built) {
+              // Versions differ but no field differs from the built copy: still let the designer
+              // send it (they asked for an update; Claude can confirm), rather than refusing.
+              if (!confirm(`Design v${faction.current} matches built v${faction.build.liveVersion} field for field. Send an update request anyway?`)) return;
             }
 
             try {
-              for (const key of sections) {
-                const sec = Rules.SECTIONS.find(s => s.key === key);
-                const diff = Rules.describeSectionDiff(key, this.state.builtDesign, design);
+              const updateInstructions = faction.build.updateInstructions;
+              const extraText = (updateInstructions && updateInstructions.trim())
+                ? `\n\nUpdate instructions from designer: ${updateInstructions}` : '';
+              if (sections.length === 0) {
+                // No built copy to compare against, or nothing field-level differs: one whole-faction request
+                const why = built ? 'No field-level difference was found against the built copy' : 'The built copy could not be loaded for comparison';
                 await this.createRequest(
                   faction.id,
                   'update',
-                  `${faction.name} update required. ${sec.title} needs to be changed. New version includes ${diff}.`,
+                  `${faction.name} update required from built v${faction.build.liveVersion} to design v${faction.current}. ${why}, so compare the whole design.${extraText}`,
+                  {section: 'all', fromVersion: faction.build.liveVersion, toVersion: faction.current}
+                );
+                alert('Update request created for the whole faction.');
+                return;
+              }
+              for (const key of sections) {
+                const diff = Rules.describeSectionDiff(key, built, design);
+                let requestText = `${faction.name} update required. ${Rules.sectionTitle(key)} needs to be changed. New version includes ${diff}.`;
+                if (updateInstructions && updateInstructions.trim()) {
+                  requestText += `\n\nUpdate instructions from designer: ${updateInstructions}`;
+                }
+                await this.createRequest(
+                  faction.id,
+                  'update',
+                  requestText,
                   {section: key, fromVersion: faction.build.liveVersion, toVersion: faction.current}
                 );
               }
@@ -3713,9 +4608,13 @@
       }
     }
 
-    renderSimpleUpdateScreen() {
+    async renderSimpleUpdateScreen() {
       const faction = this.state.currentFaction;
-      const design = faction.design;
+
+      // Reload faction data to ensure we have the latest builtDesign
+      await this.loadFaction(faction.id);
+
+      const design = this.state.currentFaction.design;
       const builtDesign = this.state.builtDesign;
 
       this.root.innerHTML = '';
@@ -3727,54 +4626,218 @@
       };
       this.root.appendChild(backBtn);
 
+      const factionNameSpan = document.createElement('span');
+      factionNameSpan.textContent = ` | ${faction.name}`;
+      factionNameSpan.style.marginLeft = '12px';
+      factionNameSpan.style.color = '#aaa';
+      this.root.appendChild(factionNameSpan);
+
+      // Check if there are rebuild-eligible changes
+      const hasRebuildNeeded = this.hasRebuildEligibleChanges(faction, design, builtDesign);
+      if (hasRebuildNeeded) {
+        const rebuildBtn = document.createElement('button');
+        rebuildBtn.textContent = 'Rebuild';
+        rebuildBtn.className = 'primary';
+        rebuildBtn.style.marginLeft = '10px';
+        rebuildBtn.onclick = async () => {
+          try {
+            await this.createRequest(
+              faction.id,
+              'build',
+              `Rebuild faction ${faction.name} with updated design`,
+              {}
+            );
+            alert('Build request submitted. You will be notified when it completes.');
+            window.location.hash = `#/faction/${faction.id}`;
+          } catch (err) {
+            alert('Build request failed: ' + err.message);
+          }
+        };
+        this.root.appendChild(rebuildBtn);
+      }
+
       const title = document.createElement('h2');
       title.textContent = 'Simple Update';
       title.style.marginTop = '20px';
       this.root.appendChild(title);
 
-      // Pushes are applied by the server straight away (no ticker), so there is nothing pending to flash
+      // Owner-mandated scope statement: Simple Update only ever touches text/number values, never
+      // code, rules, or logic. If a text change implies a rule change, that belongs in the full
+      // section editor (and a new build), not here.
+      const scopeNote = document.createElement('p');
+      scopeNote.textContent = 'These simple updated pushes will only change text or numeric values. No code or rules or logic will be changed. If spellbook text changing also changes a rule,or UFA text or ability text, it should be changed in the relevant section. And then possibly menus  changed, and a new build requested.';
+      this.root.appendChild(scopeNote);
+
+      // Pushes are recorded by the server straight away (no ticker). The homebrew build only picks
+      // them up when the owner runs faction-values.py sync + apply --deploy (it does not read them live).
       const note = document.createElement('p');
-      note.textContent = 'Pushing a number updates the homebrew build straight away. Games already in progress keep the numbers they started with.';
+      note.textContent = 'Pushing a number saves it for the homebrew build straight away. It shows up in the game after the next values update (faction-values.py sync, then apply --deploy). Games already in progress will use the new number the next time they load.';
       this.root.appendChild(note);
 
       if (!builtDesign) {
         const p = document.createElement('p');
         p.textContent = 'No built version available.';
         this.root.appendChild(p);
+        // Image swaps do not depend on the built snapshot (they replace webp files by name), so a
+        // built faction whose liveVersion label cannot be resolved (e.g. "HB 9267656") still gets
+        // its Quick Image Swap rows instead of losing the whole section.
+        if (faction.build && faction.build.status === 'built') this.renderSimpleUpdateImageSwaps(faction);
         return;
       }
 
       // Render numeric updates section
       this.renderSimpleUpdateNumbers(faction, design, builtDesign);
 
+      // Render text updates section
+      this.renderSimpleUpdateText(faction, design, builtDesign);
+
       // Render image swap section
       this.renderSimpleUpdateImageSwaps(faction);
+    }
+
+    // Check if there are any rebuild-eligible changes (yellow or orange outlines or edited sections)
+    hasRebuildEligibleChanges(faction, design, builtDesign) {
+      // Check if any sections have been modified since last build
+      const sectionsModified = (faction.build && faction.build.sectionsModified) || {};
+      if (Object.keys(sectionsModified).length > 0) {
+        return true;
+      }
+
+      // Check for field-level changes (yellow/orange outline fields)
+      const builtTexts = Rules.fixedText(builtDesign);
+      const designTexts = Rules.fixedText(design);
+
+      for (const dTxt of designTexts) {
+        const bTxt = builtTexts.find(b => b.section === dTxt.section && b.rowId === dTxt.rowId && b.field === dTxt.field);
+        if (!bTxt || bTxt.value !== dTxt.value) {
+          const updateType = App.getUpdateType(dTxt.section, dTxt.field);
+          // Yellow (rebuild) or orange (either) means rebuild is possible
+          if (updateType === 'rebuild' || updateType === 'either') {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    // Readable label for a fixedNumbers() "field" value, shown in its own "Type of value" column.
+    // Side/power variants (costB, cost2, costB2, effectB, ...) share their base field's label since
+    // the side/power is already called out in the Element column (e.g. "Ritual Name (side B)").
+    static simpleUpdateFieldLabel(field) {
+      const FIELD_LABELS = {
+        qty: 'Quantity',
+        cost: 'Cost', costB: 'Cost', cost2: 'Cost', costB2: 'Cost',
+        effect: 'Effect', effectB: 'Effect', effect2: 'Effect', effectB2: 'Effect',
+        dice: 'Combat Dice',
+        pains: 'Pains',
+        kills: 'Kills',
+        awakenPower: 'Awaken Power',
+        num: 'Requirement Number',
+        power: 'Starting Power',
+        aeStart: 'Starting Amount'
+      };
+      return FIELD_LABELS[field] || field;
+    }
+
+    // Determine if a text field is a simple update (green), rebuild-only (yellow),
+    // or either (orange). Spellbooks and SBRs can be either; other text is simple update only.
+    static getUpdateType(section, field) {
+      // Spellbook and SBR text can be either simple update or rebuild
+      if ((section === 'spellbooks' || section === 'sbr') && (field === 'name' || field === 'text')) {
+        return 'either'; // orange
+      }
+      // All other text fields are simple update only
+      return 'simple';  // green
+    }
+
+    // Get the outline color based on update type and whether value differs
+    static getOutlineColor(updateType, differs = true) {
+      // Blue = eligible for simple update but currently matches build
+      // Green = eligible for simple update and differs from build
+      if (updateType === 'number' || updateType === 'simple') {
+        return differs ? '#00aa00' : '#0066ff';  // green if differs, blue if matches
+      }
+
+      const COLORS = {
+        'rebuild': '#ccaa00',   // yellow - rebuild only
+        'either': '#ff8800'     // orange - either simple or rebuild
+      };
+      return COLORS[updateType] || '#00aa00';
+    }
+
+    // Show legend for field outlines
+    showUpdateLegend(parent) {
+      const legend = document.createElement('div');
+      legend.style.marginBottom = '20px';
+      legend.style.padding = '12px';
+      legend.style.backgroundColor = '#1a1a1a';
+      legend.style.border = '1px solid #444';
+      legend.style.borderRadius = '4px';
+
+      const legendTitle = document.createElement('strong');
+      legendTitle.textContent = 'Field Update Legend:';
+      legendTitle.style.display = 'block';
+      legendTitle.style.marginBottom = '8px';
+      legend.appendChild(legendTitle);
+
+      const items = [
+        { color: '#00aa00', label: 'Green outline: Can be updated immediately through Simple Update (value differs from build)' },
+        { color: '#0066ff', label: 'Blue outline: Can be updated through Simple Update (currently matches build value)' },
+        { color: '#ccaa00', label: 'Yellow outline: Must be updated through a rebuild' },
+        { color: '#ff8800', label: 'Orange outline: Can be updated either way (simple or rebuild)' }
+      ];
+
+      items.forEach(item => {
+        const itemDiv = document.createElement('div');
+        itemDiv.style.marginBottom = '6px';
+
+        const colorBox = document.createElement('span');
+        colorBox.style.display = 'inline-block';
+        colorBox.style.width = '16px';
+        colorBox.style.height = '16px';
+        colorBox.style.backgroundColor = 'transparent';
+        colorBox.style.border = `2px solid ${item.color}`;
+        colorBox.style.marginRight = '8px';
+        colorBox.style.verticalAlign = 'middle';
+
+        const label = document.createElement('span');
+        label.textContent = item.label;
+        label.style.verticalAlign = 'middle';
+
+        itemDiv.appendChild(colorBox);
+        itemDiv.appendChild(label);
+        legend.appendChild(itemDiv);
+      });
+
+      parent.appendChild(legend);
     }
 
     renderSimpleUpdateNumbers(faction, design, builtDesign) {
       const builtNums = Rules.fixedNumbers(builtDesign);
       const designNums = Rules.fixedNumbers(design);
+      const fieldLabel = App.simpleUpdateFieldLabel;
 
-      // Find differences
-      const diffs = [];
+      // Show ALL fixed numbers, marking which differ and which match
+      const allNums = [];
       for (const dNum of designNums) {
         const bNum = builtNums.find(b => b.section === dNum.section && b.rowId === dNum.rowId && b.field === dNum.field);
-        if (!bNum || bNum.value !== dNum.value) {
-          diffs.push({
-            section: dNum.section,
-            sectionTitle: dNum.sectionTitle,
-            name: dNum.name,
-            rowId: dNum.rowId,
-            field: dNum.field,
-            buildValue: bNum ? bNum.value : null,
-            designValue: dNum.value
-          });
-        }
+        const differs = !bNum || bNum.value !== dNum.value;
+        allNums.push({
+          section: dNum.section,
+          sectionTitle: dNum.sectionTitle,
+          name: dNum.name,
+          rowId: dNum.rowId,
+          field: dNum.field,
+          buildValue: bNum ? bNum.value : null,
+          designValue: dNum.value,
+          type: 'number',
+          differs: differs  // true = green (can push), false = blue (matches)
+        });
       }
 
-      if (diffs.length === 0) {
+      if (allNums.length === 0) {
         const p = document.createElement('p');
-        p.textContent = 'No fixed number differences found.';
+        p.textContent = 'No fixed numbers found.';
         this.root.appendChild(p);
         return;
       }
@@ -3785,10 +4848,130 @@
       numsTitle.style.marginTop = '20px';
       this.root.appendChild(numsTitle);
 
+      // Show legend if there are differences
+      this.showUpdateLegend(this.root);
+
       const table = document.createElement('table');
       const thead = document.createElement('thead');
       const headerRow = document.createElement('tr');
-      ['Section', 'Name', 'Current value in build', 'Current value in design', 'Action'].forEach(h => {
+      ['Section', 'Element', 'Type of value', 'Current value in build', 'Current value in design', 'Action'].forEach(h => {
+        const th = document.createElement('th');
+        th.textContent = h;
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
+
+      for (const num of allNums) {
+        const row = document.createElement('tr');
+
+        const sectionCell = document.createElement('td');
+        sectionCell.textContent = num.sectionTitle;
+        row.appendChild(sectionCell);
+
+        const nameCell = document.createElement('td');
+        nameCell.textContent = num.name;
+        row.appendChild(nameCell);
+
+        const typeCell = document.createElement('td');
+        typeCell.textContent = fieldLabel(num.field);
+        row.appendChild(typeCell);
+
+        const buildCell = document.createElement('td');
+        buildCell.textContent = num.buildValue !== null ? num.buildValue : '-';
+        row.appendChild(buildCell);
+
+        const designCell = document.createElement('td');
+        designCell.textContent = num.designValue !== null ? num.designValue : '-';
+        // Green outline = differs (can push), Blue outline = matches (but updatable)
+        designCell.style.backgroundColor = '#1a1a1a';
+        designCell.style.border = num.differs ? '3px solid #00aa00' : '3px solid #0066ff';
+        row.appendChild(designCell);
+
+        const actionCell = document.createElement('td');
+        if (num.differs) {
+          const pushBtn = document.createElement('button');
+          pushBtn.className = 'small primary';
+          pushBtn.textContent = 'Push design to build';
+          pushBtn.onclick = async () => {
+            try {
+              const label = `${num.name} ${fieldLabel(num.field)}`;
+              await this.createRequest(
+                faction.id,
+                'simple_update',
+                `Faction ${faction.name} update, change ${num.sectionTitle} ${label} to ${num.designValue}`,
+                {
+                  section: num.section,
+                  rowId: num.rowId,
+                  field: num.field,
+                  name: label,
+                  buildValue: num.buildValue,
+                  designValue: num.designValue
+                }
+              );
+              await this.loadFaction(faction.id);
+              alert(`Updated in the build: ${label} is now ${num.designValue}.`);
+              this.renderSimpleUpdateScreen();
+            } catch (err) {
+              alert('Request failed: ' + err.message);
+            }
+          };
+          actionCell.appendChild(pushBtn);
+        }
+        row.appendChild(actionCell);
+
+        tbody.appendChild(row);
+      }
+
+      table.appendChild(tbody);
+      this.root.appendChild(table);
+    }
+
+    renderSimpleUpdateText(faction, design, builtDesign) {
+      const builtTexts = Rules.fixedText(builtDesign);
+      const designTexts = Rules.fixedText(design);
+
+      // Find differences
+      const diffs = [];
+      for (const dTxt of designTexts) {
+        const bTxt = builtTexts.find(b => b.section === dTxt.section && b.rowId === dTxt.rowId && b.field === dTxt.field);
+        if (!bTxt || bTxt.value !== dTxt.value) {
+          const updateType = App.getUpdateType(dTxt.section, dTxt.field);
+          diffs.push({
+            section: dTxt.section,
+            sectionTitle: dTxt.sectionTitle,
+            name: dTxt.name,
+            rowId: dTxt.rowId,
+            field: dTxt.field,
+            buildValue: bTxt ? bTxt.value : null,
+            designValue: dTxt.value,
+            updateType: updateType
+          });
+        }
+      }
+
+      if (diffs.length === 0) {
+        const p = document.createElement('p');
+        p.textContent = 'No fixed text differences found.';
+        this.root.appendChild(p);
+        return;
+      }
+
+      // Section title for text
+      const textTitle = document.createElement('h3');
+      textTitle.textContent = 'Fixed Text';
+      textTitle.style.marginTop = '20px';
+      this.root.appendChild(textTitle);
+
+      // Show legend if there are differences
+      this.showUpdateLegend(this.root);
+
+      const table = document.createElement('table');
+      const thead = document.createElement('thead');
+      const headerRow = document.createElement('tr');
+      ['Section', 'Element', 'Current text in build', 'Current text in design', 'Action'].forEach(h => {
         const th = document.createElement('th');
         th.textContent = h;
         headerRow.appendChild(th);
@@ -3815,6 +4998,11 @@
 
         const designCell = document.createElement('td');
         designCell.textContent = diff.designValue !== null ? diff.designValue : '-';
+        // Apply outline based on update type AND whether value differs
+        designCell.style.backgroundColor = '#1a1a1a';
+        const differs = diff.designValue !== diff.buildValue;
+        const outlineColor = App.getOutlineColor(diff.updateType, differs);
+        designCell.style.border = `3px solid ${outlineColor}`;
         row.appendChild(designCell);
 
         const actionCell = document.createElement('td');
@@ -3826,7 +5014,7 @@
             await this.createRequest(
               faction.id,
               'simple_update',
-              `Faction ${faction.name} update, change ${diff.sectionTitle} ${diff.name} fixed value to ${diff.designValue}`,
+              `Faction ${faction.name} update, change ${diff.sectionTitle} ${diff.name} to "${diff.designValue}"`,
               {
                 section: diff.section,
                 rowId: diff.rowId,
@@ -3837,7 +5025,7 @@
               }
             );
             await this.loadFaction(faction.id);
-            alert(`Updated in the build: ${diff.name} is now ${diff.designValue}.`);
+            alert(`Updated in the build: ${diff.name} is now "${diff.designValue}".`);
             this.renderSimpleUpdateScreen();
           } catch (err) {
             alert('Request failed: ' + err.message);
@@ -3853,11 +5041,36 @@
       this.root.appendChild(table);
     }
 
+    // Standard Quick Image Swap filenames for a faction, in the same naming the game uses
+    // (manual Task 1.3): glyph, card, spellbooks, then one per unit (Cultist -> acolyte).
+    defaultImageSwapFilenames(faction) {
+      const acr = String(faction.acronym || (faction.design && faction.design.meta && faction.design.meta.acronym) || '').toLowerCase();
+      if (!/^[a-z0-9]{2,3}$/.test(acr)) return [];
+      const slug = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+      const names = [`${acr}-glyph.webp`, `${acr}-card.webp`, `${acr}-spellbooks.webp`];
+      const units = (faction.design && faction.design.units && faction.design.units.rows) || [];
+      units.forEach(u => {
+        // Game files drop a leading "The" (The Screaming Wall -> fm-screaming-wall.webp).
+        const s = u.type === 'Cultist' ? 'acolyte' : slug(u.name).replace(/^the-/, '');
+        if (s) names.push(`${acr}-${s}.webp`);
+      });
+      return names;
+    }
+
     renderSimpleUpdateImageSwaps(faction) {
       // Initialize imageSwaps if not present
       if (!faction.design.imageSwaps) {
         faction.design.imageSwaps = {rows: []};
       }
+      // Every built faction always shows a row for each standard swappable picture, starting with
+      // its glyph (<acr>-glyph.webp, the image on the in-game faction card and the picker). Rows
+      // the designer already added are kept; only missing standard filenames are added.
+      const swapRows = faction.design.imageSwaps.rows;
+      const have = new Set(swapRows.map(r => (r.filename || '').toLowerCase()));
+      this.defaultImageSwapFilenames(faction).forEach(fn => {
+        if (!have.has(fn)) { swapRows.push({filename: fn, imageId: null}); have.add(fn); }
+      });
 
       // Section title
       const imgTitle = document.createElement('h3');
@@ -4027,150 +5240,18 @@
       };
       this.root.appendChild(backBtn);
 
+      const factionNameSpan = document.createElement('span');
+      factionNameSpan.textContent = ` | ${faction.name}`;
+      factionNameSpan.style.marginLeft = '12px';
+      factionNameSpan.style.color = '#aaa';
+      this.root.appendChild(factionNameSpan);
+
       const title = document.createElement('h2');
-      title.textContent = 'Bug Report';
+      title.textContent = 'Terminal Log & Bug Report';
       title.style.marginTop = '20px';
       this.root.appendChild(title);
 
-      // Bug history table - fetch from Claude Terminal Log filtered by faction name
-      const historyDiv = document.createElement('div');
-      historyDiv.style.marginTop = '30px';
-      historyDiv.style.marginBottom = '30px';
-
-      const historyTitle = document.createElement('h3');
-      historyTitle.textContent = 'Bug History (from Claude Terminal Log)';
-      historyTitle.style.marginBottom = '15px';
-      historyDiv.appendChild(historyTitle);
-
-      const loadingMsg = document.createElement('p');
-      loadingMsg.textContent = 'Loading bug history...';
-      loadingMsg.style.color = '#888';
-      historyDiv.appendChild(loadingMsg);
-      this.root.appendChild(historyDiv);
-
-      // Fetch terminal log and filter by faction name
-      fetch('/designer/api/terminal-log')
-        .then(r => r.ok ? r.json() : Promise.reject(`HTTP ${r.status}`))
-        .then(data => {
-          const entries = data.entries || [];
-          // Filter for bug type entries matching this faction's name
-          const bugs = entries.filter(e =>
-            e.type === 'bug' &&
-            e.faction === faction.name
-          ).sort((a, b) => b.at - a.at); // Most recent first
-
-          loadingMsg.remove();
-
-          if (bugs.length === 0) {
-            const noBugs = document.createElement('p');
-            noBugs.textContent = 'No bugs reported yet.';
-            noBugs.style.color = '#888';
-            historyDiv.appendChild(noBugs);
-            return;
-          }
-
-          const table = document.createElement('table');
-          table.style.width = '100%';
-          table.style.borderCollapse = 'collapse';
-          table.style.border = '1px solid #000';
-          table.style.fontSize = '14px';
-
-          // Table header
-          const thead = document.createElement('thead');
-          const headerRow = document.createElement('tr');
-          headerRow.style.backgroundColor = '#f0f0f0';
-          headerRow.style.border = '1px solid #000';
-
-          const headers = ['Entry #', 'Submitted', 'User', 'Prompt', 'Claude Response', 'Status'];
-          for (const headerText of headers) {
-            const th = document.createElement('th');
-            th.textContent = headerText;
-            th.style.padding = '8px';
-            th.style.textAlign = 'left';
-            th.style.border = '1px solid #000';
-            th.style.fontWeight = 'bold';
-            headerRow.appendChild(th);
-          }
-          thead.appendChild(headerRow);
-          table.appendChild(thead);
-
-          // Table body
-          const tbody = document.createElement('tbody');
-          for (const bug of bugs) {
-            const row = document.createElement('tr');
-            row.style.border = '1px solid #000';
-
-            // Entry Number
-            const numCell = document.createElement('td');
-            numCell.textContent = bug.n || bug.id;
-            numCell.style.padding = '8px';
-            numCell.style.border = '1px solid #000';
-            numCell.style.textAlign = 'right';
-            row.appendChild(numCell);
-
-            // Submitted date
-            const dateCell = document.createElement('td');
-            const date = new Date(bug.at * 1000);
-            dateCell.textContent = date.toLocaleString();
-            dateCell.style.padding = '8px';
-            dateCell.style.border = '1px solid #000';
-            dateCell.style.fontSize = '12px';
-            dateCell.style.whiteSpace = 'nowrap';
-            row.appendChild(dateCell);
-
-            // User
-            const userCell = document.createElement('td');
-            userCell.textContent = bug.user || '';
-            userCell.style.padding = '8px';
-            userCell.style.border = '1px solid #000';
-            row.appendChild(userCell);
-
-            // Prompt
-            const promptCell = document.createElement('td');
-            promptCell.textContent = bug.prompt || '';
-            promptCell.style.padding = '8px';
-            promptCell.style.border = '1px solid #000';
-            promptCell.style.maxWidth = '300px';
-            promptCell.style.overflow = 'hidden';
-            promptCell.style.textOverflow = 'ellipsis';
-            promptCell.title = bug.prompt || '';
-            row.appendChild(promptCell);
-
-            // Summary (Claude's response)
-            const summaryCell = document.createElement('td');
-            summaryCell.textContent = bug.summary || '';
-            summaryCell.style.padding = '8px';
-            summaryCell.style.border = '1px solid #000';
-            summaryCell.style.maxWidth = '300px';
-            summaryCell.style.overflow = 'hidden';
-            summaryCell.style.textOverflow = 'ellipsis';
-            summaryCell.title = bug.summary || '';
-            row.appendChild(summaryCell);
-
-            // Status
-            const statusCell = document.createElement('td');
-            if (bug.summary) {
-              statusCell.textContent = 'Completed';
-              statusCell.style.color = '#008000';
-            } else {
-              statusCell.textContent = 'Pending';
-              statusCell.style.color = '#ff8800';
-            }
-            statusCell.style.padding = '8px';
-            statusCell.style.border = '1px solid #000';
-            statusCell.style.whiteSpace = 'nowrap';
-            row.appendChild(statusCell);
-
-            tbody.appendChild(row);
-          }
-          table.appendChild(tbody);
-          historyDiv.appendChild(table);
-        })
-        .catch(err => {
-          loadingMsg.textContent = `Failed to load bug history: ${err}`;
-          loadingMsg.style.color = '#c00';
-        });
-
+      // Bug report form at top
       const label = document.createElement('label');
       label.textContent = 'Describe the bug:';
       label.style.marginTop = '20px';
@@ -4185,10 +5266,38 @@
       });
       this.root.appendChild(textarea);
 
+      // Image upload and submit buttons
+      const buttonContainer = document.createElement('div');
+      buttonContainer.style.display = 'flex';
+      buttonContainer.style.alignItems = 'center';
+      buttonContainer.style.gap = '8px';
+      buttonContainer.style.marginTop = '12px';
+
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = 'image/*';
+      fileInput.style.display = 'none';
+      fileInput.id = `bug_report_image_${faction.id}`;
+
+      const imageBtn = document.createElement('button');
+      imageBtn.textContent = 'Image';
+      imageBtn.onclick = () => fileInput.click();
+
+      const imageBadge = document.createElement('span');
+      imageBadge.id = `bug_report_badge_${faction.id}`;
+      fileInput.addEventListener('change', () => {
+        if (fileInput.files && fileInput.files[0]) {
+          const file = fileInput.files[0];
+          imageBadge.innerHTML = `📎 ${file.name}`;
+          imageBadge.style.color = '#888';
+          imageBadge.style.fontSize = '9pt';
+        }
+      });
+
       const sendBtn = document.createElement('button');
       sendBtn.className = 'primary';
       sendBtn.textContent = 'Send bug report';
-      sendBtn.style.marginTop = '20px';
+      sendBtn.style.marginLeft = 'auto';
       sendBtn.onclick = async () => {
         const description = textarea.value.trim();
         if (!description) {
@@ -4197,22 +5306,67 @@
         }
 
         try {
-          await this.createRequest(
-            faction.id,
-            'bug',
-            `Bug report for ${faction.name} (built v${faction.build.liveVersion}): ${description}`,
-            {description}
-          );
-          alert('Bug report sent.');
-          localStorage.removeItem(`bug_draft_${faction.id}`);
-          textarea.value = '';
-          // Reload to show new bug in history
-          this.loadFaction(faction.id);
+          const data = {description};
+          if (fileInput.files && fileInput.files[0]) {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+              data.image = {
+                name: fileInput.files[0].name,
+                data: e.target.result
+              };
+              await this.createRequest(
+                faction.id,
+                'bug',
+                `Bug report for ${faction.name} (built v${faction.build.liveVersion}): ${description}`,
+                data
+              );
+              alert('Bug report sent.');
+              localStorage.removeItem(`bug_draft_${faction.id}`);
+              textarea.value = '';
+              fileInput.value = '';
+              imageBadge.innerHTML = '';
+              this.loadFaction(faction.id);
+            };
+            reader.readAsDataURL(fileInput.files[0]);
+          } else {
+            await this.createRequest(
+              faction.id,
+              'bug',
+              `Bug report for ${faction.name} (built v${faction.build.liveVersion}): ${description}`,
+              data
+            );
+            alert('Bug report sent.');
+            localStorage.removeItem(`bug_draft_${faction.id}`);
+            textarea.value = '';
+            this.loadFaction(faction.id);
+          }
         } catch (err) {
           alert('Failed to send bug report: ' + err.message);
         }
       };
-      this.root.appendChild(sendBtn);
+
+      buttonContainer.appendChild(fileInput);
+      buttonContainer.appendChild(imageBtn);
+      buttonContainer.appendChild(imageBadge);
+      buttonContainer.appendChild(sendBtn);
+      this.root.appendChild(buttonContainer);
+
+      // Terminal log history - fetch from Claude Terminal Log filtered by faction name
+      this.root.appendChild(this.renderTerminalLogHistory(faction.name, 'faction-terminal-log'));
+
+      const bottomBackBtn = document.createElement('button');
+      bottomBackBtn.textContent = 'Exit to Main';
+      bottomBackBtn.style.marginTop = '20px';
+      bottomBackBtn.onclick = () => {
+        window.location.hash = `#/faction/${faction.id}`;
+      };
+      this.root.appendChild(bottomBackBtn);
+
+      const bottomFactionNameSpan = document.createElement('span');
+      bottomFactionNameSpan.textContent = ` | ${faction.name}`;
+      bottomFactionNameSpan.style.marginLeft = '12px';
+      bottomFactionNameSpan.style.color = '#aaa';
+      this.root.appendChild(bottomFactionNameSpan);
     }
 
     // Map render methods
@@ -4340,12 +5494,12 @@
       };
       sectionsDiv.appendChild(updateBtn);
 
-      // Bug Report button
+      // Terminal Log / Bug Report button (always enabled)
       const bugBtn = document.createElement('button');
       bugBtn.className = 'section-button';
-      bugBtn.disabled = map.build.status !== 'built';
+      bugBtn.dataset.nav = '1'; // Keep visible in read-only mode
       const bugName = document.createElement('span');
-      bugName.textContent = 'Bug Report';
+      bugName.textContent = 'Terminal Log & Bug Report';
       bugBtn.appendChild(bugName);
       bugBtn.onclick = () => {
         window.location.hash = `#/map/${map.id}/bug-report`;
@@ -4370,7 +5524,8 @@
 
     getMapBuildStatusLabel(map) {
       const sectionsWithQuestions = this.getSectionsWithQuestions(map, Rules.MAP_SECTIONS);
-      return this.buildStatusHtml(map.build.status, Rules.mapBuildReady(map.design), this.hasClaudeQuestions(map), sectionsWithQuestions);
+      const sectionsModified = (map.build && map.build.sectionsModified) || {};
+      return this.buildStatusHtml(map.build.status, Rules.mapBuildReady(map.design, sectionsModified), this.hasClaudeQuestions(map), sectionsWithQuestions);
     }
 
     async renderMapSectionScreen(mid, section) {
@@ -4384,6 +5539,32 @@
 
       this.root.innerHTML = '';
 
+      // Top Exit to Main button
+      const topBackBtn = document.createElement('button');
+      topBackBtn.textContent = 'Exit to Main';
+      topBackBtn.onclick = async () => {
+        try {
+          await this.flushSaves();
+          await this.closeMapSession(map.id);
+        } catch (err) {
+          console.error('Exit to Main: save/close-session failed, navigating anyway', err);
+        }
+        window.location.hash = `#/map/${map.id}`;
+      };
+
+      const topMapNameSpan = document.createElement('span');
+      topMapNameSpan.textContent = ` | ${map.name}`;
+      topMapNameSpan.style.marginLeft = '12px';
+      topMapNameSpan.style.color = '#aaa';
+
+      this.root.appendChild(topBackBtn);
+      this.root.appendChild(topMapNameSpan);
+
+      if (this.isReadOnly()) this.root.appendChild(this.readOnlyBanner());
+      const container = document.createElement('div');
+      this.root.appendChild(container);
+
+      // Bottom Exit to Main button
       const backBtn = document.createElement('button');
       backBtn.textContent = 'Exit to Main';
       backBtn.onclick = async () => {
@@ -4397,10 +5578,13 @@
       };
       backBtn.style.marginTop = '20px';
 
-      if (this.isReadOnly()) this.root.appendChild(this.readOnlyBanner());
-      const container = document.createElement('div');
-      this.root.appendChild(container);
+      const mapNameSpan = document.createElement('span');
+      mapNameSpan.textContent = ` | ${map.name}`;
+      mapNameSpan.style.marginLeft = '12px';
+      mapNameSpan.style.color = '#aaa';
+
       this.root.appendChild(backBtn);
+      this.root.appendChild(mapNameSpan);
 
       const ctx = {
         design,
@@ -4447,9 +5631,24 @@
           this.patchMap(map.id, [{op: 'deleteRow', path: tablePath, id: rowId}]);
           ctx.rerender();
         },
+        // Several addRow/deleteRow ops saved as ONE request so they reach the server in order
+        // (used by the map image "Move" feature).
+        applyRowOps: (ops) => {
+          if (this.isReadOnly() || !ops.length) return;
+          ops.forEach(o => {
+            const parts = o.path.split('.');
+            const last = parts.pop();
+            const parent = parts.reduce((x, k) => x[k], design);
+            if (o.op === 'addRow') parent[last].push(o.row);
+            else if (o.op === 'deleteRow') parent[last] = parent[last].filter(r => r.id !== o.id);
+          });
+          this.patchMap(map.id, ops);
+          ctx.rerender();
+        },
         uploadImage: (kind) => this.uploadImage(kind),
         pickLibraryImage: () => this.pickLibraryImage(),
         pickSilhouetteImage: () => this.pickSilhouetteImage(),
+        pickTokenImage: () => this.pickTokenImage(),
         imgUrl: (id) => this.imgUrl(id),
         confirm: (msg, yes, no) => this.confirm(msg, yes, no),
         readOnly: this.isReadOnly(),
@@ -4478,6 +5677,7 @@
 
       const map = this.state.currentMap;
       const design = map.design;
+      const sectionsModified = (map.build && map.build.sectionsModified) || {};
 
       this.root.innerHTML = '';
 
@@ -4487,6 +5687,12 @@
         window.location.hash = `#/map/${map.id}`;
       };
       this.root.appendChild(backBtn);
+
+      const mapNameSpan = document.createElement('span');
+      mapNameSpan.textContent = ` | ${map.name}`;
+      mapNameSpan.style.marginLeft = '12px';
+      mapNameSpan.style.color = '#aaa';
+      this.root.appendChild(mapNameSpan);
 
       const title = document.createElement('h2');
       title.textContent = 'Build';
@@ -4577,7 +5783,7 @@
         const executeBtn = document.createElement('button');
         executeBtn.className = 'primary';
         executeBtn.textContent = 'Execute build';
-        executeBtn.disabled = !Rules.mapBuildReady(design) || map.build.status === 'requested' || map.build.status === 'in_progress';
+        executeBtn.disabled = !Rules.mapBuildReady(design, sectionsModified) || map.build.status === 'requested' || map.build.status === 'in_progress';
         executeBtn.style.marginTop = '20px';
         executeBtn.onclick = async () => {
           try {
@@ -4596,6 +5802,20 @@
         };
         this.root.appendChild(executeBtn);
       }
+
+      const bottomBackBtn = document.createElement('button');
+      bottomBackBtn.textContent = 'Exit to Main';
+      bottomBackBtn.style.marginTop = '20px';
+      bottomBackBtn.onclick = () => {
+        window.location.hash = `#/map/${map.id}`;
+      };
+      this.root.appendChild(bottomBackBtn);
+
+      const bottomMapNameSpan = document.createElement('span');
+      bottomMapNameSpan.textContent = ` | ${map.name}`;
+      bottomMapNameSpan.style.marginLeft = '12px';
+      bottomMapNameSpan.style.color = '#aaa';
+      this.root.appendChild(bottomMapNameSpan);
     }
 
     async renderMapVersionsScreen(mid) {
@@ -4615,6 +5835,12 @@
       };
       this.root.appendChild(backBtn);
 
+      const mapNameSpan = document.createElement('span');
+      mapNameSpan.textContent = ` | ${map.name}`;
+      mapNameSpan.style.marginLeft = '12px';
+      mapNameSpan.style.color = '#aaa';
+      this.root.appendChild(mapNameSpan);
+
       const title = document.createElement('h2');
       title.textContent = 'Versions';
       title.style.marginTop = '20px';
@@ -4632,7 +5858,7 @@
       table.appendChild(thead);
 
       const tbody = document.createElement('tbody');
-      const liveVersions = [map.build.liveVersion, ...map.liveGameVersions].filter(v => v !== null);
+      const liveVersions = [map.build.liveVersion, ...map.liveGameVersions].filter(v => v !== null).map(v => (typeof v === 'string' && /^\d+$/.test(v)) ? Number(v) : v);
 
       for (const ver of map.versions) {
         const row = document.createElement('tr');
@@ -4710,6 +5936,20 @@
 
       table.appendChild(tbody);
       this.root.appendChild(table);
+
+      const bottomBackBtn = document.createElement('button');
+      bottomBackBtn.textContent = 'Exit to Main';
+      bottomBackBtn.style.marginTop = '20px';
+      bottomBackBtn.onclick = () => {
+        window.location.hash = `#/map/${map.id}`;
+      };
+      this.root.appendChild(bottomBackBtn);
+
+      const bottomMapNameSpan = document.createElement('span');
+      bottomMapNameSpan.textContent = ` | ${map.name}`;
+      bottomMapNameSpan.style.marginLeft = '12px';
+      bottomMapNameSpan.style.color = '#aaa';
+      this.root.appendChild(bottomMapNameSpan);
     }
 
     async renderMapBugReportScreen(mid) {
@@ -4729,123 +5969,19 @@
       };
       this.root.appendChild(backBtn);
 
+      const mapNameSpan = document.createElement('span');
+      mapNameSpan.textContent = ` | ${map.name}`;
+      mapNameSpan.style.marginLeft = '12px';
+      mapNameSpan.style.color = '#aaa';
+      this.root.appendChild(mapNameSpan);
+
       const title = document.createElement('h2');
-      title.textContent = 'Bug Report';
+      title.textContent = 'Terminal Log & Bug Report';
       title.style.marginTop = '20px';
       this.root.appendChild(title);
 
-      // Bug history table
-      if (map.bugHistory && map.bugHistory.length > 0) {
-        const historyDiv = document.createElement('div');
-        historyDiv.style.marginTop = '30px';
-        historyDiv.style.marginBottom = '30px';
-
-        const historyTitle = document.createElement('h3');
-        historyTitle.textContent = 'Bug History';
-        historyTitle.style.marginBottom = '15px';
-        historyDiv.appendChild(historyTitle);
-
-        const table = document.createElement('table');
-        table.style.width = '100%';
-        table.style.borderCollapse = 'collapse';
-        table.style.border = '1px solid #000';
-        table.style.fontSize = '14px';
-
-        // Table header
-        const thead = document.createElement('thead');
-        const headerRow = document.createElement('tr');
-        headerRow.style.backgroundColor = '#f0f0f0';
-        headerRow.style.border = '1px solid #000';
-
-        const headers = ['Bug #', 'Submitted', 'Description', 'Response', 'Status'];
-        for (const headerText of headers) {
-          const th = document.createElement('th');
-          th.textContent = headerText;
-          th.style.padding = '8px';
-          th.style.textAlign = 'left';
-          th.style.border = '1px solid #000';
-          th.style.fontWeight = 'bold';
-          headerRow.appendChild(th);
-        }
-        thead.appendChild(headerRow);
-        table.appendChild(thead);
-
-        // Table body - most recent first
-        const tbody = document.createElement('tbody');
-        const sortedBugs = [...map.bugHistory].sort((a, b) => b.submittedAt - a.submittedAt);
-
-        for (const bug of sortedBugs) {
-          const row = document.createElement('tr');
-          row.style.border = '1px solid #000';
-
-          // Bug Number
-          const bugCell = document.createElement('td');
-          bugCell.textContent = bug.bugNumber;
-          bugCell.style.padding = '8px';
-          bugCell.style.border = '1px solid #000';
-          row.appendChild(bugCell);
-
-          // Submitted date
-          const dateCell = document.createElement('td');
-          const date = new Date(bug.submittedAt * 1000);
-          dateCell.textContent = date.toLocaleString();
-          dateCell.style.padding = '8px';
-          dateCell.style.border = '1px solid #000';
-          dateCell.style.fontSize = '12px';
-          row.appendChild(dateCell);
-
-          // Description
-          const descCell = document.createElement('td');
-          descCell.textContent = bug.description;
-          descCell.style.padding = '8px';
-          descCell.style.border = '1px solid #000';
-          descCell.style.maxWidth = '300px';
-          descCell.style.overflow = 'hidden';
-          descCell.style.textOverflow = 'ellipsis';
-          descCell.title = bug.description;
-          row.appendChild(descCell);
-
-          // Response
-          const respCell = document.createElement('td');
-          respCell.textContent = bug.response || '';
-          respCell.style.padding = '8px';
-          respCell.style.border = '1px solid #000';
-          respCell.style.maxWidth = '300px';
-          respCell.style.overflow = 'hidden';
-          respCell.style.textOverflow = 'ellipsis';
-          if (bug.response) {
-            respCell.title = bug.response;
-          }
-          row.appendChild(respCell);
-
-          // Status - show full Claude status, not just Pending/Addressed
-          const statusCell = document.createElement('td');
-          if (bug.response) {
-            // Show the full response text as status
-            statusCell.textContent = bug.response;
-            statusCell.style.color = '#008000';
-          } else {
-            statusCell.textContent = 'Submitted, waiting to be picked up';
-            statusCell.style.color = '#ff8800';
-          }
-          statusCell.style.padding = '8px';
-          statusCell.style.border = '1px solid #000';
-          statusCell.style.maxWidth = '400px';
-          statusCell.style.overflow = 'hidden';
-          statusCell.style.textOverflow = 'ellipsis';
-          statusCell.style.whiteSpace = 'normal';
-          statusCell.style.fontSize = '12px';
-          if (bug.response) {
-            statusCell.title = bug.response;
-          }
-          row.appendChild(statusCell);
-
-          tbody.appendChild(row);
-        }
-        table.appendChild(tbody);
-        historyDiv.appendChild(table);
-        this.root.appendChild(historyDiv);
-      }
+      // Terminal log history - fetch from Claude Terminal Log filtered by map name
+      this.root.appendChild(this.renderTerminalLogHistory(map.name, 'map-terminal-log'));
 
       const label = document.createElement('label');
       label.textContent = 'Describe the bug:';
@@ -4889,6 +6025,20 @@
         }
       };
       this.root.appendChild(sendBtn);
+
+      const bottomBackBtn = document.createElement('button');
+      bottomBackBtn.textContent = 'Exit to Main';
+      bottomBackBtn.style.marginTop = '20px';
+      bottomBackBtn.onclick = () => {
+        window.location.hash = `#/map/${map.id}`;
+      };
+      this.root.appendChild(bottomBackBtn);
+
+      const bottomMapNameSpan = document.createElement('span');
+      bottomMapNameSpan.textContent = ` | ${map.name}`;
+      bottomMapNameSpan.style.marginLeft = '12px';
+      bottomMapNameSpan.style.color = '#aaa';
+      this.root.appendChild(bottomMapNameSpan);
     }
 
     async renderMapSimpleUpdateScreen(mid) {
@@ -4907,6 +6057,12 @@
         window.location.hash = `#/map/${map.id}`;
       };
       this.root.appendChild(backBtn);
+
+      const mapNameSpan = document.createElement('span');
+      mapNameSpan.textContent = ` | ${map.name}`;
+      mapNameSpan.style.marginLeft = '12px';
+      mapNameSpan.style.color = '#aaa';
+      this.root.appendChild(mapNameSpan);
 
       const title = document.createElement('h2');
       title.textContent = 'Simple Update';
@@ -4952,6 +6108,20 @@
         }
       };
       this.root.appendChild(sendBtn);
+
+      const bottomBackBtn = document.createElement('button');
+      bottomBackBtn.textContent = 'Exit to Main';
+      bottomBackBtn.style.marginTop = '20px';
+      bottomBackBtn.onclick = () => {
+        window.location.hash = `#/map/${map.id}`;
+      };
+      this.root.appendChild(bottomBackBtn);
+
+      const bottomMapNameSpan = document.createElement('span');
+      bottomMapNameSpan.textContent = ` | ${map.name}`;
+      bottomMapNameSpan.style.marginLeft = '12px';
+      bottomMapNameSpan.style.color = '#aaa';
+      this.root.appendChild(bottomMapNameSpan);
     }
 
     // Unit meta sections
@@ -5000,7 +6170,7 @@
       table.appendChild(thead);
 
       const tbody = document.createElement('tbody');
-      const liveVersions = [unit.build && unit.build.liveVersion, ...(unit.liveGameVersions || [])].filter(v => v !== null);
+      const liveVersions = [unit.build && unit.build.liveVersion, ...(unit.liveGameVersions || [])].filter(v => v !== null).map(v => (typeof v === 'string' && /^\d+$/.test(v)) ? Number(v) : v);
 
       for (const ver of unit.versions) {
         const row = document.createElement('tr');
@@ -5099,122 +6269,13 @@
       this.root.appendChild(backBtn);
 
       const title = document.createElement('h2');
-      title.textContent = 'Bug Report';
+      title.textContent = 'Terminal Log & Bug Report';
       title.style.marginTop = '20px';
       this.root.appendChild(title);
 
-      // Bug history table
-      if (unit.bugHistory && unit.bugHistory.length > 0) {
-        const historyDiv = document.createElement('div');
-        historyDiv.style.marginTop = '30px';
-        historyDiv.style.marginBottom = '30px';
-
-        const historyTitle = document.createElement('h3');
-        historyTitle.textContent = 'Bug History';
-        historyTitle.style.marginBottom = '15px';
-        historyDiv.appendChild(historyTitle);
-
-        const table = document.createElement('table');
-        table.style.width = '100%';
-        table.style.borderCollapse = 'collapse';
-        table.style.border = '1px solid #000';
-        table.style.fontSize = '14px';
-
-        // Table header
-        const thead = document.createElement('thead');
-        const headerRow = document.createElement('tr');
-        headerRow.style.backgroundColor = '#f0f0f0';
-        headerRow.style.border = '1px solid #000';
-
-        const headers = ['Bug #', 'Submitted', 'Description', 'Response', 'Status'];
-        for (const headerText of headers) {
-          const th = document.createElement('th');
-          th.textContent = headerText;
-          th.style.padding = '8px';
-          th.style.textAlign = 'left';
-          th.style.border = '1px solid #000';
-          th.style.fontWeight = 'bold';
-          headerRow.appendChild(th);
-        }
-        thead.appendChild(headerRow);
-        table.appendChild(thead);
-
-        // Table body - most recent first
-        const tbody = document.createElement('tbody');
-        const sortedBugs = [...unit.bugHistory].sort((a, b) => b.submittedAt - a.submittedAt);
-
-        for (const bug of sortedBugs) {
-          const row = document.createElement('tr');
-          row.style.border = '1px solid #000';
-
-          // Bug Number
-          const bugCell = document.createElement('td');
-          bugCell.textContent = bug.bugNumber;
-          bugCell.style.padding = '8px';
-          bugCell.style.border = '1px solid #000';
-          row.appendChild(bugCell);
-
-          // Submitted date
-          const dateCell = document.createElement('td');
-          const date = new Date(bug.submittedAt * 1000);
-          dateCell.textContent = date.toLocaleString();
-          dateCell.style.padding = '8px';
-          dateCell.style.border = '1px solid #000';
-          dateCell.style.fontSize = '12px';
-          row.appendChild(dateCell);
-
-          // Description
-          const descCell = document.createElement('td');
-          descCell.textContent = bug.description;
-          descCell.style.padding = '8px';
-          descCell.style.border = '1px solid #000';
-          descCell.style.maxWidth = '300px';
-          descCell.style.overflow = 'hidden';
-          descCell.style.textOverflow = 'ellipsis';
-          descCell.title = bug.description;
-          row.appendChild(descCell);
-
-          // Response
-          const respCell = document.createElement('td');
-          respCell.textContent = bug.response || '';
-          respCell.style.padding = '8px';
-          respCell.style.border = '1px solid #000';
-          respCell.style.maxWidth = '300px';
-          respCell.style.overflow = 'hidden';
-          respCell.style.textOverflow = 'ellipsis';
-          if (bug.response) {
-            respCell.title = bug.response;
-          }
-          row.appendChild(respCell);
-
-          // Status - show full Claude status, not just Pending/Addressed
-          const statusCell = document.createElement('td');
-          if (bug.response) {
-            // Show the full response text as status
-            statusCell.textContent = bug.response;
-            statusCell.style.color = '#008000';
-          } else {
-            statusCell.textContent = 'Submitted, waiting to be picked up';
-            statusCell.style.color = '#ff8800';
-          }
-          statusCell.style.padding = '8px';
-          statusCell.style.border = '1px solid #000';
-          statusCell.style.maxWidth = '400px';
-          statusCell.style.overflow = 'hidden';
-          statusCell.style.textOverflow = 'ellipsis';
-          statusCell.style.whiteSpace = 'normal';
-          statusCell.style.fontSize = '12px';
-          if (bug.response) {
-            statusCell.title = bug.response;
-          }
-          row.appendChild(statusCell);
-
-          tbody.appendChild(row);
-        }
-        table.appendChild(tbody);
-        historyDiv.appendChild(table);
-        this.root.appendChild(historyDiv);
-      }
+      // Terminal log history - fetch from Claude Terminal Log filtered by unit name
+      const unitName = unit.design?.units?.rows?.[0]?.name || 'Unnamed Unit';
+      this.root.appendChild(this.renderTerminalLogHistory(unitName, 'unit-terminal-log'));
 
       const label = document.createElement('label');
       label.textContent = 'Describe the bug:';

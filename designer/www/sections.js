@@ -32,6 +32,7 @@
       .sx-table table { border: 2px solid #000; width: 100%; min-width: 800px; }
       .sx-table th, .sx-table td { border: 1px solid #000; padding: 8px; text-align: left; vertical-align: top; }
       .sx-table th { background: #333; font-weight: bold; }
+      .sx-table th.sx-rotated { writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg); white-space: nowrap; padding: 8px 4px; }
       .sx-table input, .sx-table select, .sx-table textarea {
         width: 100%;
         box-sizing: border-box;
@@ -46,6 +47,18 @@
 
       .sx-btn { padding: 8px 16px; margin: 8px 8px 8px 0; cursor: pointer; background: #444; color: #eee; border: 1px solid #666; }
       .sx-btn:hover { background: #555; }
+
+      /* Map image move / bulk select */
+      .sx-imgmove-bar { display: flex; align-items: center; gap: 8px; margin: 4px 0 8px; flex-wrap: wrap; }
+      .sx-imgmove-bar .sx-btn { margin: 0; padding: 6px 14px; }
+      .sx-imgmove-bar .sx-imgmove-count { color: #fbbf24; font-weight: bold; }
+      .sx-imgmove-bar.sx-selecting { position: sticky; top: 0; z-index: 5; background: #3a2f0b; border: 2px solid #fbbf24; padding: 8px; }
+      .sx-select-mode { outline: 2px dashed #fbbf24; outline-offset: 4px; background: rgba(251, 191, 36, 0.06); }
+      .sx-imgmove-check { width: 22px !important; height: 22px; cursor: pointer; accent-color: #fbbf24; }
+      .sx-imgmove-picked { background: rgba(251, 191, 36, 0.18) !important; }
+      .sx-imgmove-menu .sx-btn { display: block; width: 100%; margin: 8px 0; text-align: left; }
+      .sx-imgmove-menu .sx-imgmove-cancel { margin-top: 16px; text-align: center; }
+      .sx-imgmove-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #14532d; color: #fff; border: 1px solid #22c55e; padding: 10px 18px; z-index: 10001; border-radius: 4px; }
 
       .sx-img-thumb {
         width: 80px;
@@ -129,6 +142,60 @@
         border: 1px solid #666;
         cursor: pointer;
       }
+
+      .sx-nav-buttons {
+        position: fixed;
+        right: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        z-index: 1000;
+        transition: opacity 0.2s;
+      }
+      .sx-nav-btn {
+        padding: 10px 16px;
+        background: #444;
+        border: 1px solid #666;
+        color: #eee;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: bold;
+        border-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      }
+      .sx-nav-btn:hover {
+        background: #555;
+      }
+      .sx-nav-btn.sx-hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .sx-legend-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.6);
+        z-index: 1100;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .sx-legend-overlay-panel {
+        position: relative;
+        max-width: 90vw;
+        max-height: 85vh;
+        overflow: auto;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+      }
+      .sx-legend-overlay-panel .sx-update-legend {
+        margin-bottom: 0;
+        padding-right: 36px;
+      }
+      .sx-legend-overlay-close {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        padding: 4px 10px;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -157,16 +224,46 @@
     return el;
   }
 
+  // Key used to find a field's input element again later, for the colored-border "value changed
+  // from the live build" highlighting (see applyUpdateHighlighting below). Mirrors the
+  // section/rowId/field identity that Rules.fixedNumbers()/fixedText() already use, so a diff
+  // reported by those functions can be matched straight back to the input that rendered it.
+  // rowId is null for singleton sections (ufa, setup).
+  function uxKey(rowId, field) {
+    return (rowId == null ? '' : rowId) + '::' + field;
+  }
+
   function textField(label, value, onChange, opts = {}) {
     const greyed = opts.greyed || false;
     const hint = opts.hint || '';
     const rows = opts.rows || null;
     const missing = opts.missing || false;
+    const uxAttrs = opts.ux ? {'data-ux': opts.ux} : {};
 
     const inputClass = missing ? 'sx-missing' : '';
     const input = rows
-      ? h('textarea', {className: inputClass, value: value || '', oninput: e => onChange(e.target.value), rows})
-      : h('input', {className: inputClass, type: 'text', value: value || '', oninput: e => onChange(e.target.value)});
+      ? h('textarea', Object.assign({className: inputClass, value: value || '', oninput: e => {
+          onChange(e.target.value);
+          // Update outline in real-time for simple-update eligible text fields
+          if (opts.ux && opts.buildValue !== undefined && opts.updateType) {
+            if (opts.updateType === 'simple' || opts.updateType === 'number') {
+              const differs = e.target.value !== opts.buildValue;
+              e.target.style.border = differs ? '3px solid #00aa00' : '3px solid #0066ff';
+              e.target.style.backgroundColor = '#1a1a1a';
+            }
+          }
+        }, rows}, uxAttrs))
+      : h('input', Object.assign({className: inputClass, type: 'text', value: value || '', oninput: e => {
+          onChange(e.target.value);
+          // Update outline in real-time for simple-update eligible text fields
+          if (opts.ux && opts.buildValue !== undefined && opts.updateType) {
+            if (opts.updateType === 'simple' || opts.updateType === 'number') {
+              const differs = e.target.value !== opts.buildValue;
+              e.target.style.border = differs ? '3px solid #00aa00' : '3px solid #0066ff';
+              e.target.style.backgroundColor = '#1a1a1a';
+            }
+          }
+        }}, uxAttrs));
 
     return h('div', {className: 'sx-field' + (greyed ? ' sx-greyed' : '')},
       h('label', {}, label, hint ? h('span', {className: 'sx-hint', title: hint}, 'ⓘ') : null),
@@ -184,11 +281,22 @@
       type: 'number',
       className: missing ? 'sx-missing' : '',
       value: value != null ? value : '',
-      oninput: e => onChange(e.target.value ? parseInt(e.target.value) : null),
+      oninput: e => {
+        onChange(e.target.value ? parseInt(e.target.value) : null);
+
+        // Real-time outline update for simple-update eligible fields
+        if (opts.ux && opts.buildValue !== undefined) {
+          const num = e.target.value ? parseInt(e.target.value) : null;
+          const differs = num !== opts.buildValue;
+          e.target.style.border = differs ? '3px solid #00aa00' : '3px solid #0066ff';
+          e.target.style.backgroundColor = '#1a1a1a';
+        }
+      },
       inputmode: 'numeric'
     };
     if (min != null) attrs.min = min;
     if (max != null) attrs.max = max;
+    if (opts.ux) attrs['data-ux'] = opts.ux;
 
     return h('div', {className: 'sx-field' + (greyed ? ' sx-greyed' : '')},
       h('label', {}, label),
@@ -454,6 +562,7 @@
           type: 'number',
           value: row.qty != null ? row.qty : '',
           disabled: row.kind === 'variable',
+          'data-ux': uxKey(row.id, 'qty'),
           oninput: e => ctx.set(`ae.rows.${row.id}.qty`, e.target.value ? parseInt(e.target.value) : null)
         })
       ));
@@ -513,7 +622,7 @@
     const missing = window.Rules.missingFields('ufa', ctx.design);
     const isMissing = path => missing.includes(path);
 
-    container.appendChild(textField('Name', d.name, val => ctx.set('ufa.name', val), {missing: isMissing('ufa.name')}));
+    container.appendChild(textField('Name', d.name, val => ctx.set('ufa.name', val), {missing: isMissing('ufa.name'), ux: uxKey(null, 'name')}));
 
     container.appendChild(selectField('Phase', d.phase, [
       'Setup', 'Action', 'Gather Power', 'Player Order', 'Doom'
@@ -522,13 +631,13 @@
     container.appendChild(selectField('Type', d.type, window.Rules.SB_TYPES, val => ctx.set('ufa.type', val), {missing: isMissing('ufa.type')}));
 
     container.appendChild(checkboxField('Includes Fixed Numeric Cost?', d.hasCost, val => ctx.set('ufa.hasCost', val)));
-    container.appendChild(numberField('Fixed Numeric Cost', d.cost, val => ctx.set('ufa.cost', val), {greyed: !d.hasCost, min: 0, missing: isMissing('ufa.cost')}));
+    container.appendChild(numberField('Fixed Numeric Cost', d.cost, val => ctx.set('ufa.cost', val), {greyed: !d.hasCost, min: 0, missing: isMissing('ufa.cost'), ux: uxKey(null, 'cost')}));
 
     container.appendChild(checkboxField('Includes Fixed Numeric Effect?', d.hasEffect, val => ctx.set('ufa.hasEffect', val)));
-    container.appendChild(numberField('Fixed Numeric Effect', d.effect, val => ctx.set('ufa.effect', val), {greyed: !d.hasEffect, min: 0, missing: isMissing('ufa.effect')}));
+    container.appendChild(numberField('Fixed Numeric Effect', d.effect, val => ctx.set('ufa.effect', val), {greyed: !d.hasEffect, min: 0, missing: isMissing('ufa.effect'), ux: uxKey(null, 'effect')}));
 
     const textLen = 200;
-    container.appendChild(textField('Text', d.text, val => ctx.set('ufa.text', val), {rows: Math.max(3, Math.ceil(textLen / 45)), missing: isMissing('ufa.text')}));
+    container.appendChild(textField('Text', d.text, val => ctx.set('ufa.text', val), {rows: Math.max(3, Math.ceil(textLen / 45)), missing: isMissing('ufa.text'), ux: uxKey(null, 'text')}));
 
     renderClaudeQA(container, ctx, 'ufa');
     renderAdminNotes(container, ctx, 'ufa');
@@ -636,6 +745,7 @@
           className: isMissing(`setup.units.${unit.id}.qty`) ? 'sx-missing' : '',
           type: 'number',
           value: unit.qty != null ? unit.qty : '',
+          'data-ux': uxKey(unit.id, 'qty'),
           oninput: e => ctx.set(`setup.units.${unit.id}.qty`, e.target.value ? parseInt(e.target.value) : null)
         })
       ));
@@ -662,17 +772,19 @@
       ctx.addRow('setup.units', newUnit);
     }}, 'Add unit'));
 
-    container.appendChild(numberField('Starting power', d.power, val => ctx.set('setup.power', val), {min: 0, missing: isMissing('setup.power')}));
+    container.appendChild(numberField('Starting power', d.power, val => ctx.set('setup.power', val), {min: 0, missing: isMissing('setup.power'), ux: uxKey(null, 'power')}));
 
     const aeEnabled = ctx.design.ae && ctx.design.ae.enabled;
     const aeName = aeEnabled && ctx.design.ae.name ? ctx.design.ae.name : 'alternate economy';
-    container.appendChild(numberField('Starting ' + aeName, d.aeStart, val => ctx.set('setup.aeStart', val), {greyed: !aeEnabled, min: 0, missing: isMissing('setup.aeStart')}));
+    container.appendChild(numberField('Starting ' + aeName, d.aeStart, val => ctx.set('setup.aeStart', val), {greyed: !aeEnabled, min: 0, missing: isMissing('setup.aeStart'), ux: uxKey(null, 'aeStart')}));
 
     renderClaudeQA(container, ctx, 'setup');
     renderAdminNotes(container, ctx, 'setup');
   }
 
   function renderUnits(container, ctx) {
+    // Field Update Legend for this section is added by applyUpdateHighlighting (shared, 4 colors).
+
     const d = ctx.design.units;
     const ref = ctx.reference || {};
     // ctx.neutral: a stand-alone unit from My Units. One unit only, and nothing that belongs to a
@@ -694,7 +806,7 @@
         ctx.set(`units.rows.${unit.id}.type`, val);
       }, {missing: isMissing(`units.rows.${unit.id}.type`)}));
 
-      unitDiv.appendChild(textField('Name', unit.name, val => ctx.set(`units.rows.${unit.id}.name`, val), {missing: isMissing(`units.rows.${unit.id}.name`)}));
+      unitDiv.appendChild(textField('Name', unit.name, val => ctx.set(`units.rows.${unit.id}.name`, val), {missing: isMissing(`units.rows.${unit.id}.name`), ux: uxKey(unit.id, 'name')}));
 
       // Map image
       const defaultArt = ref.defaultUnitArt || {};
@@ -741,7 +853,7 @@
           className: 'sx-btn',
           style: 'display: block; margin-top: 8px; font-size: 12px; padding: 4px 8px;',
           onclick: async () => {
-            const id = await ctx.pickLibraryImage();
+            const id = await ctx.pickSilhouetteImage();
             if (id) {
               ctx.set(`units.rows.${unit.id}.silhouette`, id);
               ctx.rerender();
@@ -750,9 +862,85 @@
         }, 'CW / Necro');
         silDiv.appendChild(libraryBtn);
       }
+
+      // Generate Silhouette button - always available if mapImage is a unique upload
+      // mapIsUniqueUpload = has a custom uploaded map image (not a default library image)
+      const mapIsUniqueUpload = unit.mapImage && (!typeArt || unit.mapImage !== typeArt.url);
+      const genBtnContainer = h('div', {style: 'display: flex; align-items: center; margin-top: 8px; gap: 4px;'});
+      const genBtn = h('button', {
+        className: 'sx-btn',
+        style: `font-size: 12px; padding: 4px 8px; ${mapIsUniqueUpload ? 'background: #4a9eff; cursor: pointer;' : 'background: #555; color: #888; cursor: not-allowed;'}`,
+        disabled: !mapIsUniqueUpload,
+        onclick: async () => {
+          if (!mapIsUniqueUpload) return;
+          if (!confirm('Submit to Claude to generate flat white silhouette from your map image?')) return;
+          // Faction screens give ctx.faction (+ ctx.createRequest); standalone unit screens give ctx.unit.
+          // (There is no ctx.factionId - using it sent POST /factions/undefined/request.)
+          const fid = ctx.faction ? ctx.faction.id : null;
+          const factionName = (ctx.faction && ctx.faction.name) || (ctx.design.meta && ctx.design.meta.name) || ctx.design.name || 'Unknown Faction';
+          const mapImageUrl = ctx.imgUrl(unit.mapImage);
+          const text = `Generate silhouette for unit "${unit.name}" in faction "${factionName}".
+
+Convert the map image to a flat white silhouette:
+- Keep the transparent background
+- Replace all colored pixels with white (#FFFFFF)
+- Preserve the exact shape and transparency
+
+Map image ID: ${unit.mapImage}
+Map image URL: ${mapImageUrl}
+Unit ID: ${unit.id}
+${fid ? `Faction ID: ${fid}` : `Standalone unit ID: ${ctx.unit ? ctx.unit.id : unit.id}`}
+
+After generating the silhouette, automatically attach it to this unit by setting the silhouette field to the new image ID.`;
+          // Unique data per unit + image so the server's duplicate check doesn't fold this into another open bug request
+          const data = {kind: 'silhouette', unitId: unit.id, mapImage: unit.mapImage};
+          try {
+            let result = null;
+            if (fid && ctx.createRequest) {
+              result = await ctx.createRequest('bug', text, data);  // app.api(): sends the login token, throws on error
+              if (!result) throw new Error('this design is read only');
+            } else {
+              const target = fid ? `factions/${fid}` : `units/${ctx.unit ? ctx.unit.id : unit.id}`;
+              const resp = await fetch(`/designer/api/${target}/request`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${localStorage.getItem('cw_designer_token')}`
+                },
+                body: JSON.stringify({type: 'bug', text, data})
+              });
+              if (!resp.ok) {
+                const e = await resp.json().catch(() => ({}));
+                throw new Error(e.error ? `${e.error} (HTTP ${resp.status})` : `HTTP ${resp.status}`);
+              }
+              result = await resp.json().catch(() => null);
+            }
+            // The server folds a repeat click made within a few minutes into the request already queued
+            if (result && result.duplicate) {
+              alert(`This silhouette was already requested a few minutes ago (request ${result.id}) and is still in the Claude admin queue. It will be attached automatically when ready.`);
+            } else {
+              alert('Silhouette generation request submitted to Claude admin console. The silhouette will be automatically attached when ready.');
+            }
+          } catch (err) {
+            alert('Failed to submit request: ' + err.message);
+          }
+        }
+      }, 'Generate Silhouette');
+      genBtnContainer.appendChild(genBtn);
+
+      // Help button
+      const helpBtn = h('button', {
+        className: 'sx-btn',
+        style: 'font-size: 11px; padding: 2px 6px; background: #555; border-radius: 50%; width: 20px; height: 20px; line-height: 16px;',
+        onclick: () => {
+          alert('Generates a silhouette for the faction card, based on the map image. Only available if you upload your own custom map image with a transparent background.');
+        }
+      }, '?');
+      genBtnContainer.appendChild(helpBtn);
+      silDiv.appendChild(genBtnContainer);
       unitDiv.appendChild(silDiv);
 
-      unitDiv.appendChild(numberField('Quantity', unit.qty, val => ctx.set(`units.rows.${unit.id}.qty`, val), {min: 1, max: 20, missing: isMissing(`units.rows.${unit.id}.qty`)}));
+      unitDiv.appendChild(numberField('Quantity', unit.qty, val => ctx.set(`units.rows.${unit.id}.qty`, val), {min: 1, max: 20, missing: isMissing(`units.rows.${unit.id}.qty`), ux: uxKey(unit.id, 'qty')}));
 
       // Cost
       unitDiv.appendChild(selectField('Cost Type', unit.costType, window.Rules.COST_TYPES, val => {
@@ -760,12 +948,12 @@
       }, {missing: isMissing(`units.rows.${unit.id}.costType`)}));
 
       if (unit.costType === 'Fixed') {
-        unitDiv.appendChild(numberField('Cost', unit.cost, val => ctx.set(`units.rows.${unit.id}.cost`, val), {min: 0, missing: isMissing(`units.rows.${unit.id}.cost`)}));
+        unitDiv.appendChild(numberField('Cost', unit.cost, val => ctx.set(`units.rows.${unit.id}.cost`, val), {min: 0, missing: isMissing(`units.rows.${unit.id}.cost`), ux: uxKey(unit.id, 'cost')}));
       } else if (unit.costType === 'Variable') {
         unitDiv.appendChild(textField('Cost calculation', unit.costCalc, val => ctx.set(`units.rows.${unit.id}.costCalc`, val), {rows: 2, missing: isMissing(`units.rows.${unit.id}.costCalc`)}));
       } else if (unit.costType === 'Awakening') {
         unitDiv.appendChild(textField('Requirements/process', unit.awakenReq, val => ctx.set(`units.rows.${unit.id}.awakenReq`, val), {rows: 3, missing: isMissing(`units.rows.${unit.id}.awakenReq`)}));
-        unitDiv.appendChild(numberField('Power cost', unit.awakenPower, val => ctx.set(`units.rows.${unit.id}.awakenPower`, val), {min: 0, missing: isMissing(`units.rows.${unit.id}.awakenPower`)}));
+        unitDiv.appendChild(numberField('Power cost', unit.awakenPower, val => ctx.set(`units.rows.${unit.id}.awakenPower`, val), {min: 0, missing: isMissing(`units.rows.${unit.id}.awakenPower`), ux: uxKey(unit.id, 'awakenPower')}));
         unitDiv.appendChild(textField('Region placement', unit.awakenRegion, val => ctx.set(`units.rows.${unit.id}.awakenRegion`, val), {missing: isMissing(`units.rows.${unit.id}.awakenRegion`)}));
       }
 
@@ -777,12 +965,12 @@
       const combatGreyed = unit.combatType === 'N/A';
 
       if (unit.combatType === 'Fixed Dice') {
-        unitDiv.appendChild(numberField('Dice', unit.dice, val => ctx.set(`units.rows.${unit.id}.dice`, val), {min: 0, missing: isMissing(`units.rows.${unit.id}.dice`)}));
+        unitDiv.appendChild(numberField('Dice', unit.dice, val => ctx.set(`units.rows.${unit.id}.dice`, val), {min: 0, missing: isMissing(`units.rows.${unit.id}.dice`), ux: uxKey(unit.id, 'dice')}));
       } else if (unit.combatType === 'Variable Dice') {
         unitDiv.appendChild(textField('Dice calculation', unit.diceCalc, val => ctx.set(`units.rows.${unit.id}.diceCalc`, val), {rows: 2, missing: isMissing(`units.rows.${unit.id}.diceCalc`)}));
       } else if (unit.combatType === 'Fixed Results') {
-        unitDiv.appendChild(numberField('Pains', unit.pains, val => ctx.set(`units.rows.${unit.id}.pains`, val), {min: 0, missing: isMissing(`units.rows.${unit.id}.pains`)}));
-        unitDiv.appendChild(numberField('Kills', unit.kills, val => ctx.set(`units.rows.${unit.id}.kills`, val), {min: 0, missing: isMissing(`units.rows.${unit.id}.kills`)}));
+        unitDiv.appendChild(numberField('Pains', unit.pains, val => ctx.set(`units.rows.${unit.id}.pains`, val), {min: 0, missing: isMissing(`units.rows.${unit.id}.pains`), ux: uxKey(unit.id, 'pains')}));
+        unitDiv.appendChild(numberField('Kills', unit.kills, val => ctx.set(`units.rows.${unit.id}.kills`, val), {min: 0, missing: isMissing(`units.rows.${unit.id}.kills`), ux: uxKey(unit.id, 'kills')}));
       } else if (unit.combatType === 'Variable Results') {
         unitDiv.appendChild(textField('Results calculation', unit.resultsCalc, val => ctx.set(`units.rows.${unit.id}.resultsCalc`, val), {rows: 2, missing: isMissing(`units.rows.${unit.id}.resultsCalc`)}));
       }
@@ -798,7 +986,11 @@
         } else {
           sbOptions.forEach(opt => {
             const checked = unit.relatedSb.includes(opt.value);
-            relatedDiv.appendChild(h('label', {style: 'display: block; margin: 4px 0;'},
+            const sbRow = sbRows.find(s => s.id === opt.value);
+
+            const rowContainer = h('div', {style: 'display: flex; align-items: center; margin: 4px 0; gap: 4px;'});
+
+            const checkboxLabel = h('label', {style: 'flex: 1;'},
               h('input', {
                 type: 'checkbox',
                 checked,
@@ -810,16 +1002,80 @@
                 }
               }),
               ' ' + opt.label
-            ));
+            );
+            rowContainer.appendChild(checkboxLabel);
+
+            // Question mark button to show spellbook details
+            if (sbRow) {
+              const helpBtn = h('button', {
+                className: 'sx-btn',
+                style: 'font-size: 11px; padding: 2px 6px; background: #555; border-radius: 50%; width: 20px; height: 20px; line-height: 16px; flex-shrink: 0;',
+                onclick: (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+
+                  // Build spellbook overlay
+                  const overlay = h('div', {
+                    style: 'background: #1a1a1a; border: 2px solid #666; padding: 20px; max-width: 500px; font-family: "Bohemian Typewriter", monospace;'
+                  });
+
+                  overlay.appendChild(h('h2', {style: 'margin-bottom: 16px;'}, sbRow.name || 'Spellbook'));
+
+                  if (sbRow.type) {
+                    overlay.appendChild(h('div', {style: 'margin: 8px 0; font-weight: bold;'}, `Type: ${sbRow.type}`));
+                  }
+                  if (sbRow.cost != null) {
+                    overlay.appendChild(h('div', {style: 'margin: 8px 0;'}, `Cost: ${sbRow.cost} Power`));
+                  }
+                  if (sbRow.text) {
+                    overlay.appendChild(h('div', {style: 'margin: 12px 0; font-size: 14px; line-height: 1.4;'}, sbRow.text));
+                  }
+                  if (sbRow.hasEffect && sbRow.effect != null) {
+                    overlay.appendChild(h('div', {style: 'margin: 8px 0;'}, `Effect: ${sbRow.effect}`));
+                  }
+
+                  // Side B if two-sided
+                  if (sbRow.twoSided && sbRow.nameB) {
+                    overlay.appendChild(h('hr', {style: 'margin: 16px 0; border-color: #666;'}));
+                    overlay.appendChild(h('h3', {style: 'margin: 12px 0;'}, `Side B: ${sbRow.nameB}`));
+                    if (sbRow.typeB) {
+                      overlay.appendChild(h('div', {style: 'margin: 8px 0; font-weight: bold;'}, `Type: ${sbRow.typeB}`));
+                    }
+                    if (sbRow.costB != null) {
+                      overlay.appendChild(h('div', {style: 'margin: 8px 0;'}, `Cost: ${sbRow.costB} Power`));
+                    }
+                    if (sbRow.textB) {
+                      overlay.appendChild(h('div', {style: 'margin: 12px 0; font-size: 14px; line-height: 1.4;'}, sbRow.textB));
+                    }
+                    if (sbRow.hasEffectB && sbRow.effectB != null) {
+                      overlay.appendChild(h('div', {style: 'margin: 8px 0;'}, `Effect: ${sbRow.effectB}`));
+                    }
+                  }
+
+                  const closeBtn = h('button', {
+                    className: 'sx-btn',
+                    style: 'margin-top: 20px; display: block;',
+                    onclick: () => ctx.closeOverlay()
+                  }, 'Close');
+                  overlay.appendChild(closeBtn);
+
+                  ctx.openOverlay(overlay);
+                }
+              }, '?');
+              rowContainer.appendChild(helpBtn);
+            }
+
+            relatedDiv.appendChild(rowContainer);
           });
         }
         unitDiv.appendChild(relatedDiv);
       }
 
-      // Special ability: name is optional, only text is required when the box is ticked
+      // Special ability: name is optional, abilityType and text are required when the box is ticked
       const hasAbility = window.Rules.unitHasAbility(unit);
       unitDiv.appendChild(checkboxField('Special Ability', hasAbility, val => ctx.set(`units.rows.${unit.id}.hasAbility`, val)));
       if (hasAbility) {
+        unitDiv.appendChild(selectField('Ability Type', unit.abilityType, window.Rules.ABILITY_TYPES, val => ctx.set(`units.rows.${unit.id}.abilityType`, val), {missing: isMissing(`units.rows.${unit.id}.abilityType`)}));
         unitDiv.appendChild(textField('Special Ability Name (optional)', unit.abilityName, val => ctx.set(`units.rows.${unit.id}.abilityName`, val)));
         unitDiv.appendChild(textField('Special Ability Text', unit.abilityText, val => ctx.set(`units.rows.${unit.id}.abilityText`, val), {rows: 4, missing: isMissing(`units.rows.${unit.id}.abilityText`)}));
       }
@@ -1047,10 +1303,12 @@
     const buttons = h('div', {className: 'sx-overlay-buttons', style: 'position: static; margin-bottom: 10px;'},
       h('button', {className: 'sx-btn', onclick: () => {
         scale *= 1.025;
+        ctx.set(`units.rows.${unit.id}.mapScale`, scale);
         draw();
       }}, 'Grow'),
       h('button', {className: 'sx-btn', onclick: () => {
         scale /= 1.025;
+        ctx.set(`units.rows.${unit.id}.mapScale`, scale);
         draw();
       }}, 'Shrink'),
       h('button', {className: 'sx-btn', onclick: () => {
@@ -1121,7 +1379,7 @@
         }
       }}, 'Replace'),
       h('button', {className: 'sx-btn', onclick: async () => {
-        const id = await ctx.pickLibraryImage();
+        const id = await ctx.pickSilhouetteImage();
         if (id) {
           ctx.set(`units.rows.${unit.id}.silhouette`, id);
           ctx.closeOverlay();
@@ -1165,6 +1423,7 @@
           className: isMissing(`sbr.rows.${row.id}.text`) ? 'sx-missing' : '',
           value: row.text || '',
           rows: 3,
+          'data-ux': uxKey(row.id, 'text'),
           oninput: e => ctx.set(`sbr.rows.${row.id}.text`, e.target.value)
         })
       ));
@@ -1175,6 +1434,7 @@
           value: row.shortText || '',
           rows: 3,
           placeholder: 'Brief version for faction card display...',
+          'data-ux': uxKey(row.id, 'shortText'),
           oninput: e => ctx.set(`sbr.rows.${row.id}.shortText`, e.target.value)
         })
       ));
@@ -1189,6 +1449,7 @@
           type: 'number',
           value: row.num != null ? row.num : '',
           disabled: !row.hasNum,
+          'data-ux': uxKey(row.id, 'num'),
           oninput: e => ctx.set(`sbr.rows.${row.id}.num`, e.target.value ? parseInt(e.target.value) : null)
         })
       ));
@@ -1238,16 +1499,16 @@
       h('tr', {},
         grouped ? h('th', {style: 'width: 100px;'}, 'Spellbook') : null,
         two ? h('th', {style: 'width: 60px;'}, 'Side') : null,
-        h('th', {style: 'width: 70px;'}, 'Dual powers?'),
+        h('th', {className: 'sx-rotated', style: 'width: 50px;'}, 'Dual powers?'),
         anyDual ? h('th', {style: 'width: 60px;'}, 'Power') : null,
         h('th', {}, 'Name'),
-        h('th', {}, 'Type'),
+        h('th', {style: 'width: 140px;'}, 'Type'),
         h('th', {style: 'width: 100px;'}, 'Cost'),
         h('th', {style: 'width: 150px;'}, 'Includes Fixed Numeric Effect?'),
         h('th', {style: 'width: 100px;'}, 'Fixed Numeric Effect'),
         h('th', {}, 'Text'),
-        h('th', {style: 'width: 120px;'}, 'Earned by SBR'),
-        h('th', {style: 'width: 120px;'}, 'Replaceable'),
+        h('th', {className: 'sx-rotated', style: 'width: 50px;'}, 'Earned by SBR'),
+        h('th', {className: 'sx-rotated', style: 'width: 50px;'}, 'Replaceable'),
         h('th', {}, '')
       )
     ));
@@ -1257,12 +1518,15 @@
       const f = name => `sb.rows.${row.id}.${name}${sfx}`;
       const v = name => row[name + sfx];
       // Name and Text boxes at least 3x their old phone width (about 51px and 38px)
+      // sfx-suffixed field name ('name', 'nameB', 'name2', ...) matches Rules.fixedNumbers()/
+      // fixedText()'s own field naming for this row, so the diff highlighting below can find it.
       tr.appendChild(h('td', {},
         h('input', {
           className: isMissing(f('name')) ? 'sx-missing' : '',
           type: 'text',
           value: v('name') || '',
           style: 'min-width: 155px;',
+          'data-ux': uxKey(row.id, 'name' + sfx),
           oninput: e => ctx.set(f('name'), e.target.value)
         })
       ));
@@ -1282,6 +1546,7 @@
         h('input', {
           type: 'number',
           value: v('cost') != null ? v('cost') : 0,
+          'data-ux': uxKey(row.id, 'cost' + sfx),
           oninput: e => ctx.set(f('cost'), e.target.value ? parseInt(e.target.value) : 0)
         })
       ));
@@ -1296,6 +1561,7 @@
           type: 'number',
           value: v('effect') != null ? v('effect') : '',
           disabled: !v('hasEffect'),
+          'data-ux': uxKey(row.id, 'effect' + sfx),
           oninput: e => ctx.set(f('effect'), e.target.value ? parseInt(e.target.value) : null)
         })
       ));
@@ -1306,6 +1572,7 @@
           value: v('text') || '',
           rows: 3,
           style: 'min-width: 160px;',
+          'data-ux': uxKey(row.id, 'text' + sfx),
           oninput: e => ctx.set(f('text'), e.target.value)
         })
       ));
@@ -1536,10 +1803,16 @@
     const missing = window.Rules.missingFields('tokens', ctx.design);
     const isMissing = path => missing.includes(path);
 
-    const tableDiv = h('div', {className: 'sx-table'});
+    // Map designer only: move / bulk-select tokens' pictures to other map sections
+    const moveBar = imageMoveToolbar(ctx, 'tokens');
+    if (moveBar) container.appendChild(moveBar);
+    const selecting = imgMoveSelecting(ctx, 'tokens');
+
+    const tableDiv = h('div', {className: 'sx-table' + (selecting ? ' sx-select-mode' : '')});
     const table = h('table', {});
     table.appendChild(h('thead', {},
       h('tr', {},
+        selecting ? h('th', {style: 'width: 40px;'}, '') : null,
         h('th', {}, 'Name'),
         h('th', {}, 'Qty'),
         h('th', {}, 'Image'),
@@ -1554,6 +1827,7 @@
     const tbody = h('tbody', {});
     d.rows.forEach((row, idx) => {
       const tr = h('tr', {});
+      if (selecting) tr.appendChild(h('td', {style: 'text-align: center;'}, imageMoveCheckbox(ctx, 'tokens', row, tr)));
 
       tr.appendChild(h('td', {},
         h('input', {
@@ -1569,6 +1843,7 @@
           className: isMissing(`tokens.rows.${row.id}.qty`) ? 'sx-missing' : '',
           type: 'number',
           value: row.qty != null ? row.qty : '',
+          'data-ux': uxKey(row.id, 'qty'),
           oninput: e => ctx.set(`tokens.rows.${row.id}.qty`, e.target.value ? parseInt(e.target.value) : null)
         })
       ));
@@ -1582,13 +1857,26 @@
           onclick: () => openImageEditor(row.image, ctx, id => ctx.set(`tokens.rows.${row.id}.image`, id), 'small')
         }));
       } else {
-        imgTd.appendChild(h('div', {
+        const imgDiv = h('div', {style: 'display: flex; flex-direction: column; gap: 4px;'});
+        imgDiv.appendChild(h('div', {
           className: 'sx-img-thumb sx-empty' + (imgMissing ? ' sx-missing' : ''),
           onclick: async () => {
             const id = await ctx.uploadImage('small');
             if (id) ctx.set(`tokens.rows.${row.id}.image`, id);
           }
         }, 'Upload'));
+        imgDiv.appendChild(h('button', {
+          className: 'sx-btn',
+          style: 'font-size: 12px; padding: 4px 8px;',
+          onclick: async () => {
+            const id = await ctx.pickTokenImage();
+            if (id) {
+              ctx.set(`tokens.rows.${row.id}.image`, id);
+              ctx.rerender();
+            }
+          }
+        }, 'CW / Necro'));
+        imgTd.appendChild(imgDiv);
       }
       tr.appendChild(imgTd);
 
@@ -1620,12 +1908,13 @@
           type: 'number',
           value: row.effect != null ? row.effect : '',
           disabled: !row.hasEffect,
+          'data-ux': uxKey(row.id, 'effect'),
           oninput: e => ctx.set(`tokens.rows.${row.id}.effect`, e.target.value ? parseInt(e.target.value) : null)
         })
       ));
 
       if (idx === 0 && d.rows.length === 1) {
-        tr.appendChild(h('td', {},
+        tr.appendChild(h('td', {}, imageMoveButton(ctx, 'tokens', row),
           h('button', {onclick: async () => {
             const confirmed = await ctx.confirm('Delete all values in this row?', 'Yes - delete', 'No - cancel');
             if (confirmed) {
@@ -1640,7 +1929,7 @@
           }}, 'Clear')
         ));
       } else {
-        tr.appendChild(h('td', {},
+        tr.appendChild(h('td', {}, imageMoveButton(ctx, 'tokens', row),
           h('button', {onclick: async () => {
             const confirmed = await ctx.confirm('Are you sure you want to delete this row?', 'Yes - delete', 'No - cancel');
             if (confirmed) ctx.deleteRow('tokens.rows', row.id);
@@ -1705,13 +1994,26 @@
           onclick: () => openImageEditor(row.image, ctx, id => ctx.set(`custom.rows.${row.id}.image`, id), 'small')
         }));
       } else {
-        imgTd.appendChild(h('div', {
+        const imgDiv = h('div', {style: 'display: flex; flex-direction: column; gap: 4px;'});
+        imgDiv.appendChild(h('div', {
           className: 'sx-img-thumb sx-empty' + (imgMissing ? ' sx-missing' : ''),
           onclick: async () => {
             const id = await ctx.uploadImage('small');
             if (id) ctx.set(`custom.rows.${row.id}.image`, id);
           }
         }, 'Upload'));
+        imgDiv.appendChild(h('button', {
+          className: 'sx-btn',
+          style: 'font-size: 12px; padding: 4px 8px;',
+          onclick: async () => {
+            const id = await ctx.pickTokenImage();
+            if (id) {
+              ctx.set(`custom.rows.${row.id}.image`, id);
+              ctx.rerender();
+            }
+          }
+        }, 'CW / Necro'));
+        imgTd.appendChild(imgDiv);
       }
       tr.appendChild(imgTd);
 
@@ -1752,6 +2054,7 @@
           type: 'number',
           value: row.num != null ? row.num : '',
           disabled: !row.hasNum,
+          'data-ux': uxKey(row.id, 'num'),
           oninput: e => ctx.set(`custom.rows.${row.id}.num`, e.target.value ? parseInt(e.target.value) : null)
         })
       ));
@@ -1829,6 +2132,48 @@
 
       menuDiv.appendChild(textField('Menu Name', menu.name, val => ctx.set(`menus.rows.${menu.id}.name`, val)));
 
+      // Prompted By field
+      menuDiv.appendChild(selectField('Prompted By', menu.promptedBy, [
+        {value: 'other_menu', label: 'Other Menu'},
+        {value: 'action', label: 'Action'},
+        {value: 'pre_battle', label: 'Pre Battle'},
+        {value: 'post_battle', label: 'Post Battle'},
+        {value: 'doom_phase', label: 'Doom Phase'},
+        {value: 'ritual', label: 'Ritual of Annihilation'},
+        {value: 'setup', label: 'Setup'},
+        {value: 'gather_power', label: 'Gather Power Phase'},
+        {value: 'player_selection', label: 'Player Selection Phase'},
+        {value: 'other', label: 'Other'}
+      ], val => {
+        ctx.set(`menus.rows.${menu.id}.promptedBy`, val);
+        // Clear conditional fields when changing type
+        if (val !== 'other_menu') ctx.set(`menus.rows.${menu.id}.promptedByMenu`, null);
+        if (val !== 'action' && val !== 'doom_phase') ctx.set(`menus.rows.${menu.id}.buttonText`, null);
+        if (val !== 'other') ctx.set(`menus.rows.${menu.id}.otherTrigger`, null);
+      }));
+
+      // Conditional: "Prompted by Menu" - shows if promptedBy === 'other_menu'
+      if (menu.promptedBy === 'other_menu') {
+        const otherMenus = d.rows.filter(m => m.id !== menu.id && m.name).map(m => ({value: m.id, label: m.name}));
+        menuDiv.appendChild(selectField('Prompted by Menu', menu.promptedByMenu, otherMenus,
+          val => ctx.set(`menus.rows.${menu.id}.promptedByMenu`, val),
+          {placeholder: '-- Select Menu --'}));
+      }
+
+      // Conditional: Button Text - shows if promptedBy === 'action' or 'doom_phase'
+      if (menu.promptedBy === 'action' || menu.promptedBy === 'doom_phase') {
+        const label = menu.promptedBy === 'action' ? 'Action Button Text' : 'Doom Button Text';
+        menuDiv.appendChild(textField(label, menu.buttonText,
+          val => ctx.set(`menus.rows.${menu.id}.buttonText`, val)));
+      }
+
+      // Conditional: Other trigger description - shows if promptedBy === 'other'
+      if (menu.promptedBy === 'other') {
+        menuDiv.appendChild(textField('Describe how this menu is triggered', menu.otherTrigger,
+          val => ctx.set(`menus.rows.${menu.id}.otherTrigger`, val),
+          {hint: 'Required: Describe when/how this menu appears'}));
+      }
+
       menuDiv.appendChild(selectField('Section', menu.section, window.Rules.BUILD_SECTIONS.map(k => {
         const s = window.Rules.SECTIONS.find(sec => sec.key === k);
         return {value: k, label: s ? s.title : k};
@@ -1864,7 +2209,12 @@
         placeholder: itemOptions.length === 0 ? 'No items available' : '-- Select --'
       }));
 
-      menuDiv.appendChild(selectField('Faction prompted', menu.prompted, ['Own', '1 Enemy', 'All enemies (turn order)', 'All enemies (at the same time)', 'All players (at the same time)', 'Any faction on their turn'], val => ctx.set(`menus.rows.${menu.id}.prompted`, val)));
+      menuDiv.appendChild(selectField('Faction prompted', menu.prompted, ['Own', '1 Enemy', 'All enemies (turn order)', 'All enemies (at the same time)', 'All players (turn order)', 'All players (at the same time)', 'Some players (turn order)', 'Any faction on their turn'], val => ctx.set(`menus.rows.${menu.id}.prompted`, val)));
+
+      // Conditional: "Describe faction selection" - shows if prompted === 'Some players (turn order)'
+      if (menu.prompted === 'Some players (turn order)') {
+        menuDiv.appendChild(textField('Describe faction selection', menu.factionSelectionDescription, val => ctx.set(`menus.rows.${menu.id}.factionSelectionDescription`, val)));
+      }
 
       const placeholderHint = 'Placeholders: [Faction], [Region], [Unit], [Power], [Doom], [Enemy], [Spellbook], [Number] (for Pick a number menus)';
       menuDiv.appendChild(textField('Menu Title', menu.title, val => ctx.set(`menus.rows.${menu.id}.title`, val), {hint: placeholderHint}));
@@ -1933,6 +2283,64 @@
       }));
 
       menuDiv.appendChild(textField('Next Menu triggered by', menu.nextTrigger, val => ctx.set(`menus.rows.${menu.id}.nextTrigger`, val), {greyed: !menu.leadsToNext}));
+
+      // Additional Buttons table
+      menuDiv.appendChild(h('h4', {style: 'margin-top: 24px; margin-bottom: 12px;'}, 'Additional Buttons'));
+      const buttonsTableDiv = h('div', {className: 'sx-table'});
+      const buttonsTable = h('table', {});
+      buttonsTable.appendChild(h('thead', {},
+        h('tr', {},
+          h('th', {}, 'Button Text'),
+          h('th', {}, 'Button Function'),
+          h('th', {style: 'width: 100px;'}, '')
+        )
+      ));
+
+      const buttonsBody = h('tbody', {});
+      if (!menu.additionalButtons) menu.additionalButtons = [];
+      menu.additionalButtons.forEach((btn, btnIdx) => {
+        const tr = h('tr', {});
+        tr.appendChild(h('td', {},
+          h('input', {
+            type: 'text',
+            value: btn.text || '',
+            placeholder: 'e.g. "Cancel"',
+            oninput: e => ctx.set(`menus.rows.${menu.id}.additionalButtons.${btnIdx}.text`, e.target.value)
+          })
+        ));
+        tr.appendChild(h('td', {},
+          h('input', {
+            type: 'text',
+            value: btn.function || '',
+            placeholder: 'e.g. "closeMenu()"',
+            oninput: e => ctx.set(`menus.rows.${menu.id}.additionalButtons.${btnIdx}.function`, e.target.value)
+          })
+        ));
+        tr.appendChild(h('td', {},
+          h('button', {className: 'sx-btn', onclick: async () => {
+            const confirmed = await ctx.confirm('Delete this button?', 'Yes - delete', 'No - cancel');
+            if (confirmed) {
+              menu.additionalButtons.splice(btnIdx, 1);
+              ctx.set(`menus.rows.${menu.id}.additionalButtons`, menu.additionalButtons);
+            }
+          }}, 'Delete')
+        ));
+        buttonsBody.appendChild(tr);
+      });
+      buttonsTable.appendChild(buttonsBody);
+      buttonsTableDiv.appendChild(buttonsTable);
+      menuDiv.appendChild(buttonsTableDiv);
+
+      const addButtonBtn = h('button', {className: 'sx-btn', onclick: () => {
+        if (!menu.additionalButtons) menu.additionalButtons = [];
+        const newBtn = {id: Math.random().toString(36).substr(2, 9), text: '', function: ''};
+        menu.additionalButtons.push(newBtn);
+        ctx.set(`menus.rows.${menu.id}.additionalButtons`, menu.additionalButtons);
+      }}, 'Add additional button');
+      menuDiv.appendChild(addButtonBtn);
+
+      // Menu Instructions
+      menuDiv.appendChild(textField('Menu Instructions', menu.menuInstructions, val => ctx.set(`menus.rows.${menu.id}.menuInstructions`, val), {hint: 'Text displayed below the menu to guide the player'}));
 
       menuDiv.appendChild(h('button', {className: 'sx-btn', onclick: () => showMenuPreview(menu, ctx)}, 'Preview'));
 
@@ -2036,6 +2444,155 @@
     ctx.openOverlay(content);
   }
 
+  // ---- Map image move (per-row "Move" + bulk "Select" mode) ----
+  // Sections of a map design whose rows each hold one picture. Moving a picture creates a NEW
+  // row in the target section (carrying the picture and its label/name) and removes the source row.
+  const MAP_IMAGE_TABLES = [
+    {key: 'images', path: 'images.items', label: 'Board Images', nameField: 'label'},
+    {key: 'bitmaps', path: 'bitmaps.items', label: 'Bitmaps', nameField: null},
+    {key: 'glyphs', path: 'glyphs.rows', label: 'Map Glyphs', nameField: 'name'},
+    {key: 'tokens', path: 'tokens.rows', label: 'Tokens', nameField: 'name'}
+  ];
+  // Selection survives re-renders: {scope: '<mapId>:<sectionKey>', ids: Set}
+  let imgMoveSel = null;
+  let imgMoveBarRefresh = null;
+
+  function imgMoveSpec(key) { return MAP_IMAGE_TABLES.find(t => t.key === key); }
+  function imgMoveScope(ctx, key) { return `${ctx.map && ctx.map.id}:${key}`; }
+  function imgMoveRows(ctx, key) {
+    const spec = imgMoveSpec(key);
+    const rows = spec.path.split('.').reduce((o, k) => (o ? o[k] : undefined), ctx.design);
+    return Array.isArray(rows) ? rows : [];
+  }
+  function imgMoveEnabled(ctx, key) { return !!(ctx.map && !ctx.readOnly && imgMoveSpec(key)); }
+  function imgMoveSelecting(ctx, key) { return !!(imgMoveSel && imgMoveSel.scope === imgMoveScope(ctx, key)); }
+
+  function imgMoveToast(msg) {
+    const t = h('div', {className: 'sx-imgmove-toast'}, msg);
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 2500);
+  }
+
+  // Do the move: add new rows to the target first, then remove the originals.
+  async function moveMapImages(ctx, fromKey, toKey, ids) {
+    const from = imgMoveSpec(fromKey), to = imgMoveSpec(toKey);
+    const rows = imgMoveRows(ctx, fromKey).filter(r => ids.includes(r.id) && r.image);
+    if (!rows.length) return false;
+    const coloured = fromKey === 'bitmaps' && rows.some(r => r.colors && Object.keys(r.colors).length);
+    if (coloured) {
+      const ok = await ctx.confirm('Moving a bitmap out of Bitmaps drops its colour-to-region assignments. Move anyway?', 'Yes - move', 'No - cancel');
+      if (!ok) return false;
+    }
+    const ops = [];
+    // Tokens always show one row; if that lone row is still blank, the moved pictures replace it
+    if (toKey === 'tokens') {
+      const cur = imgMoveRows(ctx, 'tokens');
+      const t = cur[0];
+      if (cur.length === 1 && !t.image && !t.name && t.qty == null && !t.placement && !t.effects && !t.hasEffect && t.effect == null) {
+        ops.push({op: 'deleteRow', path: 'tokens.rows', id: t.id});
+      }
+    }
+    rows.forEach(r => {
+      const nr = window.Rules.blankMapRow(to.path);
+      nr.image = r.image;
+      const name = from.nameField ? r[from.nameField] : '';
+      if (to.nameField && name) nr[to.nameField] = name;
+      ops.push({op: 'addRow', path: to.path, row: nr});
+    });
+    rows.forEach(r => ops.push({op: 'deleteRow', path: from.path, id: r.id}));
+    // The tokens table always keeps at least one (blank) row
+    if (fromKey === 'tokens' && imgMoveRows(ctx, 'tokens').length === rows.length) {
+      ops.push({op: 'addRow', path: 'tokens.rows', row: window.Rules.blankMapRow('tokens.rows')});
+    }
+    if (ctx.applyRowOps) {
+      ctx.applyRowOps(ops); // one save request, applied in order
+    } else {
+      ops.forEach(o => o.op === 'addRow' ? ctx.addRow(o.path, o.row) : ctx.deleteRow(o.path, o.id));
+    }
+    imgMoveToast(`Moved ${rows.length} image${rows.length === 1 ? '' : 's'} to ${to.label}.`);
+    return true;
+  }
+
+  // Pop-up menu: one button per OTHER image section + Cancel. Click outside or Esc also cancels.
+  function openImageMoveMenu(ctx, fromKey, ids) {
+    const overlay = h('div', {className: 'confirm-overlay sx-imgmove-menu'});
+    const dialog = h('div', {className: 'confirm-dialog'});
+    const close = () => { overlay.remove(); document.removeEventListener('keydown', onKey); };
+    const onKey = e => { if (e.key === 'Escape') close(); };
+    dialog.appendChild(h('h3', {}, `Move ${ids.length} image${ids.length === 1 ? '' : 's'} to:`));
+    MAP_IMAGE_TABLES.filter(t => t.key !== fromKey).forEach(t => {
+      dialog.appendChild(h('button', {className: 'sx-btn', 'data-move-to': t.key, onclick: async () => {
+        close();
+        const moved = await moveMapImages(ctx, fromKey, t.key, ids);
+        if (moved && imgMoveSelecting(ctx, fromKey)) { imgMoveSel = null; ctx.rerender(); }
+      }}, t.label));
+    });
+    dialog.appendChild(h('button', {className: 'sx-btn sx-imgmove-cancel', onclick: close}, 'Cancel'));
+    overlay.onclick = e => { if (e.target === overlay) close(); };
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    document.addEventListener('keydown', onKey);
+  }
+
+  // Toolbar at the top of an image section: "Select" normally; "Move (n)" + "Cancel" in select mode.
+  function imageMoveToolbar(ctx, key) {
+    if (!imgMoveEnabled(ctx, key)) return null;
+    // Leaving a section (or switching maps) drops any half-made selection
+    if (imgMoveSel && !imgMoveSelecting(ctx, key)) imgMoveSel = null;
+    const withImages = imgMoveRows(ctx, key).filter(r => r.image);
+    if (!withImages.length) { imgMoveBarRefresh = null; return null; }
+    const bar = h('div', {className: 'sx-imgmove-bar'});
+    if (!imgMoveSelecting(ctx, key)) {
+      imgMoveBarRefresh = null;
+      bar.appendChild(h('button', {className: 'sx-btn', title: 'Pick several images to move at once', onclick: () => {
+        imgMoveSel = {scope: imgMoveScope(ctx, key), ids: new Set()};
+        ctx.rerender();
+      }}, 'Select'));
+      return bar;
+    }
+    bar.classList.add('sx-selecting');
+    const count = h('span', {className: 'sx-imgmove-count'});
+    const moveBtn = h('button', {className: 'sx-btn', onclick: () => {
+      const ids = [...imgMoveSel.ids];
+      if (ids.length) openImageMoveMenu(ctx, key, ids);
+    }}, 'Move');
+    const allBtn = h('button', {className: 'sx-btn', onclick: () => {
+      withImages.forEach(r => imgMoveSel.ids.add(r.id));
+      ctx.rerender();
+    }}, 'Select all');
+    const cancelBtn = h('button', {className: 'sx-btn', onclick: () => { imgMoveSel = null; ctx.rerender(); }}, 'Cancel');
+    imgMoveBarRefresh = () => {
+      const n = imgMoveSel ? imgMoveSel.ids.size : 0;
+      count.textContent = `${n} selected`;
+      moveBtn.textContent = n ? `Move (${n})` : 'Move';
+      moveBtn.disabled = n === 0;
+    };
+    imgMoveBarRefresh();
+    bar.append(h('span', {}, 'Selection mode: tick the images to move.'), count, moveBtn, allBtn, cancelBtn);
+    return bar;
+  }
+
+  // Checkbox shown next to each image while in select mode (null otherwise / for empty rows)
+  function imageMoveCheckbox(ctx, key, row, rowEl) {
+    if (!imgMoveEnabled(ctx, key) || !imgMoveSelecting(ctx, key) || !row.image) return null;
+    const picked = imgMoveSel.ids.has(row.id);
+    if (picked && rowEl) rowEl.classList.add('sx-imgmove-picked');
+    return h('input', {type: 'checkbox', className: 'sx-imgmove-check', checked: picked, title: 'Select to move',
+      onchange: e => {
+        if (!imgMoveSel) return;
+        if (e.target.checked) imgMoveSel.ids.add(row.id); else imgMoveSel.ids.delete(row.id);
+        if (rowEl) rowEl.classList.toggle('sx-imgmove-picked', e.target.checked);
+        if (imgMoveBarRefresh) imgMoveBarRefresh();
+      }});
+  }
+
+  // Per-row "Move" button (hidden in select mode, and on rows with no picture yet)
+  function imageMoveButton(ctx, key, row) {
+    if (!imgMoveEnabled(ctx, key) || imgMoveSelecting(ctx, key) || !row.image) return null;
+    return h('button', {className: 'sx-imgmove-btn', title: 'Move this image to another section',
+      onclick: () => openImageMoveMenu(ctx, key, [row.id])}, 'Move');
+  }
+
   // Map section renderers
 
   function renderMapImages(container, ctx) {
@@ -2045,10 +2602,14 @@
 
     // Board images
     container.appendChild(h('h3', {}, 'Board Images'));
+    const moveBar = imageMoveToolbar(ctx, 'images');
+    if (moveBar) container.appendChild(moveBar);
+    const selecting = imgMoveSelecting(ctx, 'images');
 
-    const imagesDiv = h('div', {className: 'sx-table'});
+    const imagesDiv = h('div', {className: 'sx-table' + (selecting ? ' sx-select-mode' : '')});
     const table = h('table', {});
     table.appendChild(h('thead', {}, h('tr', {},
+      selecting ? h('th', {style: 'width: 40px;'}, '') : null,
       h('th', {}, 'Label'),
       h('th', {}, 'Image'),
       h('th', {}, '')
@@ -2057,6 +2618,7 @@
     const tbody = h('tbody', {});
     (d.items || []).forEach((item, idx) => {
       const tr = h('tr', {});
+      if (selecting) tr.appendChild(h('td', {style: 'text-align: center;'}, imageMoveCheckbox(ctx, 'images', item, tr)));
       tr.appendChild(h('td', {}, h('input', {
         type: 'text',
         value: item.label || '',
@@ -2081,7 +2643,7 @@
       }
       tr.appendChild(imgTd);
 
-      tr.appendChild(h('td', {}, h('button', {onclick: async () => {
+      tr.appendChild(h('td', {}, imageMoveButton(ctx, 'images', item), h('button', {onclick: async () => {
         const confirmed = await ctx.confirm('Delete this image?', 'Yes - delete', 'No - cancel');
         if (confirmed) ctx.deleteRow('images.items', item.id);
       }}, 'Delete')));
@@ -2206,10 +2768,14 @@
 
     container.appendChild(h('h3', {}, 'Placement Bitmaps'));
     container.appendChild(h('p', {}, 'Upload a bitmap for each map image. Click a pixel to assign that color to a region.'));
+    const moveBar = imageMoveToolbar(ctx, 'bitmaps');
+    if (moveBar) container.appendChild(moveBar);
+    const selecting = imgMoveSelecting(ctx, 'bitmaps');
 
     (d.items || []).forEach((item, idx) => {
-      const itemDiv = h('div', {style: 'margin: 24px 0; padding: 16px; border: 2px solid #444;'});
-      itemDiv.appendChild(h('h4', {}, `Bitmap ${idx + 1}`));
+      const itemDiv = h('div', {className: selecting ? 'sx-select-mode' : '', style: 'margin: 24px 0; padding: 16px; border: 2px solid #444;'});
+      const check = imageMoveCheckbox(ctx, 'bitmaps', item, itemDiv);
+      itemDiv.appendChild(h('h4', {style: 'display: flex; align-items: center; gap: 8px;'}, check, `Bitmap ${idx + 1}`));
 
       if (!item.image) {
         itemDiv.appendChild(h('button', {className: 'sx-btn', onclick: async () => {
@@ -2318,6 +2884,13 @@
           if (id) ctx.set(`bitmaps.items.${item.id}.image`, id);
         }}, 'Replace');
         itemDiv.appendChild(replaceBtn);
+
+        const bmMoveBtn = imageMoveButton(ctx, 'bitmaps', item);
+        if (bmMoveBtn) {
+          bmMoveBtn.className = 'sx-btn sx-imgmove-btn';
+          bmMoveBtn.style.marginLeft = '8px';
+          itemDiv.appendChild(bmMoveBtn);
+        }
 
         const deleteBtn = h('button', {className: 'sx-btn danger', style: 'margin-left: 8px;', onclick: async () => {
           const confirmed = await ctx.confirm('Delete this bitmap?', 'Yes - delete', 'No - cancel');
@@ -2743,9 +3316,13 @@
     }}, 'Extract units and other content from wiki');
     container.appendChild(extractBtn);
 
-    // Reuse faction units renderer with neutral flag
-    const neutralCtx = Object.assign({}, ctx, {neutral: true, design: {units: d}});
-    renderUnits(container, neutralCtx);
+    // Reuse the neutral unit renderer once per row (it only draws the first row it is given),
+    // so every map unit is shown, not just the first one.
+    (d.rows || []).forEach((row, idx) => {
+      if (d.rows.length > 1) container.appendChild(h('h3', {}, `Unit ${idx + 1}: ${row.name || ''}`));
+      const neutralCtx = Object.assign({}, ctx, {neutral: true, design: {units: Object.assign({}, d, {rows: [row]})}});
+      renderUnits(container, neutralCtx);
+    });
 
     renderClaudeQA(container, ctx, 'units');
     renderAdminNotes(container, ctx, 'units');
@@ -2905,10 +3482,14 @@
     const isMissing = path => missing.includes(path);
 
     container.appendChild(h('h3', {}, 'Map Glyphs'));
+    const moveBar = imageMoveToolbar(ctx, 'glyphs');
+    if (moveBar) container.appendChild(moveBar);
+    const selecting = imgMoveSelecting(ctx, 'glyphs');
 
-    const tableDiv = h('div', {className: 'sx-table'});
+    const tableDiv = h('div', {className: 'sx-table' + (selecting ? ' sx-select-mode' : '')});
     const table = h('table', {});
     table.appendChild(h('thead', {}, h('tr', {},
+      selecting ? h('th', {style: 'width: 40px;'}, '') : null,
       h('th', {}, 'Name'),
       h('th', {}, 'Image'),
       h('th', {}, 'What it does'),
@@ -2918,6 +3499,7 @@
     const tbody = h('tbody', {});
     (d.rows || []).forEach((row, idx) => {
       const tr = h('tr', {});
+      if (selecting) tr.appendChild(h('td', {style: 'text-align: center;'}, imageMoveCheckbox(ctx, 'glyphs', row, tr)));
 
       tr.appendChild(h('td', {}, h('input', {
         className: isMissing(`glyphs.rows.${row.id}.name`) ? 'sx-missing' : '',
@@ -2951,7 +3533,7 @@
         oninput: e => ctx.set(`glyphs.rows.${row.id}.desc`, e.target.value)
       })));
 
-      tr.appendChild(h('td', {}, h('button', {onclick: async () => {
+      tr.appendChild(h('td', {}, imageMoveButton(ctx, 'glyphs', row), h('button', {onclick: async () => {
         const confirmed = await ctx.confirm('Delete this glyph?', 'Yes - delete', 'No - cancel');
         if (confirmed) ctx.deleteRow('glyphs.rows', row.id);
       }}, 'Delete')));
@@ -3089,6 +3671,110 @@
     }
   }
 
+  // Owner spec (terminal log entries 150-152, revisited): fields whose value differs from the
+  // live build get a colored outline (green = simple update, yellow = rebuild only, orange =
+  // either), and a legend explaining the colors appears whenever any field in the section has
+  // one. This must work in EVERY section where a value can change - not just in the separate
+  // Simple Update summary screen - so it lives here in the shared section renderer, keyed off
+  // the same Rules.fixedNumbers()/fixedText() data the Simple Update screen uses, matched back to
+  // each field's input via the data-ux attribute set by uxKey() above.
+  function applyUpdateHighlighting(key, container, ctx) {
+    const R = window.Rules;
+    if (!R || !R.fixedNumbers || !R.fixedText) return;
+    // Only faction designs carry a comparable "live build" snapshot today; maps and standalone
+    // neutral units have no equivalent built-value tracking yet.
+    if (!ctx.builtDesign || !ctx.design) return;
+
+    const findInput = ux => {
+      const all = container.querySelectorAll('[data-ux]');
+      for (const el of all) {
+        if (el.getAttribute('data-ux') === ux) return el;
+      }
+      return null;
+    };
+
+    let anyOutlined = false;
+    const outline = (el, color) => {
+      el.style.border = '3px solid ' + color;
+      el.style.backgroundColor = '#1a1a1a';
+      anyOutlined = true;
+    };
+
+    // Numbers: always simple-update eligible. Green if differs from build, blue if it matches.
+    const designNums = R.fixedNumbers(ctx.design).filter(n => n.section === key);
+    const builtNums = R.fixedNumbers(ctx.builtDesign).filter(n => n.section === key);
+    designNums.forEach(dNum => {
+      const bNum = builtNums.find(b => b.rowId === dNum.rowId && b.field === dNum.field);
+      const el = findInput(uxKey(dNum.rowId, dNum.field));
+      if (!el) return;
+      const differs = !bNum || bNum.value !== dNum.value;
+      outline(el, R.getOutlineColor('number', differs));
+      // Remember the build value so the outline flips green/blue live while typing
+      el.dataset.buildKind = 'number';
+      el.dataset.buildValue = bNum ? String(bNum.value) : '\u0000none';
+    });
+
+    // Text: simple fields green/blue; 'either' fields orange when changed; rebuild fields yellow.
+    const designTexts = R.fixedText(ctx.design).filter(t => t.section === key);
+    const builtTexts = R.fixedText(ctx.builtDesign).filter(t => t.section === key);
+    designTexts.forEach(dTxt => {
+      const bTxt = builtTexts.find(b => b.rowId === dTxt.rowId && b.field === dTxt.field);
+      const el = findInput(uxKey(dTxt.rowId, dTxt.field));
+      if (!el) return;
+      const updateType = R.getUpdateType(dTxt.section, dTxt.field);
+      const differs = !bTxt || bTxt.value !== dTxt.value;
+      if (differs || updateType === 'simple' || updateType === 'number') {
+        outline(el, R.getOutlineColor(updateType, differs));
+      }
+      if (updateType === 'simple' || updateType === 'number') {
+        el.dataset.buildKind = 'text';
+        el.dataset.buildValue = bTxt ? String(bTxt.value) : '\u0000none';
+      }
+    });
+
+    // Live green/blue flip while the user types (one delegated listener per section render)
+    if (!container._sxOutlineListener) {
+      container._sxOutlineListener = true;
+      container.addEventListener('input', e => {
+        const el = e.target;
+        if (!el || !el.dataset || !el.dataset.buildKind) return;
+        const cur = el.dataset.buildKind === 'number'
+          ? (el.value === '' ? '' : String(parseInt(el.value)))
+          : el.value;
+        const differs = cur !== el.dataset.buildValue;
+        el.style.border = '3px solid ' + R.getOutlineColor('simple', differs);
+        el.style.backgroundColor = '#1a1a1a';
+      });
+    }
+
+    if (anyOutlined) {
+      container.insertBefore(buildUpdateLegend(), container.firstChild);
+    }
+  }
+
+  // Same legend content/colors as the Simple Update screen (app.js showUpdateLegend), but built
+  // standalone here so it can be dropped into any section, right where the colored fields are.
+  function buildUpdateLegend() {
+    const items = [
+      {color: '#00aa00', label: 'Green outline: Value differs from build - can be pushed immediately through Simple Update'},
+      {color: '#0066ff', label: 'Blue outline: Matches build value - eligible for Simple Update'},
+      {color: '#ccaa00', label: 'Yellow outline: Must be updated through a rebuild'},
+      {color: '#ff8800', label: 'Orange outline: Can be updated either way (simple or rebuild)'}
+    ];
+
+    const legend = h('div', {className: 'sx-update-legend', style: 'margin-bottom: 20px; padding: 12px; background-color: #1a1a1a; border: 1px solid #444; border-radius: 4px;'});
+    legend.appendChild(h('strong', {style: 'display: block; margin-bottom: 8px;'}, 'Field Update Legend:'));
+
+    items.forEach(item => {
+      legend.appendChild(h('div', {style: 'margin-bottom: 6px;'},
+        h('span', {style: `display: inline-block; width: 16px; height: 16px; background-color: transparent; border: 2px solid ${item.color}; margin-right: 8px; vertical-align: middle;`}),
+        h('span', {style: 'vertical-align: middle;'}, item.label)
+      ));
+    });
+
+    return legend;
+  }
+
   function render(key, container, ctx) {
     injectCSS();
     container.innerHTML = '';
@@ -3120,6 +3806,10 @@
       if (ctx.readOnly && ctx.adminView) {
         highlightMissingFields(key, ctx.design, container);
       }
+      // Colored borders + legend for fields that differ from the live build (owner spec,
+      // terminal log 150-152): any faction section the user is actively editing, not just the
+      // separate Simple Update summary screen.
+      applyUpdateHighlighting(key, container, ctx);
       // Free box at the bottom of every design section (not Menu Design)
       const isFactionSection = window.Rules.BUILD_SECTIONS.includes(key);
       const isMapSection = window.Rules.MAP_BUILD_SECTIONS && window.Rules.MAP_BUILD_SECTIONS.includes(key);
@@ -3201,9 +3891,137 @@
           container.appendChild(answersDiv);
         }
       }
+
+      // Add floating Top/Bottom buttons if section is taller than 2 screens
+      addSectionNavButtons(container, ctx);
     } else {
       container.appendChild(h('p', {}, 'Section not implemented: ' + key));
     }
+  }
+
+  function addSectionNavButtons(container, ctx) {
+    // Wait for content to render and measure height
+    setTimeout(() => {
+      const sectionHeight = container.scrollHeight;
+      const viewportHeight = window.innerHeight;
+
+      // Only add buttons if section is > 2 screens tall
+      if (sectionHeight <= viewportHeight * 2) return;
+
+      // Remove existing nav buttons if any
+      const existing = document.querySelector('.sx-nav-buttons');
+      if (existing) existing.remove();
+
+      // Create button container
+      const navButtons = h('div', {className: 'sx-nav-buttons'});
+
+      // Top button
+      const topBtn = h('button', {className: 'sx-nav-btn sx-hidden', onclick: () => {
+        container.scrollIntoView({behavior: 'smooth', block: 'start'});
+      }}, 'Top');
+
+      // Bottom button
+      const bottomBtn = h('button', {className: 'sx-nav-btn sx-hidden', onclick: () => {
+        container.scrollIntoView({behavior: 'smooth', block: 'end'});
+      }}, 'Bottom');
+
+      navButtons.appendChild(topBtn);
+      navButtons.appendChild(bottomBtn);
+
+      // Legend button: only when this section actually has the colored-border legend
+      // (applyUpdateHighlighting adds a .sx-update-legend element at the top of the
+      // section when any field differs from the live build). Lets the owner see the
+      // legend without scrolling back to the top of a long section.
+      const legendSource = container.querySelector('.sx-update-legend');
+      if (legendSource) {
+        const legendBtn = h('button', {className: 'sx-nav-btn', onclick: () => {
+          const overlay = h('div', {className: 'sx-legend-overlay', onclick: e => {
+            if (e.target === overlay) overlay.remove();
+          }});
+          const panel = h('div', {className: 'sx-legend-overlay-panel'});
+          const closeBtn = h('button', {className: 'sx-nav-btn sx-legend-overlay-close', onclick: () => overlay.remove()}, '✕');
+          panel.appendChild(closeBtn);
+          panel.appendChild(legendSource.cloneNode(true));
+          overlay.appendChild(panel);
+          document.body.appendChild(overlay);
+        }}, 'Legend');
+        navButtons.appendChild(legendBtn);
+      }
+
+      document.body.appendChild(navButtons);
+
+      // Position buttons based on scroll
+      const updateButtons = () => {
+        const rect = container.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+
+        // Position buttons vertically centered in visible portion of section
+        const visibleTop = Math.max(0, -rect.top);
+        const visibleBottom = Math.min(rect.height, viewportHeight - rect.top);
+        const visibleMiddle = (visibleTop + visibleBottom) / 2;
+
+        navButtons.style.top = `${rect.top + visibleMiddle - 50}px`;
+
+        // Show Top button if we're more than 1 screen from the top
+        const distanceFromTop = -rect.top;
+        if (distanceFromTop > viewportHeight) {
+          topBtn.classList.remove('sx-hidden');
+        } else {
+          topBtn.classList.add('sx-hidden');
+        }
+
+        // Show Bottom button if we're more than 1 screen from the bottom
+        const distanceFromBottom = rect.bottom - viewportHeight;
+        if (distanceFromBottom > viewportHeight) {
+          bottomBtn.classList.remove('sx-hidden');
+        } else {
+          bottomBtn.classList.add('sx-hidden');
+        }
+
+        // Hide buttons if section is not visible
+        if (rect.bottom < 0 || rect.top > viewportHeight) {
+          navButtons.style.opacity = '0';
+        } else {
+          navButtons.style.opacity = '1';
+        }
+      };
+
+      // Update on scroll - listen to scroll-container instead of window
+      const scrollContainer = document.getElementById('scroll-container');
+      const scrollHandler = () => updateButtons();
+      if (scrollContainer) {
+        scrollContainer.addEventListener('scroll', scrollHandler, {passive: true});
+      }
+
+      // Update on resize
+      const resizeHandler = () => {
+        const newSectionHeight = container.scrollHeight;
+        const newViewportHeight = window.innerHeight;
+        if (newSectionHeight <= newViewportHeight * 2) {
+          // Section is now too short, remove buttons
+          navButtons.remove();
+          if (scrollContainer) scrollContainer.removeEventListener('scroll', scrollHandler);
+          window.removeEventListener('resize', resizeHandler);
+        } else {
+          updateButtons();
+        }
+      };
+      window.addEventListener('resize', resizeHandler);
+
+      // Clean up when section is removed
+      const observer = new MutationObserver((mutations) => {
+        if (!document.body.contains(container)) {
+          navButtons.remove();
+          if (scrollContainer) scrollContainer.removeEventListener('scroll', scrollHandler);
+          window.removeEventListener('resize', resizeHandler);
+          observer.disconnect();
+        }
+      });
+      observer.observe(document.body, {childList: true, subtree: true});
+
+      // Initial update
+      updateButtons();
+    }, 100);
   }
 
   // renderInteractions - integrated from temporary file
@@ -3219,6 +4037,10 @@
       .then(data => {
         window._abilitiesData = data;
         ctx.rerender(); // Re-render once data is loaded
+      })
+      .catch(err => {
+        console.error('Failed to load abilities data:', err);
+        container.appendChild(h('p', {style: 'color: #f88;'}, 'Failed to load abilities data. Please refresh.'));
       });
     container.appendChild(h('p', {}, 'Loading abilities data...'));
     return;
@@ -3226,25 +4048,66 @@
 
   const abilitiesData = window._abilitiesData;
 
-  // Helper to get abilities for a faction/type combination
-  const getAbilities = (faction, type) => {
-    if (!faction || !type) return [];
-    return abilitiesData.abilities.filter(a => {
-      if (a.faction !== faction) return false;
-      // Map ability types
-      // Note: abilities-data.json doesn't distinguish UFAs from Spellbooks (both have unit='N/A')
-      // so we show all unit='N/A' abilities for both UFA and Spellbook types
-      if ((type === 'UFA' || type === 'Spellbook') && a.unit === 'N/A') return true;
-      if (type === 'Unit Special' && a.unit !== 'N/A') return true;
-      if (type === 'GOO/iGOO/EG ability' && a.unit !== 'N/A') return true;
-      return false;
-    });
+  // Helper to get categories for a faction
+  const getCategories = (faction) => {
+    if (!faction) return [];
+    const categories = abilitiesData.abilities
+      .filter(a => a.faction === faction)
+      .map(a => a.category)
+      .filter((v, i, arr) => arr.indexOf(v) === i) // unique
+      .sort();
+    return categories;
+  };
+
+  // Helper to get abilities for a faction/category combination
+  const getAbilities = (faction, category) => {
+    if (!faction || !category) return [];
+    return abilitiesData.abilities
+      .filter(a => a.faction === faction && a.category === category)
+      .sort((a, b) => a.name.localeCompare(b.name));
   };
 
   // Helper to get ability text
-  const getAbilityText = (faction, abilityName) => {
-    const ability = abilitiesData.abilities.find(a => a.faction === faction && a.name === abilityName);
+  const getAbilityText = (faction, category, abilityName) => {
+    const ability = abilitiesData.abilities.find(a =>
+      a.faction === faction && a.category === category && a.name === abilityName
+    );
     return ability ? ability.text : '';
+  };
+
+  // Show ability text overlay
+  const showAbilityTextOverlay = (faction, category, abilityName, text) => {
+    const overlay = h('div', {
+      className: 'confirm-overlay',
+      onclick: (e) => { if (e.target === overlay) overlay.remove(); }
+    });
+
+    const dialog = h('div', {
+      className: 'confirm-dialog',
+      style: 'max-width: 700px; max-height: 80vh; overflow-y: auto;'
+    });
+
+    const title = h('h2', {style: 'margin-bottom: 10px;'}, abilityName);
+    dialog.appendChild(title);
+
+    const subtitle = h('div', {style: 'color: #aaa; font-size: 14px; margin-bottom: 15px;'},
+      `${faction} | ${category}`
+    );
+    dialog.appendChild(subtitle);
+
+    const textDiv = h('div', {
+      style: 'background: #1a1a1a; padding: 15px; border-radius: 4px; margin-bottom: 20px; white-space: pre-wrap; line-height: 1.6;'
+    }, text || '(No text available)');
+    dialog.appendChild(textDiv);
+
+    const closeBtn = h('button', {
+      className: 'primary',
+      onclick: () => overlay.remove()
+    }, 'Close');
+    dialog.appendChild(closeBtn);
+
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
   };
 
   // Get this faction's abilities for dropdown
@@ -3276,14 +4139,25 @@
     return abilities;
   };
 
+  // Add instructions about required/optional rows
+  const instructions = h('div', {style: 'margin-bottom: 15px; padding: 10px; background: #1a1a2e; border-left: 3px solid #4a9eff; font-size: 0.9em;'},
+    h('p', {style: 'margin: 0 0 8px 0; font-weight: bold;'}, 'Default Interaction Rows:'),
+    h('ul', {style: 'margin: 5px 0; padding-left: 20px;'},
+      h('li', {style: 'margin: 3px 0;'}, h('strong', {}, 'Row 1 (Sleeper / Ancient Sorcery):'), ' REQUIRED - Cannot be deleted. Fill in your faction\'s UFA.'),
+      h('li', {style: 'margin: 3px 0;'}, h('strong', {}, 'Row 2 (Elder Thing):'), ' Optional - Must be either completed OR deleted.'),
+      h('li', {style: 'margin: 3px 0;'}, h('strong', {}, 'Row 3 (Bubastis / Moon):'), ' Optional - Must be either completed OR deleted.')
+    )
+  );
+  container.appendChild(instructions);
+
   const tableDiv = h('div', {className: 'sx-table'});
   const table = h('table', {});
   const thead = h('thead', {},
     h('tr', {},
       h('th', {}, 'Faction/Map'),
-      h('th', {}, 'Ability Type'),
+      h('th', {}, 'Ability Category'),
       h('th', {}, 'Ability'),
-      h('th', {}, 'Ability Text'),
+      h('th', {}, ''),
       h('th', {}, 'Your Faction\'s Ability'),
       h('th', {}, 'Interaction Description'),
       h('th', {}, '')
@@ -3298,8 +4172,8 @@
 
     // Check if this is the Ancient Sorcery row (required)
     const isAncientSorcery = row.otherFaction === 'Sleeper' &&
-                             row.abilityType === 'Spellbook' &&
-                             row.ability === 'Ancient Sorcery';
+                             row.category === 'Spellbook' &&
+                             row.ability === 'AncientSorcery';
 
     if (isAncientSorcery) {
       tr.style.backgroundColor = '#1a2a1a'; // Slight green tint to indicate required row
@@ -3312,14 +4186,8 @@
         value: row.otherFaction || '',
         onchange: e => {
           ctx.set(`interactions.rows.${row.id}.otherFaction`, e.target.value || null);
+          ctx.set(`interactions.rows.${row.id}.category`, null);
           ctx.set(`interactions.rows.${row.id}.ability`, null);
-          ctx.set(`interactions.rows.${row.id}.abilityText`, '');
-          // Auto-set Ancient Sorcery for Sleeper + Spellbook
-          if (e.target.value === 'Sleeper' && row.abilityType === 'Spellbook') {
-            ctx.set(`interactions.rows.${row.id}.ability`, 'Ancient Sorcery');
-            const text = getAbilityText('Sleeper', 'Ancient Sorcery');
-            ctx.set(`interactions.rows.${row.id}.abilityText`, text);
-          }
         }
       },
         h('option', {value: ''}, '-- Select --'),
@@ -3327,40 +4195,32 @@
       )
     ));
 
-    // Column 2: Ability Type dropdown
-    const abilityTypes = ['UFA', 'Spellbook', 'Unit Special', 'GOO/iGOO/EG ability'];
+    // Column 2: Category dropdown (waterfall based on faction)
+    const availableCategories = getCategories(row.otherFaction);
     tr.appendChild(h('td', {},
       h('select', {
-        className: isMissing(`interactions.rows.${row.id}.abilityType`) ? 'sx-missing' : '',
-        value: row.abilityType || '',
+        className: isMissing(`interactions.rows.${row.id}.category`) ? 'sx-missing' : '',
+        value: row.category || '',
+        disabled: !row.otherFaction,
         onchange: e => {
-          ctx.set(`interactions.rows.${row.id}.abilityType`, e.target.value || null);
+          ctx.set(`interactions.rows.${row.id}.category`, e.target.value || null);
           ctx.set(`interactions.rows.${row.id}.ability`, null);
-          ctx.set(`interactions.rows.${row.id}.abilityText`, '');
-          // Auto-set Ancient Sorcery for Sleeper + Spellbook
-          if (row.otherFaction === 'Sleeper' && e.target.value === 'Spellbook') {
-            ctx.set(`interactions.rows.${row.id}.ability`, 'Ancient Sorcery');
-            const text = getAbilityText('Sleeper', 'Ancient Sorcery');
-            ctx.set(`interactions.rows.${row.id}.abilityText`, text);
-          }
         }
       },
         h('option', {value: ''}, '-- Select --'),
-        abilityTypes.map(t => h('option', {value: t}, t))
+        availableCategories.map(c => h('option', {value: c}, c))
       )
     ));
 
-    // Column 3: Ability dropdown (waterfall based on columns 1+2)
-    const availableAbilities = getAbilities(row.otherFaction, row.abilityType);
+    // Column 3: Ability dropdown (waterfall based on faction + category)
+    const availableAbilities = getAbilities(row.otherFaction, row.category);
     tr.appendChild(h('td', {},
       h('select', {
         className: isMissing(`interactions.rows.${row.id}.ability`) ? 'sx-missing' : '',
         value: row.ability || '',
-        disabled: !row.otherFaction || !row.abilityType,
+        disabled: !row.otherFaction || !row.category,
         onchange: e => {
           ctx.set(`interactions.rows.${row.id}.ability`, e.target.value || null);
-          const text = getAbilityText(row.otherFaction, e.target.value);
-          ctx.set(`interactions.rows.${row.id}.abilityText`, text);
         }
       },
         h('option', {value: ''}, '-- Select --'),
@@ -3368,15 +4228,31 @@
       )
     ));
 
-    // Column 4: Ability Text (read-only, large)
-    tr.appendChild(h('td', {},
-      h('textarea', {
-        value: row.abilityText || '',
-        disabled: true,
-        rows: 4,
-        style: 'background: #1a1a1a; color: #888; resize: vertical; min-height: 80px;'
-      })
-    ));
+    // Column 4: Help icon (?) - shows ability text overlay
+    const hasAbility = row.otherFaction && row.category && row.ability;
+    const helpIcon = h('button', {
+      className: 'help-icon-btn',
+      disabled: !hasAbility,
+      style: `
+        background: none;
+        border: 1px solid ${hasAbility ? '#666' : '#333'};
+        color: ${hasAbility ? '#aaa' : '#555'};
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        font-size: 14px;
+        cursor: ${hasAbility ? 'pointer' : 'default'};
+        padding: 0;
+        line-height: 1;
+      `,
+      onclick: () => {
+        if (hasAbility) {
+          const text = getAbilityText(row.otherFaction, row.category, row.ability);
+          showAbilityTextOverlay(row.otherFaction, row.category, row.ability, text);
+        }
+      }
+    }, '?');
+    tr.appendChild(h('td', {style: 'text-align: center; padding: 4px;'}, helpIcon));
 
     // Column 5: Your Faction's Ability dropdown
     const yourAbilities = getYourAbilities();
@@ -3396,8 +4272,8 @@
       h('textarea', {
         className: isMissing(`interactions.rows.${row.id}.interactionDesc`) ? 'sx-missing' : '',
         value: row.interactionDesc || '',
-        rows: 4,
-        style: 'min-height: 80px; resize: vertical;',
+        rows: 3,
+        style: 'min-height: 60px; resize: vertical; width: 100%;',
         oninput: e => ctx.set(`interactions.rows.${row.id}.interactionDesc`, e.target.value)
       })
     ));
@@ -3432,7 +4308,9 @@
 
   // Help text
   container.appendChild(h('p', {style: 'margin-top: 20px; font-size: 14px; color: #aaa;'},
-    'The Ancient Sorcery row (green background) is required. All other rows are optional. ' +
+    'The Ancient Sorcery row (green background) is required and cannot be deleted. ' +
+    'Rows 2 and 3 are optional but must be either fully completed OR deleted. ' +
+    'Use the "?" help icon to view the full text of any selected ability. ' +
     'Use this section to document interactions between your faction\'s abilities and known abilities ' +
     'from other factions, maps, or neutral units.'
   ));

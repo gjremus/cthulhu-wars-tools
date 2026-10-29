@@ -52,16 +52,58 @@ REQUEST TYPES
    - Mark the request done
 
 3. BUG (type: "bug")
-   data: { description: "<text>" }
+   data: { description: "<text>" } — OR, for a silhouette request specifically:
+   data: { kind: "silhouette", unitId: "<unit row id>", mapImage: "<image id>" }
 
-   A user-submitted bug report for a faction that has been built. Investigate the issue
-   (read the faction's Scala code, check game logs if available), propose a fix, and
-   implement it in the Faction<ACR>.scala file.
+   3a. SILHOUETTE REQUEST (data.kind == "silhouette"): this is NOT a code bug. The
+       designer's "Generate Silhouette" button sends this. Do NOT touch any .scala file
+       or run a build/deploy for it. Instead, generate and attach the image:
+       1. Download the source map image:
+            python3 /Users/gremus/Claude-Projects/cthulhu-wars-tools/tickers/designer-admin.py image <data.mapImage>
+          (prints a local PNG path)
+       2. Make a flat white silhouette, keeping the alpha channel exactly as-is:
+            python3 - <<'PY'
+            from PIL import Image
+            img = Image.open("<path from step 1>").convert('RGBA')
+            px = img.load()
+            for y in range(img.height):
+                for x in range(img.width):
+                    r, g, b, a = px[x, y]
+                    if a > 0:
+                        px[x, y] = (255, 255, 255, a)
+            img.save("/tmp/<unitId>-silhouette.png")
+            PY
+       3. Upload it:
+            python3 /Users/gremus/Claude-Projects/cthulhu-wars-tools/tickers/designer-admin.py upload /tmp/<unitId>-silhouette.png
+          (prints the new image id)
+       4. Attach it to the unit (see PATCH FORMAT below for the exact op/path syntax —
+          path is `units.rows.<data.unitId>.silhouette`, op is `set`, NOT `replace`):
+            echo '[{"op":"set","path":"units.rows.<data.unitId>.silhouette","value":"<new image id>"}]' > /tmp/sil-patch.json
+            python3 /Users/gremus/Claude-Projects/cthulhu-wars-tools/tickers/designer-admin.py patch <fid> /tmp/sil-patch.json
+       5. Verify: re-fetch the faction and confirm units.rows.<data.unitId>.silhouette now
+          equals the new image id.
+       6. Mark the request done with a summary describing what was generated and attached.
 
-   After fixing:
-   - git commit the fix
-   - Build and deploy the homebrew build
-   - Mark the request done
+   3b. CODE BUG (data.description, no kind field): a user-submitted bug report for a
+       faction that has been built. Investigate the issue (read the faction's Scala code,
+       check game logs if available), propose a fix, and implement it in the
+       Faction<ACR>.scala file.
+
+       After fixing:
+       - git commit the fix
+       - Build and deploy the homebrew build
+       - Mark the request done
+
+═══════════════════════════════════════════════════════════════════
+PATCH FORMAT (admin patch endpoint — used by designer-admin.py patch)
+═══════════════════════════════════════════════════════════════════
+
+The server does NOT use RFC-6902 JSON Patch. Valid ops are "set", "addRow", "deleteRow",
+"replaceSection" — there is no "replace" op. Paths are DOT-separated, not slash-separated,
+and a row inside an array is addressed directly by its id (no index, no "/"):
+  CORRECT:   {"op":"set","path":"units.rows.<rowId>.silhouette","value":"<imageId>"}
+  WRONG:     {"op":"replace","path":"/units/rows/0/silhouette","value":"<imageId>"}
+"replace" is rejected outright ("Unknown operation: replace"); slash paths never resolve.
 
 ═══════════════════════════════════════════════════════════════════
 DATA IS NOT CODE

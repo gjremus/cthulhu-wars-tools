@@ -1112,13 +1112,14 @@ object CthulhuWarsOnline {
             (get & path("admin" / Segment / "claude-prompts-log")) { token =>
                 if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
                 else parameter("lines".as[Int].?) { linesOpt =>
-                    val n = linesOpt.getOrElse(100).max(1).min(2000)
+                    // Read last 100KB max to avoid memory issues with huge lines
+                    val maxBytes = 102400
                     val f = new java.io.File("/tmp/claude-prompts.log")
                     if (!f.exists) complete(HttpEntity(ContentTypes.`text/plain(UTF-8)`, ""))
                     else {
                         import scala.sys.process._
                         val out = new StringBuilder
-                        Process(Seq("tail", "-n", n.toString, f.getAbsolutePath))
+                        Process(Seq("tail", "-c", maxBytes.toString, f.getAbsolutePath))
                             .!(ProcessLogger(line => out.append(line + "\n")))
                         complete(HttpEntity(ContentTypes.`text/plain(UTF-8)`, out.toString))
                     }
@@ -1131,13 +1132,14 @@ object CthulhuWarsOnline {
             (get & path("admin" / Segment / "claude-output-log")) { token =>
                 if (ownerToken.isEmpty || token != ownerToken) complete(StatusCodes.NotFound)
                 else parameter("lines".as[Int].?) { linesOpt =>
-                    val n = linesOpt.getOrElse(500).max(1).min(5000)
+                    // Read last 200KB max to avoid memory issues with huge log lines
+                    val maxBytes = 204800
                     val f = new java.io.File("/tmp/claude-output.log")
                     if (!f.exists) complete(HttpEntity(ContentTypes.`text/plain(UTF-8)`, ""))
                     else {
                         import scala.sys.process._
                         val out = new StringBuilder
-                        Process(Seq("tail", "-n", n.toString, f.getAbsolutePath))
+                        Process(Seq("tail", "-c", maxBytes.toString, f.getAbsolutePath))
                             .!(ProcessLogger(line => out.append(line + "\n")))
                         val raw = out.toString
                         val cutoffMs = System.currentTimeMillis - 36L * 60 * 60 * 1000
@@ -1173,12 +1175,11 @@ object CthulhuWarsOnline {
                             val latest = jsonlFiles.maxBy(_.lastModified)
                             import scala.sys.process._
                             val out = new StringBuilder
-                            // Tail last 200 lines or 50KB, whichever is smaller
-                            Process(Seq("tail", "-n", "200", latest.getAbsolutePath))
+                            // Read last 50KB directly (not "200 lines" which can be massive)
+                            Process(Seq("tail", "-c", "51200", latest.getAbsolutePath))
                                 .!(ProcessLogger(line => out.append(line + "\n")))
                             val content = out.toString
-                            val truncated = if (content.length > 51200) content.takeRight(51200) else content
-                            val escaped = truncated.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
+                            val escaped = content.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
                             complete(HttpEntity(ContentTypes.`application/json`,
                                 s"""{"status":"running","output":"$escaped"}"""))
                         }

@@ -363,12 +363,40 @@
     cursor: move;
     border-left: 3px solid var(--accent);
     padding-left: 15px;
+    touch-action: none;
   }
   .nav-drawer a.dragging {
     opacity: 0.4;
   }
   .nav-drawer a.drag-over {
     border-top: 2px solid var(--accent);
+  }
+  /* Resizable column handles */
+  .resize-handle {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    cursor: col-resize;
+    user-select: none;
+    touch-action: none; /* Prevent default touch behaviors */
+  }
+  .resize-handle:hover {
+    background: rgba(0, 100, 255, 0.3);
+  }
+  /* Mobile: make handles wider and always visible for easier touch */
+  @media (max-width: 719px) {
+    .resize-handle {
+      width: 10px;
+      background: rgba(0, 100, 255, 0.15);
+    }
+    .resize-handle:active {
+      background: rgba(0, 100, 255, 0.5);
+    }
+  }
+  th[data-col] {
+    user-select: none;
   }
 </style>
 </head>
@@ -713,18 +741,20 @@
         style="width:100%;max-width:400px;padding:8px 10px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:10pt;" />
     </div>
     <div style="overflow-x:auto;">
-      <table id="claudelog-table" style="border-collapse:collapse;width:100%;min-width:640px;font-size:10pt;">
+      <table id="claudelog-table" style="border-collapse:collapse;width:100%;font-size:10pt;table-layout:fixed;">
         <thead><tr>
-          <th style="border:1px solid #000;padding:6px;text-align:left;width:40px;">#</th>
-          <th style="border:1px solid #000;padding:6px;text-align:left;width:110px;">Date / time</th>
-          <th style="border:1px solid #000;padding:6px;text-align:left;width:95px;">Type</th>
-          <th style="border:1px solid #000;padding:6px;text-align:left;width:90px;">User</th>
-          <th style="border:1px solid #000;padding:6px;text-align:left;width:120px;">Design Object</th>
-          <th style="border:1px solid #000;padding:6px;text-align:left;">Prompt</th>
-          <th style="border:1px solid #000;padding:6px;text-align:left;">What Claude did</th>
-          <th style="border:1px solid #000;padding:6px;text-align:left;width:70px;">Est. cost</th>
+          <th style="border:1px solid #000;padding:6px;text-align:left;width:40px;position:relative;" data-col="0"># <span class="resize-handle"></span></th>
+          <th style="border:1px solid #000;padding:6px;text-align:left;width:110px;position:relative;" data-col="1">Date / time <span class="resize-handle"></span></th>
+          <th style="border:1px solid #000;padding:6px;text-align:left;width:95px;position:relative;" data-col="2">Type <span class="resize-handle"></span></th>
+          <th style="border:1px solid #000;padding:6px;text-align:left;width:90px;position:relative;" data-col="3">User <span class="resize-handle"></span></th>
+          <th style="border:1px solid #000;padding:6px;text-align:left;width:120px;position:relative;" data-col="4">Design Object <span class="resize-handle"></span></th>
+          <th style="border:1px solid #000;padding:6px;text-align:left;width:85px;position:relative;" data-col="5">Status <span class="resize-handle"></span></th>
+          <th style="border:1px solid #000;padding:6px;text-align:left;width:250px;position:relative;" data-col="6">Prompt <span class="resize-handle"></span></th>
+          <th style="border:1px solid #000;padding:6px;text-align:left;width:2000px;word-wrap:break-word;overflow-wrap:break-word;position:relative;" data-col="7">What Claude did <span class="resize-handle"></span></th>
+          <th style="border:1px solid #000;padding:6px;text-align:left;width:50px;position:relative;" data-col="8">Est. cost <span class="resize-handle"></span></th>
+          <th style="border:1px solid #000;padding:6px;text-align:left;width:90px;" data-col="9">Action</th>
         </tr></thead>
-        <tbody id="claudelog-body"><tr><td colspan="8" style="border:1px solid #000;padding:6px;">Loading…</td></tr></tbody>
+        <tbody id="claudelog-body"><tr><td colspan="10" style="border:1px solid #000;padding:6px;">Loading…</td></tr></tbody>
       </table>
       <p style="color:var(--text-muted);font-size:9pt;margin-top:8px;">
         Est. cost = what the Claude run reported for that task, including its helpers. Older designer requests are estimated from the extract checker's run logs. A designer request run by a console task is counted once, on that console row (see its note).
@@ -1110,6 +1140,17 @@ function loadPastRun(name) {
 let CLAUDE_POLL_TIMER = null;
 let AGENT_OUTPUT_POLL_TIMER = null;
 
+// Adaptive polling: slow down when idle, speed up when activity detected
+let LAST_CLAUDE_OUTPUT = '';
+let LAST_CLAUDE_QUEUE = '';
+let LAST_AGENT_OUTPUT = '';
+let CONSECUTIVE_NO_CHANGES = 0;
+let CURRENT_CLAUDE_INTERVAL = 30000;  // Start at 30s
+let CURRENT_AGENT_INTERVAL = 20000;    // Start at 20s
+const MIN_POLL_INTERVAL = 10000;       // Minimum 10s when active
+const MAX_POLL_INTERVAL = 120000;      // Maximum 2min when idle
+const IDLE_THRESHOLD = 5;              // After 5 unchanged polls, consider idle
+
 // Image upload badge and data storage
 let CLAUDE_PROMPT_IMAGE_DATA = null;
 let META_AGENT_IMAGE_DATA = null;
@@ -1208,6 +1249,12 @@ function refreshClaudeOutput() {
       // Keep auto-scroll only if the user was already at the bottom; if they
       // scrolled up to read older context, don't yank them to the new tail.
       if (wasAtBottom) el.scrollTop = el.scrollHeight;
+
+      // Detect changes for adaptive polling
+      if (t !== LAST_CLAUDE_OUTPUT) {
+        LAST_CLAUDE_OUTPUT = t;
+        onPollingActivity();
+      }
     })
     .catch(() => {});
 }
@@ -1221,6 +1268,12 @@ function refreshClaudeQueue() {
       const wasAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 20;
       el.textContent = t || '(queue empty — Claude has caught up)';
       if (wasAtBottom) el.scrollTop = el.scrollHeight;
+
+      // Detect changes for adaptive polling
+      if (t !== LAST_CLAUDE_QUEUE) {
+        LAST_CLAUDE_QUEUE = t;
+        onPollingActivity();
+      }
     })
     .catch(() => {});
 }
@@ -1235,7 +1288,7 @@ function submitMetaAgentPrompt() {
   if (META_AGENT_IMAGE_DATA) {
     body += `\n\n[IMAGE ATTACHED: ${META_AGENT_IMAGE_DATA.name}]\n${META_AGENT_IMAGE_DATA.data}`;
   }
-  fetch(`${SERVER}/admin/${TOKEN}/meta-agent-prompt`, {
+  fetch(`${SERVER}/designer/api/admin/${TOKEN}/meta-agent-prompt`, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain' },
     body: body,
@@ -1257,7 +1310,7 @@ function submitMetaAgentPrompt() {
 }
 
 function refreshMetaAgentOutput() {
-  fetch(`${SERVER}/admin/${TOKEN}/meta-agent-output?lines=500`)
+  fetch(`${SERVER}/designer/api/admin/${TOKEN}/meta-agent-output?lines=500`)
     .then(r => r.text())
     .then(t => {
       const el = document.getElementById('meta-agent-output');
@@ -1306,6 +1359,12 @@ function refreshAgentOutput() {
       if (!container) return;
       const wasAtBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 20;
 
+      const currentOutput = JSON.stringify(data);
+      if (currentOutput !== LAST_AGENT_OUTPUT) {
+        LAST_AGENT_OUTPUT = currentOutput;
+        onPollingActivity();
+      }
+
       if (data.running) {
         const output = data.output || '(empty)';
         const requestId = data.requestId ? ` [${data.requestId}]` : '';
@@ -1324,20 +1383,65 @@ function refreshAgentOutput() {
     });
 }
 
+// Called when any polling detects a change - resets to fast polling
+function onPollingActivity() {
+  CONSECUTIVE_NO_CHANGES = 0;
+  if (CURRENT_CLAUDE_INTERVAL > MIN_POLL_INTERVAL || CURRENT_AGENT_INTERVAL > MIN_POLL_INTERVAL) {
+    // Activity detected while in slow mode - restart polling at fast intervals
+    CURRENT_CLAUDE_INTERVAL = MIN_POLL_INTERVAL;
+    CURRENT_AGENT_INTERVAL = MIN_POLL_INTERVAL;
+    restartPolling();
+  }
+}
+
+// Called on each poll cycle - slows down if no changes detected
+function onPollingCycle() {
+  CONSECUTIVE_NO_CHANGES++;
+  if (CONSECUTIVE_NO_CHANGES >= IDLE_THRESHOLD) {
+    // Idle detected - double the interval (up to max)
+    const newClaudeInterval = Math.min(CURRENT_CLAUDE_INTERVAL * 2, MAX_POLL_INTERVAL);
+    const newAgentInterval = Math.min(CURRENT_AGENT_INTERVAL * 2, MAX_POLL_INTERVAL);
+    if (newClaudeInterval !== CURRENT_CLAUDE_INTERVAL || newAgentInterval !== CURRENT_AGENT_INTERVAL) {
+      CURRENT_CLAUDE_INTERVAL = newClaudeInterval;
+      CURRENT_AGENT_INTERVAL = newAgentInterval;
+      CONSECUTIVE_NO_CHANGES = 0; // Reset so we don't immediately slow down again
+      restartPolling();
+    }
+  }
+}
+
+function restartPolling() {
+  // Stop existing timers
+  if (CLAUDE_POLL_TIMER) {
+    clearInterval(CLAUDE_POLL_TIMER);
+    CLAUDE_POLL_TIMER = null;
+  }
+  if (AGENT_OUTPUT_POLL_TIMER) {
+    clearInterval(AGENT_OUTPUT_POLL_TIMER);
+    AGENT_OUTPUT_POLL_TIMER = null;
+  }
+  // Restart with new intervals
+  startClaudePolling();
+}
+
 function startClaudePolling() {
   if (CLAUDE_POLL_TIMER) return;
+  // Initial refresh
   refreshClaudeOutput();
   refreshClaudeQueue();
   refreshAgentOutput();
+
+  // Set up polling with current intervals
   CLAUDE_POLL_TIMER = setInterval(() => {
     refreshClaudeOutput();
     refreshClaudeQueue();
-  }, 4000);
-  // Poll agent output every 2.5 seconds (faster than the main log)
+    onPollingCycle();
+  }, CURRENT_CLAUDE_INTERVAL);
+
   if (!AGENT_OUTPUT_POLL_TIMER) {
     AGENT_OUTPUT_POLL_TIMER = setInterval(() => {
       refreshAgentOutput();
-    }, 2500);
+    }, CURRENT_AGENT_INTERVAL);
   }
 }
 
@@ -1399,6 +1503,10 @@ function signIn() {
       // Load default tab and update indicators
       loadDefaultTab();
       updateDefaultTabIndicators();
+      // Menu order needs SERVER/TOKEN, which only exist after a successful
+      // sign-in — this is also what makes the saved order sync across
+      // devices logged in with the same token.
+      loadMenuOrder();
       // Make the server URL in the header a clickable link that opens a new
       // game lobby in a fresh tab. Was previously plain text.
       const ind = document.getElementById('server-indicator');
@@ -2507,23 +2615,18 @@ function refreshDetail() {
       <pre id="console-errors-feed" class="sim-tail" style="height:18vh;max-height:24vh;">loading…</pre>
     </div>
 
-    <h3>Submit broken game to Claude</h3>
-    <p style="color:#888;font-size:9pt;">Type an error description (optional). The auto-captured browser console errors above (if any) are folded into the submission automatically; an extra textarea below is available for anything DevTools shows that didn't get auto-captured. Claude picks it up on the next ticker tick and posts a fix response.</p>
+    <h3>Report bug</h3>
+    <p style="color:#888;font-size:9pt;">Describe the error and optionally attach a screenshot. The auto-captured browser console errors are automatically included in the submission. Claude picks it up on the next ticker tick.</p>
     <div class="notes-box">
       <textarea id="error-description" rows="3" placeholder="Error description (optional)…"></textarea>
     </div>
-    <div class="notes-box" style="margin-top:6px;">
-      <textarea id="console-output" rows="3" placeholder="Extra console output (optional — auto-captured errors above are already included)…"></textarea>
-    </div>
-    <div style="display:flex;align-items:center;gap:8px;margin:8px 0;">
+    <div style="display:flex;align-items:center;gap:8px;margin:12px 0 8px;">
       <input type="file" id="bug-report-image" accept="image/*" onchange="updateBugReportImageBadge()" />
       <button class="file-input-btn" onclick="document.getElementById('bug-report-image').click()">Image</button>
       <span id="bug-report-image-badge"></span>
-    </div>
-    <p style="margin:6px 0;">
-      <button class="primary" onclick="submitGameToTerminal()">Submit to terminal</button>
+      <button class="primary" style="margin-left:auto;" onclick="submitGameToTerminal()">Submit to terminal</button>
       <span id="submit-terminal-status" style="font-size:9pt;color:var(--text-muted);margin-left:8px;"></span>
-    </p>
+    </div>
 
     <h3>Fix response
       <button class="small" style="margin-left:8px;" onclick="refreshFixResponse()">Refresh</button>
@@ -3872,12 +3975,20 @@ function loadClaudeLog() {
     .then(data => { CLAUDE_LOG = data.entries || []; renderClaudeLog(); })
     .catch(err => {
       document.getElementById('claudelog-body').innerHTML =
-        `<tr><td colspan="7" style="border:1px solid #000;padding:6px;" class="err">Failed to load the log: ${esc(String(err))}</td></tr>`;
+        `<tr><td colspan="10" style="border:1px solid #000;padding:6px;" class="err">Failed to load the log: ${esc(String(err))}</td></tr>`;
     });
 }
 function renderClaudeLog() {
   const q = (document.getElementById('claudelog-search')?.value || '').trim().toLowerCase();
-  const rows = CLAUDE_LOG.filter(e => !q || [e.n, e.type, e.user, e.designObject, e.prompt, e.summary, e.cost, e.costNote].join(' ').toLowerCase().includes(q));
+  // defaultSummary = placeholder still waiting on an agent -> "pending". Safety net: a row whose text
+  // is the server's own final-state wording ("Done." / "Cancelled.") is finished even if the flag stuck.
+  const status = e => {
+    const s = (e.summary || '').trim();
+    if (e.defaultSummary) return s === 'Done.' ? 'completed' : (s === 'Cancelled.' ? 'cancelled' : 'pending');
+    if (s === 'Cancelled.') return 'cancelled';
+    return s.toUpperCase() === 'FAILED' ? 'failed' : 'completed';
+  };
+  const rows = CLAUDE_LOG.filter(e => !q || [e.n, e.type, e.user, e.designObject, status(e), e.prompt, e.summary, e.cost, e.costNote].join(' ').toLowerCase().includes(q));
   const td = 'border:1px solid #000;padding:6px;vertical-align:top;';
   // Long prompts/summaries scroll inside their cell so a row stays readable on a phone
   const box = 'max-height:12em;overflow-y:auto;white-space:pre-wrap;word-break:break-word;';
@@ -3896,17 +4007,222 @@ function renderClaudeLog() {
     }
     return str;
   };
-  document.getElementById('claudelog-body').innerHTML = rows.length ? rows.map(e => `<tr>
+  document.getElementById('claudelog-body').innerHTML = rows.length ? rows.map((e, idx) => `<tr>
       <td style="${td}text-align:right;">${e.n || ''}</td>
       <td style="${td}white-space:nowrap;">${when(e.at)}</td>
       <td style="${td}">${esc(e.type || '')}</td>
       <td style="${td}">${esc(e.user || '')}</td>
       <td style="${td}white-space:nowrap;">${esc(e.designObject || '')}</td>
+      <td style="${td}white-space:nowrap;">${status(e)}</td>
       <td style="${td}"><div style="${box}">${esc(e.prompt || '')}</div></td>
       <td style="${td}"><div style="${box}">${esc(e.summary || '')}</div></td>
       <td style="${td}text-align:right;">${costCell(e.cost, e.costNote)}</td>
-    </tr>`).join('') : `<tr><td colspan="8" style="${td}">No prompts logged yet.</td></tr>`;
+      <td style="${td}text-align:center;"><button class="small" onclick="retryClaudeLogEntry(${idx})">Try again</button></td>
+    </tr>`).join('') : `<tr><td colspan="10" style="${td}">No prompts logged yet.</td></tr>`;
 }
+
+function retryClaudeLogEntry(idx) {
+  // Get the entry from the filtered rows
+  const q = (document.getElementById('claudelog-search')?.value || '').trim().toLowerCase();
+  const status = e => {
+    const s = (e.summary || '').trim();
+    if (e.defaultSummary) return s === 'Done.' ? 'completed' : (s === 'Cancelled.' ? 'cancelled' : 'pending');
+    if (s === 'Cancelled.') return 'cancelled';
+    return s.toUpperCase() === 'FAILED' ? 'failed' : 'completed';
+  };
+  const rows = CLAUDE_LOG.filter(e => !q || [e.n, e.type, e.user, e.designObject, status(e), e.prompt, e.summary, e.cost, e.costNote].join(' ').toLowerCase().includes(q));
+
+  const entry = rows[idx];
+  if (!entry || !entry.n || !entry.prompt) {
+    alert('Cannot retry: missing entry information');
+    return;
+  }
+
+  const entryNumber = entry.n;
+  const entryId = entry.id || '';
+  const originalPrompt = entry.prompt;
+
+  // Detect if this is already a retry and extract attempt number
+  const attemptMatch = originalPrompt.match(/Re: Entry #\d+ \(attempt (\d+)\)/);
+  const attemptNum = attemptMatch ? parseInt(attemptMatch[1]) + 1 : 2;  // First retry = attempt 2
+
+  // Build retry prompt referencing the original entry
+  const retryPrompt = `Re: Entry #${entryNumber} (attempt ${attemptNum})
+
+The previous attempt either didn't finish or the fix didn't work. Review entry #${entryNumber}, then:
+
+1. If the task wasn't completed: finish it following all validation steps
+2. If the fix didn't work: try again and actually validate the fix properly
+
+CRITICAL BUG FIX VALIDATION STEPS (from Faction Build Manual):
+- If you have a game name, run a trace first (don't analyze code blind)
+- Reload the online game in a local test bed so you can rollback and test
+- Open the game in a browser and see what the player sees (use puppeteer)
+- Check the browser dev console for JavaScript errors
+- Check the Faction Build Manual for similar bugs and fixes
+- For visual bugs: take BEFORE and AFTER screenshots, read them both, include paths in summary
+- For designer submissions: update BOTH terminal log summary AND request status
+
+Original task:
+${originalPrompt}`;
+
+  // Submit the retry prompt
+  fetch(`${SERVER}/admin/${TOKEN}/claude-prompt`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: retryPrompt,
+  }).then(r => {
+    if (!r.ok) {
+      alert(`Failed to submit retry (HTTP ${r.status})`);
+      return;
+    }
+    alert(`Retry queued for entry #${entryNumber}. Claude will pick it up on the next tick.`);
+    // Refresh the log to show the new entry
+    loadClaudeLog();
+  }).catch(e => {
+    alert(`Network error: ${e.message || e}`);
+  });
+}
+
+// Claude Terminal Log: Resizable columns with persistence by device type
+function getDeviceType() {
+  return window.innerWidth >= 720 ? 'desktop' : 'mobile';
+}
+
+function getStorageKey() {
+  return 'claudelog-col-widths-' + getDeviceType();
+}
+
+function saveColumnWidths() {
+  const table = document.getElementById('claudelog-table');
+  if (!table) return;
+  const headers = table.querySelectorAll('th[data-col]');
+  const widths = {};
+  headers.forEach(th => {
+    const col = th.dataset.col;
+    widths[col] = th.style.width || th.offsetWidth + 'px';
+  });
+  localStorage.setItem(getStorageKey(), JSON.stringify(widths));
+}
+
+function loadColumnWidths() {
+  const stored = localStorage.getItem(getStorageKey());
+  const table = document.getElementById('claudelog-table');
+  if (!table) return;
+
+  try {
+    const widths = stored ? JSON.parse(stored) : {};
+    const headers = table.querySelectorAll('th[data-col]');
+    const isMobile = window.innerWidth < 720;
+
+    headers.forEach(th => {
+      const col = th.dataset.col;
+      if (widths[col]) {
+        // Use saved width
+        th.style.width = widths[col];
+      } else if (isMobile && col === '7') {
+        // Default "What Claude did" to 500px on mobile if no saved width
+        th.style.width = '500px';
+      }
+    });
+  } catch (e) {
+    console.error('Failed to load column widths:', e);
+  }
+}
+
+function initColumnResize() {
+  const table = document.getElementById('claudelog-table');
+  if (!table) return;
+
+  let resizing = null;
+  let startX = 0;
+  let startWidth = 0;
+
+  function startResize(pageX, th) {
+    resizing = th;
+    startX = pageX;
+    startWidth = th.offsetWidth;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  }
+
+  function doResize(pageX) {
+    if (!resizing) return;
+    const diff = pageX - startX;
+    const newWidth = Math.max(30, startWidth + diff);
+    resizing.style.width = newWidth + 'px';
+  }
+
+  function endResize() {
+    if (resizing) {
+      saveColumnWidths();
+      resizing = null;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    }
+  }
+
+  table.querySelectorAll('.resize-handle').forEach(handle => {
+    // Mouse events
+    handle.addEventListener('mousedown', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const th = handle.closest('th');
+      startResize(e.pageX, th);
+    });
+
+    // Touch events for mobile
+    handle.addEventListener('touchstart', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const th = handle.closest('th');
+      startResize(e.touches[0].pageX, th);
+    });
+  });
+
+  // Mouse move
+  document.addEventListener('mousemove', e => {
+    if (!resizing) return;
+    doResize(e.pageX);
+  });
+
+  // Touch move for mobile
+  document.addEventListener('touchmove', e => {
+    if (!resizing) return;
+    e.preventDefault(); // Prevent page scroll while resizing
+    doResize(e.touches[0].pageX);
+  }, { passive: false }); // passive: false allows preventDefault
+
+  // Mouse up
+  document.addEventListener('mouseup', endResize);
+
+  // Touch end for mobile
+  document.addEventListener('touchend', endResize);
+  document.addEventListener('touchcancel', endResize);
+
+  // Load saved widths on init
+  loadColumnWidths();
+}
+
+// Reinitialize column resize when terminal log loads
+const originalLoadClaudeLog = window.loadClaudeLog;
+window.loadClaudeLog = function() {
+  if (originalLoadClaudeLog) originalLoadClaudeLog();
+  setTimeout(initColumnResize, 100);
+};
+
+// Initialize on page load
+setTimeout(initColumnResize, 500);
+
+// Re-save widths if device orientation changes (mobile rotation)
+let lastDeviceType = getDeviceType();
+window.addEventListener('resize', () => {
+  const currentType = getDeviceType();
+  if (currentType !== lastDeviceType) {
+    lastDeviceType = currentType;
+    loadColumnWidths();
+  }
+});
 
 function loadDesignerData() {
   if (!SERVER || !TOKEN) return;
@@ -4451,6 +4767,12 @@ function enableMenuDragging() {
     link.addEventListener('dragover', handleDragOver);
     link.addEventListener('drop', handleDrop);
     link.addEventListener('dragend', handleDragEnd);
+    // HTML5 drag-and-drop (above) is mouse-only — iOS/Android don't fire
+    // dragstart/dragover/drop from touch, so reordering needs its own
+    // touch-event path.
+    link.addEventListener('touchstart', handleTouchStart, {passive: true});
+    link.addEventListener('touchmove', handleTouchMove, {passive: false});
+    link.addEventListener('touchend', handleTouchEnd);
   });
 }
 
@@ -4462,6 +4784,9 @@ function disableMenuDragging() {
     link.removeEventListener('dragover', handleDragOver);
     link.removeEventListener('drop', handleDrop);
     link.removeEventListener('dragend', handleDragEnd);
+    link.removeEventListener('touchstart', handleTouchStart);
+    link.removeEventListener('touchmove', handleTouchMove);
+    link.removeEventListener('touchend', handleTouchEnd);
   });
 }
 
@@ -4491,18 +4816,7 @@ function handleDrop(e) {
 
   const target = e.target.closest('a:not(.section)');
   if (target && draggedElement && draggedElement !== target) {
-    const drawer = document.getElementById('nav-drawer');
-    const allLinks = Array.from(drawer.querySelectorAll('a:not(.section)'));
-    const draggedIndex = allLinks.indexOf(draggedElement);
-    const targetIndex = allLinks.indexOf(target);
-
-    if (draggedIndex < targetIndex) {
-      target.parentNode.insertBefore(draggedElement, target.nextSibling);
-    } else {
-      target.parentNode.insertBefore(draggedElement, target);
-    }
-
-    saveMenuOrder();
+    reorderMenuLink(draggedElement, target);
   }
 
   return false;
@@ -4513,20 +4827,101 @@ function handleDragEnd(e) {
   document.querySelectorAll('#nav-drawer a').forEach(a => a.classList.remove('drag-over'));
 }
 
+function reorderMenuLink(dragged, target) {
+  const drawer = document.getElementById('nav-drawer');
+  const allLinks = Array.from(drawer.querySelectorAll('a:not(.section)'));
+  const draggedIndex = allLinks.indexOf(dragged);
+  const targetIndex = allLinks.indexOf(target);
+
+  if (draggedIndex < targetIndex) {
+    target.parentNode.insertBefore(dragged, target.nextSibling);
+  } else {
+    target.parentNode.insertBefore(dragged, target);
+  }
+
+  saveMenuOrder();
+}
+
+// Touch equivalent of the dragstart/dragover/drop/dragend quartet above.
+// A tap that never moves past the threshold falls through as a normal
+// click (nothing here calls preventDefault), so links still navigate when
+// not in reorder mode's drag gesture.
+const TOUCH_DRAG_THRESHOLD = 10;
+let touchStartX = 0;
+let touchStartY = 0;
+let touchDragging = false;
+
+function handleTouchStart(e) {
+  draggedElement = this;
+  const t = e.touches[0];
+  touchStartX = t.clientX;
+  touchStartY = t.clientY;
+  touchDragging = false;
+}
+
+function handleTouchMove(e) {
+  if (!draggedElement) return;
+  const t = e.touches[0];
+  const dx = t.clientX - touchStartX;
+  const dy = t.clientY - touchStartY;
+
+  if (!touchDragging) {
+    if (Math.abs(dx) < TOUCH_DRAG_THRESHOLD && Math.abs(dy) < TOUCH_DRAG_THRESHOLD) return;
+    touchDragging = true;
+    draggedElement.classList.add('dragging');
+  }
+
+  // Drag is live — stop the page/drawer scrolling underneath the finger.
+  e.preventDefault();
+
+  const el = document.elementFromPoint(t.clientX, t.clientY);
+  const target = el && el.closest('#nav-drawer a:not(.section)');
+  document.querySelectorAll('#nav-drawer a').forEach(a => a.classList.remove('drag-over'));
+  if (target && target !== draggedElement) {
+    target.classList.add('drag-over');
+  }
+}
+
+function handleTouchEnd(e) {
+  if (!draggedElement) return;
+
+  if (touchDragging) {
+    const t = e.changedTouches[0];
+    const el = document.elementFromPoint(t.clientX, t.clientY);
+    const target = el && el.closest('#nav-drawer a:not(.section)');
+    if (target && target !== draggedElement) {
+      reorderMenuLink(draggedElement, target);
+    }
+    // Suppress the synthetic click this touchend would otherwise fire
+    // (which would navigate and close the drawer mid-reorder).
+    e.preventDefault();
+  }
+
+  draggedElement.classList.remove('dragging');
+  document.querySelectorAll('#nav-drawer a').forEach(a => a.classList.remove('drag-over'));
+  draggedElement = null;
+  touchDragging = false;
+}
+
 function saveMenuOrder() {
   const menuLinks = document.querySelectorAll('#nav-drawer a:not(.section)');
   const order = Array.from(menuLinks).map(link => link.getAttribute('data-section'));
+  // Local copy for instant reload on this device; the POST below is what
+  // makes the order show up on other devices logged in with the same token.
   localStorage.setItem('cw_admin_menu_order', JSON.stringify(order));
+
+  fetch(`${SERVER}/designer/api/admin/${TOKEN}/settings`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({menuOrder: order})
+  }).catch(e => console.error('Failed to save menu order to server:', e));
 }
 
-function loadMenuOrder() {
-  const savedOrder = localStorage.getItem('cw_admin_menu_order');
-  if (!savedOrder) return;
+function applyMenuOrder(order) {
+  if (!order || !order.length) return;
 
   try {
-    const order = JSON.parse(savedOrder);
     const drawer = document.getElementById('nav-drawer');
-    const sectionHeader = drawer.querySelector('a.section');
     const menuLinks = Array.from(drawer.querySelectorAll('a:not(.section)'));
 
     // Create a map of section -> link element
@@ -4551,14 +4946,30 @@ function loadMenuOrder() {
       }
     });
   } catch (e) {
-    console.error('Failed to load menu order:', e);
+    console.error('Failed to apply menu order:', e);
   }
 }
 
-// Initialize menu order and default tab on page load
-window.addEventListener('DOMContentLoaded', () => {
-  loadMenuOrder();
-});
+function loadMenuOrder() {
+  // Apply the local cache immediately so there's no layout flash, then
+  // reconcile with the server's copy (shared across every device signed
+  // in with this admin token) once it arrives.
+  try {
+    const cached = localStorage.getItem('cw_admin_menu_order');
+    if (cached) applyMenuOrder(JSON.parse(cached));
+  } catch (e) { /* ignore malformed local cache */ }
+
+  fetch(`${SERVER}/designer/api/admin/${TOKEN}/settings`)
+    .then(r => r.ok ? r.json() : null)
+    .then(settings => {
+      if (settings && settings.menuOrder) {
+        localStorage.setItem('cw_admin_menu_order', JSON.stringify(settings.menuOrder));
+        applyMenuOrder(settings.menuOrder);
+      }
+    })
+    .catch(e => console.error('Failed to load menu order from server:', e));
+}
+
 
 </script>
 

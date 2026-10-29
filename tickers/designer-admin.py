@@ -480,6 +480,13 @@ def main():
         if len(args) == 3:
             body['version'] = args[2]
         print(json.dumps(api(f'factions/{args[0]}/build-status', body)))
+        if args[1] == 'built':
+            # Every built faction gets its fixed numbers in solo/faction-values/<acr>.json
+            # (Simple Update / faction-values.py sync depend on it). Report-only: never fails the status call.
+            gen = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'scripts', 'generate-faction-values.py')
+            print('==> generate-faction-values.py ' + args[0])
+            subprocess.run(['/usr/bin/python3', gen, args[0]], check=False)
+            print('==> commit solo/faction-values + FactionValues.scala; any UNWIRED key above must be wired into the Scala (<ACR>Values.<key>)')
     elif cmd == 'unit-build-status' and len(args) in (2, 3):
         body = {'status': args[1]}
         if len(args) == 3:

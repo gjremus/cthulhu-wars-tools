@@ -9,1892 +9,1491 @@
     "Defilers Court",
     "Faceless Blight",
     "Firstborn",
+    "Fleshmason",
     "Great Cthulhu",
-    "Library at Celaeno",
-    "Mecha Cthulhu",
-    "Neutral",
-    "Neutral Cultists",
-    "Neutral Monsters",
+    "Neutral Cultist",
+    "Neutral Monster",
+    "Neutral Terror",
     "Opener of the Way",
+    "Permeation",
     "Sleeper",
     "Tcho-Tcho",
     "The Burrowers Beneath",
     "The Invasion",
     "Tombstalker",
+    "Tribulation",
     "Windwalker",
     "Xyrious Storm",
     "Yellow Sign",
-    "iGOOs/iEGs"
+    "iEG",
+    "iGOO"
+  ],
+  "categories": [
+    "Abhoth",
+    "Asteroid Cat",
+    "Atlach-Nacha",
+    "Azathoth",
+    "Bokrug",
+    "Brown Jenkin",
+    "Byatis",
+    "Cat from Mercury",
+    "Cat from Neptune",
+    "Cat from Venus",
+    "Cthugha",
+    "Daoloth",
+    "Dhole",
+    "Dimensional Shambler",
+    "Dire Yog-Sothoth",
+    "Elder Shoggoth",
+    "Elder Thing",
+    "Faction Region",
+    "Father Dagon",
+    "Ghast",
+    "Ghatanothoa",
+    "Giant Blind Albino Penguins",
+    "Gla'aki",
+    "Gnorri",
+    "Great Race of Yith",
+    "Gug",
+    "Hagarg Ryonis",
+    "Hellmother",
+    "High Priest",
+    "Hound of Tindalos",
+    "Insects from Shaggai",
+    "Junior Whateley",
+    "Lavinia Whateley",
+    "Leng Spider",
+    "Moonbeast",
+    "Mother Hydra",
+    "Nodens",
+    "Nyogtha",
+    "Quachil Uttaus",
+    "Satyr",
+    "Servitor of the Outer Gods",
+    "Shantak",
+    "Spellbook",
+    "Star Vampire",
+    "Sun God",
+    "The Bloated Woman",
+    "The Shadow Pharaoh",
+    "Thunder King",
+    "Tulzscha",
+    "Voonith",
+    "Wilbur Whateley",
+    "Wizard Whateley",
+    "Y'Golonac",
+    "Yig"
   ],
   "abilities": [
     {
       "faction": "Ancients",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Brainless",
-      "type": "Ongoing",
-      "text": ""
+      "text": "Reanimated now cost 1 Power to Summon. They may only Move, Capture, or declare Battle if they share an Area with one or more of your non-Reanimated Units."
     },
     {
       "faction": "Ancients",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Consecration",
-      "type": "Doom Phase",
-      "text": ""
+      "text": "When you perform a Ritual of Annihilation, gain 1 Elder Sign if at least one Cathedral is in play. If all four Cathedrals are in play, gain 2 Elder Signs instead."
     },
     {
       "faction": "Ancients",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Crusade",
-      "type": "Ongoing",
-      "text": ""
+      "text": "Declaring Battle against a player with equal or more Power than you costs 0 (zero) Power."
     },
     {
       "faction": "Ancients",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Extinction",
-      "type": "Ongoing",
-      "text": ""
+      "text": "Yothans now cost 3 Power to Summon. When a Yothan is Killed or Eliminated, remove it permanently from the game."
     },
     {
       "faction": "Ancients",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Festival",
-      "type": "Ongoing",
-      "text": ""
+      "text": "Un-Men now cost 0 Power to Summon. When you Summon an Un-Man, also select an enemy to gain 1 Power."
     },
     {
       "faction": "Ancients",
-      "unit": "N/A",
-      "name": "Holy Ground",
-      "type": "Ongoing",
-      "text": ""
+      "category": "Spellbook",
+      "name": "HolyGround",
+      "text": "Only In the Action Phase, your Cathedrals now count as 3 Cost Great Old One Units with 0 Combat. They cannot be assigned a Pain, Moved or Retreated but can be Killed like any other Unit."
     },
     {
       "faction": "Ancients",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Sanguinessence",
-      "type": "Ongoing",
-      "text": ""
+      "text": "Any time you Kill 1 or more enemy Units in or adjacent to an Area with a Cathedral, gain 1 Doom. If you Killed any Great Old Ones in this manner, Gain an Elder Sign instead (ONLY the Elder Sign \u2014 no Doom is gained when the Elder Sign triggers)."
     },
     {
       "faction": "Ancients",
-      "unit": "N/A",
-      "name": "Unholy Ground",
-      "type": "Post-Battle",
-      "text": ""
+      "category": "Spellbook",
+      "name": "UnholyGround",
+      "text": "If there is a Cathedral in the Battle Area, you may choose to remove a Cathedral from anywhere. If you do, an enemy Great Old One in the Battle must be eliminated by its owner."
     },
     {
       "faction": "Ancients",
-      "unit": "N/A",
-      "name": "Worship Services",
-      "type": "Gather Power Phase",
-      "text": ""
-    },
-    {
-      "faction": "Ancients",
-      "unit": "N/A",
-      "name": "Dematerialization",
-      "type": "Doom Phase",
-      "text": ""
+      "category": "Spellbook",
+      "name": "WorshipServices",
+      "text": "Gain 1 Power for each Cathedral that shares an Area with an enemy Gate. Those enemies each gain 1 Power."
     },
     {
       "faction": "Black Goat",
-      "unit": "N/A",
-      "name": "Blood Sacrifice",
-      "type": "Doom Phase",
-      "text": ""
+      "category": "Spellbook",
+      "name": "BloodSacrifice",
+      "text": "If Shub-Niggurath is in play during the Doom Phase, you can choose to Eliminate one of your Cultists (from anywhere on the map). If you do, gain 1 Elder Sign."
     },
     {
       "faction": "Black Goat",
-      "unit": "N/A",
-      "name": "Fertility Cult",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Black Goat",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Frenzy",
-      "type": "Ongoing",
-      "text": ""
+      "text": "Your Cultists now have 1 Combat."
     },
     {
       "faction": "Black Goat",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Ghroth",
-      "type": "Action",
-      "text": ""
+      "text": "Roll a die. If the roll is less than or equal to the number of Areas containing Fungi, your enemies must collectively Eliminate Cultists equal to the die roll. They have 1 minute to decide how to distribute these Eliminations. If time runs out, you choose for them. If the roll is greater than the number of Areas with Fungi, place 1 Acolyte from any Faction's pool anywhere on the map."
     },
     {
       "faction": "Black Goat",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Necrophagy",
-      "type": "Post-Battle",
-      "text": ""
+      "text": "Move any or all Ghouls (who did not partecipate in the Battle) from any Area to the Battle Area, even if your Faction was not involved in the Battle. For each Ghoul so moved, both sides in the Battle suffer an additional Pain result."
     },
     {
       "faction": "Black Goat",
-      "unit": "N/A",
-      "name": "The Red Sign",
-      "type": "Ongoing",
-      "text": ""
+      "category": "Spellbook",
+      "name": "RedSign",
+      "text": "Dark Young can Create and Control Gates. Each Dark Young adds 1 to Shub-Niggurath's Combat and each provides 1 Power during the Gather Power Phase. They do not act as Cultists with respect to any other purpose."
     },
     {
       "faction": "Black Goat",
-      "unit": "N/A",
-      "name": "The Thousand Young",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Black Goat",
-      "unit": "Shub-Niggurath",
-      "name": "Avatar",
-      "type": "Action",
-      "text": ""
+      "category": "Spellbook",
+      "name": "ThousandYoung",
+      "text": "If Shub-Niggurath is in play, Ghouls, Fungi, and Dark Young cost 1 fewer Power each to Summon."
     },
     {
       "faction": "Bubastis",
-      "unit": "N/A",
-      "name": "Ailurophobia",
-      "type": "Doom Phase",
-      "text": ""
-    },
-    {
-      "faction": "Bubastis",
-      "unit": "N/A",
-      "name": "Carnivore",
-      "type": "Post-Battle",
-      "text": ""
-    },
-    {
-      "faction": "Bubastis",
-      "unit": "N/A",
-      "name": "Catabolism",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Bubastis",
-      "unit": "N/A",
-      "name": "Catnapping",
-      "type": "Action",
-      "text": ""
-    },
-    {
-      "faction": "Bubastis",
-      "unit": "N/A",
-      "name": "Predator",
-      "type": "Post-Battle",
-      "text": ""
-    },
-    {
-      "faction": "Bubastis",
-      "unit": "N/A",
-      "name": "Requires Attention",
-      "type": "Doom Phase",
-      "text": ""
-    },
-    {
-      "faction": "Bubastis",
-      "unit": "N/A",
-      "name": "Savagery",
-      "type": "Pre-Battle",
-      "text": ""
-    },
-    {
-      "faction": "Bubastis",
-      "unit": "N/A",
-      "name": "Syzygy",
-      "type": "Doom Phase",
-      "text": ""
-    },
-    {
-      "faction": "Bubastis",
-      "unit": "N/A",
-      "name": "Zagazig",
-      "type": "Pre-Battle",
-      "text": ""
-    },
-    {
-      "faction": "Bubastis",
-      "unit": "Earth Cat",
-      "name": "Lunacy",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Bubastis",
-      "unit": "Moon",
+      "category": "Faction Region",
       "name": "Moon",
-      "type": "Ongoing",
-      "text": ""
+      "text": "The Moon is a normal LAND region. Every spellbook, unit power, GOO power, faction power, and IGOO power may target the Moon or resolve on it by default. The exceptions:\n\n1. MOVEMENT and move-like powers may NOT send a unit TO the Moon, and DO credit Bubastis. When a unit leaves the Moon, Bubastis is credited the Power spent by the faction that OWNS the unit (not the faction doing the moving). Free follow/carry moves still credit BB, but the amount is 0 (e.g. Arctic Wind, Undulate). Move-like powers use the word MOVE in the rules text.\n\n2. PAIN and pain-like powers may NOT send a unit TO the Moon, and provide NO credit to Bubastis.\n\n3. RELOCATION powers DO allow movement TO the Moon, and do NOT credit Bubastis.\n\n4. Any UNIT may be placed / summoned / recruited on the Moon (normal placement rules still apply \u2014 most non-BB summons need a Controlled Gate, impossible on the Moon; OW's They Break Through is the known exception). Only Bubastis (via Catnapping) may MOVE a non-BB unit to the Moon \u2014 and Catnapping does NOT apply to Filth (they are tokens).\n\n5. Tokens, markers, buildings, and gates may NOT be placed/created on the Moon."
+    },
+    {
+      "faction": "Bubastis",
+      "category": "Spellbook",
+      "name": "Ailurophobia",
+      "text": "Gain 1 Doom per Monster Cat Variety sharing any non-Moon Area with Unit(s) from enemy Factions."
+    },
+    {
+      "faction": "Bubastis",
+      "category": "Spellbook",
+      "name": "Carnivore",
+      "text": "Gain 1 Doom per enemy Monster Killed or Eliminated by You in Battle."
+    },
+    {
+      "faction": "Bubastis",
+      "category": "Spellbook",
+      "name": "Catabolism",
+      "text": "Placeholder"
+    },
+    {
+      "faction": "Bubastis",
+      "category": "Spellbook",
+      "name": "Catnapping",
+      "text": "Placeholder"
+    },
+    {
+      "faction": "Bubastis",
+      "category": "Spellbook",
+      "name": "Predator",
+      "text": "Placeholder"
+    },
+    {
+      "faction": "Bubastis",
+      "category": "Spellbook",
+      "name": "Requires Attention",
+      "text": "If Bastet is in an Area containing an enemy Cultist, you may perform a Ritual of Annihilation. For you, this adds exactly 4 Doom plus: if Bastet's Area has an Enemy-Controlled Gate, gain 1 Elder Sign; if Bastet's Area has an Enemy Great Old One, gain 2 Elder Sign. These rewards are additive."
+    },
+    {
+      "faction": "Bubastis",
+      "category": "Spellbook",
+      "name": "RequiresAttention",
+      "text": "If Bastet is in an Area containing an enemy Cultist, you may perform a Ritual of Annihilation. For you, this adds exactly 4 Doom plus: if Bastet's Area has an Enemy-Controlled Gate, gain 1 Elder Sign; if Bastet's Area has an Enemy Great Old One, gain 2 Elder Sign. These rewards are additive."
+    },
+    {
+      "faction": "Bubastis",
+      "category": "Spellbook",
+      "name": "Savagery",
+      "text": "Placeholder"
+    },
+    {
+      "faction": "Bubastis",
+      "category": "Spellbook",
+      "name": "Zagazig",
+      "text": "Placeholder"
     },
     {
       "faction": "Colour Out of Space",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Chromatic Perversion",
-      "type": "Ongoing",
-      "text": ""
+      "text": "Globules transform all standard gates in their regions to prismatic wells. Prismatic wells give ${CSValues.PrismaticWell_gatherPower} power during gather power, and may only summon excrescences. Any excrescence in a region with a controlled well is owned by the controller of that well."
     },
     {
       "faction": "Colour Out of Space",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Core Exposure",
-      "type": "Action",
-      "text": ""
+      "text": "Summon a globule in a region with a cultist and a meteorite. The meteorite is eliminated. A gate is not required. Globules can now only be moved (for free) alongside a cultist. They cannot be moved by any other means, and do not participate in combat."
     },
     {
       "faction": "Colour Out of Space",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Corrupted Rending",
-      "type": "Action",
-      "text": ""
+      "text": "Choose a region with a globule or meteorite and at least 2 factions. Initiate a battle between 2 factions. You choose attacking faction."
     },
     {
       "faction": "Colour Out of Space",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Cosmic Landfall",
-      "type": "Ongoing",
-      "text": ""
+      "text": "Any time a GOO is awakened for 4 power or more, place a meteorite for free in any empty region of your choice (a region with no units)."
     },
     {
       "faction": "Colour Out of Space",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Effulgent Sacrifice",
-      "type": "Action",
-      "text": ""
+      "text": "Any faction may take this action. In a region with a well controlled by a faction other than COoS, sacrifice your cultists in that region and eliminate the globule. Gain ${CSValues.EffulgentSacrifice_doom} doom. COoS gains an elder sign."
     },
     {
       "faction": "Colour Out of Space",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Insanity",
-      "type": "Post-Battle",
-      "text": ""
+      "text": "In areas with a meteorite or globule, extra, unapplied combat results are applied according to the following:\n- Results against you are applied to the attacking faction\n- Results in battles without you are applied to the rolling faction."
     },
     {
       "faction": "Colour Out of Space",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Spectral Collapse",
-      "type": "Post-Battle",
-      "text": ""
+      "text": "If 1 or more units are killed or eliminated in any region with a globule, you, or either battle faction, may choose to eliminate the globule. If it is eliminated, roll a combat die. You collect ${CSValues.SpectralCollapse_doomPerPain} doom for pains, ${CSValues.SpectralCollapse_esPerKill} ES for kills."
     },
     {
       "faction": "Colour Out of Space",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Vermiculite Hypertrophy",
-      "type": "Action",
-      "text": ""
+      "text": "You may summon an excrescence without a gate, by a cultist with a globule. Sacrifice that cultist. Effervescent Excrescences now have ${CSValues.VermiculiteHypertrophy_excrescenceCombat} combat and cannot be moved by any means. Any pain assigned to an excrescence is changed to a kill."
     },
     {
       "faction": "Crawling Chaos",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Abduct",
-      "type": "Pre-Battle",
-      "text": ""
+      "text": "Eliminate one or more Nightgaunts from the Battle. For each one Eliminated, your enemy must Eliminate one of his own Monsters or Cultists from the Battle."
     },
     {
       "faction": "Crawling Chaos",
-      "unit": "N/A",
-      "name": "Emissary of the Outer Gods",
-      "type": "Post-Battle",
-      "text": ""
+      "category": "Spellbook",
+      "name": "Emissary",
+      "text": "Unless an enemy Great Old One is involved in the Battle, a Kill applied to Nyarlathotep becomes a Pain. If Nyarlathotep cannot be Pained due to being surrounded, he is not Eliminated."
     },
     {
       "faction": "Crawling Chaos",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Invisibility",
-      "type": "Pre-Battle",
-      "text": ""
+      "text": "Select one Monster or Cultist (from either Faction) for each Flying Polyp present and \\\"exempt\\\" it. The selected Unit does not participate in the rest of the Battle."
     },
     {
       "faction": "Crawling Chaos",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Madness",
-      "type": "Post-Battle",
-      "text": ""
+      "text": "After all Pain results have been assigned, you, rather than the Units' owners, choose the Area(s) to which all Pained Units will go. You may apply these results in any order (rather than the normal 'attacker first, then defender'), but you must still follow all other rules. Do this even for Battles in which you did not participate."
     },
     {
       "faction": "Crawling Chaos",
-      "unit": "N/A",
-      "name": "Seek and Destroy",
-      "type": "Pre-Battle",
-      "text": ""
+      "category": "Spellbook",
+      "name": "SeekAndDestroy",
+      "text": "Immediately move any or all Hunting Horrors from any Area to the Battle Area."
     },
     {
       "faction": "Crawling Chaos",
-      "unit": "N/A",
-      "name": "The Thousand Forms",
-      "type": "Action",
-      "text": ""
-    },
-    {
-      "faction": "Crawling Chaos",
-      "unit": "N/A",
-      "name": "Flight",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Crawling Chaos",
-      "unit": "Nyarlathotep",
-      "name": "Harbinger",
-      "type": "Post-Battle",
-      "text": ""
+      "category": "Spellbook",
+      "name": "ThousandForms",
+      "text": "If Nyarlathotep is in play, roll 1d6. Your foes lose that much Power between them; they have 1 minute to decide how much each loses. If they cannot agree, you get the rolled number as Power added to your total. This spellbook cannot be used again this Action Phase."
     },
     {
       "faction": "Daemon Sultan",
-      "unit": "N/A",
-      "name": "Animate Matter",
-      "type": "Action",
-      "text": ""
+      "category": "Spellbook",
+      "name": "AnimateMatter",
+      "text": "Flip this Spellbook face down. Move a controlled Chaos Gate from its Area to an adjacent Area, taking its Cultist along. You cannot move the Gate to another player\u2019s Start Area. If the new Area has an existing physical Gate, replace that Gate with the Chaos Gate."
     },
     {
       "faction": "Daemon Sultan",
-      "unit": "N/A",
-      "name": "Chaos Gate",
-      "type": "Action",
-      "text": ""
+      "category": "Spellbook",
+      "name": "ChaosGateSB",
+      "text": "Flip this Spellbook face down, then place a Chaos Gate in any area without a Gate."
     },
     {
       "faction": "Daemon Sultan",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Consummation",
-      "type": "Action",
-      "text": ""
+      "text": "Flip this spellbook face-down. Then flip one of your face-down faction spellbooks face-up again, permitting its re-use this turn."
     },
     {
       "faction": "Daemon Sultan",
-      "unit": "Avatar Synthesis",
-      "name": "Cosmic Ruler",
-      "type": "Ongoing",
-      "text": ""
+      "category": "Spellbook",
+      "name": "CosmicRuler",
+      "text": "When any Avatar is choosen to recieve a Kill or Elimination, instead you can Eliminate another Avatar in its stead, from anywhere on the map."
     },
     {
       "faction": "Daemon Sultan",
-      "unit": "N/A",
-      "name": "Directed Energy",
-      "type": "Post-Battle",
-      "text": ""
+      "category": "Spellbook",
+      "name": "DirectedEnergy",
+      "text": "Flip this spellbook facedown. After Pains and Kills are resolved, if Avatar Thesis is in a Battle and survived, gain Power equal to half of the Azathoth marker's position, rounded up."
     },
     {
       "faction": "Daemon Sultan",
-      "unit": "N/A",
-      "name": "Fiendish Growth",
-      "type": "Action",
-      "text": ""
+      "category": "Spellbook",
+      "name": "FiendishGrowth",
+      "text": "Flip this spellbook face down if Avatar Antithesis is in play. Place 1 free Monster or Acolyte from your pool in Avatar Antithesis' Area per Faction with Units in that Area, including yours."
     },
     {
       "faction": "Daemon Sultan",
-      "unit": "N/A",
-      "name": "Fiendish Spawn",
-      "type": "Pre-Battle",
-      "text": ""
+      "category": "Spellbook",
+      "name": "FiendishSpawn",
+      "text": "Flip this spellbook facedown. If Avatar Antithesis is present in a Battle, place Monsters or Acolytes equal to half of 8 minus the Azathoth marker's position, rounded up, from your pool into the Antithesis Area for free."
     },
     {
       "faction": "Daemon Sultan",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Omnipotence",
-      "type": "Action",
-      "text": ""
+      "text": "Flip this spellbook facedown. Move any of your Avatars in play to any number of Area(s) adjacent to a Chaos Gate."
     },
     {
       "faction": "Daemon Sultan",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Psychosis",
-      "type": "Action",
-      "text": ""
+      "text": "You must have an Acolyte in your pool. Select an area that has no units from any faction. Place an acolyte from your pool there. During each Doom phase, flip ALL your face-down faction spellbooks face-up again."
     },
     {
       "faction": "Daemon Sultan",
-      "unit": "N/A",
-      "name": "Traitors!",
-      "type": "Action",
-      "text": ""
+      "category": "Spellbook",
+      "name": "Traitors",
+      "text": "Flip this Spellbook face down. Replace your controlled Chaos Gate with a Normal Gate, and replace its Controlling Cultist with another player's Cultist from his Pool. Your cultist returns to your Pool. If you have no other Units in the Area, gain an Elder Sign."
     },
     {
       "faction": "Daemon Sultan",
-      "unit": "N/A",
-      "name": "Undirected Energy",
-      "type": "Action",
-      "text": ""
+      "category": "Spellbook",
+      "name": "UndirectedEnergy",
+      "text": "Flip this spellbook face-down if Avatar Thesis is in play. Gain 1 Power per faction with units in Avatar Thesis' area, including yours."
     },
     {
       "faction": "Defilers Court",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Dark Bargain",
-      "type": "Action",
-      "text": ""
+      "text": "If Y'Golonac is in play, all enemies have 30 seconds to choose a number using a D6. You gain Sin equal to one of those numbers of your choice, then distribute an equal amount of Power as evenly as possible among all enemies. Flip this spellbook facedown until the Gather Power Phase."
     },
     {
       "faction": "Defilers Court",
-      "unit": "N/A",
-      "name": "Depravity",
-      "type": "Gather Power Phase",
-      "text": ""
+      "category": "Spellbook",
+      "name": "DarkBargain",
+      "text": "If Y'Golonac is in play, all enemies have 30 seconds to choose a number using a D6. You gain Sin equal to one of those numbers of your choice, then distribute an equal amount of Power as evenly as possible among all enemies. Flip this spellbook facedown until the Gather Power Phase."
     },
     {
       "faction": "Defilers Court",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Eschar",
-      "type": "Post-Battle",
-      "text": ""
+      "text": "Placeholder"
     },
     {
       "faction": "Defilers Court",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Lure",
-      "type": "Action",
-      "text": ""
+      "text": "Placeholder"
     },
     {
       "faction": "Defilers Court",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Pilgrimage",
-      "type": "Action",
-      "text": ""
+      "text": "Placeholder"
     },
     {
       "faction": "Defilers Court",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Proselytize",
-      "type": "Ongoing",
-      "text": ""
+      "text": "Each of your Acolytes 'drag' an enemy Acolyte of each enemy Faction (of those player(s) choice) from any Areas they move from, to the Area they move to."
     },
     {
       "faction": "Defilers Court",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Satiate",
-      "type": "Action",
-      "text": ""
-    },
-    {
-      "faction": "Defilers Court",
-      "unit": "N/A",
-      "name": "Tenebrosum",
-      "type": "Ongoing",
-      "text": ""
+      "text": "Placeholder"
     },
     {
       "faction": "Faceless Blight",
-      "unit": "Byagoona",
+      "category": "Spellbook",
       "name": "Animated Rush",
-      "type": "Move",
-      "text": ""
+      "text": "When Byagoona Moves, discard dice from your Faction Card to move twice that many Units for free."
     },
     {
       "faction": "Faceless Blight",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Changeling Adherents",
-      "type": "Gather Power Phase",
-      "text": ""
+      "text": "Roll a die for each of your Acolytes controlling Gates and place them on your Faction Card."
     },
     {
       "faction": "Faceless Blight",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Necromantic Spores",
-      "type": "Post-Battle",
-      "text": ""
+      "text": "Eliminate a Monster Present to create a Fungal Thrall for each enemy Unit Killed."
     },
     {
       "faction": "Faceless Blight",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Overlord of Death",
-      "type": "Ongoing",
-      "text": ""
+      "text": "If Byagoona is in play, Eliminate Monsters to pay Costs as though they were Power. Each Monster Eliminated is worth 1 Power."
     },
     {
       "faction": "Faceless Blight",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Self Consuming",
-      "type": "Ongoing",
-      "text": ""
+      "text": "Whenever an Action causes two or more Units to be Killed or Eliminated in the same Area, if you had a Unit Present, gain 1 Power. Also gain 1 Doom if you controlled at least three of those Units."
     },
     {
       "faction": "Faceless Blight",
-      "unit": "Byagoona",
+      "category": "Spellbook",
       "name": "Shapestealing",
-      "type": "Pre-Battle",
-      "text": ""
+      "text": "Choose an Enemy Monster and roll a die from your Faction Card. If the value exceeds that Monster's Cost, it fights for you this Combat."
     },
     {
       "faction": "Faceless Blight",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Succor",
-      "type": "Doom Phase",
-      "text": ""
+      "text": "Eliminate any number of your Units and roll that many dice. If the total value exceeds that of the Ritual Marker, gain an Elder Sign."
     },
     {
       "faction": "Firstborn",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Augury",
-      "type": "Ongoing",
-      "text": ""
+      "text": "Put a Kill on this spellbook for each Kill that was cancelled or unapplied in a Battle you were in. Whenever you roll a blank (for Battle or Writhe) you may replace it with a Kill from this Spellbook. If this spellbook is flipped, discard all dice on it."
     },
     {
       "faction": "Firstborn",
-      "unit": "N/A",
-      "name": "Call of the Faithful",
-      "type": "Unlimited Action",
-      "text": ""
+      "category": "Spellbook",
+      "name": "CallOfTheFaithful",
+      "text": "Place an Acolyte from your Pool in an Area with Ghatanothoa and/or a Revenant. You may not use this ability in an Area containing one of your Acolytes."
     },
     {
       "faction": "Firstborn",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Carnage",
-      "type": "Post-Battle",
-      "text": ""
+      "text": "If you AND your opponent Killed or Eliminated Units in the Battle, you may pay 1 Power or flip any of your spellbooks facedown (including this one) to gain an Elder Sign."
     },
     {
       "faction": "Firstborn",
-      "unit": "N/A",
-      "name": "Cyclopean Gaze",
-      "type": "Ongoing",
-      "text": ""
+      "category": "Spellbook",
+      "name": "CyclopeanGaze",
+      "text": "Whenever an opponent ends an Action in any Area(s) containing Revenant(s) and/or Ghatanothoa, they must Pain one of their Units from those Areas for each Revenant and/or Ghatanothoa present, with Firstborn choosing where the Units are Pained, following normal Pain rules."
     },
     {
       "faction": "Firstborn",
-      "unit": "N/A",
-      "name": "Devil's Mark",
-      "type": "Doom Phase",
-      "text": ""
+      "category": "Spellbook",
+      "name": "DevilsMark",
+      "text": "Place a Crater in a LAND AREA with your Controlled Gate. Destroy all Gates you Control there &amp; gain an Elder Sign for each Gate destroyed. If the Crater was placed in an Area with a Faction Glyph (even your own) gain 1 Power for each Crater in play (including that one)."
     },
     {
       "faction": "Firstborn",
-      "unit": "N/A",
-      "name": "The Eye Opens",
-      "type": "Action",
-      "text": ""
+      "category": "Spellbook",
+      "name": "TheEyeOpens",
+      "text": "For each Area containing a Desiccated and enemy Cultist(s): choose an Enemy Faction to Eliminate one of their Cultists in that Area then Eliminate your Desiccated in that Area to gain a Power."
     },
     {
-      "faction": "Firstborn",
-      "unit": "N/A",
-      "name": "Writhe",
-      "type": "Action",
-      "text": ""
+      "faction": "Fleshmason",
+      "category": "Spellbook",
+      "name": "BlueprintsInBlood",
+      "text": "Body Architects count as Screaming Walls for all purposes in Areas without Screaming Walls."
+    },
+    {
+      "faction": "Fleshmason",
+      "category": "Spellbook",
+      "name": "CrumblingYawp",
+      "text": "Doom Phase"
+    },
+    {
+      "faction": "Fleshmason",
+      "category": "Spellbook",
+      "name": "HymnOfSuffering",
+      "text": "Choose an Area with your Acolyte and the Screaming Wall to remove that Screaming Wall and gain  Power for each adjacent Area containing the Screaming Wall."
+    },
+    {
+      "faction": "Fleshmason",
+      "category": "Spellbook",
+      "name": "MannedBattlements",
+      "text": "Choose an Area containing a Screaming Wall. Move any number of Units from that Area to any adjacent Areas containing the Screaming Wall."
+    },
+    {
+      "faction": "Fleshmason",
+      "category": "Spellbook",
+      "name": "TendonFlaying",
+      "text": "Post-Battle"
+    },
+    {
+      "faction": "Fleshmason",
+      "category": "Spellbook",
+      "name": "TerrifyingShriek",
+      "text": "The Screaming Wall adds  Pain to your combat results. If a Bone Sculptor is in the Battle, apply that pain Pre-Battle instead."
     },
     {
       "faction": "Great Cthulhu",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Absorb",
-      "type": "Pre-Battle",
-      "text": ""
+      "text": "If a Shoggoth is present, Eliminate one or more of your Monsters or Cultists in the Battle. For each Unit so removed, add 3 dice to the Shoggoth's Combat for that Battle."
     },
     {
       "faction": "Great Cthulhu",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Devolve",
-      "type": "Ongoing",
-      "text": ""
+      "text": "After any player's Action, replace one or more of your Acolyte Cultists anywhere on the Map with Deep Ones from your Pool."
     },
     {
       "faction": "Great Cthulhu",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Dreams",
-      "type": "Action",
-      "text": ""
+      "text": "Choose an Area containing an enemy\u2019s Acolyte Cultist. Your enemy must Eliminate one of his Acolyte Cultists from that Area and replace it with one from your Pool."
     },
     {
       "faction": "Great Cthulhu",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Regenerate",
-      "type": "Post-Battle",
-      "text": ""
+      "text": "Assign up to 2 Kill or Pain Battle results to the same Starspawn. If 2 Kills are applied, the Starspawn is Killed. On any other combination of Kill or Pain results, the Starspawn is only Pained."
     },
     {
       "faction": "Great Cthulhu",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Submerge",
-      "type": "Action",
-      "text": ""
+      "text": "If Cthulhu is in an ocean or sea Area, remove him from the Map and place him on your Faction Card, along with any or all of your Units in the Area. Later, as a 0-cost Action, you may place Cthulhu, plus all accompanying Units, into any Area."
     },
     {
       "faction": "Great Cthulhu",
-      "unit": "N/A",
-      "name": "Y'ha Nthlei",
-      "type": "Ongoing",
-      "text": ""
+      "category": "Spellbook",
+      "name": "YhaNthlei",
+      "text": "During Gather Power, if Cthulhu is in play, gain 1 Power for each enemy-controlled Gate in an ocean or sea Area."
     },
     {
-      "faction": "Great Cthulhu",
-      "unit": "N/A",
-      "name": "Immortal",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Great Cthulhu",
-      "unit": "Cthulhu",
-      "name": "Devour",
-      "type": "Pre-Battle",
-      "text": ""
-    },
-    {
-      "faction": "Library at Celaeno",
-      "unit": "N/A",
-      "name": "All Doom Phases",
-      "type": "Doom Phase",
-      "text": ""
-    },
-    {
-      "faction": "Library at Celaeno",
-      "unit": "N/A",
-      "name": "All Gather Power Phases",
-      "type": "Gather Power Phase",
-      "text": ""
-    },
-    {
-      "faction": "Library at Celaeno",
-      "unit": "N/A",
-      "name": "First Doom Phase Only",
-      "type": "Doom Phase",
-      "text": ""
-    },
-    {
-      "faction": "Mecha Cthulhu",
-      "unit": "N/A",
-      "name": "Non-Euclidian Targeting",
-      "type": "Battle",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Daoloth",
-      "name": "Cosmic Unity",
-      "type": "Pre-Battle",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Azathoth",
-      "name": "Daemon Sultan",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Cthugha",
-      "name": "Fire Vampires",
-      "type": "Post-Battle",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Nyogtha",
-      "name": "From Below",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Bokrug",
-      "name": "Ghosts of Ib",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Ghatanothoa",
-      "name": "Mummify",
-      "type": "Action",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Y'Golonac",
-      "name": "Orifices",
-      "type": "Post-Battle",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Atlach-Nacha",
-      "name": "Place Spinneret",
-      "type": "Action",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Yig",
-      "name": "Snakebite",
-      "type": "Post-Battle",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Atlach-Nacha",
-      "name": "Spinnerets",
-      "type": "Action",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Mother Hydra",
-      "name": "The Agony Sting",
-      "type": "Action",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "The Bloated Woman",
-      "name": "The Velvet Fan",
-      "type": "Post-Battle",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Dire Yog-Sothoth",
-      "name": "To Rule Them All",
-      "type": "Action",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Gla'aki",
-      "name": "Tomb Herd",
-      "type": "Gather Power Phase",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Father Dagon",
-      "name": "Tsunami",
-      "type": "Action",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Tulzscha",
-      "name": "Undying Flame",
-      "type": "Gather Power Phase",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Shub-Niggurath (Glow)",
-      "name": "Avatar",
-      "type": "Action",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Nyarlathotep (Glow)",
-      "name": "Chaos",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Azathoth (Glow)",
-      "name": "Daemon Sultan",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Tsathoggua (Glow)",
-      "name": "Death from Below",
-      "type": "Doom Phase",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Rhan-Tegoth (Glow)",
-      "name": "Eternal",
-      "type": "Post-Battle",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "The King in Yellow (Glow)",
-      "name": "Feast",
-      "type": "Gather Power Phase",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Ithaqua (Glow)",
-      "name": "Ferox",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Ubbo-Sathla (Glow)",
-      "name": "Hell's Banquet",
-      "type": "Doom Phase",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Rhan-Tegoth (Glow)",
-      "name": "Herald",
-      "type": "Doom Phase",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Ithaqua (Glow)",
-      "name": "Hibernate",
-      "type": "Action",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Tsathoggua (Glow)",
-      "name": "Lethargy",
-      "type": "Action",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Azathoth (Glow)",
-      "name": "Nuclear Chaos",
-      "type": "Action",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Ubbo-Sathla (Glow)",
-      "name": "Sycophancy",
-      "type": "Doom Phase",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Yog-Sothoth (Glow)",
-      "name": "The Beyond One",
-      "type": "Action",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Nyarlathotep (Glow)",
-      "name": "The Harbinger",
-      "type": "Post-Battle",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Yog-Sothoth (Glow)",
-      "name": "The Key and the Gate",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Hastur (Glow)",
-      "name": "Vengeance",
-      "type": "Post-Battle",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Tulzscha",
-      "name": "Ceremony of Annihilation",
-      "type": "Doom Phase",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Atlach-Nacha",
-      "name": "Cosmic Web",
-      "type": "Action",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "The Bloated Woman",
-      "name": "Disaster Looms",
-      "type": "Gather Power Phase",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Bokrug",
-      "name": "Doom that Came to Sarnath",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Ghatanothoa",
-      "name": "Execration of Mu",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Cthugha",
-      "name": "Firestorm",
-      "type": "Post-Battle",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Gla'aki",
-      "name": "Green Decay",
-      "type": "Gather Power Phase",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Daoloth",
-      "name": "Interdimensional",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Dire Yog-Sothoth",
-      "name": "It Walks Unseen",
-      "type": "Move",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Yig",
-      "name": "Messenger of Yig",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Nyogtha",
-      "name": "Nightmare Web",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Azathoth",
-      "name": "Nuclear Chaos",
-      "type": "Action",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Father Dagon",
-      "name": "The Innsmouth Look",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Y'Golonac",
-      "name": "The Revelations",
-      "type": "Doom Phase",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Mother Hydra",
-      "name": "The Zygote",
-      "type": "Action",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "N/A",
-      "name": "Mao Ceremony",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "N/A",
-      "name": "Recriminations",
-      "type": "Action",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "N/A",
-      "name": "Shriveling",
-      "type": "Pre-Battle",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "N/A",
-      "name": "The Stars Are Right",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "N/A",
-      "name": "Umr at'Tawil",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "N/A",
-      "name": "Undimensioned",
-      "type": "Action",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Servitor of the Outer Gods",
-      "name": "Adulation",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Hound of Tindalos",
-      "name": "Angles of Time",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Gug",
-      "name": "Clumsy",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Brown Jenkin",
-      "name": "Familiar",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Abhoth",
-      "name": "Filth",
-      "type": "Action",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Byatis",
-      "name": "God of Forgetfulness",
-      "type": "Action",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Gnorri",
-      "name": "Grottos",
-      "type": "Doom Phase",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Ghast",
-      "name": "Hordeling",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Shantak",
-      "name": "Horror Steed",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Giant Blind Albino Penguins",
-      "name": "Laughingstock",
-      "type": "Pre-Battle",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Abhoth",
-      "name": "The Brood",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Byatis",
-      "name": "Toad of Berkeley",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "High Priest",
+      "faction": "Neutral Cultist",
+      "category": "High Priest",
       "name": "Unspeakable Oath",
-      "type": "Ongoing",
-      "text": ""
+      "text": "At the end of any player's Action (even if it is not your turn), Sacrifice your High Priest (return him to your Pool) and gain 2 Power. This may also be done during the Gather Power Phase.Notes: The High Priest is a new type of Cultist; it is Recruited like an Acolyte. Each High Priest generates 1 Power during the Gather Power Phase, can Create and Control a Gate, and can be Captured. Each Faction has only a single High Priest Available.Because the High Priest is Recruited, rather than Summoned, a Gate is not needed.The High Priests benefits from all Spellbooks or abilities that reference Cultists (but not Acolytes)."
     },
     {
-      "faction": "Neutral",
-      "unit": "Star Vampire",
-      "name": "Vampirism",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Voonith",
-      "name": "Vicious",
-      "type": "Post-Battle",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Dimensional Shambler",
-      "name": "Walk Between Worlds",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Moonbeast",
-      "name": "Blasphemous Obeisance",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Leng Spider",
-      "name": "Bloodthirst",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Lavinia Whateley",
+      "faction": "Neutral Cultist",
+      "category": "Lavinia Whateley",
       "name": "Bride of the Old Ones",
-      "type": "Ongoing",
-      "text": ""
+      "text": "If Lavinia shares an Area with any Great Old One (any Faction) at the start of an Action, she is immune to Kills, Pains, and Eliminations until after the Action ends."
     },
     {
-      "faction": "Neutral",
-      "unit": "Wizard Whateley",
-      "name": "Clan Patriarch",
-      "type": "Recruit Cultist Action",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Hound of Tindalos",
-      "name": "Cronophage",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Quachil Uttaus",
-      "name": "Dust to Dust",
-      "type": "Post-Battle",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Satyr",
-      "name": "Fecund",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Junior Whateley",
-      "name": "Growth",
-      "type": "Doom Phase",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "The Shadow Pharaoh",
-      "name": "Hebephrenia",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Brown Jenkin",
-      "name": "Loathsome Titter",
-      "type": "Gather Power Phase",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Wizard Whateley",
-      "name": "Magician",
-      "type": "Pre-Battle",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Elder Thing",
-      "name": "Mind Control",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Insects from Shaggai",
-      "name": "Mind Parasite",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Lavinia Whateley",
+      "faction": "Neutral Cultist",
+      "category": "Lavinia Whateley",
       "name": "Mother of Monsters",
-      "type": "Doom Phase",
-      "text": ""
+      "text": "If you control Lavinia, pay half as much Power and/or Doom for any Independent Great Old One; Neutral Monster, Terror, or Cultist; or Clan member you acquire. Round fractions up."
     },
     {
-      "faction": "Neutral",
-      "unit": "Wilbur Whateley",
+      "faction": "Neutral Cultist",
+      "category": "Lavinia Whateley",
+      "name": "The Bride",
+      "text": "When you Awaken a Great Old One, you can choose to Eliminate Lavinia Whateley. If you do so, your Great Old One costs 3 fewer Power to Awaken."
+    },
+    {
+      "faction": "Neutral Cultist",
+      "category": "Wilbur Whateley",
       "name": "Open the Way",
-      "type": "Action",
-      "text": ""
+      "text": "Take a Gate from Wilbur's Loyalty Card and place it anywhere on the Map."
     },
     {
-      "faction": "Neutral",
-      "unit": "Dhole",
-      "name": "Planetary Destruction",
-      "type": "Post-Battle",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Great Race of Yith",
-      "name": "Possession",
-      "type": "Ongoing and Gather Power Phase",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Elder Shoggoth",
-      "name": "Prime Cause",
-      "type": "Post-Battle",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Junior Whateley",
-      "name": "Transmogrification",
-      "type": "Action",
-      "text": ""
-    },
-    {
-      "faction": "Neutral",
-      "unit": "Wilbur Whateley",
+      "faction": "Neutral Cultist",
+      "category": "Wilbur Whateley",
       "name": "Yr and Nhnngr",
-      "type": "Doom Phase",
-      "text": ""
+      "text": "If Wilbur Whateley is in play, when you perform a Ritual of Annihilation, place a Gate (from the Pool) on Wilbur's Loyalty Card. These Gates remain even when Wilbur switches loyalty."
+    },
+    {
+      "faction": "Neutral Cultist",
+      "category": "Wizard Whateley",
+      "name": "Clan Patriarch",
+      "text": "When you recruit a Cultist in Wizard Whateley's Area, it costs one fewer Power. This means that a 0-cost Cultist gains you 1 Power."
+    },
+    {
+      "faction": "Neutral Cultist",
+      "category": "Wizard Whateley",
+      "name": "Magician",
+      "text": "If Wizard Whateley is involved in the Battle, you can immediately muster an Independent Great Old One; Neutral Monster, Terror, or Cultist; or Clan member as if it were the Doom Phase, as long as all other requirements are met. You pay normal costs (unless you also Control Lavinia)."
+    },
+    {
+      "faction": "Neutral Monster",
+      "category": "Asteroid Cat",
+      "name": "Abandoned to Lusts",
+      "text": "If an Asteroid Cat shares an Area with a Unit from another Faction that has 5 or fewer Faction Spellbooks, remove the Cat from the Map and place it on one of that enemy's empty Spellbook slots.When that enemy earns that Spellbook, return the Asteroid Cat to your Controlled Gate, and you get to choose immediately which of his available Spellbooks he must take in that slot."
+    },
+    {
+      "faction": "Neutral Monster",
+      "category": "Cat from Mercury",
+      "name": "Needs Affection",
+      "text": "If a Cat from Mercury is in a Battle, you can choose one or more of your Monsters present at that Battle; and immediately replace them with your Acolyte Cultists from your pool."
+    },
+    {
+      "faction": "Neutral Monster",
+      "category": "Cat from Venus",
+      "name": "Honeymoon",
+      "text": "When a Cat from Venus Captures a Cultist, gain 1 Power and immediately return the Cultist to the owner's Pool."
+    },
+    {
+      "faction": "Neutral Monster",
+      "category": "Dimensional Shambler",
+      "name": "Walk Between World",
+      "text": "When Summoning a Dimensional Shambler, place it onto your Faction Card. After any Action (by any player), you may place one or more Dimensional Shamblers from your Faction Card into any Area. Once placed, Dimensional Shambler remain on the Map (until Killed or otherwise Eliminated)."
+    },
+    {
+      "faction": "Neutral Monster",
+      "category": "Elder Thing",
+      "name": "Mind Control",
+      "text": "If an Elder Thing shares an Area with an enemy Great Old One, the latter may not use its Special Ability."
+    },
+    {
+      "faction": "Neutral Monster",
+      "category": "Ghast",
+      "name": "Hordeling",
+      "text": "When you spend 2 Power to Summon Ghasts, all Ghasts in your Pool are Immediately placed on the Map at any Gate(s) you Control."
+    },
+    {
+      "faction": "Neutral Monster",
+      "category": "Giant Blind Albino Penguins",
+      "name": "Laughingstock",
+      "text": "Move one or more Penguins to the Battle area, even if you are not part of the battle. If you are part of the Battle, the penguin fights on your side. Otherwise, you choose which side the Penguin is on, and it belongs to that player until the battle's end."
+    },
+    {
+      "faction": "Neutral Monster",
+      "category": "Gnorri",
+      "name": "Grottos",
+      "text": "During the Doom Phase, if you have 2 Gnorri in play, you earn 1 extra Doom point. If you have 3 Gnorri in play, you earn 2 extra Doom points."
+    },
+    {
+      "faction": "Neutral Monster",
+      "category": "Gug",
+      "name": "Clumsy",
+      "text": "A Gug cannot Capture a Cultist."
+    },
+    {
+      "faction": "Neutral Monster",
+      "category": "Insects from Shaggai",
+      "name": "Mind Parasite",
+      "text": "All Acolytes Cultists who are not on a Gate, and who share an Area with an Insect from Shaggai, are Controlled by you during the Action Phase for the following purposes only:Only you can Move themThey fight on your side in any BattleThey do not benefit from any Faction's Spellbooks (including yours). They can only be Captured by you if their true Faction permits it. They cannot be Captured by their true Faction (though they could be targeted by a Spellbook or Killed in a battle by them, etc.). Once an Acolyte is free. These Cultists are not Controlled by you during the Gather Power or Doom Phases \u2013 they provide Power and Doom to their true Faction."
+    },
+    {
+      "faction": "Neutral Monster",
+      "category": "Leng Spider",
+      "name": "Bloodthirst",
+      "text": "If a Leng Spider is involved in a Battle, you may exchange two Pain results for a Kill before results are assigned. you may do this once for each Leng Spider in the Battle. Each use of this ability may be applied to your results OR you opponent's."
+    },
+    {
+      "faction": "Neutral Monster",
+      "category": "Moonbeast",
+      "name": "Blasphemous Obeisance",
+      "text": "When a Moonbeast is Summoned, place it on a Spellbook on an enemy's Faction Card. While the Moonbeast is on that Spellbook, that Spellbook cannot be used (it still counts for other purposes such as Unlimited Battle, and winning the game). In the next Doom Phase, remove all Moonbeasts from enemy Spellbooks and place them into any Areas on the Map containing a Controlled Gate(s). A Moonbeast may be prematurely returned to the Map if its victim spends 1 Doom point (at any time; this does not count as an Action)."
+    },
+    {
+      "faction": "Neutral Monster",
+      "category": "Satyr",
+      "name": "Fecund",
+      "text": "Each time you Summon a Satyr, also place an Acolyte Cultist from your Pool into the Same Area."
+    },
+    {
+      "faction": "Neutral Monster",
+      "category": "Servitor of the Outer Gods",
+      "name": "Adulation",
+      "text": "You may not Summon any Monsters except for Servitors if any Servitors remain in your Pool. (You may still place other Monsters on the Map via abilities or means other than the Summon Action.)"
+    },
+    {
+      "faction": "Neutral Monster",
+      "category": "Shantak",
+      "name": "Horror Steed",
+      "text": "When Moving a Shantak, it can reach any Area on the Map. In addition, the Shantak may carry one of you Cultists with it for free."
+    },
+    {
+      "faction": "Neutral Monster",
+      "category": "Star Vampire",
+      "name": "Vampirism",
+      "text": "Roll each Star Vampire's combat dice separately. Each Pain they roll drains 1 Power from the enemy Faction. Each Kill they roll drains 1 Doom point from the enemy Faction. The drained point(s) are transferred to you immediately. If the enemy Faction lacks Power or Doom points, you get nothing. The Pains and Kills rolled still count towards you Battle results."
+    },
+    {
+      "faction": "Neutral Monster",
+      "category": "Voonith",
+      "name": "Vicious",
+      "text": "For each Kill you score fewer than the number of Vooniths involved in the Battle, add 1 Kill. (I.e., if you have 2 Vooniths in the Battle and roll 1 Kill, add 1 extra Kill for a total of 2: if you rolled no Kills, add 2 Kills)."
+    },
+    {
+      "faction": "Neutral Terror",
+      "category": "Brown Jenkin",
+      "name": "Familiar",
+      "text": "If Brown Jenkin is killed or eliminated, if (or as soon as) you have at least 2 Power, pay 2 Power and place Brown Jenkin at your Controlled Gate. This does not count as an Action. This is not Optional."
+    },
+    {
+      "faction": "Neutral Terror",
+      "category": "Brown Jenkin",
+      "name": "Loathsome\u00a0Titter",
+      "text": "Brown Jenkin shares an area with an enemy-controlled Gate during the Gather Power Phase, gain 2 Power, plus 1 more power for each enemy Cultist in the area.."
+    },
+    {
+      "faction": "Neutral Terror",
+      "category": "Cat from Neptune",
+      "name": "The Final Ritual",
+      "text": "If the Cat from Neptune is Killed in a Battle, you may immediately perform a Ritual of Annihilation. If this causes the marker to move to Instant Death, the game ends after this action."
+    },
+    {
+      "faction": "Neutral Terror",
+      "category": "Dhole",
+      "name": "Planetary Destruction",
+      "text": "If the Dhole is Killed or Eliminated in a Battle, earn 2 Elder signs. Additionally, your opponent gains your choice of 2 Doom or 2 Power."
+    },
+    {
+      "faction": "Neutral Terror",
+      "category": "Elder Shoggoth",
+      "name": "Prime Cause",
+      "text": "In a Battle involving the Elder Shoggoth, choose any of you Units (including this one) and replace it with any other Unit from your Pool. You can gain a Faction Great Old One that was previously Awakened, but still must fulfill other requirements (for example, to place Cthulhu, the Battle must be in his Start Area, plus a gate). If you choose to replace the Elder Shoggoth itself, pay nothing, and no enemy gains a reward. Otherwise, follow these rules:Pay half the new Unit's Power cost (rounded down\u2013so you pay 1 Power for a cost 3 Monster).If the new Unit is a Terror, the enemy gains 1 Doom.If the new Unit is a Great Old One, the enemy gains 1 Elder Sign."
+    },
+    {
+      "faction": "Neutral Terror",
+      "category": "Great Race of Yith",
+      "name": "Possession",
+      "text": "If the Great Race of Yith is in an Area with an enemy Cultist, you may Capture that Cultist regardless of the presence of any enemy Units or Great Old Ones (or whether Windwalker's Ferox ability is in effect).In addition, if the Great Race of Yith is in play during the Gather Power Phase, earn 1 Power per Captured Cultist in addition to the normal reward of 1 Power per Cultist."
+    },
+    {
+      "faction": "Neutral Terror",
+      "category": "Hound of Tindalos",
+      "name": "Angles of Time",
+      "text": "The Hound cannot be assigned a Kill in Battle. However, if a Hound is ever in an Area without a Gate (due to being Pained to such an Area, or the Gate itself being desttroyed or moved, etc.), it is Eliminated. It can also be Eliminated if it cannot be Pained due to Enemy presence in adjacent Areas (per normal Pain rules)."
+    },
+    {
+      "faction": "Neutral Terror",
+      "category": "Hound of Tindalos",
+      "name": "Cronophage",
+      "text": "The Hound cannot perform the Move Action by itself. The Hound Moves for free whenever you Move any other Unit. In doing so, the Hound teleports directly from an Area with a Gate to another Area with a Gate \u2013 neither of which need to be Controlled by you (or anyone)."
+    },
+    {
+      "faction": "Neutral Terror",
+      "category": "Junior Whateley",
+      "name": "Growth",
+      "text": "If Junior Whateley is in play, place any token on his Loyalty Card. These tokens remain even when Junior switches loyalty."
+    },
+    {
+      "faction": "Neutral Terror",
+      "category": "Junior Whateley",
+      "name": "Transmogrification",
+      "text": "If Junior has at least 1 token on this Loyalty Card, roll a die. If the die roll is equal to or less than the number of tokens on Junior Whateley's Loyalty Card, replace Junior with any Great Old One (Neutral or Faction), ignoring all Awakening requirements, including cost. Place Junior back in your Pool. Whether or not you succeed, discard one token from Junior Whateley's Loyalty Card. If you recruit a rival's Great Old One by this means, it remains under their Control."
+    },
+    {
+      "faction": "Neutral Terror",
+      "category": "Quachil Uttaus",
+      "name": "Dust to Dust",
+      "text": "If an enemy Unit is Killed or Eliminated in a Battle involving Quachil Uttaus, that Unit's owner must choose one of the following options:1) Select one his lost units to be permanently removed from the gameOR2) You receive an Elder Sign"
+    },
+    {
+      "faction": "Neutral Terror",
+      "category": "The Shadow Pharaoh",
+      "name": "Hebephrenia",
+      "text": "Gates may not be Controlled by any Faction in the Shadow Pharaoh\u2019s Area. When the Shadow Pharaoh enters an Area, any occupying Unit immediately Abandons the Gate. (Yog-Sothoth is unaffected.)."
     },
     {
       "faction": "Opener of the Way",
-      "unit": "N/A",
-      "name": "Channel Power",
-      "type": "Battle",
-      "text": ""
+      "category": "Spellbook",
+      "name": "ChannelPower",
+      "text": "After rolling Battle dice, you may pay 1 Power to reroll all dice which were not Kills or Pains. You may do this more than once."
     },
     {
       "faction": "Opener of the Way",
-      "unit": "N/A",
-      "name": "Cheap Mutants + Harder SBR",
-      "type": "Setup Variant",
-      "text": ""
+      "category": "Spellbook",
+      "name": "DragonAscending",
+      "text": "Once during the game (at any time), set your Power to be equal to the current Power of one chosen enemy Faction."
     },
     {
       "faction": "Opener of the Way",
-      "unit": "N/A",
-      "name": "Dragon Ascending",
-      "type": "Once Only",
-      "text": ""
+      "category": "Spellbook",
+      "name": "DragonDescending",
+      "text": "Once during the game when you perform a Ritual of Annihilation, you receive twice the normal Doom points."
     },
     {
       "faction": "Opener of the Way",
-      "unit": "N/A",
-      "name": "Dragon Descending",
-      "type": "Once Only",
-      "text": ""
+      "category": "Spellbook",
+      "name": "DreadCurse",
+      "text": "Select an Area and roll 1 Battle die per Abomination and Spawn of Yog-Sothoth in play. Apply the results as Kills and Pains to enemy Factions in the Area. You choose which Faction receives which results, but they choose which of their Units receives each result. No Battle-type abilities apply. You choose to which Area each Unit is Pained, ignoring normal Pain rules."
     },
     {
       "faction": "Opener of the Way",
-      "unit": "N/A",
-      "name": "Dread Curse of Azathoth",
-      "type": "Action",
-      "text": ""
+      "category": "Spellbook",
+      "name": "MillionFavoredOnes",
+      "text": "After Pains and Kills are resolved, replace any or all surviving Acolytes to Mutants, Mutants with Abominations, and Abominations with Spawns of Yog-Sothoth. You can replace a Spawn of Yog-Sothoth with as many Mutants as are in your Pool."
     },
     {
       "faction": "Opener of the Way",
-      "unit": "N/A",
-      "name": "Easier Spellbook Requirements",
-      "type": "Setup Variant",
-      "text": ""
+      "category": "Spellbook",
+      "name": "TheyBreakThrough",
+      "text": "You can Summon Monsters at enemy-Controlled and Abandoned Gates. You do not need to have any Units present in the Area."
     },
     {
-      "faction": "Opener of the Way",
-      "unit": "N/A",
-      "name": "The Million Favored Ones",
-      "type": "Post-Battle",
-      "text": ""
+      "faction": "Permeation",
+      "category": "Spellbook",
+      "name": "Atomic Unity",
+      "text": "Eliminate a Monster you control to gain Power equal to its Cost minus one. Flip this Spellbook Face Down until the Doom Phase if you gained ${PRMValues.AtomicUnity_flipPower} or more Power this way."
     },
     {
-      "faction": "Opener of the Way",
-      "unit": "N/A",
-      "name": "They Break Through",
-      "type": "Ongoing",
-      "text": ""
+      "faction": "Permeation",
+      "category": "Spellbook",
+      "name": "Eldritch Love",
+      "text": ")} if you have ${PRMValues.EldritchLove_faceDownNeeded} or more Face Down Spellbooks. Flip this Spellbook Face Down until the Doom Phase."
     },
     {
-      "faction": "Opener of the Way",
-      "unit": "N/A",
-      "name": "Yog Curse Die + DC GOO ES",
-      "type": "Setup Variant",
-      "text": ""
+      "faction": "Permeation",
+      "category": "Spellbook",
+      "name": "Make as One",
+      "text": "Other Factions may activate your Spellbook Abilities by Paying you their Power Costs. You gain ${PRMValues.MakeAsOne_doomPerFlip} Doom whenever this causes your Spellbook to become Flipped."
     },
     {
-      "faction": "Opener of the Way",
-      "unit": "N/A",
-      "name": "The Beyond One",
-      "type": "Action",
-      "text": ""
+      "faction": "Permeation",
+      "category": "Spellbook",
+      "name": "Osmosis",
+      "text": "Choose two adjacent Areas. Each faction with units in at least one of those Areas, beginning with you and proceeding in turn order, evenly distributes their Units present between those Areas."
     },
     {
-      "faction": "Opener of the Way",
-      "unit": "Yog-Sothoth",
-      "name": "The Key and the Gate",
-      "type": "Ongoing",
-      "text": ""
+      "faction": "Permeation",
+      "category": "Spellbook",
+      "name": "Protogenesis",
+      "text": "Place the lowest cost Monster from your Pool into any Area already containing your Units. Flip this Spellbook Face Down until the Doom Phase if you have no Monsters remain in your Pool."
+    },
+    {
+      "faction": "Permeation",
+      "category": "Spellbook",
+      "name": "Speak Reality",
+      "text": "Choose a Faction with Units in Ycgn'\u00e0gnnisssz's Area and name a Common Action (Move, Summon, Battle, Capture, Build Gate, or Recruit). They can take no other Action on their next turn if they are able to perform the named Action spending at least as much Power as you spent. If you spend less than the required Cost, nothing happens."
+    },
+    {
+      "faction": "Permeation",
+      "category": "Spellbook",
+      "name": "Zealous Spark",
+      "text": "Move ANY Monster from its Area to an Adjacent Area."
     },
     {
       "faction": "Sleeper",
-      "unit": "N/A",
-      "name": "Ancient Sorcery",
-      "type": "Action",
-      "text": ""
+      "category": "Spellbook",
+      "name": "AncientSorcery",
+      "text": "Remove a Serpent Man from the Map and place him on an enemy's Faction Card. You now have access to that Faction's Unique Ability until the end of the next Doom Phase. At that point, gain 1 Power and replace the Serpent Man anywhere on the Map. If a Faction's Unique Ability mentions a Great Old One, it is also considered to include Tsathoggua."
     },
     {
       "faction": "Sleeper",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Burrow",
-      "type": "Ongoing",
-      "text": ""
+      "text": "After a Move Action in which you spend 2 or more Power moving Units, regain 1 Power."
     },
     {
       "faction": "Sleeper",
-      "unit": "N/A",
-      "name": "Capture Monster",
-      "type": "Action",
-      "text": ""
+      "category": "Spellbook",
+      "name": "CaptureMonster",
+      "text": "Tsathoggua can Capture Enemy Monsters in the same manner as Cultists are Captured. They are sacrificed for 1 Power in the next Gather Power Phase."
     },
     {
       "faction": "Sleeper",
-      "unit": "N/A",
-      "name": "Cursed Slumber",
-      "type": "Action",
-      "text": ""
+      "category": "Spellbook",
+      "name": "CursedSlumber",
+      "text": "Remove your Controlled Gate and its Cultist from the map and place it on your Faction Card. This Gate and Cultist still provide Power and Doom points, but are immune to enemy abilities. As a Cost 1 Action, return the Gate and Cultist to any Area lacking a Gate. You may only have one Gate on your Faction Card at a time."
     },
     {
       "faction": "Sleeper",
-      "unit": "N/A",
-      "name": "Demand Sacrifice",
-      "type": "Pre-Battle",
-      "text": ""
+      "category": "Spellbook",
+      "name": "DemandSacrifice",
+      "text": "Pre-Battle"
     },
     {
       "faction": "Sleeper",
-      "unit": "N/A",
-      "name": "Easier Spellbook Requirements",
-      "type": "Setup Variant",
-      "text": ""
-    },
-    {
-      "faction": "Sleeper",
-      "unit": "N/A",
-      "name": "Energy Nexus",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Sleeper",
-      "unit": "N/A",
-      "name": "Energy Nexus - Pre Battle",
-      "type": "Setup Variant",
-      "text": ""
-    },
-    {
-      "faction": "Sleeper",
-      "unit": "N/A",
-      "name": "Death from Below",
-      "type": "Doom Phase",
-      "text": ""
-    },
-    {
-      "faction": "Sleeper",
-      "unit": "Tsathoggua",
-      "name": "Lethargy",
-      "type": "Action",
-      "text": ""
+      "category": "Spellbook",
+      "name": "EnergyNexus",
+      "text": "Just before a Battle in an Area containing a Wizard, you may take one Action that originates in the Area for its normal Power cost. The Battle proceeds once that Action is finished, starting with Pre-Battle Spellbooks and abilities."
     },
     {
       "faction": "Tcho-Tcho",
-      "unit": "N/A",
-      "name": "Dark Rituals (Leng Tribe)",
-      "type": "Action",
-      "text": ""
+      "category": "Spellbook",
+      "name": "DarkRituals",
+      "text": "Flip this spellbook face down. All Factions with your High Priest(s) in their Start Areas must pay you 2 Power or 2 Doom (their choice). A Faction with less than 2 Power or Doom is immune. Flip this Spellbook face up again at the Doom Phase."
     },
     {
       "faction": "Tcho-Tcho",
-      "unit": "N/A",
-      "name": "Doomsday (Sarkomand Tribe)",
-      "type": "Once Only",
-      "text": ""
+      "category": "Spellbook",
+      "name": "Doomsday",
+      "text": "If you have a Controlled Gate, flip this card face down, then immediately take from the Pool one Independent Great Old One with a cost of exactly 2 or 4 and place it at that Gate. Take its Loyalty Card."
     },
     {
       "faction": "Tcho-Tcho",
-      "unit": "N/A",
-      "name": "Fulmination (Leng Tribe)",
-      "type": "Post-Battle",
-      "text": ""
+      "category": "Spellbook",
+      "name": "Fulmination",
+      "text": "If Ubbo-Sathla is Killed in a Battle, you may remove it from the game permanently, and gain 1 Elder Sign for each Unit Killed (by either side) in that Battle."
     },
     {
       "faction": "Tcho-Tcho",
-      "unit": "N/A",
-      "name": "Hell's Banquet",
-      "type": "Doom Phase",
-      "text": ""
+      "category": "Spellbook",
+      "name": "Hierophants",
+      "text": "When you earn a Faction Spellbook (including this one), place a High Priest at one of your Gates. If there are no High Priests in your Pool, instead advance Ubbo-Sathla's Growth counter by 1. When this Spellbook is first taken, if you are using the High Priests expansion, then all Factions place a High Priest at one of their Gates."
     },
     {
       "faction": "Tcho-Tcho",
-      "unit": "N/A",
-      "name": "Hierophants (All Tribes)",
-      "type": "Ongoing",
-      "text": ""
+      "category": "Spellbook",
+      "name": "Idolatry",
+      "text": "Select an Area containing another Faction's starting Glyph (even if that Faction is not in play). Move any or all of your Units in adjacent Areas into the selected Area."
     },
     {
       "faction": "Tcho-Tcho",
-      "unit": "N/A",
-      "name": "Idolatry (Tsang Tribe)",
-      "type": "Action",
-      "text": ""
+      "category": "Spellbook",
+      "name": "Inerrant",
+      "text": "When you perform a Ritual of Annihilation, gain 1 additional Elder Sign for each enemy-Controlled Gate at which you have any Great Old Ones."
     },
     {
       "faction": "Tcho-Tcho",
-      "unit": "N/A",
-      "name": "Inerrant (Sarkomand Tribe)",
-      "type": "Doom Phase",
-      "text": ""
+      "category": "Spellbook",
+      "name": "Martyrdom",
+      "text": "If your High Priest is Killed, all Kills assigned to your other Units become Pains instead."
     },
     {
       "faction": "Tcho-Tcho",
-      "unit": "N/A",
-      "name": "Martyrdom (Tsang Tribe)",
-      "type": "Post-Battle",
-      "text": ""
+      "category": "Spellbook",
+      "name": "OtherworldAlliances",
+      "text": "Your Neutral Monsters and Terrors have +1 Combat."
     },
     {
       "faction": "Tcho-Tcho",
-      "unit": "N/A",
-      "name": "Otherworld Alliances (Sarkomand Tribe)",
-      "type": "Ongoing",
-      "text": ""
+      "category": "Spellbook",
+      "name": "Soulless",
+      "text": "When Captured and Sacrificed, your Cultists provide 0 Power (instead of the normal 1 Power)."
     },
     {
       "faction": "Tcho-Tcho",
-      "unit": "N/A",
-      "name": "Soulless (All Tribes)",
-      "type": "Ongoing",
-      "text": ""
+      "category": "Spellbook",
+      "name": "SurpriseSB",
+      "text": "Choose an enemy Faction. That player selects and Eliminates one of their Acolytes; Replace it with a Proto-Shoggoth from your Pool."
     },
     {
       "faction": "Tcho-Tcho",
-      "unit": "N/A",
-      "name": "Surprise! (Leng Tribe)",
-      "type": "Action",
-      "text": ""
-    },
-    {
-      "faction": "Tcho-Tcho",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Sycophancy",
-      "type": "Doom Phase",
-      "text": ""
+      "text": "When an enemy player does a Ritual of Annihilation, either you gain 1 Doom, or he gains 1 fewer Doom, his choice."
     },
     {
       "faction": "Tcho-Tcho",
-      "unit": "N/A",
-      "name": "Tablets of the Gods (Tsang Tribe)",
-      "type": "Doom Phase",
-      "text": ""
+      "category": "Spellbook",
+      "name": "TabletsOfTheGods",
+      "text": "When you perform a Ritual of Annihilation, you also receive 1 additional Elder Sign for each Gate at which you have any High Priests. Then, Eliminate all your High Priests. This is not optional."
     },
     {
       "faction": "Tcho-Tcho",
-      "unit": "N/A",
-      "name": "Terror (All Tribes)",
-      "type": "Battle",
-      "text": ""
+      "category": "Spellbook",
+      "name": "TerrorSB",
+      "text": "Choose one: Your enemy's Combat total is reduced by 1 per Proto-Shoggoth in the Battle. OR Your Combat total is increased by 1 per Proto-Shoggoth in the Battle."
     },
     {
       "faction": "The Burrowers Beneath",
-      "unit": "Shudde M'ell",
+      "category": "Spellbook",
       "name": "Autotomy",
-      "type": "Post-Battle",
-      "text": ""
+      "text": "In Unlimited Battles on your turn with Head present, apply 1 received Kill to any Segment in play. IF YOU DO: 1. Gain 1 Elder Sign per Segment in pool; and 2. Ignore Pains, but Retreat all your Units not Killed/Eliminated from Battle Area to 1 adjacent Area. TURN-END: place all Segments from pool on the Mantle."
     },
     {
       "faction": "The Burrowers Beneath",
-      "unit": "N/A",
-      "name": "Behemoth",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "The Burrowers Beneath",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Ensnare",
-      "type": "Action",
-      "text": ""
+      "text": "Choose enemy in Area with Tentacle. Roll 1 D6 die. From that Area to Shudde M'ell's Head Area, the enemy must Relocate a number of their Units equal to the lesser of: the die roll; or their Power. On any Faction, you may use this only once per Action Phase."
     },
     {
       "faction": "The Burrowers Beneath",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Grasp",
-      "type": "Battle",
-      "text": ""
+      "text": "If any Chthonians in Battle Area, add +1 Combat Dice per adjacent Area containing a Tentacle (Maximum of +4)."
     },
     {
       "faction": "The Burrowers Beneath",
-      "unit": "N/A",
-      "name": "Psychic Shriek",
-      "type": "Action",
-      "text": ""
+      "category": "Spellbook",
+      "name": "PsychicShriek",
+      "text": "If Mantle in play, choose enemy (not Hibernating). Roll 2 D6 dice. They Retreat a number of their Units equal to the lesser of: the dice roll; or 2x their Power; to Areas that did not contain their Units just prior to the Shriek, nor contain your Gates. On any Faction, you may use this only once per Action Phase."
     },
     {
       "faction": "The Burrowers Beneath",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Stalk",
-      "type": "Ongoing",
-      "text": ""
+      "text": "Immediately after any faction's Move Action, you may relocate a single Cultist to a Moved Unit's Area."
     },
     {
       "faction": "The Burrowers Beneath",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Subterrane",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "The Burrowers Beneath",
-      "unit": "N/A",
-      "name": "Thousand Writhing Maws",
-      "type": "Ongoing",
-      "text": ""
+      "text": "For your Units only, any Tentacle's Area and the Mantle can be adjacent (eg. for Move, Pain)."
     },
     {
       "faction": "The Invasion",
-      "unit": "N/A",
-      "name": "Blood Offering",
-      "type": "Action",
-      "text": ""
+      "category": "Spellbook",
+      "name": "BloodOffering",
+      "text": "Placeholder"
     },
     {
       "faction": "The Invasion",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Eclipse",
-      "type": "Once Only",
-      "text": ""
+      "text": "Placeholder"
     },
     {
       "faction": "The Invasion",
-      "unit": "N/A",
-      "name": "Entropy Siphon",
-      "type": "Ongoing",
-      "text": ""
+      "category": "Spellbook",
+      "name": "EntropySiphon",
+      "text": "Placeholder"
     },
     {
       "faction": "The Invasion",
-      "unit": "N/A",
-      "name": "Eternal Servitude",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "The Invasion",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Hellgate",
-      "type": "Action",
-      "text": ""
+      "text": "Placeholder"
     },
     {
       "faction": "The Invasion",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Infernolatreia",
-      "type": "Ongoing",
-      "text": ""
+      "text": "If you would gain 1 or more Elder Signs, you may instead first draw and look at Elder Signs equal to the number of your Lord's Shadows plus one. Keep the gained amount and return the rest (if any)."
     },
     {
       "faction": "The Invasion",
-      "unit": "Demon Larvae",
-      "name": "Larvae",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "The Invasion",
-      "unit": "Demon Larvae",
-      "name": "Portend",
-      "type": "Action",
-      "text": ""
-    },
-    {
-      "faction": "The Invasion",
-      "unit": "Baphomet",
-      "name": "Sacrament of Flesh",
-      "type": "Doom Phase",
-      "text": ""
-    },
-    {
-      "faction": "The Invasion",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Scavenge",
-      "type": "Action",
-      "text": ""
+      "text": "Placeholder"
     },
     {
       "faction": "The Invasion",
-      "unit": "Baphomet",
+      "category": "Spellbook",
       "name": "Unquenchable Thirst",
-      "type": "Ongoing",
-      "text": ""
+      "text": "Pay 1 Doom (instead of Power) to Attack or Capture in Baphomet's Area. This is not optional and cannot be disabled or removed by other effects."
+    },
+    {
+      "faction": "The Invasion",
+      "category": "Spellbook",
+      "name": "UnquenchableThirst",
+      "text": "Pay 1 Doom (instead of Power) to Attack or Capture in Baphomet's Area. This is not optional and cannot be disabled or removed by other effects."
     },
     {
       "faction": "Tombstalker",
-      "unit": "N/A",
-      "name": "Eleven Revelations",
-      "type": "Action",
-      "text": ""
+      "category": "Spellbook",
+      "name": "ElevenRevelations",
+      "text": "Give an enemy your topmost Cursed Tome (I-XI) which they place on their Faction Sheet."
     },
     {
       "faction": "Tombstalker",
-      "unit": "N/A",
-      "name": "Grasping Dead",
-      "type": "Action",
-      "text": ""
+      "category": "Spellbook",
+      "name": "GraspingDead",
+      "text": "Resolve a Battle in each Area containing a Tomb-Herd and enemy Units, with you as the attacker, for free. Only your Tomb-Herd participate in the Battle."
     },
     {
       "faction": "Tombstalker",
-      "unit": "N/A",
-      "name": "Green Decay",
-      "type": "Gather Power Phase",
-      "text": ""
+      "category": "Spellbook",
+      "name": "GreenDecay",
+      "text": "If Tombstalker Gla'aki is in play, captured Cultists gain you 1 Elder Sign (instead of 1 Power) during the Gather Power Phase."
     },
     {
       "faction": "Tombstalker",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Hecatomb",
-      "type": "Doom Phase",
-      "text": ""
+      "text": "After placing all Tomb-Herd from Death March, but before resetting the counter to 0, you may spend residual Death's Head toward the cost of a Ritual of Annihilation as Power. If you only spent Death's Head toward the cost of a Ritual, do not advance the Ritual Marker."
     },
     {
       "faction": "Tombstalker",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Oleaginous",
-      "type": "Post-Battle",
-      "text": ""
+      "text": "Any Pains applied to Tombstalker Gla'aki and Deep Tendrils instead become Retreats (you can move them to any adjacent Areas, regardless of the presence of enemy Units)."
     },
     {
       "faction": "Tombstalker",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Undulate",
-      "type": "Ongoing",
-      "text": ""
+      "text": "Your Units may carry one of your Units of lesser cost when moving for free. This effect stacks."
     },
     {
-      "faction": "Tombstalker",
-      "unit": "N/A",
-      "name": "Death March",
-      "type": "Ongoing",
-      "text": ""
+      "faction": "Tribulation",
+      "category": "Spellbook",
+      "name": "BlackRider",
+      "text": "In Famine's Area, ignore the presence of enemy Monsters and Terrors when you Capture an enemy Cultist."
+    },
+    {
+      "faction": "Tribulation",
+      "category": "Spellbook",
+      "name": "CosmicChaos",
+      "text": "Move any number of Conquests for free when you perform a Move Action during which you spend 1 or more Power."
+    },
+    {
+      "faction": "Tribulation",
+      "category": "Spellbook",
+      "name": "Despair",
+      "text": "During Post-Battle, if Death is present and a Kill is assigned to a -cost or higher enemy Unit, Gain  Elder Sign and flip this Spellbook."
+    },
+    {
+      "faction": "Tribulation",
+      "category": "Spellbook",
+      "name": "Dominion",
+      "text": "When performing the Move Action, Areas with Units you control are adjacent to each other."
+    },
+    {
+      "faction": "Tribulation",
+      "category": "Spellbook",
+      "name": "God's Hand",
+      "text": "Your Units ignore Kills and Eliminations in Death's Area."
+    },
+    {
+      "faction": "Tribulation",
+      "category": "Spellbook",
+      "name": "God's Scale",
+      "text": "Enemy Spellbooks are ignored in Famine's Area. After any Faction Action, each enemy Faction may choose (in response) to have you Gain  Elder Sign to flip this Spellbook face-down. At the end of the Doom Phase, flip it face-up."
+    },
+    {
+      "faction": "Tribulation",
+      "category": "Spellbook",
+      "name": "God's Sword",
+      "text": "War now has  Combat."
+    },
+    {
+      "faction": "Tribulation",
+      "category": "Spellbook",
+      "name": "GodsHand",
+      "text": "Your Units ignore Kills and Eliminations in Death's Area."
+    },
+    {
+      "faction": "Tribulation",
+      "category": "Spellbook",
+      "name": "GodsPlague",
+      "text": "All enemy Factions with one or more Units in Pestilence's Area choose one of their Units to be Pained away. You choose the Area into which each Unit is Pained."
+    },
+    {
+      "faction": "Tribulation",
+      "category": "Spellbook",
+      "name": "GodsScale",
+      "text": "Enemy Spellbooks are ignored in Famine's Area. After any Faction Action, each enemy Faction may choose (in response) to have you Gain  Elder Sign to flip this Spellbook face-down. At the end of the Doom Phase, flip it face-up."
+    },
+    {
+      "faction": "Tribulation",
+      "category": "Spellbook",
+      "name": "GodsSword",
+      "text": "War now has  Combat."
+    },
+    {
+      "faction": "Tribulation",
+      "category": "Spellbook",
+      "name": "MartyrsCry",
+      "text": "Gain  Power for each Tribulation Acolyte in your pool and on enemy Faction Cards."
+    },
+    {
+      "faction": "Tribulation",
+      "category": "Spellbook",
+      "name": "Mayhem",
+      "text": "During Post-Battle, if Pestilence is present and  or more Pains are assigned to enemy Units, Gain  Elder Sign and flip this Spellbook."
+    },
+    {
+      "faction": "Tribulation",
+      "category": "Spellbook",
+      "name": "PaleRider",
+      "text": "If Death is present, add  Kill to your results."
+    },
+    {
+      "faction": "Tribulation",
+      "category": "Spellbook",
+      "name": "Rampage",
+      "text": "During Gather Power Phase, if you Sacrifice one enemy Cultist, Gain  Elder Sign and flip this Spellbook."
+    },
+    {
+      "faction": "Tribulation",
+      "category": "Spellbook",
+      "name": "RedRider",
+      "text": "War now has  Combat."
+    },
+    {
+      "faction": "Tribulation",
+      "category": "Spellbook",
+      "name": "Ruin",
+      "text": "During Battle, if War is present and you roll  or more Combat dice, Gain  Elder Sign and flip this Spellbook."
+    },
+    {
+      "faction": "Tribulation",
+      "category": "Spellbook",
+      "name": "The Black Rider",
+      "text": "In Famine's Area, ignore the presence of enemy Monsters and Terrors when you Capture an enemy Cultist."
+    },
+    {
+      "faction": "Tribulation",
+      "category": "Spellbook",
+      "name": "The Cosmic Chaos",
+      "text": "Move any number of Conquests for free when you perform a Move Action during which you spend 1 or more Power."
+    },
+    {
+      "faction": "Tribulation",
+      "category": "Spellbook",
+      "name": "The Martyr's Cry",
+      "text": "Gain  Power for each Tribulation Acolyte in your pool and on enemy Faction Cards."
+    },
+    {
+      "faction": "Tribulation",
+      "category": "Spellbook",
+      "name": "The Pale Rider",
+      "text": "If Death is present, add  Kill to your results."
+    },
+    {
+      "faction": "Tribulation",
+      "category": "Spellbook",
+      "name": "The Red Rider",
+      "text": "War now has  Combat."
+    },
+    {
+      "faction": "Tribulation",
+      "category": "Spellbook",
+      "name": "The White Rider",
+      "text": "Enemy Units in Pestilence's Area cannot move out and cannot retreat from that Area."
+    },
+    {
+      "faction": "Tribulation",
+      "category": "Spellbook",
+      "name": "WhiteRider",
+      "text": "Enemy Units in Pestilence's Area cannot move out and cannot retreat from that Area."
     },
     {
       "faction": "Windwalker",
-      "unit": "N/A",
-      "name": "Arctic Wind",
-      "type": "Ongoing",
-      "text": ""
+      "category": "Spellbook",
+      "name": "ArcticWind",
+      "text": "When Ithaqua uses Move Action, any or all your Units in the same Area can Move with him for no additional cost."
     },
     {
       "faction": "Windwalker",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Berserkergang",
-      "type": "Post-Battle",
-      "text": ""
+      "text": "For each Gnoph-Keh assigned a Kill in Battle, the enemy must Eliminate 1 Monster or Cultist."
     },
     {
       "faction": "Windwalker",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Cannibalism",
-      "type": "Post-Battle",
-      "text": ""
+      "text": "After all Battle results have been applied, if one or more enemy Units were killed, you may place a Wendigo or Acolyte from your Pool into the Battle Area. You may do this even if you were not involved in the Battle."
     },
     {
       "faction": "Windwalker",
-      "unit": "N/A",
-      "name": "Herald of the Outer Gods",
-      "type": "Ongoing",
-      "text": ""
+      "category": "Spellbook",
+      "name": "Herald",
+      "text": "Pay 5 Power for Windwalker's Ritual of Annihilation, regardless of the number indicated on the Ritual track."
     },
     {
       "faction": "Windwalker",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Howl",
-      "type": "Pre-Battle",
-      "text": ""
+      "text": "Before Battle, if any Wendigos are present, you may force the enemy to Retreat one Unit (of their choice) out of the Area to an adjacent Area. This is not a Pain - the Unit may be moved to an Area containing your Units."
     },
     {
       "faction": "Windwalker",
-      "unit": "N/A",
-      "name": "Ice Age",
-      "type": "Action",
-      "text": ""
-    },
-    {
-      "faction": "Windwalker",
-      "unit": "N/A",
-      "name": "Hibernate",
-      "type": "Action",
-      "text": ""
-    },
-    {
-      "faction": "Windwalker",
-      "unit": "Rhan-Tegoth",
-      "name": "Eternal",
-      "type": "Post-Battle",
-      "text": ""
-    },
-    {
-      "faction": "Windwalker",
-      "unit": "Ithaqua",
-      "name": "Ferox",
-      "type": "Ongoing",
-      "text": ""
+      "category": "Spellbook",
+      "name": "IceAge",
+      "text": "Place or move your Ice Age token to any Area. When an enemy Faction takes any Action ending in the Ice Age Area, they must pay +1 Power."
     },
     {
       "faction": "Xyrious Storm",
-      "unit": "N/A",
-      "name": "Cloud of Ashes",
-      "type": "Ongoing",
-      "text": ""
+      "category": "Spellbook",
+      "name": "CloudOfAshes",
+      "text": "When one of your Monsters is Killed, you may place it on your Faction Card instead of returning it to Pool. In the Doom Phase, return one Monster from the Faction Card to a Controlled Gate; remaining Monsters return to Pool."
     },
     {
       "faction": "Xyrious Storm",
-      "unit": "N/A",
-      "name": "Distant Thunderclap",
-      "type": "Post-Battle",
-      "text": ""
+      "category": "Spellbook",
+      "name": "FrozenSolid",
+      "text": "Your Acolytes controlling Gates in Areas with Faction Glyphs cannot be captured by Monsters. Cultist-source, GOO-ability, and Terror captures still apply."
     },
     {
       "faction": "Xyrious Storm",
-      "unit": "N/A",
-      "name": "Frozen Solid",
-      "type": "Ongoing",
-      "text": ""
+      "category": "Spellbook",
+      "name": "StaticAccumulator",
+      "text": "Move Units with total Cost up to 4 from one adjacent Area into the Battle Area."
     },
     {
       "faction": "Xyrious Storm",
-      "unit": "N/A",
-      "name": "Static Accumulator",
-      "type": "Pre-Battle",
-      "text": ""
+      "category": "Spellbook",
+      "name": "TorrentialDownpour",
+      "text": "Gain 1 Power if you have Amphibian Crawlers in BOTH a Land Area AND a Sea Area. Gain +1 additional Power for each of those Amphibian Crawler Areas that contain an Enemy-Controlled Gate."
     },
     {
       "faction": "Xyrious Storm",
-      "unit": "N/A",
-      "name": "Torrential Downpour",
-      "type": "Gather Power Phase",
-      "text": ""
-    },
-    {
-      "faction": "Xyrious Storm",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Tsunami",
-      "type": "Action",
-      "text": ""
+      "text": "Move an Eye of the Storm from a Sea Area to an adjacent Land Area. Any or all of your other Units in the Sea Area may move with it."
     },
     {
       "faction": "Xyrious Storm",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Whirlwind",
-      "type": "Post-Battle",
-      "text": ""
-    },
-    {
-      "faction": "Xyrious Storm",
-      "unit": "N/A",
-      "name": "Precipitation",
-      "type": "Post-Battle",
-      "text": ""
+      "text": "While in Land Areas, Twisters may Retreat to Sea Areas containing enemy Units."
     },
     {
       "faction": "Yellow Sign",
-      "unit": "N/A",
-      "name": "He Who is Not to be Named",
-      "type": "Action",
-      "text": ""
+      "category": "Spellbook",
+      "name": "HWINTBN",
+      "text": "Move Hastur to any Area containing a Cultist of any Faction. You may then take a second, different Action. You may NOT take The Screaming Dead as your second Action."
     },
     {
       "faction": "Yellow Sign",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Passion",
-      "type": "Ongoing",
-      "text": ""
+      "text": "When one or more of your Cultists are Eliminated by an enemy (Killed, Captured, etc.), gain 1 Power total."
     },
     {
       "faction": "Yellow Sign",
-      "unit": "N/A",
+      "category": "Spellbook",
+      "name": "ScreamingDead",
+      "text": "Move the King in Yellow to an adjacent Area. Any Undead in the same Area can move with him for free. You may then take a second, different Action. You may NOT take He Who is Not to be Named as your second Action."
+    },
+    {
+      "faction": "Yellow Sign",
+      "category": "Spellbook",
       "name": "Shriek",
-      "type": "Action",
-      "text": ""
+      "text": "Move any or all Byakhee from their current Area(s) to any one Area on the Map."
     },
     {
       "faction": "Yellow Sign",
-      "unit": "N/A",
-      "name": "The Screaming Dead",
-      "type": "Action",
-      "text": ""
+      "category": "Spellbook",
+      "name": "ThirdEye",
+      "text": "If Hastur is in play, the cost of Desecration is reduced to 1. If the Desecration succeeds, you also get 1 Elder Sign."
     },
     {
       "faction": "Yellow Sign",
-      "unit": "N/A",
-      "name": "The Third Eye",
-      "type": "Ongoing",
-      "text": ""
-    },
-    {
-      "faction": "Yellow Sign",
-      "unit": "N/A",
+      "category": "Spellbook",
       "name": "Zingaya",
-      "type": "Action",
-      "text": ""
+      "text": "If Undead are in an Area with enemy Acolyte Cultists, your enemy must Eliminate an Acolyte Cultist. Then, place an Undead in the Area."
     },
     {
-      "faction": "Yellow Sign",
-      "unit": "N/A",
-      "name": "Feast",
-      "type": "Gather Power Phase",
-      "text": ""
+      "faction": "iEG",
+      "category": "Hagarg Ryonis",
+      "name": "Subversion",
+      "text": "Choose a player, if that player performs a Ritual of Annihilation in this Doom Phase, you steal 1 of the Elder Signs he earns (if any)."
     },
     {
-      "faction": "Yellow Sign",
-      "unit": "King in Yellow",
-      "name": "Desecrate",
-      "type": "Action",
-      "text": ""
+      "faction": "iEG",
+      "category": "Hellmother",
+      "name": "Hellborn",
+      "text": "If Hellmother is in play, your monsters can be Recruited instead of Summoned. I.e., you can place them in any Area in which you have a Unit."
     },
     {
-      "faction": "Yellow Sign",
-      "unit": "Hastur",
-      "name": "Vengeance",
-      "type": "Post-Battle",
-      "text": ""
+      "faction": "iEG",
+      "category": "Nodens",
+      "name": "Healing",
+      "text": "At the end of the Doom Phase, unless the Ritual of Annihilation track has reached Sudden Death, move the Ritual marker backwards 1 step (but not past the start)."
+    },
+    {
+      "faction": "iEG",
+      "category": "Sun God",
+      "name": "Sunrise",
+      "text": "The Sun God cannot be killed or eliminated. When he is chosen to receive such a result, instead the enemy player gets to pick up and place Sun God in any Area, and Sun God\u2019s owner loses 1 Power or 1 Doom (your choice)."
+    },
+    {
+      "faction": "iEG",
+      "category": "Thunder King",
+      "name": "Inferiority Complex",
+      "text": "You may choose to spend 2 Doom to gain 5 Power."
+    },
+    {
+      "faction": "iGOO",
+      "category": "Abhoth",
+      "name": "Filth",
+      "text": "Place a Filth Token in any Area. Filth Tokens act as Combat 0 Monsters. They belong to Abhoth's Faction, but never Move nor take Actions. They can be Killed or Pained normally in Battle, and are affected by Spellbooks and abilities."
+    },
+    {
+      "faction": "iGOO",
+      "category": "Atlach-Nacha",
+      "name": "Spinnerets",
+      "text": "If Atlach-Nacha is in an Area that is lacking a Web Token, place one there."
+    },
+    {
+      "faction": "iGOO",
+      "category": "Azathoth",
+      "name": "Daemon Sultan",
+      "text": "If Azathoth is assigned a Kill in Battle, roll 1 die. Lower the Azathoth marker by the amount shown on the die. If the marker reaches 0, Azathoth is Killed."
+    },
+    {
+      "faction": "iGOO",
+      "category": "Bokrug",
+      "name": "Ghosts of Ib",
+      "text": "If Bokrug is killed, you do not lose this Loyalty Card. Instead, place Bokrug\u2019s figure on this card. At the end of the next Doom Phase, return Bokrug to any Area of the Map that does not contain any enemy Units. If there are no such areas, Bokrug remains on this card until the next Doom Phase."
+    },
+    {
+      "faction": "iGOO",
+      "category": "Byatis",
+      "name": "Toad of Berkeley",
+      "text": "Byatis may not Move, nor can he be moved with movement-type abilities (such as Arctic Winds or Submerge). He can still be Pained. If there are no enemy Units in Byatis' Area during the Doom Phase, receive 1 Elder Sign."
+    },
+    {
+      "faction": "iGOO",
+      "category": "Cthugha",
+      "name": "Fire Vampires",
+      "text": "If Cthugha is involved in a Battle, after all Kills results are assigned, you may choose to \"spare\" one or more Killed enemy Units, by reducing their loss to a Pain instead. For each Killed enemy Unit you spare in this way, you gain 1 Power."
+    },
+    {
+      "faction": "iGOO",
+      "category": "Daoloth",
+      "name": "Cosmic Unity",
+      "text": "In a Battle involving Daoloth, choose one enemy Great Old One. It rolls no Combat dice (it still gets its Battle Ability, if any)."
+    },
+    {
+      "faction": "iGOO",
+      "category": "Dire Yog-Sothoth",
+      "name": "To Rule Them All",
+      "text": "Dire Yog-Sothoth can Capture other Great Old Ones following the same rules as Capture Cultist."
+    },
+    {
+      "faction": "iGOO",
+      "category": "Father Dagon",
+      "name": "Tsunami",
+      "text": "Choose a Land Area adjacent to an Ocean Area. All Cultists in the Area must be moved into adjacent Ocean Areas by their owners (this includes your Cultists). In a dispute over who moves first, you decide."
+    },
+    {
+      "faction": "iGOO",
+      "category": "Ghatanothoa",
+      "name": "Mummify",
+      "text": "Any enemy Acolyte Cultists sharing an Area with Ghatanothoa are immediately \u201cMummified.\u201d Lay Mummified Cultist figures on their sides. Such Cultists cannot use the Move Action, do not participate in Battle, and produce no Power during the next Gather Power Phase. During the Doom Phase, stand any Mummified Cultists back up. (A Mummified Cultist can be Captured. If a Cultist Controlled a Gate before becoming Mummified, it retains Control of that Gate.)"
+    },
+    {
+      "faction": "iGOO",
+      "category": "Gla'aki",
+      "name": "The Tomb-Herd",
+      "text": "Earn 1 Power per Acolyte Cultist in your Pool. This occurs before any Captured Cultists are Sacrified by your enemies and returned to your Pool."
+    },
+    {
+      "faction": "iGOO",
+      "category": "Mother Hydra",
+      "name": "The Agony Sting",
+      "text": "Choose any Ocean Area. All enemy Cultist in that Area must be moved into adjacent Land Areas by their owners (your Cultists are immune). In a dispute over who moves first, you decide."
+    },
+    {
+      "faction": "iGOO",
+      "category": "Nyogtha",
+      "name": "From Below",
+      "text": "Nyogtha is two Units. Any Common Action involving one of these Units can be applied simultaneously to the other as part of the same Action and at no extra cost. When one Nyogtha Unit Moves, so may the other. When one Captures a Cultist, so may the other. If Battle is declared in one's Area, you can also declare a Battle in the other's Area, for free. You only lose this Loyalty Card if both Nyogtha Units have been Killed."
+    },
+    {
+      "faction": "iGOO",
+      "category": "The Bloated Woman",
+      "name": "The Velvet Fan",
+      "text": "After any Battle involving the Bloated Woman, choose one Killed or Eliminated enemy Monster or Cultist and place it on this card; that Unit is considered to be out of play. If a Unit is later Recruited or Summoned from this card, its owner pays its Power cost directly to you. Units remain on this card if the Bloated Woman is Killed or Eliminated - they may still be Recruited or Summoned from this card, but no one will be paid Power for this while she is out of play. If she is later returned to play, her controller will receive payments as described above. There is no limit to the number of Units you may have on this card."
+    },
+    {
+      "faction": "iGOO",
+      "category": "Tulzscha",
+      "name": "Undying Flame",
+      "text": "At the end of the Gather Power Phase, gain 1 Doom if at least one Faction has more Doom than you, gain 1 Elder Sign if at least one Faction has more Elder Sign than you, gain 1 Power if at least one Faction has more Power than you."
+    },
+    {
+      "faction": "iGOO",
+      "category": "Y'Golonac",
+      "name": "Orifices",
+      "text": "If Y'Golonac is Killed in a Battle, select a surviving enemy Terror, Monster, or Cultist. Replace it with Y'Golonac, then give Y'Golonac's Loyalty Card to that player. If no enemies survived, Y'Golonac dies normally (placing this Loyalty Card in the general Pool)."
+    },
+    {
+      "faction": "iGOO",
+      "category": "Yig",
+      "name": "Snakebite",
+      "text": "Your Cultists are now poisonous. If any of your Cultists are killed in a Battle, the enemy receives 1 extra Kill result (he only takes 1 extra Kill regardless of how many Cultists die)."
     }
   ]
 }
