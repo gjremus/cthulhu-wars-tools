@@ -398,6 +398,16 @@
   th[data-col] {
     user-select: none;
   }
+  /* Claude Terminal Log "Try again" column: the other columns add up to ~2900px, so the
+     last column sat far off-screen (worst on phones). Pin it to the right edge of the
+     scrolling table so the button is always visible, whatever the screen or saved widths. */
+  #claudelog-table .claudelog-action {
+    position: sticky;
+    right: 0;
+    z-index: 2;
+    background: var(--bg);
+    box-shadow: -3px 0 6px rgba(0, 0, 0, 0.45);
+  }
 </style>
 </head>
 <body>
@@ -752,7 +762,7 @@
           <th style="border:1px solid #000;padding:6px;text-align:left;width:250px;position:relative;" data-col="6">Prompt <span class="resize-handle"></span></th>
           <th style="border:1px solid #000;padding:6px;text-align:left;width:2000px;word-wrap:break-word;overflow-wrap:break-word;position:relative;" data-col="7">What Claude did <span class="resize-handle"></span></th>
           <th style="border:1px solid #000;padding:6px;text-align:left;width:50px;position:relative;" data-col="8">Est. cost <span class="resize-handle"></span></th>
-          <th style="border:1px solid #000;padding:6px;text-align:left;width:90px;" data-col="9">Action</th>
+          <th class="claudelog-action" style="border:1px solid #000;padding:6px;text-align:left;width:90px;" data-col="9">Action</th>
         </tr></thead>
         <tbody id="claudelog-body"><tr><td colspan="10" style="border:1px solid #000;padding:6px;">Loading…</td></tr></tbody>
       </table>
@@ -4017,7 +4027,7 @@ function renderClaudeLog() {
       <td style="${td}"><div style="${box}">${esc(e.prompt || '')}</div></td>
       <td style="${td}"><div style="${box}">${esc(e.summary || '')}</div></td>
       <td style="${td}text-align:right;">${costCell(e.cost, e.costNote)}</td>
-      <td style="${td}text-align:center;"><button class="small" onclick="retryClaudeLogEntry(${idx})">Try again</button></td>
+      <td class="claudelog-action" style="${td}text-align:center;"><button class="small" onclick="retryClaudeLogEntry(${idx})">Try again</button></td>
     </tr>`).join('') : `<tr><td colspan="10" style="${td}">No prompts logged yet.</td></tr>`;
 }
 
