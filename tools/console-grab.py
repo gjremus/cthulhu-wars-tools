@@ -10,8 +10,8 @@ server.jar or the server source.
 Endpoints used (all under  https://<HOST>/admin/<TOKEN>/...):
   GET  roles/<gameId>        -> TSV "name\\tsecret" per line. "#" = spectator,
                                 "$" = master. We prefer the spectator secret.
-  GET  annotation/<gameId>   -> "0|1\\tnotes"  (broken flag + free-text notes)
-  POST annotation/<gameId>   -> body "0|1\\tnotes" (replaces the row)
+  GET  annotation/<gameId>   -> "0|1\\tnotes\\tbuild" (broken flag + free-text notes + build tag)
+  POST annotation/<gameId>   -> body "0|1\\tnotes\\tbuild" (replaces the row)
   GET  games                 -> TSV id,name,masterSecret,lastWriteMs,broken,
                                 completed,isBot,humans,bots  (used by --sweep)
 
@@ -262,20 +262,24 @@ def summarize(result):
     return summary, has_uncaught
 
 
-def write_annotation(token, game_id, entry, set_broken, dry_run=False):
+def write_annotation(token, game_id, entry, set_broken, build, dry_run=False):
     """Append the timestamped CONSOLE entry to the game's notes, preserving
     existing notes. If set_broken, raise the broken flag; otherwise preserve the
-    existing broken flag (never auto-clear it)."""
+    existing broken flag (never auto-clear it).
+
+    The server response is "broken\\tnotes\\tbuild" (3 fields). Split with a
+    max field count so a stray tab from a *previous* corrupted write can never
+    bleed the trailing build field into notes again here - that bleed is what
+    let the build column eventually receive a too-long fragment and 500 on
+    insert. build is passed in from the caller (the game's own known build
+    tag) and round-tripped explicitly below, never parsed back out of notes.
+    """
     status, body = http_get(admin_url(token, f"annotation/{game_id}"))
     if status != 200:
         raise RuntimeError(f"GET annotation/{game_id} returned HTTP {status}")
-    tab = body.find("\t")
-    if tab >= 0:
-        cur_broken = body[:tab].strip() == "1"
-        cur_notes = body[tab + 1:]
-    else:
-        cur_broken = body.strip() == "1"
-        cur_notes = ""
+    parts = body.split("\t", 2)
+    cur_broken = parts[0].strip() == "1"
+    cur_notes = parts[1] if len(parts) > 1 else ""
 
     ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     new_entry = f"CONSOLE {ts}: {entry}"
@@ -288,7 +292,7 @@ def write_annotation(token, game_id, entry, set_broken, dry_run=False):
         merged = merged[-MAX_NOTES_TOTAL:]
 
     new_broken = cur_broken or set_broken
-    payload = ("1" if new_broken else "0") + "\t" + merged
+    payload = ("1" if new_broken else "0") + "\t" + merged + "\t" + (build or "")
 
     if dry_run:
         print(f"[dry-run] would POST annotation/{game_id} "
@@ -319,7 +323,7 @@ def grab_one(token, game_id, build, dry_run=False):
         print(f"[game {game_id}] summary:\n{summary}")
         wrote, new_broken = write_annotation(
             token, game_id, summary.replace("\n", " | "),
-            set_broken=has_uncaught, dry_run=dry_run)
+            set_broken=has_uncaught, build=build, dry_run=dry_run)
         out["ok"] = wrote
         out["broken"] = new_broken
         status_word = "OK" if wrote else "FAILED"
