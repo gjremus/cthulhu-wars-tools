@@ -11,7 +11,7 @@
 
 set -euo pipefail
 
-REPO_ROOT="/Users/gremus/Claude-Projects/cthulhu-wars-tools"
+REPO_ROOT="/Users/gremus/cthulhu-wars-tools"
 ADMIN_HTML="$REPO_ROOT/admin/admin.html"
 SSH_KEY="$HOME/.ssh/oracle_cw_ed25519"
 HOST="oracle-cw-server@cwo.freeddns.org"

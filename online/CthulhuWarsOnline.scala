@@ -952,7 +952,9 @@ object CthulhuWarsOnline {
                             val notes = if (parts.length > 1) parts(1) else ""
                             val broken = brokenStr.trim == "1"
                             val existing = q(adminAnnotations.filter(_.gameId === gameId).result.headOption)
-                            val build = if (parts.length > 2) parts(2).trim else existing.map(_.build).getOrElse("")
+                            // Column is VARCHAR(20); clamp defensively so a malformed
+                            // or future caller can never 500 this endpoint on insert.
+                            val build = (if (parts.length > 2) parts(2).trim else existing.map(_.build).getOrElse("")).take(20)
                             q(
                                 adminAnnotations.filter(_.gameId === gameId).delete,
                                 adminAnnotations += AdminAnnotation(gameId, broken, notes, build)

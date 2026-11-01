@@ -2336,14 +2336,17 @@ function populateGames(text) {
 // success so feedback is instant; if the POST fails, the UI rolls back.
 function toggleBrokenFromList(gameId, btn) {
   fetch(`${SERVER}/admin/${TOKEN}/annotation/${gameId}`).then(r => r.text()).then(text => {
-    // Body: "0|1\tnotes" — preserve notes verbatim.
-    const tab = text.indexOf('\t');
-    const curBroken = (tab >= 0 ? text.substring(0, tab) : text).trim() === '1';
-    const notes = tab >= 0 ? text.substring(tab + 1) : '';
+    // Body is "broken\tnotes\tbuild" (3 fields). Split with a limit so any tab
+    // characters that end up inside notes stay in the notes field instead of
+    // bleeding into — and eventually overflowing — the build field below.
+    const parts = text.split('\t');
+    const curBroken = (parts[0] || '').trim() === '1';
+    const notes = parts.length > 1 ? parts[1] : '';
+    const build = parts.length > 2 ? parts[2] : '';
     const newBroken = !curBroken;
     fetch(`${SERVER}/admin/${TOKEN}/annotation/${gameId}`, {
       method: 'POST',
-      body: (newBroken ? '1' : '0') + '\t' + notes,
+      body: (newBroken ? '1' : '0') + '\t' + notes + '\t' + build,
     }).then(r => {
       if (!r.ok) { alert(`Could not update broken flag (HTTP ${r.status})`); return; }
       const row = btn.closest('.game-row');
@@ -2847,11 +2850,12 @@ function sendFixAction(action) {
 }
 
 // Populate the broken checkbox + notes textarea from the annotation endpoint.
-// Server returns "broken\tnotes" with broken=0|1.
+// Server returns "broken\tnotes\tbuild" (3 fields) with broken=0|1. Split with
+// a limit so the notes field can never swallow the trailing build field.
 function populateAnnotation(text) {
-  const tab = text.indexOf('\t');
-  const broken = (tab >= 0 ? text.substring(0, tab) : text).trim() === '1';
-  const notes = tab >= 0 ? text.substring(tab + 1) : '';
+  const parts = text.split('\t');
+  const broken = (parts[0] || '').trim() === '1';
+  const notes = parts.length > 1 ? parts[1] : '';
   const cb = document.getElementById('broken-cb');
   const ta = document.getElementById('game-notes');
   if (cb) cb.checked = broken;
@@ -2861,7 +2865,10 @@ function populateAnnotation(text) {
 }
 
 // Persist the current annotation (broken + notes) for the selected game.
-// Body format must match the server: "broken\tnotes" with broken=0|1.
+// Body format must match the server: "broken\tnotes\tbuild" (3 fields). Build
+// is round-tripped from CURRENT_GAME (set from the games list) rather than
+// parsed back out of the notes textarea, so it can never get corrupted by
+// whatever the admin typed into notes.
 function saveAnnotation() {
   if (!CURRENT_GAME) return Promise.resolve();
   const cb = document.getElementById('broken-cb');
@@ -2870,7 +2877,7 @@ function saveAnnotation() {
   const notes = ta ? ta.value : '';
   return fetch(`${SERVER}/admin/${TOKEN}/annotation/${CURRENT_GAME.id}`, {
     method: 'POST',
-    body: broken + '\t' + notes,
+    body: broken + '\t' + notes + '\t' + (CURRENT_GAME.build || ''),
   });
 }
 
@@ -3927,8 +3934,9 @@ function esc(s) {
         const id = parts[0], broken = (parts[4] || '0').trim() === '1';
         if (broken) {
           fetch(`${SERVER}/admin/${TOKEN}/annotation/${id}`).then(r => r.text()).then(ann => {
-            if (ann && ann.indexOf('\t') > 0) {
-              const notes = ann.substring(ann.indexOf('\t') + 1);
+            const annParts = ann ? ann.split('\t') : [];
+            if (annParts.length > 1) {
+              const notes = annParts[1];
               if (notes.trim() && notes.indexOf('CRASH') >= 0) {
                 console.log(`[auto-poll] Game ${id} crash: ${notes.substring(0, 200)}`);
               }
