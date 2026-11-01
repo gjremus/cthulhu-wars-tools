@@ -826,12 +826,10 @@ object CthulhuWarsOnline {
                         .result)
                     // Detect completion per game: any log row whose value contains
                     // "GameOverPhaseAction" means the engine reached the end-of-game phase.
-                    // One query per game keeps the per-row computation simple; for the
-                    // current game counts (< 200) this is fast.
-                    val completed = rows.map(_._1).map { id =>
-                        val n = q(logs.filter(_.gameId === id).filter(_.value.like("%GameOverPhaseAction%")).length.result)
-                        id -> (n > 0)
-                    }.toMap
+                    // Single scan over all games' logs (grouped by gameId) instead of one
+                    // query per game — the old per-game loop stopped finishing inside the
+                    // request timeout once the game count grew past a couple hundred.
+                    val completed = q(logs.filter(_.value.like("%GameOverPhaseAction%")).map(_.gameId).distinct.result).toSet
                     val botFlagged = q(botGames.map(_.gameId).result).toSet
                     val liveFlagged = q(liveGames.map(_.gameId).result).toSet
                     val factionCounts = q(roles.filter(r => r.name =!= "$" && r.name =!= "#")
@@ -839,7 +837,7 @@ object CthulhuWarsOnline {
                         .toMap
                     txt(rows.map { case (id, name, secret, lastMs, broken, build) =>
                         val b = if (broken.getOrElse(false)) "1" else "0"
-                        val c = if (completed.getOrElse(id, false)) "1" else "0"
+                        val c = if (completed.contains(id)) "1" else "0"
                         val ib = if (botFlagged.contains(id)) "1" else "0"
                         val il = if (liveFlagged.contains(id)) "1" else "0"
                         val fc = factionCounts.getOrElse(id, 0)
