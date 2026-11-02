@@ -1866,7 +1866,7 @@
           headerRow.style.border = '1px solid #000';
 
           const allHeaders = ['Entry #', 'Type', 'Submitted', 'User', 'Prompt', 'Claude Response', 'Cost', 'Status', 'Actions'];
-          const hiddenInFactionDesigner = ['Type', 'User', 'Cost', 'Actions'];
+          const hiddenInFactionDesigner = ['Type', 'User', 'Cost'];  // Show Actions to everyone
           const headers = this.state.adminToken
             ? allHeaders
             : allHeaders.filter(h => !hiddenInFactionDesigner.includes(h));
@@ -1994,26 +1994,24 @@
             statusCell.style.fontSize = '12px';
             row.appendChild(statusCell);
 
-            // Actions (admin view only - retry button for bug reports and design changes)
-            if (isAdminView) {
-              const actionsCell = document.createElement('td');
-              actionsCell.style.padding = '8px';
-              actionsCell.style.border = '1px solid #000';
-              actionsCell.style.textAlign = 'center';
+            // Actions column - show Try again button for bug reports and design changes
+            const actionsCell = document.createElement('td');
+            actionsCell.style.padding = '8px';
+            actionsCell.style.border = '1px solid #000';
+            actionsCell.style.textAlign = 'center';
 
-              // Show "Try again" button for bug reports and design changes
-              if (entry.type && (entry.type.includes('bug') || entry.type.includes('design'))) {
-                const retryBtn = document.createElement('button');
-                retryBtn.className = 'small';
-                retryBtn.textContent = 'Try again';
-                retryBtn.style.fontSize = '11px';
-                retryBtn.style.padding = '4px 8px';
-                retryBtn.onclick = () => this.retryDesignerEntry(entry);
-                actionsCell.appendChild(retryBtn);
-              }
-
-              row.appendChild(actionsCell);
+            // Show "Try again" button for bug reports and design changes
+            if (entry.type && (entry.type.includes('bug') || entry.type.includes('design'))) {
+              const retryBtn = document.createElement('button');
+              retryBtn.className = 'small';
+              retryBtn.textContent = 'Try again';
+              retryBtn.style.fontSize = '11px';
+              retryBtn.style.padding = '4px 8px';
+              retryBtn.onclick = () => this.retryDesignerEntry(entry);
+              actionsCell.appendChild(retryBtn);
             }
+
+            row.appendChild(actionsCell);
 
             tbody.appendChild(row);
           }
