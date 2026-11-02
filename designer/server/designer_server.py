@@ -5349,6 +5349,17 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
         with TERMINAL_LOCK:
             path = self.server.data_dir / "terminal-log.json"
             log = load_json(path) or {"entries": []}
+            # ONE request id = ONE row (2026-11-01, entries 457/458): a designer submission already
+            # got its row (id = request id) when it was submitted; the queue agent that later works it
+            # must only UPDATE that row. Prompt-only rules against `designer-admin.py tlog-add` were
+            # ignored more than once, so the guard lives here: an add whose id already exists is
+            # refused and the existing row is returned unchanged (checked under the lock, so two
+            # near-simultaneous adds can't both slip through).
+            if ref:
+                for existing in log.get("entries", []):
+                    if existing.get("id") == ref:
+                        sys.stderr.write(f"terminal-log: refused duplicate add for id {ref} (row n={existing.get('n')})\n")
+                        return dict(existing, duplicate=True)
             log.setdefault("entries", []).append(entry)
             number_terminal_entries(log)
             log["entries"] = log["entries"][-2000:]
@@ -5568,6 +5579,9 @@ class FactionDesignerHandler(BaseHTTPRequestHandler):
             return
         entry = self.add_terminal_entry(body['type'], str(body.get('user') or 'admin'), body.get('prompt', ''),
                                         body.get('summary', ''), ref=body.get('id'), designObject=body.get('designObject'))
+        if entry.get('duplicate'):
+            self.send_json(entry)   # id already has a row - nothing added, nothing overwritten
+            return
         if isinstance(body.get('at'), int):
             with TERMINAL_LOCK:
                 path = self.server.data_dir / "terminal-log.json"

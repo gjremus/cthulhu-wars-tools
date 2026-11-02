@@ -2056,15 +2056,13 @@ A standardized reference to a specific design:
 ```
 
 **Common terminal log operations you perform:**
-- Add entry when starting work (via tlog-add)
+- (NO adding: the row for your job ALREADY EXISTS - the designer server or the queue tick made it.
+  NEVER run tlog-add. The server now refuses a second row for the same id anyway.)
 - Update summary when finishing (via tlog-summary)
 - Add cost after completing (via tlog-cost)
 
 **API for terminal log:**
 ```bash
-# Add new entry (when starting work)
-python3 designer-admin.py tlog-add "design build" "cavysupreme" "r_abc123" /tmp/prompt.txt
-
 # Update summary (when finishing work)
 echo "Updated FactionCS.scala with new combat values" > /tmp/summary.txt
 python3 designer-admin.py tlog-summary r_abc123 /tmp/summary.txt
@@ -2090,7 +2088,7 @@ Essentially filters the terminal log to show only these types.
 - Date (when submitted)
 
 **IMPORTANT: The terminal log is a HISTORICAL LOG, not a task tracker.**
-- Entries are added when work starts (via tlog-add)
+- Entries are added automatically on submission (by the server / queue tick - NEVER by you)
 - Summary is filled in when work completes (via tlog-summary)
 - Cost is added when work finishes (via tlog-cost)
 - There is NO "status" field - completion is tracked by the presence of a summary and cost
@@ -2136,7 +2134,7 @@ The designer UI (sections.js, rules.js) validates as you type:
 3. If validation passes: POST to `/designer/api/factions/<id>/request` with `{type: "build", prompt: "user prompt text"}`
 4. Server creates queue file in ~/.cw-admin-queue/pending/
 5. Agent picks up job from pending/, moves to running/
-6. Terminal log entry created (via tlog-add) when agent starts
+6. Terminal log entry already exists (made by the server on submission); agent only updates it
 7. Agent completes work, writes summary and cost to terminal log
 8. Job moves to done/ folder with .reply file
 
