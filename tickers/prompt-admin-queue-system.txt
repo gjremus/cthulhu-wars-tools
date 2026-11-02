@@ -3,6 +3,58 @@ Admin Queue System - Faction Designer Integration
 This prompt documents the faction designer queue processing system.
 
 ═══════════════════════════════════════════════════════════════════════════
+LIVE GAMES + CLAUDE TERMINAL LOG — YOU ALREADY HAVE FULL ACCESS. NEVER ASK.
+═══════════════════════════════════════════════════════════════════════════
+NEVER tell the owner you "can't find" a terminal log entry, "don't know how to find a
+game by name", "can't access the game server", or "need the restore method". Everything
+is below and has been verified working. A game NAME is always enough.
+
+TOKEN = the owner admin token (in ~/.cw-admin-token; also in this job's context).
+SERVER = https://cwo.freeddns.org   SSH = ssh -i ~/.ssh/oracle_cw_ed25519 -o ConnectTimeout=10 oracle-cw-server@cwo.freeddns.org
+
+1. CLAUDE TERMINAL LOG (entries like "#459", "entry 446", ids "q_...", "r_...", "t_...")
+   cd ~/Claude-Projects/cthulhu-wars-tools/tickers
+   python3 designer-admin.py terminal-log > /tmp/tlog.json        # JSON array; "n" = the entry number
+   python3 -c "import json;[print(e['n'],e['id'],e['prompt'][:300],'||',e['summary'][:2000]) for e in json.load(open('/tmp/tlog.json')) if e.get('n')==459]"
+   Follow every entry number the owner's text references (they chain: 446 -> 454 -> 459 ...).
+   To find all entries about a game: search prompt+summary for the game NAME (case-insensitive).
+
+2. FIND A GAME BY NAME
+   curl -s "$SERVER/admin/$TOKEN/games" | grep -i "<name>"
+   Columns (TAB): rowId  NAME  slug  lastWriteMs  broken ... build. The rowId (small integer,
+   column 1) is what every other admin call needs. Names repeat: match the full name and build.
+   Player/spectator links: curl -s "$SERVER/admin/$TOKEN/roles/<rowId>" -> "<faction> <secret>"
+   lines ("#" = spectator). Play URL: $SERVER/HB/play/<secret> (HB), /play/ (library),
+   /mnu/play/, /BB/play/, /TchoTcho/play/.
+
+3. READ / BACK UP THE GAME LOG (the game IS its action log; there is no ".game" file)
+   curl -s "$SERVER/admin/$TOKEN/log/<rowId>" > raw.journal      # "index<TAB>role<TAB>action"
+   ALWAYS save raw.journal to ~/cthulhu-wars-tools/game-backups/<date>-<game-name>/ BEFORE any change.
+   Rows 0-2 are header lines; actions start at row 3.
+
+4. REPAIR A GAME LOG (game surgery)
+   Rollback (delete rows >= N):  curl -s -X POST "$SERVER/admin/$TOKEN/rollback/<rowId>/<N>"
+   Write rows starting at N:     curl -s -X POST --data-binary @rows.txt "$SERVER/admin/$TOKEN/write/<rowId>/<N>"
+                                 (rows.txt = one RAW action per line, no index/role columns)
+   Edit one row in place:        curl -s -X POST --data-binary "NewAction(...)" "$SERVER/admin/$TOKEN/edit/<rowId>/<N>"
+   After writing, re-download the log and diff it against what you intended (row count AND content).
+   Keep original dice rolls / Elder Sign draws when re-writing rows.
+
+5. VERIFY
+   Load the play URL in headless puppeteer as spectator, read #log innerText and the waiting
+   prompt, and check console errors. Confirm the game is at the exact turn/player intended.
+
+6. FIND AN OLDER / LONGER VERSION OF A GAME (lost or rolled-back rows)
+   a) Local backups: ls ~/cthulhu-wars-tools/game-backups/ (grep -rl "<game name>" there).
+   b) The server database's own write history (every row ever written or deleted, with times):
+      $SSH 'grep -n -E "VALUES\(<rowId>,|\"gameId\"=<rowId>" /opt/cwo/data/cwo.log'
+      plus the snapshot rows: $SSH 'grep "^INSERT INTO \"Logs\" VALUES(<rowId>," /opt/cwo/data/cwo.script'
+      "INSERT INTO "Meta" VALUES(<rowId>,<ms>)" after each write is its timestamp.
+   c) Web access log of save attempts: $SSH 'sudo cat /var/log/caddy/access.log' (+ rotated .gz)
+      — POST /…/write/<secret>/<row> with status 202 = saved, 409 = conflict.
+   Do NOT run sbt, find /, or package installs on the server; reading these files is fine.
+
+═══════════════════════════════════════════════════════════════════════════
 CRITICAL: DESIGNER BUG REPORTS - NEVER CREATE NEW ENTRIES
 ═══════════════════════════════════════════════════════════════════════════
 
