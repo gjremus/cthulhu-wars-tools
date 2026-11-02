@@ -2029,23 +2029,30 @@
     }
 
     retryDesignerEntry(entry) {
-      // Retry a terminal log entry by re-submitting it to the admin queue
-      if (!entry || !entry.n || !entry.prompt) {
+      // Retry a terminal log entry by updating it in place (not creating a new entry)
+      if (!entry || !entry.id || !entry.n || !entry.prompt) {
         alert('Cannot retry: missing entry information');
         return;
       }
 
+      if (!this.state.adminToken) {
+        alert('Admin access required to retry entries');
+        return;
+      }
+
+      const entryId = entry.id;
       const entryNumber = entry.n;
       const originalPrompt = entry.prompt;
 
-      // Detect if this is already a retry and extract attempt number
-      const attemptMatch = originalPrompt.match(/Re: Entry #\d+ \(attempt (\d+)\)/);
-      const attemptNum = attemptMatch ? parseInt(attemptMatch[1]) + 1 : 2;  // First retry = attempt 2
+      // Detect current try number from prompt (TRY 2, TRY 3, etc.)
+      const tryMatch = originalPrompt.match(/^TRY (\d+)\n/);
+      const tryNum = tryMatch ? parseInt(tryMatch[1]) + 1 : 2;  // First retry = TRY 2
 
-      // Build retry prompt referencing the original entry
-      const retryPrompt = `Re: Entry #${entryNumber} (attempt ${attemptNum})
+      // Strip existing TRY prefix if present
+      const cleanPrompt = originalPrompt.replace(/^TRY \d+\n+/, '');
 
-The previous attempt either didn't finish or the fix didn't work. Review entry #${entryNumber}, then:
+      // Build updated prompt with TRY N at the top
+      const retryInstructions = `The previous attempt either didn't finish or the fix didn't work. Review entry #${entryNumber}, then:
 
 1. If the task wasn't completed: finish it following all validation steps
 2. If the fix didn't work: try again and actually validate the fix properly
@@ -2059,30 +2066,43 @@ CRITICAL BUG FIX VALIDATION STEPS (from Faction Build Manual):
 - For visual bugs: take BEFORE and AFTER screenshots, read them both, include paths in summary
 - For designer submissions: update BOTH terminal log summary AND request status
 
-Original task:
-${originalPrompt}`;
+`;
 
-      // Submit the retry prompt to the admin queue
-      const submitUrl = this.state.adminToken
-        ? `/designer/api/admin/${this.state.adminToken}/claude-prompt`
-        : null;
+      const updatedPrompt = `TRY ${tryNum}\n\n${retryInstructions}Original task:\n${cleanPrompt}`;
 
-      if (!submitUrl) {
-        alert('Admin access required to retry entries');
-        return;
-      }
+      // Append to summary to indicate retry
+      const currentSummary = entry.summary || '';
+      const appendText = `\n\n--- TRY ${tryNum} (queued ${new Date().toLocaleString()}) ---\nRetrying...`;
 
-      fetch(submitUrl, {
+      // Update the entry with new prompt and appended summary
+      const updateUrl = `/designer/api/admin/${this.state.adminToken}/terminal-log/${entryId}`;
+
+      fetch(updateUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: retryPrompt,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          summary: currentSummary + appendText
+        }),
+      }).then(r => {
+        if (!r.ok) {
+          alert(`Failed to update entry (HTTP ${r.status})`);
+          return r.text().then(text => { throw new Error(text); });
+        }
+        return r.json();
+      }).then(() => {
+        // Now submit the updated prompt to the admin queue
+        return fetch(`/designer/api/admin/${this.state.adminToken}/claude-prompt`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: updatedPrompt,
+        });
       }).then(r => {
         if (!r.ok) {
           alert(`Failed to submit retry (HTTP ${r.status})`);
           return;
         }
-        alert(`Retry queued for entry #${entryNumber}. Claude will pick it up on the next tick.`);
-        // Refresh the current view to show the new entry
+        alert(`TRY ${tryNum} queued for entry #${entryNumber}. Claude will pick it up on the next tick.`);
+        // Refresh the current view to show the updated entry
         window.location.reload();
       }).catch(e => {
         alert(`Network error: ${e.message || e}`);
